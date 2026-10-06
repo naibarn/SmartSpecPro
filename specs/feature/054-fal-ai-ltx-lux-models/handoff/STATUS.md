@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 16 unresolved of 16
+- Requirements: 0 pass / 34 unresolved of 34
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Proposed` — `specs/feature/054-fal-ai-ltx-lux-models/spec.md#5`
+- Deep-implement section claims (9): COMPLETE: 9

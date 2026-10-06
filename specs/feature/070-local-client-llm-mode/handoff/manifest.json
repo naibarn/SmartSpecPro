@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/070-local-client-llm-mode/spec.md",
     "digest": "b5e6cf76fd7131ab9100029f164e92d1f516eb1531377b9e32a9017882169467",
@@ -505,6 +505,17 @@
         "digest": "58c46bd75dcc1021dcd9e5f0ba15b63655ab2b966d5545a513f2749f696f1124",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/070-local-client-llm-mode/sections/section-09-regression-tests-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/070-local-client-llm-mode/spec.md",
+        "source_digest": "b5e6cf76fd7131ab9100029f164e92d1f516eb1531377b9e32a9017882169467",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -521,6 +532,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/070-local-client-llm-mode/spec.md",
+        "source_digest": "b5e6cf76fd7131ab9100029f164e92d1f516eb1531377b9e32a9017882169467",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -640,8 +663,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 265,
-    "unresolved": 265
+    "total": 273,
+    "unresolved": 273
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.777542Z",

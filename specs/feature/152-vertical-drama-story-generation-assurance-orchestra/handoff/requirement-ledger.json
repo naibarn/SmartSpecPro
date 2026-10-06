@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -158,6 +159,226 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L172"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L172",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "356c00039867c66349e6d0f67605db57ee62ec0e6bf9d2edb54a99ac091c4187",
+      "requirement_id": "REQ-AC4259C0FD25",
+      "requirement_text": "1. Never report `succeeded` when requested episodes are missing or a critical",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L174"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L174",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c6089769ae8f56d84c4f92237a372308a0b2e4bff5271bd45ca44c1dd9e201fd",
+      "requirement_id": "REQ-9425187D4AA9",
+      "requirement_text": "2. Resume from the last completed episode/checkpoint without regenerating or",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L176"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L176",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cf11965f17708e959297b49d72c224d707a43c1bd3b9d4aac5ff1a31101c9e79",
+      "requirement_id": "REQ-CF11B3683E08",
+      "requirement_text": "3. Bind generated output to an exact source draft version and fingerprint.",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L177"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L177",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0b386157f6b40f90c087937f2da6a027061bae83bcc2eda7f53c61b03ab13d8a",
+      "requirement_id": "REQ-3A79E007B09F",
+      "requirement_text": "4. Verify structural completeness, character/location identity, continuity,",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L179"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L179",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "473c05d293a995ec5a3ce113cbb60e3a62be54194127989d0d15aeeeac4df897",
+      "requirement_id": "REQ-70B54D39EFC7",
+      "requirement_text": "5. Use existing Vertical Drama skills as versioned contracts for authoring,",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L181"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L181",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5e006dd0241d3acccc9169d2a578025eebba93362b9127791b6dd8fb8152f53c",
+      "requirement_id": "REQ-D7CC813A88DF",
+      "requirement_text": "6. Repair only the smallest failing scope and run a fresh validation after every",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L183"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L183",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "81a297d148575e3a350c5982f66767bdb98cd7a6cbace5920998cbfe78a92185",
+      "requirement_id": "REQ-AC463AB16BD2",
+      "requirement_text": "7. Make credit limits and provider failures predictable before starting the next",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L185"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L185",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "15fb97aab2b9cbd483c7554d84e768b08d861004ca7f53ac8e2ea2413093ba5b",
+      "requirement_id": "REQ-3A8B2B15AB3B",
+      "requirement_text": "8. Provide durable user-visible status and a Resume/Repair action.",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L186"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L186",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f105eb9098256b9915d6e8ba96b5bf9c1e389f92bd214f1b97c7f499f16da3a3",
+      "requirement_id": "REQ-382E4B8C7BC9",
+      "requirement_text": "9. Make every attempt, candidate, validator finding, repair, model, provider,",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L188"
+      ],
+      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L188",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "79b1e8c1f7c9a4324dc676bd39de79f736d424cc199b37787828ee48c565b619",
+      "requirement_id": "REQ-314443BA679C",
+      "requirement_text": "10. Enable a controlled OpenAI Agents SDK rollout without duplicating the runtime",
+      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L222"
       ],
       "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L222",
@@ -304,28 +525,6 @@
       "requirement_digest": "c6940bd8ad8c0b93e6b44fcf076090363c7d7815a51b13116cec5d7454a2cdf9",
       "requirement_id": "REQ-DE1C92FC8778",
       "requirement_text": "older or partially written plan. The API must return a plan-stage failure with",
-      "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L384"
-      ],
-      "authority_source": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra/spec.md#L384",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "aa366e307ea5a75acc0813055c2e066af8ec8605d0a4199d5eb9e2ad6278f8e7",
-      "requirement_id": "REQ-4050F17B6F1F",
-      "requirement_text": "required: boolean;",
       "source_spec_digest": "c66720e34ff5f9ab772e4761393c55fad09cb63003d445ebf469f4465bc86d04",
       "successor_mapping": [],
       "verification_evidence": [],

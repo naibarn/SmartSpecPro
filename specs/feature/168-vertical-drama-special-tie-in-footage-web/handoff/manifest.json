@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
     "digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
@@ -440,6 +440,45 @@
         "digest": "62bd4eb6586ddd3d9667fa0ab5d68d23ebb32d3d0a928ead965a7be01a61263c",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/sections/section-02-web-ui-review-broll.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-web-contract-api-skill: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-web-contract-api-skill",
+        "source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json",
+        "source_digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-web-ui-review-broll: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-web-ui-review-broll",
+        "source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json",
+        "source_digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready specification",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+        "source_digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "value": "Implementation-ready specification"
       }
     ],
     "stale_fields": [],
@@ -456,6 +495,44 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-web-contract-api-skill: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-web-contract-api-skill",
+        "source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json",
+        "source_digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-web-ui-review-broll: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-web-ui-review-broll",
+        "source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation/deep_implement_config.json",
+        "source_digest": "9b2ef820dc725af6e5ea0a3b4a8598528c773abe243eea101402096242de7e95",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready specification",
+        "line": 3,
+        "source": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+        "source_digest": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e",
+        "value": "Implementation-ready specification"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

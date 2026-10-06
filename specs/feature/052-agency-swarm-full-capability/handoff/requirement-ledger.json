@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -93,28 +94,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L490"
-      ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L490",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6fa4d70f2b6afea1a5b9bbe14d1e470362dd55dcc3437678cb2ed66d38e0fbf2",
-      "requirement_id": "REQ-43846B7D7BD3",
-      "requirement_text": "retry_message = f\"Your response must match this schema: {agent.output_schema}. Error: {e}\"",
-      "source_spec_digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/052-agency-swarm-full-capability/spec.md#L525"
       ],
       "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L525",
@@ -195,50 +174,6 @@
       "requirement_digest": "79a5dc958d72dc417b5650a8175781fa1462236504fc7ce659b46d461608ee77",
       "requirement_id": "REQ-F042C447EF1D",
       "requirement_text": "- [ ] `loopTargetNodeId` validated: must reference node within same agency (returns error otherwise)",
-      "source_spec_digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L1847"
-      ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L1847",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "47b25dee48ad1faacec658b534aebed696fb2e23690b9663bb4275222a1b797a",
-      "requirement_id": "REQ-0A960CD2BCC1",
-      "requirement_text": "└─ 2.23 AI Agency Creator v2 ← depends on 2.18-2.22 (must know all 14 node types)",
-      "source_spec_digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/052-agency-swarm-full-capability/spec.md#L2234"
-      ],
-      "authority_source": "specs/feature/052-agency-swarm-full-capability/spec.md#L2234",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "19081434f15baba39f51381a14a621956c6a22f43b1d1d626be3b014a53ff9b8",
-      "requirement_id": "REQ-570FFABD1EFE",
-      "requirement_text": "│ URL:  [https://..] │           │ │  required: ✓   │ │          │                    │",
       "source_spec_digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
       "successor_mapping": [],
       "verification_evidence": [],

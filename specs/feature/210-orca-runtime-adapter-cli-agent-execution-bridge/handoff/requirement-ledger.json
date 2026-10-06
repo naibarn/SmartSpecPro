@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -128,6 +129,446 @@
       "requirement_digest": "51012ebd44b8cfb59a16f0fa43d8aeb122098c7758aebedaf387b6d20bcefa28",
       "requirement_id": "REQ-9E964CF92B88",
       "requirement_text": "Spec 210 SHALL deliver:",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L154"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L154",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3d60bf66e5e60b83dcc5b2b8d493d27b3128c7c6681527001238914e5aa4172c",
+      "requirement_id": "REQ-82CBFDF084CB",
+      "requirement_text": "1. A replaceable `OrcaRuntimeAdapter` under Spec 200.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L155"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L155",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "49849df88f96b5a0a6090df5ff58bc59e5cb84185aae3c5149726ebc85eee395",
+      "requirement_id": "REQ-B904CAF520C7",
+      "requirement_text": "2. Automatic discovery of locally usable Orca runtimes.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L156"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L156",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "62e5ea553accf1c1ac89db3fe5b1bc9a69d13d7dd606d5138cc58fdbc950bedd",
+      "requirement_id": "REQ-F8B98DD96C59",
+      "requirement_text": "3. Automatic discovery of Orca-supported/configured CLI agents.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L157"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L157",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "62df6aa60575e257b5212f6f472c3f4e4bdb1459354d5a6426926a7761aedad0",
+      "requirement_id": "REQ-745DDE2CAE47",
+      "requirement_text": "4. Safe routing among `a2a`, `orca`, `native_direct`, and `generic_pty`.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L158"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L158",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5b21214f90a97cb79508dfae3c0e6e10b107d33e84c073654cb847e7012fc5fd",
+      "requirement_id": "REQ-76F93FD52DF8",
+      "requirement_text": "5. Reuse of existing provider-native logins where policy permits.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L159"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L159",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d0f7bb5d7d31055eb63a7081c30ff4c43ade46facb1e6d29f376f16cf8014d45",
+      "requirement_id": "REQ-5C0A0EDF5345",
+      "requirement_text": "6. Full SmartAIHub job/session/event/result normalization.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L160"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L160",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d7b24d4d10b781b04ab064249fbdf620458028944d09d6a96df2ca82e16c8e24",
+      "requirement_id": "REQ-A85D5B50C7D1",
+      "requirement_text": "7. Verifiable prompt submission rather than trusting a byte-write acknowledgement.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L161"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L161",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e7f75e26c8a534a5468c75b441509657293fdd7bbb8ca4db3a2fe6f2e40e5535",
+      "requirement_id": "REQ-E01F9D5753F3",
+      "requirement_text": "8. Durable reconciliation after Runner/Orca/network/process restart.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L162"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L162",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c0e73468bd6d2fbf65b5479ee5f08dfba23fd5061d16a1bc16b951eaf0be74f1",
+      "requirement_id": "REQ-4C4BC2AF37FE",
+      "requirement_text": "9. Parallel worktree execution without uncontrolled same-worktree writers.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L163"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L163",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "962401c72eda64cfee4c5b5bc97af463c7ecf8ca80a02cec5eff155937f1f732",
+      "requirement_id": "REQ-25757A70EE76",
+      "requirement_text": "10. Scoped SmartAIHub Skill/MCP access from agents.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L164"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L164",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c28b0b97cc09d230592635579ab686523c67bd8b8932d10fca20849a061ae12c",
+      "requirement_id": "REQ-73C8F3618AF7",
+      "requirement_text": "11. Scoped Library/Asset materialization for image/video/audio/document/code tasks.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L165"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L165",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d5e6556ad680c510effe95cc35254da6665eed540154eb49a704e0be394a62ed",
+      "requirement_id": "REQ-21D1221D4FE7",
+      "requirement_text": "12. Human approvals and runtime user-input waits.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L166"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L166",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fcb7588479dfaf7ce193c1429cddcf2c5cd8c1b1cbc6401e0c7ce2ea2bf09c09",
+      "requirement_id": "REQ-B9264F4110C1",
+      "requirement_text": "13. Cancellation, fencing, and unknown-outcome handling.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L167"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L167",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d057d0e44a3745d915e2e6babe8c4a8bfd8a72dac7058951ef78156f799d9e5d",
+      "requirement_id": "REQ-2B3F588C9C18",
+      "requirement_text": "14. Runtime compatibility certification and automatic degradation/blocking.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L168"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L168",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4d7bf11bab0c2e1eb69dcfa7f9f14ec83565462134ed29ba000d35c086dd5af1",
+      "requirement_id": "REQ-E0A827B8D982",
+      "requirement_text": "15. Managed install/update/rollback support for Runner deployments.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L169"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L169",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e839834f61828f9f9799fd90632005896125d7beeeb6cf5dba5b557e0f3d4942",
+      "requirement_id": "REQ-BCAE370314AF",
+      "requirement_text": "16. Windows, macOS, Linux and headless Linux support where certified.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L170"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L170",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8e2b2e951850796437089d66f6c78cfc6af2f81f7006a564e0aa71044ce9cc27",
+      "requirement_id": "REQ-72AC17E1DA82",
+      "requirement_text": "17. User-facing status and diagnostics without forcing ordinary users to understand Orca internals.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L171"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L171",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "695a49b2f8c88d1ce6ce1961450e1eda4c74fe406dccd263c07d8d0070519d7e",
+      "requirement_id": "REQ-E9600A5A28A8",
+      "requirement_text": "18. Multi-agent execution compatible with Spec 209 workflows.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L172"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L172",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f0c10b17c2e90e1b63f58f64e77849c99614369e38ecfe74dcfe6b4cb0cc449b",
+      "requirement_id": "REQ-9CFBE6073589",
+      "requirement_text": "19. No duplicate durable job/control/permission/billing/audit systems.",
+      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L173"
+      ],
+      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L173",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d4c20ad2972146ae03c3a657f81f706ac02c80588fb34cab677990c102f08566",
+      "requirement_id": "REQ-3687A82F8869",
+      "requirement_text": "20. A safe migration path that does not delete existing direct Claude/Codex/Antigravity adapters.",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -700,28 +1141,6 @@
       "requirement_digest": "b6ecc4695b4ba70e87355c9f35a1a17d4336fa715a52568f3a03fbbbeb3ded7b",
       "requirement_id": "REQ-D57F2341B846",
       "requirement_text": "At runtime, the adapter SHALL:",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L621"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L621",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ddc3d923d4318bbd60008b250fb9348d2b74ab6b695cfdcf90ab849987adfd4e",
-      "requirement_id": "REQ-883C7E258D7F",
-      "requirement_text": "4. query `--help`/capabilities for required commands;",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1720,28 +2139,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L1100"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L1100",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c2358fbf1f076404fb5ef628304e8e15306887687076932e97ea27ba59091181",
-      "requirement_id": "REQ-E283B7F41E59",
-      "requirement_text": "required environment/config profile fingerprint",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L1104"
       ],
       "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L1104",
@@ -2284,28 +2681,6 @@
       "requirement_digest": "b46fad9c1df700e40cf57b99c8c9c400f9d9139516de0bc2d4df690035d19dff",
       "requirement_id": "REQ-6E66ED9FE5A5",
       "requirement_text": "Required tests:",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L1301"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L1301",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a620acbd7dc5fc19a3a8797f7296370a144b0b4a3c8568eb6f4e2aea8fa185e8",
-      "requirement_id": "REQ-93D54FF8C064",
-      "requirement_text": "stdout exactly matches provider-required schema",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3635,28 +4010,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L2295"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L2295",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bef77443e393f1367615157397f97f1d89947a420528a8f3e443232aedf9134b",
-      "requirement_id": "REQ-882F0332743E",
-      "requirement_text": "required verifier/QC policy completed",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L2306"
       ],
       "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L2306",
@@ -4133,28 +4486,6 @@
       "requirement_digest": "aad623ff4e12025866559cc187f12434bcdb5cca8dbf39ff60ec311772d2dc3f",
       "requirement_id": "REQ-D0996A829F6D",
       "requirement_text": "Automatic Orca pane restoration MUST NOT create a second authoritative agent for the same job merely because the UI/runtime recreated a tab.",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L2628"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L2628",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "72821b11e0e113cc8b5c1cbe8733c41d758d2c42600617396412b93fdb66fad0",
-      "requirement_id": "REQ-D9A8E5590613",
-      "requirement_text": "agent.approval.required",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5417,28 +5748,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3272"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3272",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e0dddaaf7efa12f1394bd79fae95751ca84e154538846e87ae1ff54c28a96c6e",
-      "requirement_id": "REQ-6E01E1D512C1",
-      "requirement_text": "required report structure",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3283"
       ],
       "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3283",
@@ -5783,28 +6092,6 @@
       "requirement_digest": "fdf10206755c9fd1e24c9087f4eb52ef1d06c1eee9d642c1a103b9f378cca021",
       "requirement_id": "REQ-D1C6C7AA4B75",
       "requirement_text": "The controller's local `homedir`, drive rules or path normalization MUST NOT be reused to decide whether a remote path is safe to delete.",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3543"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3543",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7a3ad70847f5b4629c7e4e586acd9e4456d8d051714ab36f7236476d95174b29",
-      "requirement_id": "REQ-2B896FB1A1AB",
-      "requirement_text": "unpublished-work rescue proof exists when required",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6385,28 +6672,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3854"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3854",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b93c3e51100d79970a984460feb04b0f50453ec0dc62483be7f5a095c3e03fd4",
-      "requirement_id": "REQ-B152E763D3BF",
-      "requirement_text": "login required",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3863"
       ],
       "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L3863",
@@ -6781,28 +7046,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L4159"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L4159",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "23c0b4d0c24196d467c35eed56c9805460964f788a919a6163ca3ca407118be0",
-      "requirement_id": "REQ-2F98538384A3",
-      "requirement_text": "!= agent execution failure, unless hook is a required security gate",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L4168"
       ],
       "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L4168",
@@ -7037,28 +7280,6 @@
       "requirement_digest": "0ea7cb7fc567b5a33679537740d5847a50d01626bdf86ac5faf718ec7f6d9d91",
       "requirement_id": "REQ-1B7942B0884B",
       "requirement_text": "The Job Detail UI SHALL distinguish command receipt from confirmed effect.",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L4484"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L4484",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9b0da8025f761114a552c3b1437a7b429e682fe9eb59f3f4fedc368a839f4f83",
-      "requirement_id": "REQ-E6E811797BE8",
-      "requirement_text": "Outcome unknown — reconciliation required",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8380,28 +8601,6 @@
       "requirement_digest": "cfafe6eef789b30d75a7751ec83e6a2c41e707384b876b3d8f2dbc169fc24d6d",
       "requirement_id": "REQ-DFD46F4B520E",
       "requirement_text": "Before dispatch, Runtime Route Resolver SHALL confirm:",
-      "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L5720"
-      ],
-      "authority_source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md#L5720",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5d3c1f2ee21ce5c262308e0608a550e367b16ee593f4fb0829dc9fec3dd905d4",
-      "requirement_id": "REQ-32B2332A38D6",
-      "requirement_text": "required capability bridge ready",
       "source_spec_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
       "successor_mapping": [],
       "verification_evidence": [],

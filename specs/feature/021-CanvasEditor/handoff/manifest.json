@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/021-CanvasEditor/spec.md",
     "digest": "6b81b85773674dd8e01ff6f02e48f9f860887c80c23a2a6906039d72c6f5e444",
@@ -520,6 +520,17 @@
         "digest": "ab93e7937886674b2021e54c2cad93dbb8b98271b54a150dea3f8dcd3ac1862b",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/021-CanvasEditor/sections/section-10-release-readiness-and-cutover.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/021-CanvasEditor/spec.md",
+        "source_digest": "6b81b85773674dd8e01ff6f02e48f9f860887c80c23a2a6906039d72c6f5e444",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -536,6 +547,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "line": 3,
+        "source": "specs/feature/021-CanvasEditor/spec.md",
+        "source_digest": "6b81b85773674dd8e01ff6f02e48f9f860887c80c23a2a6906039d72c6f5e444",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -670,8 +693,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 85,
-    "unresolved": 85
+    "total": 97,
+    "unresolved": 97
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.461029Z",

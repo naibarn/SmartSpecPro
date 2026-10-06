@@ -1,6 +1,205 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L105"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L105",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3f37169f474652249e08e689e6e60f6137270707ccb68116fe1d9fa48b9fbf41",
+      "requirement_id": "REQ-D33C65AB9849",
+      "requirement_text": "- G1 — A timeline UI where the user sees, in one view, the scene strip, a",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L108"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L108",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c2840026f8f4c2cf8eb93b4deeb9b076b779279a9bff581a9231c3f12cea7516",
+      "requirement_id": "REQ-D7FF17857DEC",
+      "requirement_text": "- G2 — Direct manipulation: drag a clip along time, trim its edges, drag it",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L110"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L110",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0bd8e28f960cc1d0053deb4245489d23d06ac3105feab3c7d4aacfea7763b0e5",
+      "requirement_id": "REQ-9247A896DF78",
+      "requirement_text": "- G3 — A background track that accepts multiple concatenated video/image clips",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L112"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L112",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "80f9d4f2a3dee4a9dd1df31b3b6c15f9859a62a0046e576326d1362ac0e7d4b0",
+      "requirement_id": "REQ-28F9F4A194E3",
+      "requirement_text": "- G4 — Overlays with independent `startMs`/`durationMs`, free position, and the",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L114"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L114",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "80fe39817f211e9d5148deb59c2e497a071ed61f7ea9bc957cee554fcd61582e",
+      "requirement_id": "REQ-7DAFDE806F83",
+      "requirement_text": "- G5 — Every edit stays inside what the Remotion worker contract accepts, and",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L116"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L116",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fa36be6d458595d68b306364714b733c09f90ad9e19ff297f222793a5579fd40",
+      "requirement_id": "REQ-07E00AC655BF",
+      "requirement_text": "- G6 — One unambiguous route to a `remotion_render_video` job in the existing",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L118"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L118",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "173f8abec46bdbc3bd52c17fd70e99db464685718fbb361c4140f6dcc12674c2",
+      "requirement_id": "REQ-D30745ABDED5",
+      "requirement_text": "- **G7 — Undoable editing.** Every edit is undoable and redoable in-session, with",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L121"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L121",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "132114d813b7d85e9448653c995339a5bf4ae42e8bf2271fb4eadd820e21f61c",
+      "requirement_id": "REQ-4DAE841662C6",
+      "requirement_text": "- **G8 — Hand-authored work survives every AI stage**, in content *and* in",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L123"
+      ],
+      "authority_source": "specs/feature/143-video-studio-layer-timeline-editor/spec.md#L123",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0a79e7b2f28fa114acbc0a5d2052039cf46cccbc596a1bcf1fd7370aaab4bc25",
+      "requirement_id": "REQ-9B5DB1C31FD6",
+      "requirement_text": "- **G9 — Most users never drag anything.** The common cases (background clip,",
+      "source_spec_digest": "8edb4f3eb46e34dc5bcacd7ba6470651b0ac7119860ea368f1fb5d7db20cd330",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

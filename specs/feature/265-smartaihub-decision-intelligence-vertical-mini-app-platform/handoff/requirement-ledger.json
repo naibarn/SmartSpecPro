@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -18,28 +19,6 @@
       "requirement_digest": "32aef6dfaf45d24c447632b60f4825ede4785c3c43d82aa8fd997c9ec8a11cb6",
       "requirement_id": "REQ-6D84350AAF83",
       "requirement_text": "> **SmartAIHub must discover what must be known, obtain trustworthy evidence where permitted, calculate what can be calculated, expose what remains unknown, compare alternatives, and help the user make a better-informed decision without substituting confident LLM prose for missing evidence.**",
-      "source_spec_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L34"
-      ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L34",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e370d8f24a3f077ec91c450ddfbf4bb51219aeacd5ba1444c9990104ca82da77",
-      "requirement_id": "REQ-8A7EA1B4D891",
-      "requirement_text": "“For this decision, what must be known, which evidence matters,",
       "source_spec_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -700,28 +679,6 @@
       "requirement_digest": "1b757f376ea66c7d746188d90581ff92295f744bb3f2a57781c65ffd0770ca6e",
       "requirement_id": "REQ-C2F1D5C6808A",
       "requirement_text": "Template updates MUST NOT silently rewrite historical AnalysisRuns.",
-      "source_spec_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L497"
-      ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L497",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "23c65c36d8159193612d2210b468e84e2f0695ec72443de02478a1d0d67872e7",
-      "requirement_id": "REQ-D3CB6BF98164",
-      "requirement_text": "required: EvidenceRequirement[];",
       "source_spec_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1954,28 +1911,6 @@
       "requirement_digest": "56dda5a8ae7423b49b228d3126eab25033251a26bec06600cfa3a4cd9202a4b6",
       "requirement_id": "REQ-7A7B713D84C4",
       "requirement_text": "External callers MUST receive only authorized information/actions.",
-      "source_spec_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1292"
-      ],
-      "authority_source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md#L1292",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ab82edfe9a18ccee65cbccc848459fb84061342b40ab8bffd93fa7e4700a0877",
-      "requirement_id": "REQ-5F177C33BA75",
-      "requirement_text": "Required factors covered: 9/14",
       "source_spec_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -1,6 +1,29 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/031-PlaywrightVision/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0770c18bc9b052569be2dd4e9b3549d28812e2199d7fc9bf8a4da31a4be19849",
+      "requirement_id": "REQ-8A2715177677",
+      "requirement_text": "1. **Prompt-to-Automation**: user พิมพ์ 1 ประโยค ได้ automation ที่พร้อม execute ภายใน 30 วินาที (intent + script gen); execution แยกต่างหาก ≤ 60 วินาที",
+      "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
@@ -26,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/031-PlaywrightVision/spec.md#L464"
+        "specs/feature/031-PlaywrightVision/spec.md#L68"
       ],
-      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L464",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L68",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -37,9 +60,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c36b7ae073e186b01f89a3a1ee48bda1f4bc4161175fa15eb4a9d81bb22a28bf",
-      "requirement_id": "REQ-F7D8A569E2BE",
-      "requirement_text": "required: bool = True",
+      "requirement_digest": "eb0a357ae9a0990a0efa31281765a3d9f4fb70e7aaf315529a390a3d3201733b",
+      "requirement_id": "REQ-FD429E90151D",
+      "requirement_text": "3. **Self-Healing**: automation ที่เคยทำงานได้ ต้อง heal ตัวเองได้เมื่อเว็บเปลี่ยนเล็กน้อย (≥70% success rate หลัง minor website redesign)",
       "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -48,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/031-PlaywrightVision/spec.md#L501"
+        "specs/feature/031-PlaywrightVision/spec.md#L69"
       ],
-      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L501",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L69",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -59,9 +82,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "aa366e307ea5a75acc0813055c2e066af8ec8605d0a4199d5eb9e2ad6278f8e7",
-      "requirement_id": "REQ-328760DC895A",
-      "requirement_text": "required: boolean;",
+      "requirement_digest": "7adce5758bd9eb0801dc4cb6a373fc23e068af4ca623b2be5cb3d778b66cc9a1",
+      "requirement_id": "REQ-45CC61D67291",
+      "requirement_text": "4. **Vision-Guided**: ใช้ screenshot จริงในการ generate selectors — ไม่ใช่ guess จาก URL",
       "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -70,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/031-PlaywrightVision/spec.md#L930"
+        "specs/feature/031-PlaywrightVision/spec.md#L70"
       ],
-      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L930",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L70",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -81,9 +104,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e1c4162af67b7188015fdf20741682eb6f407ec6908db2f0ab254714e9082a89",
-      "requirement_id": "REQ-ED9F59335896",
-      "requirement_text": "\"required\": true",
+      "requirement_digest": "a2ba5f6dce8512758cced68587e7ca884d42461763e5259300934bf3b355ff0b",
+      "requirement_id": "REQ-848C7B0FFD75",
+      "requirement_text": "5. **Integrated Credit System**: ทุก Vision API call และ Playwright session ถูก charge credits อย่างถูกต้อง",
       "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -92,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/031-PlaywrightVision/spec.md#L1276"
+        "specs/feature/031-PlaywrightVision/spec.md#L71"
       ],
-      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L1276",
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L71",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -103,9 +126,31 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "905800a508acdc1b2d0729bbc5884ff6b5997a56877a0b8bddac37621d1cd30a",
-      "requirement_id": "REQ-CE8A41814451",
-      "requirement_text": "\"CAPTCHA detected. Manual intervention required.\"",
+      "requirement_digest": "994284d6ac3ba4df09c305b970dda06fb5d455fd634eebbd5b1e9cd89da1bb57",
+      "requirement_id": "REQ-960A415DB663",
+      "requirement_text": "6. **Multi-Tenant Isolation**: browser sessions และ selector cache แยกต่อ tenant ไม่รั่วข้ามกัน",
+      "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/031-PlaywrightVision/spec.md#L72"
+      ],
+      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L72",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a542c063e6089dd20c4f8b9c505c2be11331c7dfd311b5139839330d4c4834f8",
+      "requirement_id": "REQ-7B0E119A21AE",
+      "requirement_text": "7. **SSRF Protection**: ยังคง allowed_domains whitelist เหมือนเดิม — ไม่ bypass security",
       "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -195,28 +240,6 @@
       "requirement_digest": "c715edecc214f2c89ab818810ce2684e4cc571b5896ca9c5ba0aae9ca2c65695",
       "requirement_id": "REQ-E67B4C30D08B",
       "requirement_text": "**Acceptance Criteria Wave 4:**",
-      "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/031-PlaywrightVision/spec.md#L3320"
-      ],
-      "authority_source": "specs/feature/031-PlaywrightVision/spec.md#L3320",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7818f973c9c7913a14d8f9fee9f797debf83b3850c7303b5351d435f687b20b1",
-      "requirement_id": "REQ-8FB26318A31C",
-      "requirement_text": "required: z.boolean(),",
       "source_spec_digest": "f432632f4c4bfa3c57ee5a4d24388881f8d2cb82dedde35800e4090320766231",
       "successor_mapping": [],
       "verification_evidence": [],

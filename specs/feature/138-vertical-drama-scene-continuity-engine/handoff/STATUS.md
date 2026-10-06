@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 31 unresolved of 31
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `P1a/P1b/P2 code complete; shared continuity QC, default-visible shot badges, and location-coverage role/gap flow are default-on with explicit tenant opt-out; internal smoke and rol` — `specs/feature/138-vertical-drama-scene-continuity-engine/spec.md#5`

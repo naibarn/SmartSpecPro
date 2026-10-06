@@ -191,7 +191,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md",
     "digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
@@ -280,6 +280,17 @@
         "digest": "0128b88b605c7585237b2a2c69f95f05299af6cda3798f065a6b1e7b61877ffd",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion/sections/section-05-tests-rollout-and-guardrails.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md",
+        "source_digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -296,6 +307,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/065-kie-ai-llm-provider-chat-expansion/spec.md",
+        "source_digest": "dd29476cbd74d1d456f4470def4c17f3a7a9adc14274105bdc313d66f3664a16",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -355,8 +378,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 27,
-    "unresolved": 27
+    "total": 55,
+    "unresolved": 55
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.753703Z",

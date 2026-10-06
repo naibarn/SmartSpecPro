@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
     "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
@@ -440,6 +440,48 @@
         "digest": "94f4117b1fe86391eb344321f1887c691cba296b389960c33fc8bd3a9f20fb00",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/071-openclaw-external-runtime-integration/sections/section-08-rollout-migration-and-regression-matrix.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
+        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes: OpenClaw-specific positioning inside Feature 059 where the documents conflict",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "relation": "SUPERSEDES",
+        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
+        "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
+        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "target_ambiguous": true,
+        "target_candidates": [
+          {
+            "path": "specs/feature/059-external-worker-provider-framework",
+            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
+            "spec_id": "059",
+            "title": "059 - SmartSpecPro Distributed Worker Runtime"
+          },
+          {
+            "path": "specs/feature/059-knplabai-multi-provider-expansion",
+            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
+            "spec_id": "059",
+            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
+          }
+        ],
+        "target_spec_ids": [
+          "059"
+        ],
+        "value": "OpenClaw-specific positioning inside Feature 059 where the documents conflict"
       }
     ],
     "stale_fields": [],
@@ -456,6 +498,48 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
+        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes: OpenClaw-specific positioning inside Feature 059 where the documents conflict",
+        "line": 7,
+        "relation": "SUPERSEDES",
+        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
+        "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
+        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "target_ambiguous": true,
+        "target_candidates": [
+          {
+            "path": "specs/feature/059-external-worker-provider-framework",
+            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
+            "spec_id": "059",
+            "title": "059 - SmartSpecPro Distributed Worker Runtime"
+          },
+          {
+            "path": "specs/feature/059-knplabai-multi-provider-expansion",
+            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
+            "spec_id": "059",
+            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
+          }
+        ],
+        "target_spec_ids": [
+          "059"
+        ],
+        "value": "OpenClaw-specific positioning inside Feature 059 where the documents conflict"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -555,8 +639,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 71,
-    "unresolved": 71
+    "total": 75,
+    "unresolved": 75
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.786161Z",

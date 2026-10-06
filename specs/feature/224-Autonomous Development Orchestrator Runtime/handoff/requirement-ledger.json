@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -62,28 +63,6 @@
       "requirement_digest": "c325b5a1e9305fff94fd965ba97a9608ad3eb1d5f979644fead163a0724ff9c0",
       "requirement_id": "REQ-3C38621928AF",
       "requirement_text": "SmartAIHub SHALL implement a **durable Autonomous Development Orchestrator Runtime** that owns a software-development run from a single user goal or Spec until verified completion or another explicit finality condition is reached. Human-decision states are durable **paused states**, not successful or failed terminal states.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L60"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L60",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ca9fd7d92cdc9451b818cac71ccb9584655b6ab917f8251b174314ae9547031d",
-      "requirement_id": "REQ-9D6272A2394F",
-      "requirement_text": "→ RECOVERY where required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -282,28 +261,6 @@
       "requirement_digest": "84035dfbccedeeec33c0462dee3fb59eee282a3c81cb876c323b55621666045d",
       "requirement_id": "REQ-D63391DD2266",
       "requirement_text": "A Development Run SHALL remain non-final until one of the following occurs:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L275"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L275",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3099dedb5ef902f2d7188444af3d7ab527d8048e6cbb65c34d1f11b8d619fc0b",
-      "requirement_id": "REQ-9569B9CB4E36",
-      "requirement_text": "A. Final Verify = PASS and all required promotion-preparation invariants pass → COMPLETED",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -568,28 +525,6 @@
       "requirement_digest": "1fe6320dfecdbb3d85d84fd501aca4768bd6cb394e05f5567c20f53c5ee214bd",
       "requirement_id": "REQ-5B9D367B8A9A",
       "requirement_text": "Every phase SHALL have a server-owned contract:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L489"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L489",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8fc820a13c240dd3299eb1f6256f108a1780114590902faf195fdf84b394eea4",
-      "requirement_id": "REQ-8622642990DA",
-      "requirement_text": "\"objective\": \"Run required tests against candidate revision\",",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1105,28 +1040,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L988"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L988",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "10ebb3a89233d688e208f2285b8b5f74a25e26b85b0baf8a38c9abed0480e874",
-      "requirement_id": "REQ-33053020817D",
-      "requirement_text": "DESTRUCTIVE_PRODUCTION       HUMAN REQUIRED",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L995"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L995",
@@ -1185,28 +1098,6 @@
       "requirement_digest": "f539f8edf853ac093a028f6b9b54a1b68835081358151eda3096388572063ed4",
       "requirement_id": "REQ-DE57AD6BB554",
       "requirement_text": "The automation identity SHALL have:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1040"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1040",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1f679e4de9e90556c6eaf13e33a6eeb5865e71730a196f8349b4580307c8744d",
-      "requirement_id": "REQ-E810F252DD51",
-      "requirement_text": "PR creation access: canonical repository as minimally required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1480,28 +1371,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1160"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1160",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ce1dc3b7a859d16cccb609e8caa0ce1d7095d9458d6c8d6fcb45684ad5ce22cc",
-      "requirement_id": "REQ-8753E3F64600",
-      "requirement_text": "→ repository-scoped deploy key where only Git transport is required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1166",
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2002"
       ],
@@ -1613,50 +1482,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1199"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1199",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3dd19f2dd0fda0e8a7e9f6f3d349e8c69de2e7b3a14e2ed4e792e241a216ba0d",
-      "requirement_id": "REQ-E172073A6121",
-      "requirement_text": "required test set",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1205"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1205",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b1696c36848575759dfb1f77c0a61606baf5ffd5308e231679546d6263487c97",
-      "requirement_id": "REQ-202404010405",
-      "requirement_text": "critical acceptance criteria",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1210"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1210",
@@ -1693,28 +1518,6 @@
       "requirement_digest": "19ea24e5f19b0b0c0ddbf1b2af041662e9ef1352644ed156b88c03505b1f22d6",
       "requirement_id": "REQ-E8B8FD5C68FE",
       "requirement_text": "When tests or verification fixtures change, the runtime SHALL determine whether:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1225"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1225",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "33a0c5a9a35626cab76df5918198be4e5cd73f951d3d3fba207c0b2c7a2e8173",
-      "requirement_id": "REQ-0F30EBCE52EF",
-      "requirement_text": "A. change is required by the Spec",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1921,28 +1724,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1429"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1429",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5d5eb35db7d32981038b142d41c36c7c76aba98962824b11e461cef2eaa41687",
-      "requirement_id": "REQ-0BF6EBDA711D",
-      "requirement_text": "required capabilities",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1435"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1435",
@@ -2031,28 +1812,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1469"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1469",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e9626a5abd59b66a505b4466587c843938884bf992139cd96c4c1b8cd03de905",
-      "requirement_id": "REQ-E1085CE45B74",
-      "requirement_text": "required evidence",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1473"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1473",
@@ -2089,28 +1848,6 @@
       "requirement_digest": "2f9c0ffd1bf5ca53cbca50e220367f81b523f1085ec01607a7afe0d5fedf65ce",
       "requirement_id": "REQ-EBC8717D14B2",
       "requirement_text": "An LLM MAY interpret failures but SHALL not be the authoritative runner of record unless the command result itself is captured as structured execution evidence.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1495"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1495",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ffa515bb4f928823a3cdd37882e6051078e47234b9f2bad8d2c78c35ec8bf510",
-      "requirement_id": "REQ-9A19F2F1D294",
-      "requirement_text": "→ required regression scope",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2243,28 +1980,6 @@
       "requirement_digest": "8fe2ae587a45b6507a587c474564f051e705bcefd9f11debc385dca3ba8d137a",
       "requirement_id": "REQ-F14FECD5E3E0",
       "requirement_text": "- independent review is required;",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1584"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1584",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "91945b955c0f790e1d08d96245479dd5c09e403789534818756eff5f83b23abe",
-      "requirement_id": "REQ-4BE727D1DCEF",
-      "requirement_text": "required execution mode",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2493,28 +2208,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1811"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1811",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0f41ced197ae542660f90e940917ce290b51be85abf9d057f39ca12ebed19589",
-      "requirement_id": "REQ-230C1A481089",
-      "requirement_text": "PAUSED — DECISION REQUIRED",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1829"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1829",
@@ -2595,28 +2288,6 @@
       "requirement_digest": "7dc697d8a405100c8439b0a1b3808009c0fe8e9a4336c2aa3b99cada4017994f",
       "requirement_id": "REQ-D2185014A92F",
       "requirement_text": "All must be idempotent or protected with idempotency keys.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1965"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L1965",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "90dfe6dbab1dba3ef7523b5212b52539ee9956f83da59b578adcf64f442f7f8c",
-      "requirement_id": "REQ-6C54AB5A7F43",
-      "requirement_text": "development.decision.required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2881,28 +2552,6 @@
       "requirement_digest": "4a5c2329c1210698e7187174f59f447be3027122f567d02291faae428396704e",
       "requirement_id": "REQ-8DF1BAC37863",
       "requirement_text": "The runtime SHALL compare:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2232"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2232",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e32c984cd722769d68ec732c7853cd1b890ea9fd0569384e348dbe68fd042e87",
-      "requirement_id": "REQ-033E3CE7CC1F",
-      "requirement_text": "required files/components",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3299,28 +2948,6 @@
       "requirement_digest": "42c5ff33ef56f96a8ab14b76f1874ee97fa92d1825b46ebebc7b11c66304938f",
       "requirement_id": "REQ-5C736A2166DD",
       "requirement_text": "Spec 224 SHALL NOT:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2926"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2926",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3c52bfedf110d7dd9de1e903a0da3fcd1f96bb0baeccf731b2ee814358743d93",
-      "requirement_id": "REQ-1E6833591BE8",
-      "requirement_text": "16. Final Verifier checks all required evidence.",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4165,28 +3792,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3508"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3508",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "80ef6d0e41237372dd3a1bb5200b5bf655d174601b7495723e08212a053ddd87",
-      "requirement_id": "REQ-99B2224DB53A",
-      "requirement_text": "→ rerun required evidence",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3512"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3512",
@@ -4223,28 +3828,6 @@
       "requirement_digest": "6d2b001d2d447b887e24d3b1d254546735007ec662d7cd73e941b8caeb1e9240",
       "requirement_id": "REQ-5F57EA019B99",
       "requirement_text": "Spec 224 SHALL acquire a short-lived `promotion_lease` around preparation of the final merge candidate when necessary.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3529"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3529",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4c30869f8cddd84e3eba215e3fb3873f8587a9931a2afb8a162a23bd78a3c7d6",
-      "requirement_id": "REQ-E280DE842D97",
-      "requirement_text": "required status checks",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4553,28 +4136,6 @@
       "requirement_digest": "1147062fb3d8385342805d1ab93d9761a41f3dcbd9a5168e89a4957863a5b8fb",
       "requirement_id": "REQ-93D86258223A",
       "requirement_text": "Evidence mutation after certification SHALL create a new evidence version and invalidate dependent certification as required.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3711"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L3711",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fa5cd878141b0be245f04515758e3fb2b3e775a34ccaf6b9808ba8fe0055f00c",
-      "requirement_id": "REQ-ADF0A08E7886",
-      "requirement_text": "cross-region/off-host copy where required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5661,28 +5222,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4368"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4368",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d8005b56876204b46e9622c5c777cfe7f5c10efef480a650acd667edcc261cec",
-      "requirement_id": "REQ-AC668BF4F67C",
-      "requirement_text": "Spec 230@sha256:...   # harness/context contract when required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4373"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4373",
@@ -5697,28 +5236,6 @@
       "requirement_digest": "2fc69d360660acad0cb1178326bf49faada32825b8c13d5b32ddef8b439ee14e",
       "requirement_id": "REQ-6BA4B68B1017",
       "requirement_text": "The lock SHALL contain:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4380"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4380",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8ae7bdf9cc86a1e0d367a174490814d0a415fe5eb6ecb799def495f707ee6d3d",
-      "requirement_id": "REQ-848649BB7E73",
-      "requirement_text": "required/optional",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6651,28 +6168,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4992"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L4992",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f1990da922bf73212cef589c6aa169f738ed57b21ea79c0cc8ca39d7da399614",
-      "requirement_id": "REQ-8F27237A7C59",
-      "requirement_text": "required services",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5000"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5000",
@@ -6753,50 +6248,6 @@
       "requirement_digest": "fff31d8e43b0e5c855be3fe39b9709b52f804202a9f0d7f2cf8afa5c9bca5aa8",
       "requirement_id": "REQ-611ABB02599B",
       "requirement_text": "Authorized takeover SHALL be explicit and audited.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5067"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5067",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "66cbde2c7f84e1f21d968b977e229c89522b949de593b602d026e9c6c2bd81df",
-      "requirement_id": "REQ-B0D516042955",
-      "requirement_text": "no untracked required source",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5074"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5074",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8f6339c961263c083142d2b0b22327b092e468428b87e1619fb3e133cb266051",
-      "requirement_id": "REQ-1F1ECEBFD763",
-      "requirement_text": "large-file pointers resolved as required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7135,6 +6586,534 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5141"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5141",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "558316a5a2af2b16dcd6864d610b57e8e125b6e6e9446f2b35751ddf45142e17",
+      "requirement_id": "REQ-E4AE236E55F8",
+      "requirement_text": "- [ ] Destructive command classes are policy mediated.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5142"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5142",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "93118e7dfb84eecd1b5182df3d3c65b0f97554298cfb2ff9047fc24007ccc954",
+      "requirement_id": "REQ-C95C921AD8CE",
+      "requirement_text": "- [ ] Environment fingerprint is attached to verification evidence.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5143"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5143",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e4b01439a20d9b8974286b7d29855afdd7bbfecb63c3e1ce59cf31e40a121b0f",
+      "requirement_id": "REQ-51FBE8C0C10E",
+      "requirement_text": "- [ ] Certification can run without mutable/untrusted cache.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5147"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5147",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d710f025a0779996b7f07e7c220bd661e3abb1d2fe0253456d999488fdc79c03",
+      "requirement_id": "REQ-50E650BF1DA1",
+      "requirement_text": "- [ ] Production PII is unavailable to normal development runs.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5148"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5148",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "55327e85749daec1b86c502beae86bcdc21c6d464e818a9f87aa3901e41330c4",
+      "requirement_id": "REQ-8D2F0457EC4A",
+      "requirement_text": "- [ ] Provider data classification can block unsafe external egress.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5149"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5149",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "091824a70240360d146da8e46a037f17cfebd9b96112866a918ce224a66c209b",
+      "requirement_id": "REQ-793940CB069A",
+      "requirement_text": "- [ ] Secret-prohibited context is not intentionally sent to model providers.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5153"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5153",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0dfb8a35b5d17058957a4785afc03d40e1b58e53759e3ff46f21dc23ff2c5d63",
+      "requirement_id": "REQ-6E6C51FFF47C",
+      "requirement_text": "- [ ] Critical path changes escalate verification/review automatically.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5154"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5154",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fc85a25a7130df5b82cf65e58f22acf2049be09b87080bf10800097d17d61884",
+      "requirement_id": "REQ-2CFB364720A5",
+      "requirement_text": "- [ ] Material license/IP uncertainty blocks high-assurance promotion.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5155"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5155",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b761a1eb1808bec0063493f9f2fc1574267166d29e0b4c44e2999ca6bdf1db38",
+      "requirement_id": "REQ-07783DB4A33C",
+      "requirement_text": "- [ ] Manual out-of-band branch mutation invalidates affected evidence.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5159"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5159",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "68ce053f5f34913c192e33459ea8c29739e4e697301719c823ff2518435c4480",
+      "requirement_id": "REQ-52D367D96E49",
+      "requirement_text": "- [ ] Webhook authenticity is checked.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5160"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5160",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d21ca29a5e2c05f4ab076ff25027dfffce09e4dbdb1054b2e7975de583bfa2ef",
+      "requirement_id": "REQ-A9598B0B3CB6",
+      "requirement_text": "- [ ] PR/issue comments cannot widen authority.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5161"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5161",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d7c8edb94008545514ef57a96f2b3912ecc4c6f32333a2a6fda32a9de42855ec",
+      "requirement_id": "REQ-9A6AA7E95CEB",
+      "requirement_text": "- [ ] External feedback retains actor/source provenance.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5165"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5165",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "37b0308cbc59fe4062e4c1808c198ca285a35ccc1d607be96d96c013874addb0",
+      "requirement_id": "REQ-475C0E724380",
+      "requirement_text": "- [ ] Orphan workspace/token/preview cleanup works after crash.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5166"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5166",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9edffa815df66a8bd6c6ed3b759e099bb647ec46a39784756717b0ad43b73dcb",
+      "requirement_id": "REQ-D04B89BA7337",
+      "requirement_text": "- [ ] Cleanup never destroys retained audit evidence.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5167"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5167",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1cc083435e17c669bacce0fcc00b94829b70f4fc389ef358316612d438e45449",
+      "requirement_id": "REQ-6B29F88B8C04",
+      "requirement_text": "- [ ] Negative post-promotion feedback correlates to originating DevelopmentRun.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5171"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5171",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "112b9dd11f088c3442a182f36d453b43fac22e1bc010452d6870834898b945df",
+      "requirement_id": "REQ-2492E7B9331A",
+      "requirement_text": "- [ ] Reversibility is classified before high-risk promotion.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5172"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5172",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ea4f0a4838ce0fb2fc46dd21cd9ac25a9ceb86cc3d9d412f54e5a41ab868fcab",
+      "requirement_id": "REQ-8FBA98CC8F1A",
+      "requirement_text": "- [ ] Forward-fix-only migration has stronger policy gate.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5173"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5173",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "90b7a8d5dcfdb7078f026f1fe9aca19dd76f597dd11d36de7b791c2d461be212",
+      "requirement_id": "REQ-745F734E7449",
+      "requirement_text": "- [ ] Candidate aging invalidates stale verification.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5177"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5177",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5f9fa43a5df79ea451a4fe15abd99dd20d02349cc01cbf5e8d289f33465c58ea",
+      "requirement_id": "REQ-3BA05E434C49",
+      "requirement_text": "- [ ] Multi-repo compatibility change has a parent promotion barrier.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5178"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5178",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b5ea9e3397c298b32de21a6abd00bdfbc6a6e4c506f3533f3055579765d141f9",
+      "requirement_id": "REQ-3D8AD3768DD6",
+      "requirement_text": "- [ ] Partial merge cannot masquerade as completed atomic change.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5179"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5179",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "54f5c9242aa0dbf78b703b5013be15a207bb3f510233e4905cb23efbcd149406",
+      "requirement_id": "REQ-817C780E7C64",
+      "requirement_text": "- [ ] Each repo has immutable candidate SHA/evidence.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5183"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5183",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "22aa90f58855eeaa0e0222ca6f3aeb84d439b7515da4198803439b78728cff37",
+      "requirement_id": "REQ-D8CB4A7F32F8",
+      "requirement_text": "- [ ] Final verification runs against committed candidate SHA.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5184"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5184",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d127a86ccc4416624cb682bd6d0381c6cfc00df7102a3aff6b50ba8528686d10",
+      "requirement_id": "REQ-5F3D2870F594",
+      "requirement_text": "- [ ] Working tree cleanliness is verified.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5185"
+      ],
+      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5185",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5bf1b69b0bc25345d06747c1ae89a42278959b0b9b5678801433669db07adecf",
+      "requirement_id": "REQ-42394BDF8455",
+      "requirement_text": "- [ ] Unresolved merge/rebase state blocks certification.",
+      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5200"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5200",
@@ -7237,28 +7216,6 @@
       "requirement_digest": "eb7fb48cc0e75c87c5b075e0d077160493645712f120f77d9653924b935c44de",
       "requirement_id": "REQ-11FA3B2C5BFC",
       "requirement_text": "The final certification scenario SHALL now demonstrate all of the following in one or more controlled test campaigns:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5335"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5335",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "009c65a39d6210459f05e31a1a773cdb057089e0c3258edb7c9409f526efad6a",
-      "requirement_id": "REQ-9BEF18F7B08C",
-      "requirement_text": "21. Candidate is updated/rebased and required evidence reruns.",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7399,28 +7356,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5434"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5434",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "27ea22f42d6da2ef8fd3a5a9214dff52910959b94e5b10998898a964100d3636",
-      "requirement_id": "REQ-3536434A1DC4",
-      "requirement_text": "whether a human decision is required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5470"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5470",
@@ -7479,28 +7414,6 @@
       "requirement_digest": "709611777ead9b93b5b951a066a7943af175184651bda97cab6313f0912678b9",
       "requirement_id": "REQ-2024C891914D",
       "requirement_text": "Spec 224 SHALL define a versioned `DevelopmentPhaseProtocol`.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5621"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5621",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2eb56cfff4f9904ca5c26bbb3224482a85779122e1ba49988d1075f243e75c22",
-      "requirement_id": "REQ-7469765E01ED",
-      "requirement_text": "required outputs",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7589,28 +7502,6 @@
       "requirement_digest": "7578b5f0d038e0d12b3095c2394c062a9c636a92cbd006cb94f2bd1beb62ad0a",
       "requirement_id": "REQ-783969D59B5B",
       "requirement_text": "If a harness supports self-managed Skills, SmartAIHub-managed protocol Skills SHALL be separated from agent-writable personal Skills.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5757"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L5757",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4800243c67aec7d824ff94ec7a9cb8587f12a2e82ae9e2395aa40ca7daa4bb3f",
-      "requirement_id": "REQ-99DAC850EFC3",
-      "requirement_text": "sah-security-review?   if required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7949,28 +7840,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6185"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6185",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f8d5666cb8c1b47c440ddc8b1b3486734f147b3ab47778392d4ceb155e7bb857",
-      "requirement_id": "REQ-5382C069C208",
-      "requirement_text": "→ hook detects required PhaseResult missing",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6237"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6237",
@@ -8059,28 +7928,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6436"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6436",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1771b731ccabf96d806bae784d6506873ee670da5d7f831731092e197a5bce55",
-      "requirement_id": "REQ-DD675B6A1A8F",
-      "requirement_text": "→ no sah-review SKILL.md required if native profile fully satisfies contract",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6453"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6453",
@@ -8140,28 +7987,6 @@
       "requirement_digest": "cadc45e7898a68269cbcb4d1060d08c982478021933079b8f2702153d046fff7",
       "requirement_id": "REQ-5EFE828DA600",
       "requirement_text": "MUST NOT:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6557"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6557",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1a4c2143df0643ed39a62ddf16fd3fd2336bc9152dbe9ac76474974751166bb5",
-      "requirement_id": "REQ-2332DC21CC57",
-      "requirement_text": "help gather/interpret required evidence",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8360,50 +8185,6 @@
       "requirement_digest": "a7f67d346d8a7f5425f77d7498e937cce68af3107d6ef62b8f9ff1536b9ce9a3",
       "requirement_id": "REQ-2FBA2BC99926",
       "requirement_text": "If provider stops without required result:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6820"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6820",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "003fd06651e14d27562845b20b138a0dad74f7c392e906a00108d73a3828463f",
-      "requirement_id": "REQ-63AE730B19F2",
-      "requirement_text": "required source files untouched",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6821"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L6821",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ce98c5f8447a0b5d3a2c3302f645c05de99e06d153b7ae656e0edc8ef11d854e",
-      "requirement_id": "REQ-82DBDCB4786B",
-      "requirement_text": "required deterministic check absent",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8758,50 +8539,6 @@
       "requirement_digest": "35c2513b8b032129b7f53792f7248c249982769a093c99094c1b5434d1fdbea1",
       "requirement_id": "REQ-E05FBD156E4F",
       "requirement_text": "Each canonical protocol module SHALL have eval fixtures.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7198"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7198",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "536e4bde41cd0ea38a0323d86db9e1d34725a5979a291f53ada45a716156851e",
-      "requirement_id": "REQ-35FB6F3184F1",
-      "requirement_text": "maps all SHALL requirements",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7199"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7199",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8220ffc49dda8999d3e35696d4811c6ba327e978929a479439887fdacbada0e7",
-      "requirement_id": "REQ-5E1D1ABAC29B",
-      "requirement_text": "identifies required tests",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -9404,50 +9141,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7442"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7442",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "82def893af21fa11e808f1dbfb5dad071d12a1dd39688fac1212503de15fa66d",
-      "requirement_id": "REQ-885944B1754B",
-      "requirement_text": "NOT REQUIRED as lifecycle owner",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7443"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7443",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "797818c0524a8655ab0876475c4adac713000224bbe6fca1c16b5a5ce9389387",
-      "requirement_id": "REQ-8DAF348563C5",
-      "requirement_text": "and MUST NOT replace Spec 224 runtime.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7484"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7484",
@@ -9506,28 +9199,6 @@
       "requirement_digest": "3892d485db0d0fccc6b6ad1bce7f20c766b9bd664c5e7c12a07ac01027ef5c3e",
       "requirement_id": "REQ-8127C719191A",
       "requirement_text": "A final multi-harness campaign SHALL prove:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7649"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L7649",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "feba178f589344eb9f4ab8b359aeaea5d8d3727c1d91b34c19c5f1b29bfd18a2",
-      "requirement_id": "REQ-DDA554DCD8CB",
-      "requirement_text": "25. Required deterministic evidence completes.",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -10703,28 +10374,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8535"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8535",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b718e9d103a21b986c2a2b80e09fb18183a7ebbe1c7a03344b4585bdb8d32b4b",
-      "requirement_id": "REQ-05347922EF1A",
-      "requirement_text": "required local dependencies",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8540"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8540",
@@ -10761,28 +10410,6 @@
       "requirement_digest": "f015a30ab790afe19348cdf7bad4349d5c0cb0e7fca90f03efeaefe3e4f764de",
       "requirement_id": "REQ-F66C80DA08E4",
       "requirement_text": "A cloud-only certification SHALL prove:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8570"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8570",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "63786074282e100141ff4fd61288fbff47d20adb3b8e8ea715a7c33c5657b9f9",
-      "requirement_id": "REQ-0B032E0FAE85",
-      "requirement_text": "22. No local Runner is required.",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11231,204 +10858,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8816"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8816",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "67a370b538b3542c908795b894da64820470feff3352a4b78ae1819bd6ad86f1",
-      "requirement_id": "REQ-9C5D4B83078C",
-      "requirement_text": "- current verified revision",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8817"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8817",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "94e1cbf56747227e390ae5ae2fdc27b93e92ea408999605a7cd2d5a1d38406ff",
-      "requirement_id": "REQ-1A5505D33D14",
-      "requirement_text": "- preview",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8818"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8818",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "702d2571e091c54c34e01a111b45d32a3eab7083055191986267ba6c3153cd3f",
-      "requirement_id": "REQ-8C362D55AE48",
-      "requirement_text": "- natural-language change box",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8819"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8819",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4e5246f1abc7fa8969ac6059c9fc40c8e880c65284326cda169445216a423c82",
-      "requirement_id": "REQ-B1DEA9D65A90",
-      "requirement_text": "- status/progress",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8820"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8820",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7580ac61221fa55c854e432d28b8116d4fc89c4d2567f0b700d1e3a516c04f13",
-      "requirement_id": "REQ-78009FDD245B",
-      "requirement_text": "- files/artifacts optional advanced view",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8821"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8821",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a9d05804de3baff531fbce90ab6948c108291d6d3f6b39642585a94b2c1e0236",
-      "requirement_id": "REQ-6DEDA0FCEEEE",
-      "requirement_text": "- decisions requiring user input",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8822"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8822",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "64ea79e04b0e9f9d3bd39caaf402d8afb0c17338812a02165a1dfca4e3749534",
-      "requirement_id": "REQ-C887005C9FBC",
-      "requirement_text": "- evidence/verification summary",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8823"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8823",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e8a211ad4a03cbb4cf5f1d0165a30c7fb28293469cbb49098305d3cca4be9db6",
-      "requirement_id": "REQ-4C44AE2E894A",
-      "requirement_text": "- deployment controls",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8824"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8824",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8674e7f96a64740f9ff1fea246de6921aab7a5e7cfc402631015aba3f04f30d0",
-      "requirement_id": "REQ-13412093A795",
-      "requirement_text": "- history/rollback",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8827"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8827",
@@ -11575,28 +11004,6 @@
       "requirement_digest": "4837af0a8ef5d82b79617d570cfb3b500a360eac30b530351212b6299a1fd471",
       "requirement_id": "REQ-385CE8B04FA0",
       "requirement_text": "LangGraph SHALL remain a supported option until the Native Kernel proves, under representative workloads:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8941"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8941",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2b24ea0af153c71fdd0f87085ddeb01c2b3561e9ee01e0252241c74e57aec0d4",
-      "requirement_id": "REQ-99FEDA7146C0",
-      "requirement_text": "functional parity for required domain semantics",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11781,28 +11188,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L9125"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L9125",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ab0b5609fab1d21ca9f9f53b0ecacd514701c5cb98be172b0d774d8b571eb7e0",
-      "requirement_id": "REQ-604223EFCA28",
-      "requirement_text": "133 cloud container lacks required native dependency",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L9135"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L9135",
@@ -11927,28 +11312,6 @@
       "requirement_digest": "6d83daa0b0c209172534464066a09f93f3f9aa3479e18d0a073e6294b66d22bd",
       "requirement_id": "REQ-B1C960AFA4F2",
       "requirement_text": "The Software Factory SHALL search and reuse existing:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L9266"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L9266",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "32811164bb82300e0b873cbb93e5358bdf20b8c81a1582b92779fc755bdf2860",
-      "requirement_id": "REQ-C3151DE9BC6C",
-      "requirement_text": "2. it declares required logical capabilities;",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -12617,28 +11980,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10259"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10259",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dc3333049bee4946d416601a6b6ca4332d59a7fce165494fe6ecdbf00e74db30",
-      "requirement_id": "REQ-BC4F8BC5E788",
-      "requirement_text": "request a human business choice if genuinely required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10279"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10279",
@@ -12939,28 +12280,6 @@
       "requirement_digest": "11c3d981a7e4b5ea87470436b676549a80e424dd279752d14a92cb8d9b391f02",
       "requirement_id": "REQ-52A28D83E060",
       "requirement_text": "Certification SHALL be keyed at a sufficiently specific level.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10639"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10639",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "575b2f79285065c147a29bd4ec85d1f70fbc9e0fdde7cde2654f3d520cd782ed",
-      "requirement_id": "REQ-15CE945258D8",
-      "requirement_text": "vision if required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -14685,28 +14004,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12335"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12335",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4317d09266041671da955d9da277dfd4a5a26a8a3c7f367e403eafb18de0f511",
-      "requirement_id": "REQ-77A42B218B59",
-      "requirement_text": "REQUIRED only for the corresponding legacy-baseline external-control path",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12342"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12342",
@@ -14773,28 +14070,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12375"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12375",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3a1ab1f20e22d6f736d13611a0fb5ca65b6c37ecf44fc31a3dfae2a8b3cf5765",
-      "requirement_id": "REQ-54AA5E73097D",
-      "requirement_text": "requirements + constraints + acceptance criteria",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12388"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12388",
@@ -14831,28 +14106,6 @@
       "requirement_digest": "23c169a26e26264a807d17dc0b70e66724fce9331b2807b8d21205f74382ff98",
       "requirement_id": "REQ-0AE82C54173E",
       "requirement_text": "For `run_kind=SPEC_IMPLEMENTATION`, planning SHALL produce a versioned `SpecImplementationPlan` containing at least:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12401"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12401",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4bce837d21578c011a07a24a656daab1616722eae862d53b8b92086411091732",
-      "requirement_id": "REQ-F88D2D7270CC",
-      "requirement_text": "acceptance criteria[]",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -15073,72 +14326,6 @@
       "requirement_digest": "4f2957d3dba4473b683722020d1aec00196e4ecfe4e5d119870e99b7e7b8e8bb",
       "requirement_id": "REQ-8AC565F98561",
       "requirement_text": "Mode transitions SHALL be explicit, audited and feature-flagged. A run SHALL NOT infer `AUTONOMOUS` merely because several previous attempts succeeded.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12564"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12564",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9cde17a9781e26ce2c4842b21617ed51e542630a4ff478bc036dbd1912ec7820",
-      "requirement_id": "REQ-6A8CB7A020DC",
-      "requirement_text": "B5  Crash/restart must recover the same run without duplicate external side effects.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12565"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12565",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "45d8131fd9687f8a59a6c5731a28cf4ec80150c64c15b2b0a83ac535411ae283",
-      "requirement_id": "REQ-2316373D27C6",
-      "requirement_text": "B6  Every external side effect must flow through canonical job/control + side-effect ledger semantics.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12569"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12569",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "de2859a1d7344d26fe927326442eea14079e3d6b8248b58d7301583982202c72",
-      "requirement_id": "REQ-594BE4E9854E",
-      "requirement_text": "B10 Rollback to the prior trusted runtime must remain possible until post-promotion health checks pass.",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -17589,28 +16776,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13771"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13771",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "25ab1ccc004f1b9e666b4397eb45e5e2654dcebdfbda61cfebd63a3f993f11e8",
-      "requirement_id": "REQ-596BB2FDBBA9",
-      "requirement_text": "MCP tool schema changes required fields",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13786"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13786",
@@ -17647,50 +16812,6 @@
       "requirement_digest": "6d4eb15ac9832539e519d2d3fc02810360a944d00b3818191789674d9745ca05",
       "requirement_id": "REQ-AE8A994CFECC",
       "requirement_text": "For high-risk paths, an `IndependentVerificationProfile` SHALL record as applicable:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13797"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13797",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b82dc83538f507760beff3bbbb60e885a3e6f55bf4432f97e6fce4ba25c455c7",
-      "requirement_id": "REQ-2B2884B22459",
-      "requirement_text": "required deterministic checks",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13798"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13798",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f9b1fa9a66c418ae7821ca6331be4884e0ccf05b578eeff9ff39d023a3ad462e",
-      "requirement_id": "REQ-274267B7C067",
-      "requirement_text": "required independent evidence channel",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -18483,28 +17604,6 @@
       "requirement_digest": "f9ce9c7ce8219a6853df0282fcbba4dee3368d37420c1615d2835095d764e141",
       "requirement_id": "REQ-56B194D76CCE",
       "requirement_text": "The UI and Chat SHALL NOT use these verbs interchangeably.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14168"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14168",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d01ae7ee4fe83b81591f9269fd0b9e0d897f0ac976db9a50c6292fc41f3bbd7c",
-      "requirement_id": "REQ-090FF077CDCE",
-      "requirement_text": "behavior = new attempt under the same run lineage unless replan/new-run semantics are required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -19327,28 +18426,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14565"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14565",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5b02999bb0c684134acdebe308a928bda28553eeb73708f394fbdb4aad9eae2b",
-      "requirement_id": "REQ-C5854145D5E4",
-      "requirement_text": "ACTION     human decision / authentication / approval required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14569"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14569",
@@ -19627,28 +18704,6 @@
       "requirement_digest": "df6cd12f1b53b340d66a6cf1d8bb902f7345e36e63c8b014ec690640ac9ab917",
       "requirement_id": "REQ-C17F70D32F83",
       "requirement_text": "Canonical lineage SHALL be navigable in both directions:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14757"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14757",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "30776565ccc41014c9804b30d3bbf3317d9e5f118510d843bf046434117748bd",
-      "requirement_id": "REQ-7FEFCE4ACFF7",
-      "requirement_text": "├─ DevelopmentRun B (if a later candidate is required)",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -20075,28 +19130,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15025"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15025",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "eea25a2dcd9b31c028bc8b7a66ebd78fc641faafc84a1a9b7c5c3853d26a33c2",
-      "requirement_id": "REQ-18E3939DA704",
-      "requirement_text": "→ implement/test/review every required slice",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15035"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15035",
@@ -20133,28 +19166,6 @@
       "requirement_digest": "064705495ecac23bc39a6dc655400db58fa9bceb3b66515d7397131ed528fa7e",
       "requirement_id": "REQ-3310DE610D40",
       "requirement_text": "Every new DevelopmentRun SHALL resolve one entry profile before mutation begins:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15071"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15071",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f431b8afeb3c4fd98d536e56d4f4377c7afd86e7b5641e29a6a42fa83fd6e091",
-      "requirement_id": "REQ-F4C9DDC4CB89",
-      "requirement_text": "SPEC_DECISION / APPROVAL when materially required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -20287,28 +19298,6 @@
       "requirement_digest": "dae00787e5760191d96d620915f55456a090283c5432d61e5a08f022de35110b",
       "requirement_id": "REQ-ACB9AAF57B66",
       "requirement_text": "The authored Spec SHALL contain or link at least:",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15160"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15160",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ca02a7161f884baf7ca24be8fb3dff9a6b0f91606980589bba653b27c59e276d",
-      "requirement_id": "REQ-8270D61BA62E",
-      "requirement_text": "acceptance criteria",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -20955,72 +19944,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15452"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15452",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d39e6000986fd402968f783201a7a6daeda5520d265c3ba1306d3a17792b38ae",
-      "requirement_id": "REQ-0397CD38C5AC",
-      "requirement_text": "all required WorkPackages resolved",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15454"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15454",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b690041fc8c614ee5d72ef6d119790ee431aec77deafd2c64cb471808c714f67",
-      "requirement_id": "REQ-4740CD8B57B1",
-      "requirement_text": "required tests/evidence exist",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15457"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15457",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1f029f16653b219bcbd484beda8e5ce3ddaa628ea0ef6975d393d5c2aa1cac0d",
-      "requirement_id": "REQ-014797C0596D",
-      "requirement_text": "required integration joins passed",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15461"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15461",
@@ -21241,28 +20164,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15608"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15608",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4533ce5dd2241cf599111ae14db1966e5666c1adb603f8980506e6ae2beff9b0",
-      "requirement_id": "REQ-050C02C17741",
-      "requirement_text": "required verification",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15642"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15642",
@@ -21285,28 +20186,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15657"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15657",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cc978ffd61927cecb15776be2a756e9a841a3de12adbadfc67c85f53bf055821",
-      "requirement_id": "REQ-50DABF1A8A0D",
-      "requirement_text": "LIGHTWEIGHT REVIEW when required by risk",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15679"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15679",
@@ -21321,50 +20200,6 @@
       "requirement_digest": "014b650937c7ff5a6ace4b2d5718c5c6c927da21a40817ab090aba74673181cf",
       "requirement_id": "REQ-46161D9892E8",
       "requirement_text": "A fast-lane run SHALL automatically upgrade to `PLANNED_CHANGE` or `SPEC_IMPLEMENTATION` semantics if evidence reveals additional complexity.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15687"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15687",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d7df939bafb1194325c53c575861c4e58a13a045e63e766923013b1e497a6cce",
-      "requirement_id": "REQ-AE7419E1C352",
-      "requirement_text": "meaningful migration required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15692"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15692",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2b2bd243021fcd527e8c060205a99b0e1fdaee90131d283cc8bef83791151574",
-      "requirement_id": "REQ-4AA2EC374BF4",
-      "requirement_text": "required tests cannot be isolated",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -21563,50 +20398,6 @@
       "requirement_digest": "20f55a966e8fb7a1d4cd9b8789f8b7393b254c2cd33d8fcc2bdefe5ac0873a53",
       "requirement_id": "REQ-3EDBEDF88D24",
       "requirement_text": "Partial completion SHALL remain visible but SHALL NOT be confused with final Spec completion.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15834"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15834",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b33c1bb8fb6d1173509894ebfd00c6b19353c81986d417b6f24b59cbd1ad7e05",
-      "requirement_id": "REQ-3BC3C4433875",
-      "requirement_text": "add missing integration package required by an existing requirement",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15838"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15838",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "649a6ac5f6273422941a8f767d84920d5abd1a8fb6b96156ec8c6a139c0cdbcd",
-      "requirement_id": "REQ-C4294A0E925A",
-      "requirement_text": "add an operational/documentation package required by existing acceptance criteria",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -22099,28 +20890,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15978"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15978",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "178310a04304e0be58f481acb75bdd7efab75048dbcab00cbab3ab8ba831ceb1",
-      "requirement_id": "REQ-9B76F7F8CB46",
-      "requirement_text": "Did we implement and verify everything required by the approved Spec baseline?",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15988"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15988",
@@ -22311,28 +21080,6 @@
       "requirement_digest": "16acc5eabebfcaa91be61d62dc4c34ca20c26f95786e2302b4dd720d871c0ac6",
       "requirement_id": "REQ-344B8408B760",
       "requirement_text": "Material changes without a valid parent shall be classified as `UNREQUESTED_CHANGE` until justified, removed or converted into an authorized derived requirement/improvement.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16100"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16100",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9c5e1d2dfdd72647397c9e1637f0809b5776bfdf380af35f29c419a5b916dfc1",
-      "requirement_id": "REQ-2EE8A5098735",
-      "requirement_text": "explicit idempotency key required to satisfy existing exactly-once user-visible effect",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -23331,28 +22078,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16740"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16740",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5e6a1c513ab92c737c18f04285bea5eaa2a4564757d4c09f9cd4fd1edb0a3792",
-      "requirement_id": "REQ-1C778858EFF2",
-      "requirement_text": "Device-class closure when required",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16783"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16783",
@@ -23895,28 +22620,6 @@
       "requirement_digest": "312cefeb5b64b86cdb729b5ef700a116511523e2dae4eb565e06205927f3ea53",
       "requirement_id": "REQ-28BC3715D735",
       "requirement_text": "No migration SHALL rewrite historical audit events merely to change the number; new persisted records SHALL use the canonical owner IDs.",
-      "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16877"
-      ],
-      "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16877",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2c9bf2640810b51538d7cc22a66038391e11999abfa640823a3999d3b4e7b711",
-      "requirement_id": "REQ-5307679B8362",
-      "requirement_text": "3. certified interactive/goal session adapter when durable session control is required",
       "source_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
       "successor_mapping": [],
       "verification_evidence": [],

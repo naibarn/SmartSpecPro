@@ -32,6 +32,10 @@ def _record_view(repo: Path, record: dict[str, Any]) -> dict[str, Any]:
             "continuation": manifest.get("continuation_assessment", {}).get("decision", "RECONCILIATION_REQUIRED"),
             "confidence": manifest.get("reconciliation", {}).get("confidence", "UNRESOLVED"),
             "relevance_assessment": manifest.get("relevance_assessment", {}),
+            "declared_claims": manifest.get("relevance_assessment", {}).get("declared_claims", []),
+            "declared_status_claims": [claim for claim in manifest.get("relevance_assessment", {}).get("declared_claims", []) if claim.get("claim_kind") == "DECLARED_STATUS"],
+            "declared_relationship_claims": [claim for claim in manifest.get("relevance_assessment", {}).get("declared_claims", []) if claim.get("claim_kind") == "DECLARED_RELATIONSHIP"],
+            "section_status_claims": [claim for claim in manifest.get("relevance_assessment", {}).get("declared_claims", []) if claim.get("claim_kind") == "SECTION_STATUS_ASSERTION"],
             "current_reference_counts": reference_counts,
             "implementation_last_touched_at": manifest.get("identity", {}).get("metadata", {}).get("implementation_last_touched_at"),
             "spec_created_at": manifest.get("identity", {}).get("metadata", {}).get("spec_created_at"),
@@ -77,6 +81,26 @@ def _priority(record: dict[str, Any]) -> str:
     return "REVIEW_ONLY"
 
 
+def _review_priority(record: dict[str, Any]) -> str:
+    """Prioritize evidence review without implying implementation continuation."""
+    if record.get("record_kind") in {"MALFORMED_CANDIDATE", "INVALID_SPEC"}:
+        return "R0_DATA_INTEGRITY"
+    if record.get("configured_root") == "specs/security":
+        return "R0_SECURITY"
+    if record.get("authority") == "AUTHORITY_CONFLICT":
+        return "R1_IDENTITY_CONFLICT"
+    refs = record.get("current_reference_counts", {})
+    if refs.get("SOURCE", 0):
+        return "R1_RUNTIME_REFERENCE"
+    if refs.get("TEST", 0):
+        return "R2_TEST_REFERENCE"
+    if record.get("declared_relationship_claims"):
+        return "R3_RELATIONSHIP_CLAIM"
+    if record.get("declared_status_claims"):
+        return "R4_STATUS_CLAIM"
+    return "R5_NO_DIRECT_EVIDENCE"
+
+
 def build_views(repo: Path) -> dict[str, Any]:
     discovered = inventory(repo)
     rows = [_record_view(repo, record) for record in discovered["records"]]
@@ -92,7 +116,9 @@ def build_views(repo: Path) -> dict[str, Any]:
         elif priority != "REVIEW_ONLY":
             queue.append(item)
     queue.sort(key=lambda item: (priority_order[item["priority"]], item["path"].casefold(), item["path"]))
-    ambiguity = [row for row in rows if row.get("confidence") in {"LOW", "UNRESOLVED"} or row.get("authority") == "AUTHORITY_CONFLICT" or row.get("record_kind") in {"MALFORMED_CANDIDATE", "INVALID_SPEC"}]
+    ambiguity = [dict(row, review_priority=_review_priority(row)) for row in rows if row.get("confidence") in {"LOW", "UNRESOLVED"} or row.get("authority") == "AUTHORITY_CONFLICT" or row.get("record_kind") in {"MALFORMED_CANDIDATE", "INVALID_SPEC"}]
+    review_order = {"R0_DATA_INTEGRITY": 0, "R0_SECURITY": 1, "R1_IDENTITY_CONFLICT": 2, "R1_RUNTIME_REFERENCE": 3, "R2_TEST_REFERENCE": 4, "R3_RELATIONSHIP_CLAIM": 5, "R4_STATUS_CLAIM": 6, "R5_NO_DIRECT_EVIDENCE": 7}
+    ambiguity.sort(key=lambda row: (review_order[row["review_priority"]], row["path"].casefold(), row["path"]))
     counts: dict[str, int] = {}
     for row in rows:
         for key, value in (("record_kind", row["record_kind"]), ("disposition", row.get("disposition")), ("lifecycle", row.get("lifecycle")), ("continuation", row.get("continuation")), ("confidence", row.get("confidence")), ("verification", row.get("verification")), ("deployment", row.get("deployment")), ("acceptance", row.get("acceptance"))):
@@ -101,10 +127,13 @@ def build_views(repo: Path) -> dict[str, Any]:
         counts[f"completion.{ 'ELIGIBLE' if row.get('completion_eligible') else 'INELIGIBLE' if row.get('record_kind') == 'CANONICAL_SPEC' else 'NOT_APPLICABLE'}"] = counts.get(f"completion.{ 'ELIGIBLE' if row.get('completion_eligible') else 'INELIGIBLE' if row.get('record_kind') == 'CANONICAL_SPEC' else 'NOT_APPLICABLE'}", 0) + 1
     index = {"schema_version": 1, "generated_from": "configured roots + per-Spec handoff manifests", "record_count": len(rows), "canonical_spec_count": discovered["invariants"]["canonical_spec_count"], "records": rows, "counts": counts}
     report = {"schema_version": 1, "inventory": discovered, "indexed_record_count": len(rows), "invariant_discovered_equals_indexed": len(rows) == discovered["invariants"]["record_count"], "reconciliation_confidence_counts": {key: value for key, value in counts.items() if key.startswith("confidence.")}, "records": rows}
-    status_lines = ["<!-- GENERATED FROM spec-index.json; DO NOT EDIT -->", "# Repository Spec Status", "", f"- Discovered records: {len(rows)}", f"- Canonical `spec.md` records: {discovered['invariants']['canonical_spec_count']}", f"- Global index invariant: {'PASS' if report['invariant_discovered_equals_indexed'] else 'FAIL'}", "", "| Spec / Record | Kind | Disposition | Lifecycle | Continuation | Confidence | Verification | Next action |", "|---|---|---|---|---|---|---|---|"]
+    status_lines = ["<!-- GENERATED FROM spec-index.json; DO NOT EDIT -->", "# Repository Spec Status", "", f"- Discovered records: {len(rows)}", f"- Canonical `spec.md` records: {discovered['invariants']['canonical_spec_count']}", f"- Global index invariant: {'PASS' if report['invariant_discovered_equals_indexed'] else 'FAIL'}", "- Declared status/relationship claims are evidence candidates; they do not set authority or continuation.", "", "| Spec / Record | Kind | Disposition | Lifecycle | Continuation | Confidence | Verification | Declared claim | Next action |", "|---|---|---|---|---|---|---|---|---|"]
     for row in rows:
-        status_lines.append(f"| [{row.get('spec_id') or '—'} {row.get('title')}]({row['path']}) | {row['record_kind']} | {row.get('disposition')} | {row.get('lifecycle')} | {row.get('continuation')} | {row.get('confidence')} | {row.get('verification')} | {row.get('next_action')} |")
-    return {"spec-index.json": index, "SPEC-STATUS.md": "\n".join(status_lines) + "\n", "reconciliation-report.json": report, "continuation-queue.json": {"schema_version": 1, "records": queue, "excluded": excluded}, "ambiguity-review.json": {"schema_version": 1, "record_count": len(ambiguity), "records": ambiguity}}
+        claim_values = [claim.get("value", "") for claim in row.get("declared_claims", []) if claim.get("claim_kind") != "SECTION_STATUS_ASSERTION"]
+        claim_summary = "; ".join(value.replace("|", "\\|").replace("\n", " ")[:90] for value in claim_values[:2])
+        status_lines.append(f"| [{row.get('spec_id') or '—'} {row.get('title')}]({row['path']}) | {row['record_kind']} | {row.get('disposition')} | {row.get('lifecycle')} | {row.get('continuation')} | {row.get('confidence')} | {row.get('verification')} | {claim_summary} | {row.get('next_action')} |")
+    review_queue = [{"priority": row["review_priority"], "record_key": row["record_key"], "spec_id": row.get("spec_id"), "path": row["path"], "authority": row.get("authority"), "confidence": row.get("confidence"), "reference_counts": row.get("current_reference_counts", {}), "declared_claim_count": len(row.get("declared_claims", [])), "next_action": row.get("next_action")} for row in ambiguity]
+    return {"spec-index.json": index, "SPEC-STATUS.md": "\n".join(status_lines) + "\n", "reconciliation-report.json": report, "continuation-queue.json": {"schema_version": 1, "records": queue, "excluded": excluded, "reconciliation_review": review_queue}, "ambiguity-review.json": {"schema_version": 1, "record_count": len(ambiguity), "records": ambiguity}}
 
 
 def write_views(repo: Path, views: dict[str, Any]) -> None:

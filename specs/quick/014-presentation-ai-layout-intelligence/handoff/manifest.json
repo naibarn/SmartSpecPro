@@ -345,7 +345,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/quick/014-presentation-ai-layout-intelligence/spec.md",
     "digest": "e9ec857685227abc47be7bde28ddc793751c9e9f92ca0a582c69a9c7a248d110",
@@ -570,6 +570,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

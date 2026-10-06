@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
     "digest": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
@@ -440,6 +440,17 @@
         "digest": "65a85d25674055efc46a16a690152bcc2165c1ff31c9c2c7defabeafe4e2cad5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections/section-08-implementation-gates.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC READY FOR DEEP-IMPLEMENT — implementation not started by this spec pass",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
+        "source_digest": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
+        "value": "SPEC READY FOR DEEP-IMPLEMENT — implementation not started by this spec pass"
       }
     ],
     "stale_fields": [],
@@ -456,6 +467,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC READY FOR DEEP-IMPLEMENT — implementation not started by this spec pass",
+        "line": 3,
+        "source": "specs/feature/146-smartaihub-mcp-server-v2-compatibility/spec.md",
+        "source_digest": "0e486c7b766df33ceb60986b15c3846f59a9ad0a65c02ed30ed8017f6cb4a8d2",
+        "value": "SPEC READY FOR DEEP-IMPLEMENT — implementation not started by this spec pass"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -555,8 +578,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 140,
-    "unresolved": 140
+    "total": 146,
+    "unresolved": 146
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.325489Z",

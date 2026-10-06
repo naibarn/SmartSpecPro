@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
     "digest": "472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
@@ -515,6 +515,17 @@
         "digest": "f4982763eb1065aa0474c496ebc4cb65a9888db4a13046a67840c28d28752c3d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/124-smart-ai-hub-worker-app/sections/section-11-future-local-ai-mcp-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
+        "source_digest": "472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -531,6 +542,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/124-smart-ai-hub-worker-app/spec.md",
+        "source_digest": "472e82b30efba0f9e6107e68b7c9ea965832d89202de46bd67d6b97e61135661",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -660,8 +683,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 175,
-    "unresolved": 175
+    "total": 186,
+    "unresolved": 186
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.155843Z",

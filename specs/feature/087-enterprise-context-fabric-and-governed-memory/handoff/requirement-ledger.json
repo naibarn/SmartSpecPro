@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,6 +41,138 @@
       "requirement_digest": "28bdcb153f09d09d21c1cfdb53092e8238c2c1a556ae107f17a08aa17a55f9ae",
       "requirement_id": "REQ-E15E58B04C39",
       "requirement_text": "- team memory must not leak across tenant boundaries unless a policy explicitly allows it",
+      "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L61"
+      ],
+      "authority_source": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L61",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6c87aafea683ae178f6f3ed5d57f5bdf26d12a6798d9ae2746c5f23a5079ae66",
+      "requirement_id": "REQ-257E67A322B0",
+      "requirement_text": "1. Define canonical memory scopes for session, work, role, and organization context.",
+      "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L62"
+      ],
+      "authority_source": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e3c70fcb66720ba097132e05fc7818c69b3f024565ceb7d1eec031d9f65b9f8a",
+      "requirement_id": "REQ-6D20F4BB4341",
+      "requirement_text": "2. Add trust, freshness, and evidence rules to retrieved context.",
+      "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L63"
+      ],
+      "authority_source": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L63",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "21f1da332d412fb5436249c795eb7bc34a72f0bd0a9bd5f78ff752399aff4260",
+      "requirement_id": "REQ-96340D9175BD",
+      "requirement_text": "3. Support governed context assembly by work type, agent type, and data class.",
+      "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L64"
+      ],
+      "authority_source": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L64",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "770c1a35e83bffe7a7a87c6ee995c58d9b549ee78bfb8f032c84ce68723ea91e",
+      "requirement_id": "REQ-341A733FC55A",
+      "requirement_text": "4. Give operators visibility into why a context bundle was selected.",
+      "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "99fde19ee990b09fea0e5dc72afe7a9f54eed141d1b09b3cc6d77525672eecc3",
+      "requirement_id": "REQ-4F84659586F8",
+      "requirement_text": "5. Preserve strict tenant, project, and owner isolation.",
+      "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/087-enterprise-context-fabric-and-governed-memory/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b579a19ccecdc27da2f6ba02571f12d09c3e11bf820cc4d871d08b256c8c61c9",
+      "requirement_id": "REQ-B8A0CD6D16C2",
+      "requirement_text": "6. Capture context utility so the system can improve what it retrieves next time.",
       "source_spec_digest": "957b7b196b67a7c278d2292b51bec7f745e339330a860116cc6e9adeadb3c12a",
       "successor_mapping": [],
       "verification_evidence": [],

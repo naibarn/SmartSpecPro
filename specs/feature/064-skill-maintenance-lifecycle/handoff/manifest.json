@@ -221,7 +221,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/064-skill-maintenance-lifecycle/spec.md",
     "digest": "c04b39249892f7ba0d558cbdef37911343a6a077c4c427e8f4402fff07c01128",
@@ -320,6 +320,17 @@
         "digest": "be346f65b20618a6c00772315f337acab4b1f7cdb89280472ec6f72f8a6c134a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/064-skill-maintenance-lifecycle/sections/section-09-fixture-tests-verification-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/064-skill-maintenance-lifecycle/spec.md",
+        "source_digest": "c04b39249892f7ba0d558cbdef37911343a6a077c4c427e8f4402fff07c01128",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -336,6 +347,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/064-skill-maintenance-lifecycle/spec.md",
+        "source_digest": "c04b39249892f7ba0d558cbdef37911343a6a077c4c427e8f4402fff07c01128",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -405,8 +428,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 179,
-    "unresolved": 179
+    "total": 194,
+    "unresolved": 194
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.747648Z",

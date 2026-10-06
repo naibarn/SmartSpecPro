@@ -221,7 +221,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/093-hermes-capability-expansion/spec.md",
     "digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
@@ -320,6 +320,17 @@
         "digest": "e9a64cdf23a4df90231b92e3fe669d8f43847e469b0111603482516123b8c7a4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/093-hermes-capability-expansion/sections/section-06-future-hermes-to-work-os-integration.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/093-hermes-capability-expansion/spec.md",
+        "source_digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -336,6 +347,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/093-hermes-capability-expansion/spec.md",
+        "source_digest": "bd020b67a80960ea995944b69f727331557cd185aaae1412df12979376b26eee",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -405,8 +428,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 32,
-    "unresolved": 32
+    "total": 38,
+    "unresolved": 38
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.894221Z",

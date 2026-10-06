@@ -1,5 +1,4734 @@
 {
-  "excluded": [],
-  "records": [],
+  "excluded": [
+    {
+      "confidence": "LOW",
+      "decision": "DO_NOT_CONTINUE_SUPERSEDED",
+      "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime",
+      "priority": "EXCLUDED",
+      "rationale": "Reconcile the 191 open requirement candidates against Feature 151 and current architecture; move only proven residual requirements to the governing Spec.",
+      "record_key": "canonical:specs/feature/130-hybrid-flow-openai-agents-sdk-runtime",
+      "spec_id": "130"
+    }
+  ],
+  "reconciliation_review": [
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "specs/feature/161-vertical-drama-async-skill-jobs",
+      "priority": "R0_DATA_INTEGRITY",
+      "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
+      "reference_counts": {},
+      "spec_id": "161"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "specs/project/013-features-195-200",
+      "priority": "R0_DATA_INTEGRITY",
+      "record_key": "canonical:specs/project/013-features-195-200",
+      "reference_counts": {},
+      "spec_id": "013"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/security/20260211",
+      "priority": "R0_SECURITY",
+      "record_key": "canonical:specs/security/20260211",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/security/20260212",
+      "priority": "R0_SECURITY",
+      "record_key": "canonical:specs/security/20260212",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 10,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/000-AgentsSkill",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/000-AgentsSkill",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "000"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 10,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/000-selence-dectection",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/000-selence-dectection",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "000"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/014-Core-Funnel-Dashboard",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/014-Core-Funnel-Dashboard",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 6,
+        "TEST": 0
+      },
+      "spec_id": "014"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 13,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/031-PlaywrightVision",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/031-PlaywrightVision",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "031"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/031-SocialAdsManagement",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/031-SocialAdsManagement",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "031"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 4,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/045-CeleryJWTRefactor",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/045-CeleryJWTRefactor",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "045"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 12,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/045-HybridSkillOrchestrator",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/045-HybridSkillOrchestrator",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "045"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/058-agency-creator-intelligence-upgrade",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/058-agency-creator-intelligence-upgrade",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "058"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/058-meta-channels",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/058-meta-channels",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "058"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/059-external-worker-provider-framework",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "059"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/059-knplabai-multi-provider-expansion",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "059"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/162-163-gap-closure",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/162-163-gap-closure",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "162"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/162-vertical-drama-broll-media-intelligence-worker",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "162"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/164-worker-app-ux-localization-and-series-workspace",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/164-worker-app-ux-localization-and-series-workspace",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "164"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "256"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "256"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 6
+      },
+      "spec_id": "01"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "02"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/03-destination-and-project-resolution",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/03-destination-and-project-resolution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "03"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/04-agency-flow-composer",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "04"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/05-recurring-execution-and-notifications",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "05"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/06-chat-control-plane-ux",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/06-chat-control-plane-ux",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "06"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 6
+      },
+      "spec_id": "01"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/013-features-195-200/requirements.deep-project/02-feature-196-goal-orchestration",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/02-feature-196-goal-orchestration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "02"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/013-features-195-200/requirements.deep-project/03-feature-197-runner-fabric",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/03-feature-197-runner-fabric",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "03"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "04"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/05-feature-199-external-mcp-gateway",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "05"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/013-features-195-200/requirements.deep-project/06-feature-200-external-agent-control-plane",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/013-features-195-200/requirements.deep-project/06-feature-200-external-agent-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "06"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/01-shared-handoff-contract",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 6
+      },
+      "spec_id": "01"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/canonical-spec-handoff-reconciliation/02-dynamic-spec-inventory",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/02-dynamic-spec-inventory",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "02"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/canonical-spec-handoff-reconciliation/03-evidence-reconciliation-engine",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/03-evidence-reconciliation-engine",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "03"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "04"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/canonical-spec-handoff-reconciliation/05-workflow-lifecycle-integration",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/05-workflow-lifecycle-integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "05"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "06"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/quick/014-presentation-ai-layout-intelligence",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/quick/014-presentation-ai-layout-intelligence",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 6,
+        "TEST": 0
+      },
+      "spec_id": "014"
+    },
+    {
+      "authority": "AUTHORITY_CONFLICT",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure",
+      "priority": "R1_IDENTITY_CONFLICT",
+      "record_key": "canonical:specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "164"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/004-desktop-app",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/004-desktop-app",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "004"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/006-docker-dev-environment",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/006-docker-dev-environment",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "006"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 15,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/010-GoogleDriveScope",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/010-GoogleDriveScope",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "010"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/012-AddTextClip",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/012-AddTextClip",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "012"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/015-WorkflowAddition",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/015-WorkflowAddition",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "015"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/035-AutoDraftContentAutomation",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/035-AutoDraftContentAutomation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "035"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 6,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/037-Task-First-Execution-Intelligence",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/037-Task-First-Execution-Intelligence",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "037"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 11,
+      "next_action": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
+      "path": "specs/feature/038-Citation-Gated-Content-Quality",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 29,
+        "TEST": 8
+      },
+      "spec_id": "038"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/041-IntelligentSkillModelSelection",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/041-IntelligentSkillModelSelection",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "041"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 6,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/051-team-room-reuse-chat-pipeline",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/051-team-room-reuse-chat-pipeline",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 2,
+        "TEST": 2
+      },
+      "spec_id": "051"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 13,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/062-i18n-dual-language-system",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/062-i18n-dual-language-system",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "062"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/131-vertical-drama-series-storyboard-video-flow",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/131-vertical-drama-series-storyboard-video-flow",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 5,
+        "TEST": 0
+      },
+      "spec_id": "131"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/132-vertical-drama-story-character-quality-engine",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/132-vertical-drama-story-character-quality-engine",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 31,
+        "TEST": 1
+      },
+      "spec_id": "132"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/143-video-studio-layer-timeline-editor",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/143-video-studio-layer-timeline-editor",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 11,
+        "TEST": 17
+      },
+      "spec_id": "143"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/176-drama-series-emotion-timeline-web",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/176-drama-series-emotion-timeline-web",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 4,
+        "TEST": 0
+      },
+      "spec_id": "176"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/177-worker-minimax-music3-scoring",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/177-worker-minimax-music3-scoring",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 3,
+        "TEST": 0
+      },
+      "spec_id": "177"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/207-agentic-economic-control-plane",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/207-agentic-economic-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "207"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 7,
+        "TEST": 8
+      },
+      "spec_id": "208"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 13,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/215-workflow-compiler-runtime-execution-architecture",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 12,
+        "TEST": 6
+      },
+      "spec_id": "215"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/218-ai-product-development-control-plane",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/218-ai-product-development-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 8,
+        "TEST": 2
+      },
+      "spec_id": "218"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/219-managed-tenant-runtime-deployment-cloudflare",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 6,
+        "TEST": 1
+      },
+      "spec_id": "219"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/220-tenant-data-capability-security-gateway",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/220-tenant-data-capability-security-gateway",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 2,
+        "TEST": 3
+      },
+      "spec_id": "220"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/221-smartaihub-skill-engineering-framework",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/221-smartaihub-skill-engineering-framework",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 9,
+        "TEST": 2
+      },
+      "spec_id": "221"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/222-smartaihub-agentic-development-fabric",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/222-smartaihub-agentic-development-fabric",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 11,
+        "TEST": 5
+      },
+      "spec_id": "222"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 4,
+        "SOURCE": 41,
+        "TEST": 119
+      },
+      "spec_id": "224"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 6,
+        "TEST": 6
+      },
+      "spec_id": "226"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/230-skill-first-context-retrieval-canonical",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/230-skill-first-context-retrieval-canonical",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 2,
+        "TEST": 1
+      },
+      "spec_id": "230"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/231-Unified LLM Routing & Inference Orchestration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 26,
+        "TEST": 40
+      },
+      "spec_id": "231"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 0
+      },
+      "spec_id": "237"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 5,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/245-Full-System Cloudflare Migration Master Plan",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/245-Full-System Cloudflare Migration Master Plan",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 2,
+        "SOURCE": 2,
+        "TEST": 2
+      },
+      "spec_id": "245"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 5,
+        "SOURCE": 10,
+        "TEST": 16
+      },
+      "spec_id": "260"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 2,
+        "TEST": 6
+      },
+      "spec_id": "262"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 1,
+        "TEST": 1
+      },
+      "spec_id": "265"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 4,
+        "TEST": 10
+      },
+      "spec_id": "266"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime",
+      "priority": "R1_RUNTIME_REFERENCE",
+      "record_key": "canonical:specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 7,
+        "TEST": 0
+      },
+      "spec_id": "270"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/001-workflow-scripts",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/001-workflow-scripts",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 2
+      },
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/034-ResearchStoryboardBuilder",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/034-ResearchStoryboardBuilder",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 1
+      },
+      "spec_id": "034"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/200-universal-coding-agent-control-plane",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/200-universal-coding-agent-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 1
+      },
+      "spec_id": "200"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/209-ai-workflow-studio-miniapp-marketplace",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 1,
+        "SOURCE": 0,
+        "TEST": 1
+      },
+      "spec_id": "209"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/212-AI Workflow studio capability validation benchmark harness",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/212-AI Workflow studio capability validation benchmark harness",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 9
+      },
+      "spec_id": "212"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/214-node-type-contract-architecture",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/214-node-type-contract-architecture",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 8
+      },
+      "spec_id": "214"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 1
+      },
+      "spec_id": "216"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/217-ai-product-white-label-tenant-platform",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/217-ai-product-white-label-tenant-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 1
+      },
+      "spec_id": "217"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 2
+      },
+      "spec_id": "261"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 6,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/263-smartaihub-public-website-experience-modernization",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/263-smartaihub-public-website-experience-modernization",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 1
+      },
+      "spec_id": "263"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4",
+      "priority": "R2_TEST_REFERENCE",
+      "record_key": "canonical:specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 1,
+        "SOURCE": 0,
+        "TEST": 6
+      },
+      "spec_id": "278"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/071-openclaw-external-runtime-integration",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/071-openclaw-external-runtime-integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "071"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/075-unified-web-desktop-agent-platform",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/075-unified-web-desktop-agent-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "075"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/077-distributed-worker-fabric-completion",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/077-distributed-worker-fabric-completion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "077"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/117-production-director-agents-sdk-auto-storyboard-video",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "117"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "229"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/243-Managed Cloud Agent & Hosted Harness Integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "243"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/250-Development-Reliability",
+      "priority": "R3_RELATIONSHIP_CLAIM",
+      "record_key": "canonical:specs/feature/250-Development-Reliability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "250"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/018-SlideShowAndCanvasEdit",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/018-SlideShowAndCanvasEdit",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "018"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/019-RAG-MaturityAssessment",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/019-RAG-MaturityAssessment",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "019"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/021-CanvasEditor",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/021-CanvasEditor",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "021"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/022-byteplus-modelark-api",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/022-byteplus-modelark-api",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "022"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 16,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/023-PresentationExportAudioVideo",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/023-PresentationExportAudioVideo",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "023"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 11,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/024-ImportPresentations",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/024-ImportPresentations",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "024"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/025-AI-Layout-Generation",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/025-AI-Layout-Generation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "025"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 12,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/028-Chat-Bridge",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/028-Chat-Bridge",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "028"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 16,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/029-ClawFeature",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/029-ClawFeature",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "029"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/030-PresentationEditAdditional",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/030-PresentationEditAdditional",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "030"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/033-Browser-Automation-Policy",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/033-Browser-Automation-Policy",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "033"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/036-LiveBrowserExperience",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/036-LiveBrowserExperience",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "036"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/042-LiveBrowser-Cross-Surface-Integration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/042-LiveBrowser-Cross-Surface-Integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "042"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 14,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/043-PublicAPI-ExternalAgentGateway",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/043-PublicAPI-ExternalAgentGateway",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "043"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 11,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/046-VirtualAdminAgent",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/046-VirtualAdminAgent",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "046"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/050-library-pgvector-full-integration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/050-library-pgvector-full-integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "050"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 5,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/052-agency-swarm-full-capability",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/052-agency-swarm-full-capability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "052"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 14,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/053-agency-agentic-intelligence",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/053-agency-agentic-intelligence",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "053"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 10,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/054-fal-ai-ltx-lux-models",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/054-fal-ai-ltx-lux-models",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "054"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/055-chat-memory-vector-rag",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/055-chat-memory-vector-rag",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "055"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/056-agency-memory-vector-rag",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/056-agency-memory-vector-rag",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "056"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/063-MediaStudioContentComposer",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/063-MediaStudioContentComposer",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "063"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/064-skill-maintenance-lifecycle",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/064-skill-maintenance-lifecycle",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "064"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/065-kie-ai-llm-provider-chat-expansion",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/065-kie-ai-llm-provider-chat-expansion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "065"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/066-beam-billing-invoice-phase1",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/066-beam-billing-invoice-phase1",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "066"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/067-chat-provider-auto-model-selection",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/067-chat-provider-auto-model-selection",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "067"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/068-billing-phase2-cards-autorenew",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/068-billing-phase2-cards-autorenew",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "068"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/069-wavespeed-media-provider",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/069-wavespeed-media-provider",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "069"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/070-local-client-llm-mode",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/070-local-client-llm-mode",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "070"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/072-claw-worker-platform-access",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/072-claw-worker-platform-access",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "072"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/073-nvidia-nim-provider",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/073-nvidia-nim-provider",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "073"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/074-claw-worker-mcp-platform-completion",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/074-claw-worker-mcp-platform-completion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "074"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 6,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/076-hybrid-agency-runtime-google-adk",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/076-hybrid-agency-runtime-google-adk",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "076"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/078-private-personal-finance-ocr-rag",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/078-private-personal-finance-ocr-rag",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "078"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/079-autonomous-work-transformation-platform",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/079-autonomous-work-transformation-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "079"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/080-autonomous-team-monitor-and-persistent-role-agents",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "080"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "081"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/082-work-os-case-ledger-and-operating-queues",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/082-work-os-case-ledger-and-operating-queues",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "082"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/083-agent-registry-and-organization-model",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/083-agent-registry-and-organization-model",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "083"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/084-stateful-handoff-and-durable-run-ledger",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/084-stateful-handoff-and-durable-run-ledger",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "084"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/085-autonomy-ladder-and-hitl-control-plane",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/085-autonomy-ladder-and-hitl-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "085"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/086-agent-policy-guardrails-and-action-mesh",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/086-agent-policy-guardrails-and-action-mesh",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "086"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/087-enterprise-context-fabric-and-governed-memory",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/087-enterprise-context-fabric-and-governed-memory",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "087"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/088-agentops-tracing-evaluation-and-release-gates",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "088"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/089-workforce-exchange-and-installable-operations-packs",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/089-workforce-exchange-and-installable-operations-packs",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "089"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "090"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/091-shared-document-ocr-landingai-ade-python",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/091-shared-document-ocr-landingai-ade-python",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "091"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/092-thai-document-ocr-routing",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/092-thai-document-ocr-routing",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "092"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/093-hermes-capability-expansion",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/093-hermes-capability-expansion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "093"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/094-personal-worker-access-keys-permissions-quotas",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/094-personal-worker-access-keys-permissions-quotas",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "094"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/099-context-engineering-ready-chat-and-team",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/099-context-engineering-ready-chat-and-team",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "099"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/100-team-orchestration-audit-trail-and-completion",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/100-team-orchestration-audit-trail-and-completion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "100"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 12,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/101-openai-agents-sdk-chat-team-orchestration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/101-openai-agents-sdk-chat-team-orchestration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "101"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 4,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/102-fal-ai-gemini-3-1-flash-tts",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "102"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/103-obsidian-inspired-md-knowledge-vault",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "103"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/104-md-knowledge-vault-production-readiness",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/104-md-knowledge-vault-production-readiness",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "104"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/105-work-os-team-orchestrator-unified-automation",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/105-work-os-team-orchestrator-unified-automation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "105"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/106-openai-agents-python-native-skill-system",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/106-openai-agents-python-native-skill-system",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "106"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/107-openai-agents-python-subagent-skill-runtime",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/107-openai-agents-python-subagent-skill-runtime",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "107"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/108-elevenlabs-elevenagents-runtime-integration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/108-elevenlabs-elevenagents-runtime-integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "108"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/109-media-studio-script-first-subtitles",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/109-media-studio-script-first-subtitles",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "109"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/110-magnific-media-provider-models",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/110-magnific-media-provider-models",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "110"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/111-presentation-builder-split-layer-video-editor",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/111-presentation-builder-split-layer-video-editor",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "111"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "112"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/113-marketplace-capture-extension",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/113-marketplace-capture-extension",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "113"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/115-extension-local-ai-analysis-layer",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/115-extension-local-ai-analysis-layer",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "115"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "118"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/119-hyperframes-marketplace-auto-review-render-adapter",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "119"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/120-hyperframes-creative-systems-overlay-audio-presets",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "120"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/121-mcp-connect-media-provider-sharing",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/121-mcp-connect-media-provider-sharing",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "121"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/122-video-segment-planner-multi-shot-storyboard-review",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "122"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/123-agent-experience-adapter-layer",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/123-agent-experience-adapter-layer",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "123"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/124-smart-ai-hub-worker-app",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/124-smart-ai-hub-worker-app",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "124"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/125-storyboard-preview-match-browser-capture",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/125-storyboard-preview-match-browser-capture",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "125"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/126-storyboard-webgpu-client-capture-acceleration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "126"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/127-article-to-storyboard-video-project",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/127-article-to-storyboard-video-project",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "127"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/128-age-aware-safety-policy",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/128-age-aware-safety-policy",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "128"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "129"
+    },
+    {
+      "authority": "MERGED_INTO",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Reconcile the 191 open requirement candidates against Feature 151 and current architecture; move only proven residual requirements to the governing Spec.",
+      "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/130-hybrid-flow-openai-agents-sdk-runtime",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "130"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/133-content-video-intelligence-platform",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/133-content-video-intelligence-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "133"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 13,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/135-hermes-grok-media-worker",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/135-hermes-grok-media-worker",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "135"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/136-marketplace-auto-review-sequential-shot-storyboard",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "136"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/137-vertical-drama-identity-stable-i2v-pipeline",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "137"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/138-vertical-drama-scene-continuity-engine",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/138-vertical-drama-scene-continuity-engine",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "138"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/139-vertical-drama-series-look-lock",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/139-vertical-drama-series-look-lock",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "139"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/140-vertical-drama-shot-fact-continuity",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/140-vertical-drama-shot-fact-continuity",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "140"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "141"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/142-video-intelligence-structured-planning-qa-engine",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/142-video-intelligence-structured-planning-qa-engine",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "142"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 6,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "144"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/145-hermes-remotion-render-executor",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/145-hermes-remotion-render-executor",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "145"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/146-smartaihub-mcp-server-v2-compatibility",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/146-smartaihub-mcp-server-v2-compatibility",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "146"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/147-mcp-zero-config-oauth-onboarding",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/147-mcp-zero-config-oauth-onboarding",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "147"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/148-smartaihub-unified-agent-worker-platform",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/148-smartaihub-unified-agent-worker-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "148"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/149-vertical-drama-video-prompt-learning-qc-ledger",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "149"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "150"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/151-unified-agent-output-assurance-orchestra",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/151-unified-agent-output-assurance-orchestra",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "151"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/152-vertical-drama-story-generation-assurance-orchestra",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/152-vertical-drama-story-generation-assurance-orchestra",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "152"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/153-vertical-drama-long-form-story-architecture",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/153-vertical-drama-long-form-story-architecture",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "153"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/154-vertical-drama-closure-documentary-genre-grounding",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "154"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/155-vertical-drama-cost-control-budget-ledger",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/155-vertical-drama-cost-control-budget-ledger",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "155"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/156-vertical-drama-unified-series-profile-story-assets",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/156-vertical-drama-unified-series-profile-story-assets",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "156"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/157-vertical-drama-assurance-production-activation-qc-convergence",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "157"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "160"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/163-worker-app-sidebar-series-media-workspace",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/163-worker-app-sidebar-series-media-workspace",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "163"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/165-worker-comfyui-mcp-control",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/165-worker-comfyui-mcp-control",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "165"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/166-credit-context-polymorphic-lineage",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/166-credit-context-polymorphic-lineage",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "166"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/167-vertical-drama-start-stop-frame-generation",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/167-vertical-drama-start-stop-frame-generation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "167"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 3,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/168-vertical-drama-special-tie-in-footage-web",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "168"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 3,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/169-vertical-drama-footage-intelligence-worker",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/169-vertical-drama-footage-intelligence-worker",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "169"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/170-vertical-drama-multimodal-reference-video-prompt-contract",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "170"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/173-vertical-drama-enhanced-video-prompt-variants",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "173"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/174-vertical-drama-object-reference-catalog",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/174-vertical-drama-object-reference-catalog",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "174"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/175-vertical-drama-native-cinematic-audio",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/175-vertical-drama-native-cinematic-audio",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "175"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/178-vertical-drama-group-native-music3-plan-mix",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/178-vertical-drama-group-native-music3-plan-mix",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "178"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/179-worker-speaker-aware-vad-diarization-reframe",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "179"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/180-worker-speaker-identity-localized-dubbing",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/180-worker-speaker-identity-localized-dubbing",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "180"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/183-public-site-webmcp",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/183-public-site-webmcp",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "183"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/184-web-video-editor-headless-worker",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/184-web-video-editor-headless-worker",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "184"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/186-unified-job-control-plane-adapters",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/186-unified-job-control-plane-adapters",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "186"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/186-unified-job-control-plane-adapters/hard-cutover",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "187"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/188-admin-platform-operations-and-cloudflare-cutover",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "188"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/189-unified-tenant-identity-and-data-transfer",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/189-unified-tenant-identity-and-data-transfer",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "189"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/191-smart-director-face-activity-auto-reframe",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/191-smart-director-face-activity-auto-reframe",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "191"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/192-cloudflare-local-migration-readiness",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/192-cloudflare-local-migration-readiness",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "192"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/193-web-video-editor-worker-parity",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/193-web-video-editor-worker-parity",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "193"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/194-vectorize-pgvector-chroma-retirement",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/194-vectorize-pgvector-chroma-retirement",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "194"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/195-unified-async-job-control-plane",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/195-unified-async-job-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "195"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/196-universal-goal-orchestration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/196-universal-goal-orchestration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "196"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/197-runner-adaptive-execution-fabric",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/197-runner-adaptive-execution-fabric",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "197"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "198"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/199-external-mcp-gateway-upstream-management",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/199-external-mcp-gateway-upstream-management",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "199"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 11,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/201-content-provenance-copyright-protection",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/201-content-provenance-copyright-protection",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "201"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/202-ai_rough_cut_video_editor_unified",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/202-ai_rough_cut_video_editor_unified",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "202"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/203-ai-editor-director-spec-shared-runtime",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/203-ai-editor-director-spec-shared-runtime",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "203"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/204-cloudflare-container-runtime-control-plane",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/204-cloudflare-container-runtime-control-plane",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "204"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 15,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/205-smartaihub-runner-cross-platform",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/205-smartaihub-runner-cross-platform",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "205"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/206-a2a-first-hybrid-external-agent-interoperability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "206"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "210"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/211-external-agent-runtime-fabric-acp-gascity",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "211"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/213-jev-system-one-post-implementation-upgrade",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/213-jev-system-one-post-implementation-upgrade",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "213"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/223-zcode-external-harness-adapter",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/223-zcode-external-harness-adapter",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "223"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/225-universal-retrieval-surface-alignment-canonical",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/225-universal-retrieval-surface-alignment-canonical",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "225"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/227-policy-retrieval-alignment-canonical",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/227-policy-retrieval-alignment-canonical",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "227"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "228"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "232"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "233"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/234-Use Case Intelligence and Demand Evolution Upgrade",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "234"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/235-Product Evolution to Autonomous Development Integration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/235-Product Evolution to Autonomous Development Integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "235"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/236-AI Live Commerce & Project Library Broadcast Engine",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "236"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/238-Universal Intelligent Monitoring & Alert Builder",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "238"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/239-External Personal Agent Interoperability",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/239-External Personal Agent Interoperability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "239"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "240"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "241"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "242"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "244"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/247-Multi-Provider Speech & Voice Gateway",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/247-Multi-Provider Speech & Voice Gateway",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "247"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/248-MCP Skills Extension",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/248-MCP Skills Extension",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "248"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "249"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/251-creator-workspace-media-localization",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/251-creator-workspace-media-localization",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "251"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/252-AI Film Studio — Chat-First Director Graph",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/252-AI Film Studio — Chat-First Director Graph",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "252"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/253-Universal-Product-Command-and-Capability-Interoperability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "253"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "254"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/255-Semantic-Media-Graph-Incremental-Production",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/255-Semantic-Media-Graph-Incremental-Production",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "255"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "257"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "282"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/2026-08-11-create-series-wizard-draft-gate",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/2026-08-11-create-series-wizard-draft-gate",
+      "reference_counts": {},
+      "spec_id": "2026"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/2026-08-11-vd-story-control-plane",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/2026-08-11-vd-story-control-plane",
+      "reference_counts": {},
+      "spec_id": "2026"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/2026-08-19-vd-age-stage-variant-confirmation",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/2026-08-19-vd-age-stage-variant-confirmation",
+      "reference_counts": {},
+      "spec_id": "2026"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/2026-08-28-vertical-drama-episode-repair",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/2026-08-28-vertical-drama-episode-repair",
+      "reference_counts": {},
+      "spec_id": "2026"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/2026-08-29-vertical-drama-special-tie-in-episode-planning",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/2026-08-29-vertical-drama-special-tie-in-episode-planning",
+      "reference_counts": {},
+      "spec_id": "2026"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/2026-09-14-voice-guided-visual-match",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/2026-09-14-voice-guided-visual-match",
+      "reference_counts": {},
+      "spec_id": "2026"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-credit-insufficient-feedback-routing",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-credit-insufficient-feedback-routing",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-free-credit-inactivity",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-free-credit-inactivity",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-media-meaningful-names",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-media-meaningful-names",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-presentation-export-media-url-refresh",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-presentation-export-media-url-refresh",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-smartaihub-privacy-terms",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-smartaihub-privacy-terms",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-stop-frame-prompt-confirmation",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-stop-frame-prompt-confirmation",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-vd-character-dna-editor",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-vd-character-dna-editor",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-vertical-drama-character-reference-disclosure",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-vertical-drama-character-reference-disclosure",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/001-vertical-drama-cover-variants-preview-routing",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/001-vertical-drama-cover-variants-preview-routing",
+      "reference_counts": {},
+      "spec_id": "001"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/002-chrome-extension-update-awareness",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/002-chrome-extension-update-awareness",
+      "reference_counts": {},
+      "spec_id": "002"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/002-media-history-performance",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/002-media-history-performance",
+      "reference_counts": {},
+      "spec_id": "002"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/002-vertical-drama-character-reference-casting",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/002-vertical-drama-character-reference-casting",
+      "reference_counts": {},
+      "spec_id": "002"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/002-worker-runtime-publish-update",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/002-worker-runtime-publish-update",
+      "reference_counts": {},
+      "spec_id": "002"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/003-smartaihub-companion-renaming",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/003-smartaihub-companion-renaming",
+      "reference_counts": {},
+      "spec_id": "003"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/003-vertical-drama-character-age-consistency",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/003-vertical-drama-character-age-consistency",
+      "reference_counts": {},
+      "spec_id": "003"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/003-worker-app-detailed-diagnostics",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/003-worker-app-detailed-diagnostics",
+      "reference_counts": {},
+      "spec_id": "003"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/004-scene-visual-state-inspector",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/004-scene-visual-state-inspector",
+      "reference_counts": {},
+      "spec_id": "004"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/005-celery-doctor-stale-backlog",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/005-celery-doctor-stale-backlog",
+      "reference_counts": {},
+      "spec_id": "005"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Review whether this candidate belongs to a configured canonical Spec root.",
+      "path": "docs/portable-skill-pack/specs/quick/006-user-selected-cast-authority",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "alternate:docs/portable-skill-pack/specs/quick/006-user-selected-cast-authority",
+      "reference_counts": {},
+      "spec_id": "006"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/002-auth-generator",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/002-auth-generator",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "002"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/003-smartspec-website",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/003-smartspec-website",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "003"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/005-api-generator",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/005-api-generator",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "005"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/007-python-backend-service",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/007-python-backend-service",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "007"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/008-tests-and-validators",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/008-tests-and-validators",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "008"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 12,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/009-sharefile",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/009-sharefile",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "009"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 20,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/011-DeployPlan",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/011-DeployPlan",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "011"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/013-VectorDatabase",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/013-VectorDatabase",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "013"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/016-dynamic-skill-enhance",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/016-dynamic-skill-enhance",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "016"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/017-VirtualWorkflowExam",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/017-VirtualWorkflowExam",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "017"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 9,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/032-Browser-Automation-Copilot",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/032-Browser-Automation-Copilot",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "032"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 5,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/039-Planner-Runtime-Wiring",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/039-Planner-Runtime-Wiring",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "039"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 5,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/040-ModelSuggest-PlannerWiring",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/040-ModelSuggest-PlannerWiring",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "040"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/044-MultimodalChatMemory",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/044-MultimodalChatMemory",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "044"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/048-auth-token-storage-hardening",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/048-auth-token-storage-hardening",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "048"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 13,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/049-enterprise-notification-system",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/049-enterprise-notification-system",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "049"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 21,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/057-mcp-security-context-optimization",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/057-mcp-security-context-optimization",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "057"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/060-social-video-platform-expansion",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/060-social-video-platform-expansion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "060"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/061-upload-post-universal-gateway",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/061-upload-post-universal-gateway",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "061"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/095-work-os-automation-fabric",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/095-work-os-automation-fabric",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "095"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 7,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/096-goal-driven-auto-team-automation",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/096-goal-driven-auto-team-automation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "096"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/097-enterprise-platform-continuation-roadmap",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/097-enterprise-platform-continuation-roadmap",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "097"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/098-auto-team-real-execution-and-media-completion",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/098-auto-team-real-execution-and-media-completion",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "098"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/114-gemini-omni-suite-media-assets",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/114-gemini-omni-suite-media-assets",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "114"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/116-production-director-node-canvas",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/116-production-director-node-canvas",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "116"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/134-character-portrait-candidate-batch",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/134-character-portrait-candidate-batch",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "134"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/171-special-tie-in-forensic-observability",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/171-special-tie-in-forensic-observability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "171"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/172-worker-local-llm-model-catalog",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/172-worker-local-llm-model-catalog",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "172"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/180-worker-speaker-identity-localized-dubbing/asr-alignment",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/184-web-video-editor-headless-worker/production-grade-20260910",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/185-skill-framework-storyboard-project",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/185-skill-framework-storyboard-project",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "185"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/200-universal-coding-agent-control-plane/task-control-multistep-tracking",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/209-ai-workflow-studio-miniapp-marketplace/node-platform-v1",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": null
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/246-AI Scientific Discovery Studio",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/246-AI Scientific Discovery Studio",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "246"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 0,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/07-observability-and-governance",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/project/012-chat-agency-control-plane/requirements.deep-project/07-observability-and-governance",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "07"
+    }
+  ],
+  "records": [
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/038-Citation-Gated-Content-Quality",
+      "priority": "P1",
+      "rationale": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
+      "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
+      "spec_id": "038"
+    }
+  ],
   "schema_version": 1
 }

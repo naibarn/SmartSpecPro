@@ -4,6 +4,12 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 3 unresolved of 3
+- Requirements: 0 pass / 10 unresolved of 10
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Draft` — `specs/feature/018-SlideShowAndCanvasEdit/spec.md#3`

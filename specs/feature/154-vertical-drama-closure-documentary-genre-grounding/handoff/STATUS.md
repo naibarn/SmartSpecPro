@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 16 unresolved of 16
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `implementation in progress (additive rollout)` — `specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md#3`

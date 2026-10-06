@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 938 unresolved of 938
+- Requirements: 0 pass / 923 unresolved of 923
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Architecture Freeze Candidate / Ready for implementation planning` — `specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#4`
+- Status claim: `Target product architecture; current repository contains partial runtime, schema and Skill building blocks, not a production-complete Workflow Studio/Marketplace.` — `specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#13`

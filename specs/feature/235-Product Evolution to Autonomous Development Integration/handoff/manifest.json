@@ -190,7 +190,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md",
     "digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
@@ -239,6 +239,17 @@
         "digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R3 SECOND TEN-PASS REVIEWED DESIGN — future additive integration; actual Spec 224 ingress certification pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md",
+        "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
+        "value": "R3 SECOND TEN-PASS REVIEWED DESIGN — future additive integration; actual Spec 224 ingress certification pending"
       }
     ],
     "stale_fields": [],
@@ -255,6 +266,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R3 SECOND TEN-PASS REVIEWED DESIGN — future additive integration; actual Spec 224 ingress certification pending",
+        "line": 5,
+        "source": "specs/feature/235-Product Evolution to Autonomous Development Integration/spec.md",
+        "source_digest": "243c60ce46c79f4ffcb1acc3ba288ce8153f2793b5a4932eb412660c7ad4a608",
+        "value": "R3 SECOND TEN-PASS REVIEWED DESIGN — future additive integration; actual Spec 224 ingress certification pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

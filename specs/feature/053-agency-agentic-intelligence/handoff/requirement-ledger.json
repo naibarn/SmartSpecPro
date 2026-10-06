@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -18,28 +19,6 @@
       "requirement_digest": "0150b74a122c7147f27e79067d422ea0b865b9a1009a0b8694482680f6d2d380",
       "requirement_id": "REQ-21598F3B3568",
       "requirement_text": "- Agent must label each step: `Thought:`, `Action:`, `Observation:`",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L334"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L334",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bf0e3c0d161884b68477a1bea04fa15e8616f9f8dfad836345974a626e93eaaa",
-      "requirement_id": "REQ-949F02F48AE7",
-      "requirement_text": "gateway_client: AsyncOpenAI,  # REQUIRED: points at NODEJS_INTERNAL_URL/v1",
       "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -114,72 +93,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L737"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L737",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3673db2d22d3e299f95de6e01fcbcf7e6504dcc98481da2886044cf1acf06ffc",
-      "requirement_id": "REQ-7328FD565772",
-      "requirement_text": "the next planning call, they MUST be treated as user-role content,",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L769"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L769",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "917975d80c7d3e779f3919d1cae41f066ecd51af131bd09fbfe2c66c13bce102",
-      "requirement_id": "REQ-67BF10A2A7C1",
-      "requirement_text": "- Empty plan (0 sub-tasks) → raise PlanValidationError(\"Plan must have at least 1 sub-task\")",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L776"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L776",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8ad248aaead0833bc1d73a854ca2f5b4e837a67a25356a04af39c233640d93c0",
-      "requirement_id": "REQ-4E0279783DDB",
-      "requirement_text": "raise PlanValidationError(\"Plan must have at least 1 sub-task\")",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/053-agency-agentic-intelligence/spec.md#L868"
       ],
       "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L868",
@@ -216,28 +129,6 @@
       "requirement_digest": "b889623ad4a869e71eef683856c3a08e15949bbb56b3938965ae7467e989ac9a",
       "requirement_id": "REQ-87A38F0B2F9D",
       "requirement_text": "**Sub-span schema** (must coordinate with 052 section-13):",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L1195"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L1195",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "40ac7ec9d63e25e5282d2c3842b0904a89c2b6309541e2d20ea15e06d5d54ade",
-      "requirement_id": "REQ-66C16B16B425",
-      "requirement_text": "| Metric | Target |",
       "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -356,28 +247,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L1205"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L1205",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f1eea5b21982ee11c312f67de72bf9337e5666a68bdbf3c594ea5413279c6830",
-      "requirement_id": "REQ-E325AF452935",
-      "requirement_text": "| Requirement | Implementation |",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/053-agency-agentic-intelligence/spec.md#L1207"
       ],
       "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L1207",
@@ -458,28 +327,6 @@
       "requirement_digest": "d05a2668d84937abacb6db4d3806b237d5979ff411993ec7d5642d0936a44be4",
       "requirement_id": "REQ-103A58E92141",
       "requirement_text": "| Circuit breaker | If 3 consecutive tool calls fail, stop iteration |",
-      "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/053-agency-agentic-intelligence/spec.md#L1214"
-      ],
-      "authority_source": "specs/feature/053-agency-agentic-intelligence/spec.md#L1214",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8b9c2473b3fff9eac360cbd0f5c12ae6c987c65cfafad4d5caf47e2bed1b2da3",
-      "requirement_id": "REQ-ED013863B9A0",
-      "requirement_text": "| Concern | Mitigation |",
       "source_spec_digest": "696e40ee1ee93dcc55684d5ec5e5fc6a501b441f50acf4a3d0b60f1e95f976ce",
       "successor_mapping": [],
       "verification_evidence": [],

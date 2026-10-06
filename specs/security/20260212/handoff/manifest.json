@@ -236,7 +236,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/security/20260212/spec.md",
     "digest": "9e492f71fcddde62b0a54d9c854b809c446b891a7dca5ed63d320ba387cc6de4",
@@ -356,6 +356,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

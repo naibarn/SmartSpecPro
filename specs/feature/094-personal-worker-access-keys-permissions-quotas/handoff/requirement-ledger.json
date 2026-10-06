@@ -1,6 +1,205 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L42"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L42",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c512f87ca833b577c2afcbf5c595d1be9b60144f7bfd6ab74ed6a1b5534b1b7e",
+      "requirement_id": "REQ-F72B598542D5",
+      "requirement_text": "1. Add a user-facing `Workers` tab in Settings where each user can create and revoke their own worker access keys.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L43"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L43",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "23395ff0a9392d5dc738b1282886db89b16b0b46c22a0c578c19a6866f785e93",
+      "requirement_id": "REQ-7AA09C20F762",
+      "requirement_text": "2. Support expiry as optional, and ensure keys are shown only once at creation.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L44"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L44",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ccc82033dcdd451d989948f986e388489865d1fcafd42afcc73ca2a565d53df7",
+      "requirement_id": "REQ-62D002DB74CA",
+      "requirement_text": "3. Let users choose the worker family or runtime class they intend to register.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L45"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L45",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ad785215f2f9f454d6325a6239f177f7f747c14580e90acce16ce5693a4abc40",
+      "requirement_id": "REQ-5DF5185256CC",
+      "requirement_text": "4. Capture detailed worker identity and runtime metadata for inspection and audit.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L46"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L46",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0c7260d05ab521c72560c8e16ed83c914f1f8e55901c67610ae692dbbb5ec9ef",
+      "requirement_id": "REQ-ADB17F751A94",
+      "requirement_text": "5. Let users define runtime permissions and credit limits for their registered worker.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L47"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L47",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6759d1a2c2e32fb2ce9ad425906f4b450e596ac0401c70b40f883a8e587a5ea6",
+      "requirement_id": "REQ-646FFFEFC223",
+      "requirement_text": "6. Keep all secret handling fail-closed and tenant-bound.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L48"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L48",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f4735272713c83de8a670f0d74fa98c4134339fa768a966daa411c7e15196b7b",
+      "requirement_id": "REQ-9C606558A56A",
+      "requirement_text": "7. Provide full help content in English and Thai.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L49"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L49",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "df79272b928f4b8d54c529185373220ae33f749fc0687a82d35283142646d5fa",
+      "requirement_id": "REQ-E6CAD5D061FC",
+      "requirement_text": "8. Keep the flow behind a tenant-level worker-access rollout gate until admins enable it.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/094-personal-worker-access-keys-permissions-quotas/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7f0d222814c3e61ee8588a15b0e467996574054764e350a6d112f48fe6bf8cad",
+      "requirement_id": "REQ-DCAD31744585",
+      "requirement_text": "9. Let the user optionally pin a registered worker to a specific SmartSpecPro LLM provider so model aliases are routed deterministically when the worker uses the gateway.",
+      "source_spec_digest": "74b8bcced5075692192329f74c5564a4f49252d1064c6875396a22ca52e0d402",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

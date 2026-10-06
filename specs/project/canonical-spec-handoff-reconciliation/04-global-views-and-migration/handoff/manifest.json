@@ -100,7 +100,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration/spec.md",
     "digest": "5958bff72d8d179e634e286715d9725f18bf48f51fc4c325fdc241c6263b5843",
@@ -208,6 +208,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

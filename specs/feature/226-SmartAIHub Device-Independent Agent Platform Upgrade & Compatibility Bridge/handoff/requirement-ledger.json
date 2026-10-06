@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -172,28 +173,6 @@
       "requirement_digest": "29f5ec054cbe513c311a0e8bb97eed9ac4214c9ce8f9b178c8e51e4cff103445",
       "requirement_id": "REQ-4568B8B4A384",
       "requirement_text": "It MUST NOT introduce a second Goal store, planner, conversation truth or memory subsystem.",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L299"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L299",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e3b06044d73a5dbcfe16b81ffa6d02ed8eddc5158df935de0582242757a369f6",
-      "requirement_id": "REQ-E40B50C8ADC2",
-      "requirement_text": "canonical input-required state/event",
       "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -950,28 +929,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L605"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L605",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "101816b8b1b733f18f0bac395e5576b855e0068e0418695395102329ddf5c510",
-      "requirement_id": "REQ-6A38C22FC2C4",
-      "requirement_text": "↓ additive progress/lineage normalization from Spec 226 where required",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L609"
       ],
       "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L609",
@@ -1140,28 +1097,6 @@
       "requirement_digest": "b15df8438866c1b61025a04ce589159c914934cbaaa8389d2c5e8af96f6b3daf",
       "requirement_id": "REQ-7C4C0C493D01",
       "requirement_text": "Authorization SHALL combine:",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L710"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L710",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "36c28d8b4b7794b0226d4907bcf838bbbcd7e13977916581d02a9b9ec91dd35e",
-      "requirement_id": "REQ-B3B4374AC4CF",
-      "requirement_text": "approval state where required",
       "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2931,28 +2866,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L1505"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L1505",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a13b66e3cb254b5f7d8414f412defeabdca8e978d6fc3d8e5bad5349a3a10a0a",
-      "requirement_id": "REQ-00EA3EDC91AB",
-      "requirement_text": "interoperable traces/metrics/logs; implemented version must be pinned",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L1517"
       ],
       "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L1517",
@@ -3539,28 +3452,6 @@
       "requirement_digest": "90cc7c747ac3ff95abd775809dda16b9a05729b1c5ea96f8d78e3f25bba15334",
       "requirement_id": "REQ-0BB1AC6BE311",
       "requirement_text": "Spec 226 SHALL route captured bytes through the canonical Library/Asset ingestion path and require that path to provide or integrate equivalent controls for:",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L1705"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L1705",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bacb8b90b90dd3e8b7b006f8ce222daba1ccbf0c40ff0d4c11947a0de12ed5bf",
-      "requirement_id": "REQ-6DBB0AC629DD",
-      "requirement_text": "quarantine until required ingestion checks complete",
       "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4471,28 +4362,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2124"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2124",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "054c0d888065baad6d6647f8f1b1cbb459fe5ae67850883d5add4f7c0df86bb3",
-      "requirement_id": "REQ-5448123E4125",
-      "requirement_text": "user action required?",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2133"
       ],
       "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2133",
@@ -4955,28 +4824,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2479"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2479",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2ab32a48b6b46b5a81a4dc3d9a68adbe4cec24126c85aee34efbc324db441738",
-      "requirement_id": "REQ-3010CF4E0ABC",
-      "requirement_text": "→ current decision/approval epoch + candidate digest required",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2485"
       ],
       "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2485",
@@ -5079,28 +4926,6 @@
       "requirement_digest": "4dd3b6cf2222e6483c3fa7b08269ba6d1b124bcf7ec241f04e59906b1dbd691e",
       "requirement_id": "REQ-00E32E2F6A6B",
       "requirement_text": "The bridge SHALL carry:",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2530"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2530",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "36afe816bf6e45aecb3535574c2aaa3ccc52f6758600c46cff7980df5a47a9da",
-      "requirement_id": "REQ-153ECEC36DF3",
-      "requirement_text": "required capability",
       "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5497,28 +5322,6 @@
       "requirement_digest": "1c4b5515ff112a835e648059cda4ac95c65a207fc7088136694c3d4c163d2b7f",
       "requirement_id": "REQ-6D6E644D06F3",
       "requirement_text": "Spec 226 SHALL provide an additive adapter that can project legacy/current first-party actions into a canonical manifest shape such as:",
-      "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2774"
-      ],
-      "authority_source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md#L2774",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b01a6dfd1774736203e73b51a103ddcc9f1626b43f01f28b6a45e42e8acb395e",
-      "requirement_id": "REQ-169FA0AD6F7D",
-      "requirement_text": "Does the required route exist?",
       "source_spec_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
       "successor_mapping": [],
       "verification_evidence": [],

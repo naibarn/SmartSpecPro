@@ -4,6 +4,12 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 1051 unresolved of 1051
+- Requirements: 0 pass / 994 unresolved of 994
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 3
+- Manifest generation: 6
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Proposed / Implementation Specification` — `specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#4`

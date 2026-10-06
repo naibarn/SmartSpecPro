@@ -79,7 +79,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/03-feature-197-runner-fabric/spec.md",
     "digest": "9063b9ed47a317e4e0be8cae6688b3498a51ec791c6b6defa209138f93a1c1de",
@@ -144,6 +144,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

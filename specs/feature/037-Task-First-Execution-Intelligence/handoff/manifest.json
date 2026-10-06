@@ -213,7 +213,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/037-Task-First-Execution-Intelligence/spec.md",
     "digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
@@ -314,6 +314,87 @@
         "kind": "SOURCE",
         "line": 14380,
         "path": "apps/web/drizzle/schema.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d769b71",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-runtime-correction: complete; commit_hash=d769b71",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-runtime-correction",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "6b224b0",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-capability-registry-and-skill-policy: complete; commit_hash=6b224b0",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-capability-registry-and-skill-policy",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "89fad880",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-task-planner-and-billing: complete; commit_hash=89fad880",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-task-planner-and-billing",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "3f8b0bb9",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-direct-artifact-execution: complete; commit_hash=3f8b0bb9",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-direct-artifact-execution",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "a3b1ad19",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-agency-integration-and-rollout: complete; commit_hash=a3b1ad19",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-agency-integration-and-rollout",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md",
+        "source_digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -338,6 +419,83 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d769b71",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-runtime-correction: complete; commit_hash=d769b71",
+        "line": null,
+        "section": "section-01-runtime-correction",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "6b224b0",
+        "commit_hash_length": 7,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-capability-registry-and-skill-policy: complete; commit_hash=6b224b0",
+        "line": null,
+        "section": "section-02-capability-registry-and-skill-policy",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "89fad880",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-task-planner-and-billing: complete; commit_hash=89fad880",
+        "line": null,
+        "section": "section-03-task-planner-and-billing",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "3f8b0bb9",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-direct-artifact-execution: complete; commit_hash=3f8b0bb9",
+        "line": null,
+        "section": "section-04-direct-artifact-execution",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "a3b1ad19",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-agency-integration-and-rollout: complete; commit_hash=a3b1ad19",
+        "line": null,
+        "section": "section-05-agency-integration-and-rollout",
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/implementation/deep_implement_config.json",
+        "source_digest": "f57d60ab4ddee6da8a696b336710207250b63846d969f485f360b60b5f24cf83",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/037-Task-First-Execution-Intelligence/spec.md",
+        "source_digest": "5a8c47087b8039b5de1d82ca608324d0bf48f5ce445ae15d0ae4215b4c713884",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -402,8 +560,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 119,
-    "unresolved": 119
+    "total": 117,
+    "unresolved": 117
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.569115Z",

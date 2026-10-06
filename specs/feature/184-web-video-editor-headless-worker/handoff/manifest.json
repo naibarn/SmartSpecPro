@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/184-web-video-editor-headless-worker/spec.md",
     "digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
@@ -695,6 +695,17 @@
         "digest": "602e68badfa0106c0ce0fe18733e4f6bcdcf17a1ae8ace95aa3091c6c1f26731",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/184-web-video-editor-headless-worker/sections/section-10-integration-proof.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Core Web → Worker render slice delivered; advanced parity, runtime proof, migration and deployment gates remain pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+        "source_digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "value": "Core Web → Worker render slice delivered; advanced parity, runtime proof, migration and deployment gates remain pending"
       }
     ],
     "stale_fields": [],
@@ -711,6 +722,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Core Web → Worker render slice delivered; advanced parity, runtime proof, migration and deployment gates remain pending",
+        "line": 3,
+        "source": "specs/feature/184-web-video-editor-headless-worker/spec.md",
+        "source_digest": "cad39a76ff90a2a4b772de497524093abb031c9831052bdc8ec662cadbcb45e2",
+        "value": "Core Web → Worker render slice delivered; advanced parity, runtime proof, migration and deployment gates remain pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -1020,8 +1043,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 21,
-    "unresolved": 21
+    "total": 14,
+    "unresolved": 14
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.572384Z",

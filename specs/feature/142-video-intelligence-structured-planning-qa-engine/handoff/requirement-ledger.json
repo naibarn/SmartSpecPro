@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -172,28 +173,6 @@
       "requirement_digest": "c9ea42b6d1911bbcf89b83f905e07ec17cc8516706aa7c177f1dac76d67abfa2",
       "requirement_id": "REQ-77659DD28A29",
       "requirement_text": "**No schema migration required** — every column above already exists in the",
-      "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L396"
-      ],
-      "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L396",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2e03d0fff93f7e7c1d693c258ccdd3ed14d81686a4ab041bb7dea9965f2ce634",
-      "requirement_id": "REQ-F229767D6E5A",
-      "requirement_text": "/** MUST be a key of MOTION_TEMPLATE_REGISTRY — validated fail-closed. */",
       "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -422,28 +401,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L675"
-      ],
-      "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L675",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0e615bf1e7121e22b17022fa27f2a9dc1c29dd454cb2f94c6b3c706955c3b04e",
-      "requirement_id": "REQ-C0CCBF73C1CE",
-      "requirement_text": "| Namespace | Limit | Window | Applies to |",
-      "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L677"
       ],
       "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L677",
@@ -634,28 +591,6 @@
       "requirement_digest": "488e4e983073e75c6198185e61d0328709236b51083c49a9137ca723fcaa08db",
       "requirement_id": "REQ-A25561355ECA",
       "requirement_text": "| `queue_render` | start / finish | existing fields, unchanged |",
-      "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L736"
-      ],
-      "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L736",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c8a88b409dec0d14ffc41c596325c4e75d39e97f8ed2c9a47ac4ccd19be6b488",
-      "requirement_id": "REQ-8A693691D37C",
-      "requirement_text": "| Category | Threat | Mitigation |",
       "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1016,28 +951,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L795"
-      ],
-      "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L795",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4712d913c0998c2721199ef0a71984e4e5dd260320e8d48e48c1e4984886e0ad",
-      "requirement_id": "REQ-ADA3DD726380",
-      "requirement_text": "| Stage | Estimate source | Typical cost |",
-      "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L797"
       ],
       "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L797",
@@ -1184,28 +1097,6 @@
       "requirement_digest": "9a79f78605a9a9bad6651b13e86af96f0add97437ddcebfa0e5e0379bcf97512",
       "requirement_id": "REQ-13C800BE20BC",
       "requirement_text": "- **Brand locks:** `brandKit.locks` are applied deterministically after the",
-      "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L820"
-      ],
-      "authority_source": "specs/feature/142-video-intelligence-structured-planning-qa-engine/spec.md#L820",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a9ed2abca9cd09745ee74aba2841b5aa8d8baf01282009baf6b0261caa318a44",
-      "requirement_id": "REQ-876C5A7A22B6",
-      "requirement_text": "| Operation | Target (p50) | Target (p95) | Hard timeout |",
       "source_spec_digest": "8e5b427224ddaedcebb0046f86153181df598fb1d3c1b952da703f8086d1bd2f",
       "successor_mapping": [],
       "verification_evidence": [],

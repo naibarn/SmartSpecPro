@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -3648,28 +3649,6 @@
       "requirement_digest": "83e9b44eff82ce7008db041deb5f109d2dd03ffaf97f616bcfedc513d3ce7183",
       "requirement_id": "REQ-340839DD24D3",
       "requirement_text": "Required checks SHOULD include:",
-      "source_spec_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L3066"
-      ],
-      "authority_source": "specs/feature/262-smartaihub-global-geospatial-operational-intelligence-adaptive-feed-hydrology-enhancement/spec.md#L3066",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "95174eee7d69399604ed621cf5901e4c71968567ace4f811735d0d4782650494",
-      "requirement_id": "REQ-7020209F76FB",
-      "requirement_text": "required fields",
       "source_spec_digest": "9bb7b7546f9d0ca86618f3ed2cb3de481175a574ede0497889bd386a91d35c85",
       "successor_mapping": [],
       "verification_evidence": [],

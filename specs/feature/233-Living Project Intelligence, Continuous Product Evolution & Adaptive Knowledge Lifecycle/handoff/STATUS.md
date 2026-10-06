@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 89 unresolved of 89
+- Requirements: 0 pass / 86 unresolved of 86
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `PROPOSED — implementation-ready architecture candidate; production certification pending` — `specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#5`
+- Status claim: `Implementation-ready design candidate. This document defines contracts and acceptance gates; it is not evidence that the capability is implemented or production-certified.` — `specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#20`

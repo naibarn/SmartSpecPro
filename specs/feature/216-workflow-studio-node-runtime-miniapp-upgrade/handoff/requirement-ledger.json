@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -788,28 +789,6 @@
       "requirement_digest": "a1b7c8b39aff728b07a6ec7408acfe6fb4a0483a1569b491862cb9f2e61a5806",
       "requirement_id": "REQ-54935612D8BE",
       "requirement_text": "The authoritative fee SHALL be produced by a versioned economic policy in Spec 207.",
-      "source_spec_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L522"
-      ],
-      "authority_source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md#L522",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8491f122bc61d032cbb3eff37f80f45a5cf51516b308bb5db63312aaf176bbb6",
-      "requirement_id": "REQ-8C2BF1383A0F",
-      "requirement_text": "→ user confirms if required by policy",
       "source_spec_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
       "successor_mapping": [],
       "verification_evidence": [],

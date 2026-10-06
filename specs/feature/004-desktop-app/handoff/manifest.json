@@ -93,7 +93,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/004-desktop-app/spec.md",
     "digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
@@ -154,6 +154,17 @@
         "kind": "SOURCE",
         "line": 59,
         "path": "python-backend/app/models/asset.py"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: **Active / Implemented (production-ready path)**",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/004-desktop-app/spec.md",
+        "source_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+        "value": "Active / Implemented (production-ready path)"
       }
     ],
     "stale_fields": [],
@@ -178,6 +189,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: **Active / Implemented (production-ready path)**",
+        "line": 5,
+        "source": "specs/feature/004-desktop-app/spec.md",
+        "source_digest": "59b1e20bd3dc0766c7f8ac968988d641330be2709180113eaf067ac533ac46c8",
+        "value": "Active / Implemented (production-ready path)"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

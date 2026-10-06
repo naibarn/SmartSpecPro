@@ -1,12 +1,13 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/016-dynamic-skill-enhance/spec.md#L313"
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L13"
       ],
-      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L313",
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L13",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -15,9 +16,97 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "47a83dccb435ef9f6ceaccc5b478627acdadb1cd11f5f0afeecfa6fc829929a3",
-      "requirement_id": "REQ-51FA07C94ECE",
-      "requirement_text": "- validate required fields",
+      "requirement_digest": "754dbf6883852c2c644f1b9c0d695ec3562ade993997050bf740f766581ffa54",
+      "requirement_id": "REQ-995F2A841279",
+      "requirement_text": "1. **Parity with Media Studio**: หน้า Chat สามารถใช้ Skill แบบ Dynamic Input ได้เหมือนกับ Media Studio",
+      "source_spec_digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L14"
+      ],
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L14",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "edf8d007fcbb743878199452f2165e9e62bd887be7749c7e6991984da3cf2fd0",
+      "requirement_id": "REQ-FC48CB98429C",
+      "requirement_text": "2. **Skill Discovery**: ผู้ใช้สามารถค้นหาและเลือก Skill ที่ต้องการใช้งานได้ง่าย",
+      "source_spec_digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L15"
+      ],
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L15",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "06bfcadbcc6cf43fd6cced8f9c67114211a0befdbf5b2a91a98424056fb4e3c3",
+      "requirement_id": "REQ-96DDED164D07",
+      "requirement_text": "3. **Dynamic Form Rendering**: แสดง Form ตาม Input Schema ของแต่ละ Skill โดยอัตโนมัติ",
+      "source_spec_digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L16"
+      ],
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L16",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c4cb9534a30a57fa7eafcacc0c485699d475ece9b28b388cc329f8a701ac2d5a",
+      "requirement_id": "REQ-22CC63160C4A",
+      "requirement_text": "4. **Context Preservation**: ผลลัพธ์จาก Skill ถูกบันทึกเป็น Message ใน Conversation",
+      "source_spec_digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/016-dynamic-skill-enhance/spec.md#L17"
+      ],
+      "authority_source": "specs/feature/016-dynamic-skill-enhance/spec.md#L17",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1cef0cb83f922b45ac5b59763dc33227fec92dbb28332e8f47840835ba715f94",
+      "requirement_id": "REQ-D870611766AA",
+      "requirement_text": "5. **Seamless Experience**: สลับระหว่างการคุยปกติและใช้ Skill ได้อย่างราบรื่น",
       "source_spec_digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
       "successor_mapping": [],
       "verification_evidence": [],

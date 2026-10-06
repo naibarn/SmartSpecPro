@@ -1,6 +1,205 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L47"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L47",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "645d8bdf86e1a8cba46360b9e738c88eeeaf5c5dba57125773c1a4c94ae6c3f6",
+      "requirement_id": "REQ-A49039E39814",
+      "requirement_text": "- Let admins configure a separate OCR provider for raster images and PDFs.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L48"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L48",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0ef41a795813e86cbf28c49959554ba6ebe14359238b9d838813a5cc5efdf609",
+      "requirement_id": "REQ-FBAA0C0DC46F",
+      "requirement_text": "- Make Typhoon OCR 1.5 available as a first-class provider choice.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L49"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L49",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0ed62c68c6bd27959ed21a9fd5522f394578edd3d5e672b6ab4d7a7a81d02528",
+      "requirement_id": "REQ-0A318AD931E6",
+      "requirement_text": "- Keep the admin experience inside `/admin/settings` under the existing Document OCR section.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a48bfd0ce65110319180c67694bd8df1785010521989f45451afd77ac108cf2a",
+      "requirement_id": "REQ-186FB56A398B",
+      "requirement_text": "- Route uploads server-side based on normalized MIME type and file signature.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3d77864a526dbf1913371363309b03d8315e6ab10d1623790ceae8656498ea30",
+      "requirement_id": "REQ-A31B5A24D664",
+      "requirement_text": "- Preserve the current document OCR crediting and audit trail behavior.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L55"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L55",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1558811824d5fd510d2b0419cda0adc82495ab35583cfb433cef36b0bea677e7",
+      "requirement_id": "REQ-0F036FE04957",
+      "requirement_text": "- Improve OCR quality for Thai documents.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L56"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L56",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2dda2102c0c16dfaa189f93d04c9913f34ba3f1058027f271a78f8d78d57edc1",
+      "requirement_id": "REQ-6DE2C1852053",
+      "requirement_text": "- Avoid forcing PDFs and images through the same provider when they have different strengths.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L57"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L57",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c680484c39b7eca657cfa724058233a55270ea4c718e73baa1017f2a00684c98",
+      "requirement_id": "REQ-765977338E5E",
+      "requirement_text": "- Keep document OCR behavior deterministic and explainable.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/092-thai-document-ocr-routing/spec.md#L58"
+      ],
+      "authority_source": "specs/feature/092-thai-document-ocr-routing/spec.md#L58",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "43552c9b956e8b00eaa6b50e745a5b426aa1b336e04da68dea267f4f87d38281",
+      "requirement_id": "REQ-0D1621402FAE",
+      "requirement_text": "- Keep provider credentials server-side only.",
+      "source_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
     "digest": "8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
@@ -545,6 +545,17 @@
         "digest": "dcd480edffd48b49373ecba299ccbc7265caaf09d7a94c73dc0a0a40a29db0da",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections/section-08-verification-rollout-and-runbook.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPECIFICATION — planning only; implementation requires a separately approved plan",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
+        "source_digest": "8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
+        "value": "SPECIFICATION — planning only; implementation requires a separately approved plan"
       }
     ],
     "stale_fields": [],
@@ -561,6 +572,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPECIFICATION — planning only; implementation requires a separately approved plan",
+        "line": 3,
+        "source": "specs/feature/179-worker-speaker-aware-vad-diarization-reframe/spec.md",
+        "source_digest": "8d62995e247d070edda7d4186b56b108335b8f284caa7999e65cee793a123dfb",
+        "value": "SPECIFICATION — planning only; implementation requires a separately approved plan"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

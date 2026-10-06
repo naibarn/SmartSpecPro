@@ -296,7 +296,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md",
     "digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
@@ -420,6 +420,17 @@
         "digest": "1fead64627cbb15131a2436dba97abf378a819191666686dbdaee93b432671a4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/sections/section-08-telemetry-rollout-incidents-and-regression.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md",
+        "source_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -436,6 +447,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md",
+        "source_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -530,8 +553,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 269,
-    "unresolved": 269
+    "total": 279,
+    "unresolved": 279
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.839017Z",

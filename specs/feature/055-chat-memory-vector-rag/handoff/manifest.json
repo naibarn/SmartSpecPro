@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/055-chat-memory-vector-rag/spec.md",
     "digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
@@ -535,6 +535,17 @@
         "digest": "ab0cd473df32d21ef3fba2ed7140544e62c7b900a2bcb7449fe07c61c9cb33ba",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/055-chat-memory-vector-rag/sections/section-12-feature-flags-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/055-chat-memory-vector-rag/spec.md",
+        "source_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -551,6 +562,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/055-chat-memory-vector-rag/spec.md",
+        "source_digest": "fe1747d016ea5665e14b25bc2332aaaf59805be09ab513846b05373309d50ecc",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -700,8 +723,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 12,
-    "unresolved": 12
+    "total": 8,
+    "unresolved": 8
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.688971Z",

@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 66 unresolved of 66
+- Requirements: 0 pass / 80 unresolved of 80
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Proposed` — `specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#3`
+- Status claim: `Proposed target contract with a completed local` — `specs/feature/203-ai-editor-director-spec-shared-runtime/spec.md#18`

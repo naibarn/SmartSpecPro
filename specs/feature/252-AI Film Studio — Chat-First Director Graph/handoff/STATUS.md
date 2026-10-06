@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 27 unresolved of 27
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED` — `specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md#6`

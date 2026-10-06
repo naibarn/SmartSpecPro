@@ -1,6 +1,227 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L98"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L98",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7e3da109cf91236f4526b80eb1ccb5f13266156191df8b0c81dac8e5858d2163",
+      "requirement_id": "REQ-91C139F93007",
+      "requirement_text": "1. ให้ผู้ใช้เพิ่ม provider connection ใน Worker App ได้หลายรายการ",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L99"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L99",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6291ca18a0c9bcaf746d1c23940b800ea2a68e1afc1a615882ae044df304827e",
+      "requirement_id": "REQ-33DF09CF1F15",
+      "requirement_text": "2. ให้ผู้ใช้เพิ่ม/discover local models ได้หลายรายการต่อ Worker และต่อ provider",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L100"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L100",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "405243bd5b62f4c89c1702e5576891dd6c1eb9c92f2cf0a1ff53a818a0c30208",
+      "requirement_id": "REQ-5C96CA609F11",
+      "requirement_text": "3. ให้แต่ละ model มี alias, capability, context window, enabled state และ status",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L101"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L101",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ef7c046ee831c89460297d4bacbfe253dcf8a509cd3c9cbc20f906e1174e30b5",
+      "requirement_id": "REQ-13BF6C71C1F8",
+      "requirement_text": "4. ให้โมเดลทั้งหมดที่ user มีสิทธิ์มองเห็นในทุก LLM model picker ของ Web App",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L102"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L102",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "02819368c48615d34d5bb703368382f75c9bd34d56843f9b5bfb9e6448e6a2e3",
+      "requirement_id": "REQ-402FA50A53B3",
+      "requirement_text": "5. ให้การเลือก Worker model route กลับไปยัง Worker ของตนเองผ่าน control plane",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L103"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L103",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b97be9f867edce9f55c163bbc22c5563feba88b1e8bd8d9687efbd45e10f9d78",
+      "requirement_id": "REQ-47C29A79459C",
+      "requirement_text": "6. รองรับ owner และ Group ที่เจ้าของ Worker สร้างและเปิดสิทธิ์ให้",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L104"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L104",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7787eeb34fa6558fd91a36ba82240df4c575b9c95f3edc45ce5f4d2a7be51d4a",
+      "requirement_id": "REQ-6757A88323E3",
+      "requirement_text": "7. ป้องกัน secret และ local endpoint ไม่ให้ถูกส่งขึ้น Cloud",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L105"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L105",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4ed82f50975489dcf16526bfb6f23908f68b77dcc3fd96a9e7c1eca62f35c2b1",
+      "requirement_id": "REQ-9DAFFE6446B0",
+      "requirement_text": "8. รักษา Chat, Skill, Agent, Plugin/MCP และ background LLM flow ผ่าน contract เดียว",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L106"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L106",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1618f0d842c6f5766b027deeea581f4949d2a55710bf82530e40a6c953a22b7e",
+      "requirement_id": "REQ-69F881635F84",
+      "requirement_text": "9. รักษา credit, usage, audit, retry, cancellation และ idempotency เดิม",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/172-worker-local-llm-model-catalog/spec.md#L107"
+      ],
+      "authority_source": "specs/feature/172-worker-local-llm-model-catalog/spec.md#L107",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5eb3cb29334b6b44796bea22a15b040f5e67eb2f950f77e941e6171efada857e",
+      "requirement_id": "REQ-827E7239438A",
+      "requirement_text": "10. ทำให้ Worker offline/model missing/capability drift แสดงสถานะที่แก้ไขได้",
+      "source_spec_digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

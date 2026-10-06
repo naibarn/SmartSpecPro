@@ -176,7 +176,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/097-enterprise-platform-continuation-roadmap/spec.md",
     "digest": "ed2873d8265efafae2cfe2dae0649f4def730def6d99f949f9da80a881f5dc54",
@@ -276,6 +276,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -330,8 +331,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 9,
-    "unresolved": 9
+    "total": 16,
+    "unresolved": 16
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.913430Z",

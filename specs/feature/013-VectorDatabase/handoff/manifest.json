@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/013-VectorDatabase/spec.md",
     "digest": "f76f53b68f496344ee2ee418fa0ea9cf04323a5d8aecc144dce7d4d60a81c32e",
@@ -516,6 +516,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -630,8 +631,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 10,
-    "unresolved": 10
+    "total": 15,
+    "unresolved": 15
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.421175Z",

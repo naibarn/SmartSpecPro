@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 48 unresolved of 48
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `PROPOSED / PROVISIONAL NUMBER / PLANNING ONLY / NOT IMPLEMENTED` — `specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md#5`

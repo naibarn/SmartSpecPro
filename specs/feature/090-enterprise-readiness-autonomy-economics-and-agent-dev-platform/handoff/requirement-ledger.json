@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,6 +41,138 @@
       "requirement_digest": "728b04861f182223f31446e76e6ac6b371a76b72526dee35176dc4887758dc51",
       "requirement_id": "REQ-B98552EA8AC0",
       "requirement_text": "- any developer platform features must produce tenant-scoped artifacts and audit trails",
+      "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L62"
+      ],
+      "authority_source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "574d8226f1c76a775bcc8fb858c0a3cac760c41d952f56e577b8921b224b8d80",
+      "requirement_id": "REQ-21C76B78FC03",
+      "requirement_text": "1. Strengthen identity, access, retention, and evidence controls for enterprise rollout.",
+      "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L63"
+      ],
+      "authority_source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L63",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bb0c334b7d090793e9f2a3fe4f67b4686a67e62da1a082ee472eafd47be4175f",
+      "requirement_id": "REQ-BE7EA58465F3",
+      "requirement_text": "2. Measure cost and ROI at the work, queue, pack, and role level.",
+      "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L64"
+      ],
+      "authority_source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L64",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cbdec0b7dc8eed53b0d07d2196c9ac117745ef79e7850423ed2417ac26c16dc0",
+      "requirement_id": "REQ-ADEF47A913E3",
+      "requirement_text": "3. Provide an internal developer platform for building and testing new agents safely.",
+      "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c2dd674dcc1ba0a815f951d6a8fa344e841d1b83302ba89774a3493a3af06b8b",
+      "requirement_id": "REQ-132881E6B3B1",
+      "requirement_text": "4. Standardize rollout, migration, and operator onboarding practices.",
+      "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "56a9ce6c4e3a3b937f52eda2a7299d35c71c9610b470e52b48ebe9a730521b29",
+      "requirement_id": "REQ-5BD19FACD3F4",
+      "requirement_text": "5. Keep these capabilities grounded in the same policy, registry, and evaluation model established by prior features.",
+      "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L67"
+      ],
+      "authority_source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md#L67",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "aea689ff0f4a9b5b9cb8b8be8d970ad4da15e17dd5c4893065e1d32d3067a23a",
+      "requirement_id": "REQ-97308051E57E",
+      "requirement_text": "6. Capture outcome memory and improvement plans so the platform gets better with each release.",
       "source_spec_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
       "successor_mapping": [],
       "verification_evidence": [],

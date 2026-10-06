@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 265 unresolved of 265
+- Requirements: 0 pass / 261 unresolved of 261
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `SPEC READY FOR REVIEW — additive architecture; implementation not started by this spec` — `specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#3`
+- Deep-implement section claims (7): IMPLEMENTED: 7

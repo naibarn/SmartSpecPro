@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 77 unresolved of 77
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `IMPLEMENTED LOCALLY / NOT ACTIVATED — additive platform-operation` — `specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md#3`

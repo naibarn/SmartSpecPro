@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -84,94 +85,6 @@
       "requirement_digest": "b7c63c978ebd467309aef38c17326d3842f97d21b00bf233e6f801174c77a1d8",
       "requirement_id": "REQ-C2554D480FE8",
       "requirement_text": "**Required env var:** `API_KEY_HMAC_SECRET` — random 32 bytes, hex-encoded. Add to `.env.example` and deployment docs.",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L368"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L368",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "650fddcb0214fca26a090053c9ac392659469e70c4a486b8ab56d804d77aedf2",
-      "requirement_id": "REQ-E518309A0D47",
-      "requirement_text": "assert(!ENV.mcpServerToken?.startsWith(\"sk-ssp_\"), \"mcpServerToken must not use sk-ssp_ prefix\");",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L369"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L369",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3797965d7239d4d7dc80ccac6d0191467d3cd7fdfbfeb654bd688bed01545c14",
-      "requirement_id": "REQ-3507A5A80FE1",
-      "requirement_text": "assert(!ENV.webGatewayToken?.startsWith(\"sk-ssp_\"), \"webGatewayToken must not use sk-ssp_ prefix\");",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L371"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L371",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d272867652ed909a14e4485ab50591fa48446b519ca53d69f0634f6327f309e0",
-      "requirement_id": "REQ-97D71384ECDB",
-      "requirement_text": "assert(process.env.API_KEY_HMAC_SECRET, \"API_KEY_HMAC_SECRET env var is required for API key auth\");",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L372"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L372",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "700c1a1d77757a652edc959afeb72c3528986acd8d053c33f48d809258b92f70",
-      "requirement_id": "REQ-4412E86EAB51",
-      "requirement_text": "assert(process.env.API_KEY_HMAC_SECRET.length >= 64, \"API_KEY_HMAC_SECRET must be at least 32 bytes (64 hex chars)\");",
       "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -290,28 +203,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L662"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L662",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9fb16694faa866534245358fdd957c021e291c42b264e70483bdb88d78cc64e1",
-      "requirement_id": "REQ-602BF3EBCAD8",
-      "requirement_text": "│  │ Must call initialize before tools/call │ │",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L698"
       ],
       "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L698",
@@ -326,28 +217,6 @@
       "requirement_digest": "fd0e6ec92ad8273d871aaa02ab4e66823fd28553a4dcb57f61bb4b93f886764a",
       "requirement_id": "REQ-4BBB1DFFD7E2",
       "requirement_text": "- `initialize` → capabilities negotiation (REQUIRED before any other method) [M-05]",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L759"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L759",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8dd2c7f2030e27dd75b942fccc5adb9f187d4e29717bea315a9cd109d50d4efd",
-      "requirement_id": "REQ-116A123F8EF3",
-      "requirement_text": "\"required\": [\"skillId\", \"inputs\"]",
       "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -444,28 +313,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L867"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L867",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "987036500d160bf57278665af0390e08943b82b9328f6cb779dfeed10dfc2875",
-      "requirement_id": "REQ-1825F299A135",
-      "requirement_text": "// Additional DNS rebinding guard (NOT in sanitizeUri — must be added):",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L937"
       ],
       "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L937",
@@ -546,72 +393,6 @@
       "requirement_digest": "75f4f96194f7cbbdb30040ebf5fce00e98848d8d936e602bb93d7864d8f44f3a",
       "requirement_id": "REQ-175C35054D1C",
       "requirement_text": "4. **Placement:** All `{{...}}` substituted values MUST be placed in `HumanMessage` context when passed to LLM skills, **never** in system prompt content. (Reference: CLAUDE.md Rule 3)",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1167"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1167",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "91bf7325cab1824e4b385b160bcf5053d84469a4e0c800deaa58ff2528625358",
-      "requirement_id": "REQ-93148CBC90E4",
-      "requirement_text": "//    → 0 rows affected = 402 Payment Required",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1201"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1201",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "05b8463efc7a7985cdd79d01f1b7ef88fef8cec8cb059cc7a265f83a9131c825",
-      "requirement_id": "REQ-4BCF1C3B5AAB",
-      "requirement_text": "-- 0 rows affected → 402 Payment Required",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1215"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L1215",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "06439ab55778aa14eda597e91af9f87a4817cddb1bc5636556da8a7c579ea052",
-      "requirement_id": "REQ-CF6E348EE9D8",
-      "requirement_text": "-- CRITICAL: Refund MUST be wrapped in a transaction with the credit_transactions insert",
       "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -818,28 +599,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2173"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2173",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ef319d2fc6b6f8067e7d5ec9be991a51edfa2457b053d6332577e20295e536da",
-      "requirement_id": "R3-CRIT-2",
-      "requirement_text": "tenantIdx: index(\"idx_vpe_tenant\").on(table.tenantId), // [R3-CRIT-2] Required for tenant isolation queries",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2191"
       ],
       "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2191",
@@ -920,28 +679,6 @@
       "requirement_digest": "c2cdf88b7f3e0c140e64fcb9db04b7083e50a99434b3e3e9050401866094d35e",
       "requirement_id": "REQ-EE349E375E9A",
       "requirement_text": "`creditSourceTypeEnum` is a **real PostgreSQL enum** — `ALTER TYPE ... ADD VALUE` cannot run inside a transaction block. Drizzle-kit does not handle this automatically. **Explicit raw SQL migration required:**",
-      "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2479"
-      ],
-      "authority_source": "specs/feature/043-PublicAPI-ExternalAgentGateway/spec.md#L2479",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c81cf181d619497ec20f59a880e47ee1dedb105e3033480c0a3443a8f1bfa617",
-      "requirement_id": "REQ-A15E31C41785",
-      "requirement_text": "-- Must be run OUTSIDE a transaction block",
       "source_spec_digest": "c3a8ebf09a99e1bf51f29be140fb5863d29ed456b461190e68946e1f444b57f3",
       "successor_mapping": [],
       "verification_evidence": [],

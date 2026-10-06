@@ -221,7 +221,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/092-thai-document-ocr-routing/spec.md",
     "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
@@ -320,6 +320,17 @@
         "digest": "17154058543a4cb137482acf8a7fa74d0f9f31e100a100713956bf94444dedf6",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/092-thai-document-ocr-routing/sections/section-05-tests-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/092-thai-document-ocr-routing/spec.md",
+        "source_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -336,6 +347,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/092-thai-document-ocr-routing/spec.md",
+        "source_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -405,8 +428,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 31,
-    "unresolved": 31
+    "total": 40,
+    "unresolved": 40
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.889783Z",

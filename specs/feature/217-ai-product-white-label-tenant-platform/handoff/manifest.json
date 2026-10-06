@@ -117,7 +117,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md",
     "digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
@@ -173,6 +173,17 @@
         "kind": "TEST",
         "line": 17,
         "path": "apps/web/server/services/__tests__/tenantProductIdentityContracts.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Partial identity contract slice present; product runtime integration pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md",
+        "source_digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
+        "value": "Proposed / Partial identity contract slice present; product runtime integration pending"
       }
     ],
     "stale_fields": [],
@@ -197,6 +208,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Partial identity contract slice present; product runtime integration pending",
+        "line": 4,
+        "source": "specs/feature/217-ai-product-white-label-tenant-platform/spec.md",
+        "source_digest": "c5d200200571a686baaa34ebdb1e8a3f14e770c305049f3a033487d3ef3b07b2",
+        "value": "Proposed / Partial identity contract slice present; product runtime integration pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

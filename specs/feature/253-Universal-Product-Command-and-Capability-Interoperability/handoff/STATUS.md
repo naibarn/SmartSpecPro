@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 22 unresolved of 22
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED` — `specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md#6`

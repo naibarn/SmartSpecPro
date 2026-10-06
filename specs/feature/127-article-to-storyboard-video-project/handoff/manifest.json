@@ -251,7 +251,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/127-article-to-storyboard-video-project/spec.md",
     "digest": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
@@ -360,6 +360,17 @@
         "digest": "0e83f2bbe01c192233f8d52f8249eec65092badbb62c09018bacd6bd12f65c31",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/127-article-to-storyboard-video-project/sections/section-07-verification-hardening.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/127-article-to-storyboard-video-project/spec.md",
+        "source_digest": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -376,6 +387,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed",
+        "line": 6,
+        "source": "specs/feature/127-article-to-storyboard-video-project/spec.md",
+        "source_digest": "4891007aef1a9a3753a83c904740949e9168bdbe5fda40caa8ffbc7ac6756a7f",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -455,8 +478,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 54,
-    "unresolved": 54
+    "total": 72,
+    "unresolved": 72
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.175205Z",

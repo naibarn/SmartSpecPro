@@ -4,6 +4,12 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 702 unresolved of 702
+- Requirements: 0 pass / 716 unresolved of 716
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Proposed / Target maintenance architecture; unified implementation pending` — `specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md#4`

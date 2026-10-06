@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
     "digest": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
@@ -120,6 +120,17 @@
         "digest": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC READY FOR REVIEW — implementation not started by this spec",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
+        "source_digest": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
+        "value": "SPEC READY FOR REVIEW — implementation not started by this spec"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC READY FOR REVIEW — implementation not started by this spec",
+        "line": 3,
+        "source": "specs/feature/155-vertical-drama-cost-control-budget-ledger/spec.md",
+        "source_digest": "4271bc3fa5724e72956dbb81d1491e6e168f5970cbf44aa0b2029edfc4b568d7",
+        "value": "SPEC READY FOR REVIEW — implementation not started by this spec"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 105,
-    "unresolved": 105
+    "total": 114,
+    "unresolved": 114
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.392477Z",

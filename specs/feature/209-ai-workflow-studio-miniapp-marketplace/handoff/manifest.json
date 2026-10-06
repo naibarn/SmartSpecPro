@@ -479,7 +479,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
     "digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
@@ -772,6 +772,28 @@
         "kind": "TEST",
         "line": 49,
         "path": "apps/web/tests/e2e/workflow-studio-browser.spec.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Architecture Freeze Candidate / Ready for implementation planning",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "value": "Architecture Freeze Candidate / Ready for implementation planning"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Implementation status:** Target product architecture; current repository contains partial runtime, schema and Skill building blocks, not a production-complete Workflow Studio/Marketplace.",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 13,
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "value": "Target product architecture; current repository contains partial runtime, schema and Skill building blocks, not a production-complete Workflow Studio/Marketplace."
       }
     ],
     "stale_fields": [],
@@ -803,6 +825,28 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Architecture Freeze Candidate / Ready for implementation planning",
+        "line": 4,
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "value": "Architecture Freeze Candidate / Ready for implementation planning"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Implementation status:** Target product architecture; current repository contains partial runtime, schema and Skill building blocks, not a production-complete Workflow Studio/Marketplace.",
+        "line": 13,
+        "source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md",
+        "source_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+        "value": "Target product architecture; current repository contains partial runtime, schema and Skill building blocks, not a production-complete Workflow Studio/Marketplace."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -1052,8 +1096,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 938,
-    "unresolved": 938
+    "total": 923,
+    "unresolved": 923
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.910148Z",

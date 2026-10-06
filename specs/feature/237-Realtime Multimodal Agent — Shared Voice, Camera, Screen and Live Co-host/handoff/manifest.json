@@ -170,7 +170,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
     "digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
@@ -226,6 +226,17 @@
         "kind": "SOURCE",
         "line": 788,
         "path": "apps/web/client/src/components/admin/InfrastructureSettingsPanel.tsx"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED — additive integration, not a new Agent Runtime",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "value": "PROPOSED — additive integration, not a new Agent Runtime"
       }
     ],
     "stale_fields": [],
@@ -250,6 +261,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED — additive integration, not a new Agent Runtime",
+        "line": 5,
+        "source": "specs/feature/237-Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host/spec.md",
+        "source_digest": "d155d9f0f9f4372ee70e6ae04cd25d57c95e64fd0600db3eb4232a62ee0d239f",
+        "value": "PROPOSED — additive integration, not a new Agent Runtime"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -269,8 +292,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 37,
-    "unresolved": 37
+    "total": 45,
+    "unresolved": 45
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.358807Z",

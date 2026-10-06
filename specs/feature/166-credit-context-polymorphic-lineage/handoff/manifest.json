@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
     "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
@@ -400,6 +400,17 @@
         "digest": "8684f18eb7dbd9fa655121e1c2885c4512b924f1c3ddec14fecd4afb37a9db71",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/166-credit-context-polymorphic-lineage/sections/section-07-verification-operations.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+        "source_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "value": "SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending"
       }
     ],
     "stale_fields": [],
@@ -416,6 +427,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending",
+        "line": 3,
+        "source": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+        "source_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "value": "SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -505,8 +528,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 250,
-    "unresolved": 250
+    "total": 260,
+    "unresolved": 260
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.465364Z",

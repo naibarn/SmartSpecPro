@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -48,6 +49,160 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L118"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L118",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "eb883f5f258d4fff139ad3a9416912fb1e60d7e582e5d4530cc4d7daf3315af5",
+      "requirement_id": "REQ-783FE7788FAC",
+      "requirement_text": "1. Add a new Dashboard menu for **Vertical Drama Series**.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L119"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L119",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b28749761fc462ad116d7344ad24a409112338c87d0a5ad547d655d9381c2df8",
+      "requirement_id": "REQ-D630D2F5C084",
+      "requirement_text": "2. Support long-running series projects with 10, 20, 30, and up to 100 planned episodes.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L120"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L120",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6e2b4db05e3cfac9a7e5c5d52d3b232760e64b4608eeb7df7d18b7c0e7004aef",
+      "requirement_id": "REQ-E91BB652F8B5",
+      "requirement_text": "3. Persist a complete series bible: title, logline, genre, tone, target audience, age policy, main plot, episode arc, characters, relationships, locations, props, visual style, product tie-in rules, and continuity constraints.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L121"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L121",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dfce0e7dfa4b720f9b904bc3fc054b7a287ac8b3ae28f3d2b72235414c21fafe",
+      "requirement_id": "REQ-78B18DFAB574",
+      "requirement_text": "4. Persist character stock assets per series: portraits, full-body references, expression sheets, outfit sheets, prop references, and approved/rejected states.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L122"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L122",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0527b3cc7b98f9b62c8304ca1298523951b19d4d28c5ef3d5a0081920a8a31b1",
+      "requirement_id": "REQ-F656ADE7804E",
+      "requirement_text": "5. Use series memory when planning later episodes so episode 2-100 can continue from prior story events, relationship changes, unresolved hooks, and product tie-in history.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L123"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L123",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "057c1521050d840753f9e045d5c78875d21d911d3c5c4acfe5dccc7a8fc5ec5c",
+      "requirement_id": "REQ-39E9E4A8749D",
+      "requirement_text": "6. Generate one Storyboard Review project per episode, with one ordered video task per shot or clip segment.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L124"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L124",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fa6c4a59e97c027fbbfbf3da6b2617ac556414b515d141d0a7eba22b2007a41a",
+      "requirement_id": "REQ-1940735E11F7",
+      "requirement_text": "7. Keep Storyboard Review as the review/generation workspace. Do not rebuild Storyboard Review inside the series planner.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L125"
       ],
       "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L125",
@@ -62,6 +217,72 @@
       "requirement_digest": "7a8541918c31e606c843ee5f968a98421a8f925a4397047173c2016a406f93ed",
       "requirement_id": "REQ-57E3DAA1D4CD",
       "requirement_text": "8. Import or adapt all required vertical-drama skills into `apps/web/skills` with SmartSpecPro-compatible metadata, schemas, fixtures, verification scripts, and runtime contracts.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L126"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L126",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b841003247d80c8914b963bfc8768b0df283487d2cfaa0785f4f9be72c95e186",
+      "requirement_id": "REQ-8AC4C768E655",
+      "requirement_text": "9. Keep provider use production-grade: capability gates, model selection, credit estimates, dry-run mode, human approvals, QC, and repair loops.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L127"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L127",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ddcebe426bd371f1e2109bd51bf5946871983e8af060bf2aa49f5814e529c96c",
+      "requirement_id": "REQ-62B9D4F85BE0",
+      "requirement_text": "10. Support optional tie-in product placement that serves the story and compliance rules instead of feeling forced.",
+      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L128"
+      ],
+      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L128",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1e24f917b1be08c979253097c6c4251238dfe3c923beac8fe63a1860a4303405",
+      "requirement_id": "REQ-82D2BDFCDA8F",
+      "requirement_text": "11. Preserve voice, subtitle, safe-area, and dialogue continuity across episodes.",
       "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -260,28 +481,6 @@
       "requirement_digest": "7fae309f1f8798f6a39f212b78adc1b7550a02c3d18ae8b86558b716dffe887e",
       "requirement_id": "REQ-403248F6EA24",
       "requirement_text": "- schema validation, dry-run mode, approvals, provider capability gates, QC, repair queues, and assembly manifests.",
-      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L204"
-      ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L204",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "28f1a9f89da413b7129c95651d07d44ae9e24fa26b64cca4fe6ef9857077a042",
-      "requirement_id": "REQ-C502BBA38B3F",
-      "requirement_text": "| GitHub guide concept | SmartSpecPro adaptation |",
       "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2160,50 +2359,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1756"
-      ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1756",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4efe30c7229bf8dd6c53db56d4ccf7aabf8ec287fcc77f771f99fcdb35f7f63a",
-      "requirement_id": "REQ-756FA94CE90D",
-      "requirement_text": "estimatedSpeechSeconds: number;    // must satisfy MIN_EPISODE_COVERAGE_RATIO",
-      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1767"
-      ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1767",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "89852d488d09bc7c0ddc9c18f5618b298433eea306519ef466859347f34b295c",
-      "requirement_id": "REQ-997B7A15D518",
-      "requirement_text": "contentBudget: VerticalDramaEpisodeContentBudget; // NEW — required for new series",
-      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1783"
       ],
       "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L1783",
@@ -4000,50 +4155,6 @@
       "requirement_digest": "904d42445c85ad5048568a59e69d6789cf51a3be9f1d5bbc45bd0180ebfd89b3",
       "requirement_id": "REQ-B406B9C64189",
       "requirement_text": "- brand-name sanitization for provider prompts (existing behavior) must",
-      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3626"
-      ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3626",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2e7e8d9c96ffaaa430d9be979aaeb2f9e44eade5e1e3f7821f99a0a9baad7215",
-      "requirement_id": "REQ-D510C01AC8E5",
-      "requirement_text": "approval?: { required: boolean; approvedBy?: string; approvedAt?: string };",
-      "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3637"
-      ],
-      "authority_source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md#L3637",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "60ce989a18c8df5ab7196aca3d65d5974c9cc304c0b5cdd4056f011d909719db",
-      "requirement_id": "REQ-7A8F9626687E",
-      "requirement_text": "}>; // max 5 selections per episode; fullscreen selections must not overlap each other in time",
       "source_spec_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
       "successor_mapping": [],
       "verification_evidence": [],

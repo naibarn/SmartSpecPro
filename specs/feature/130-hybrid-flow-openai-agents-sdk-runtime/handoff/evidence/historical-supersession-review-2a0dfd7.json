@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "source_ref": "refs/heads/main",
+  "source_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
+  "review_kind": "EXPLICIT_SUPERSESSION_AND_CURRENT_CALLER_AUDIT",
+  "spec_claims": [
+    {
+      "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+      "line": 5,
+      "excerpt": "Status: Superseded — implementation governed by Feature 151"
+    },
+    {
+      "path": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md",
+      "line": 9,
+      "excerpt": "Feature 151 is now the governing specification for the Agents SDK Orchestra and Agency Swarm decommission; this document remains as Hybrid Flow implementation history."
+    },
+    {
+      "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+      "line": 8,
+      "excerpt": "Depends-on: Feature 130 (OpenAI Agents SDK runtime), Feature 148 (unified agent/worker platform)"
+    },
+    {
+      "path": "specs/feature/151-unified-agent-output-assurance-orchestra/spec.md",
+      "line": 17,
+      "excerpt": "Agency Swarm is not a target runtime; it is to be decommissioned after migration gates."
+    }
+  ],
+  "current_source_findings": [
+    {
+      "path": "apps/web/server/services/hybridOrchestrationRuntime.ts",
+      "finding": "Contains legacy stage simulation that auto-completes stages."
+    },
+    {
+      "path": "apps/web/server/routers/hybridOrchestration.ts",
+      "finding": "Router module exists but repository search finds no registration/import outside its own definition."
+    },
+    {
+      "path": "apps/web/client/src/pages/HybridOrchestrationPreview.tsx",
+      "finding": "Page module exists but repository search finds no route mount."
+    },
+    {
+      "path": "apps/web/server/services/__tests__/hybridOrchestrationRuntime.test.ts",
+      "finding": "Legacy behavior remains unit-tested, but test existence does not establish a production caller."
+    }
+  ],
+  "searches": [
+    {
+      "command": "rg -n \"hybridOrchestrationRouter\" apps/web --glob \"*.{ts,tsx}\"",
+      "result": "Only the router definition file matched."
+    },
+    {
+      "command": "rg -n \"HybridOrchestrationPreview\" apps/web/client/src --glob \"*.{ts,tsx}\"",
+      "result": "Only the page definition file matched."
+    },
+    {
+      "command": "rg -n \"Feature 130|Feature 151|Hybrid Flow\" apps/web/server apps/web/client python-backend --glob \"*.{ts,tsx,py}\"",
+      "result": "No active application references identified; remaining matches are unrelated/generic UI text, legacy test names, and direct Feature 151 references."
+    }
+  ],
+  "candidate_resolution": {
+    "target_spec_id": "151",
+    "target_path": "specs/feature/151-unified-agent-output-assurance-orchestra",
+    "target_ambiguous": false
+  },
+  "decision": "Do not continue Feature 130 as an independent Hybrid Flow implementation. Keep it as historical evidence; map any requirement-level residuals to Feature 151 before new implementation.",
+  "residual_requirement_mapping": "UNASSESSED; its 191 ledger candidates remain OPEN."
+}

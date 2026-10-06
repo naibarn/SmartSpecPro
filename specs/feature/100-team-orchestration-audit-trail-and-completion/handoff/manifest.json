@@ -191,7 +191,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
     "digest": "fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
@@ -280,6 +280,17 @@
         "digest": "031855132f0420c3cc9aa670b02ef2d48d05ad5e66233dd0e3d3186339f0b473",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/100-team-orchestration-audit-trail-and-completion/sections/section-04-regression-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
+        "source_digest": "fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -296,6 +307,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Draft",
+        "line": 5,
+        "source": "specs/feature/100-team-orchestration-audit-trail-and-completion/spec.md",
+        "source_digest": "fa26d55ff05f43bbf19ebb255a58a03cdf73fdbb2715e567c7b0504a4b4ca755",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -355,8 +378,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 134,
-    "unresolved": 134
+    "total": 143,
+    "unresolved": 143
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.942185Z",

@@ -1,6 +1,183 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "06d96ef9f8ff222032a28a9247e76a46d0ecc741cc308bd78c4abe23821fe635",
+      "requirement_id": "REQ-400A9F4014CF",
+      "requirement_text": "1. Add a truthful Hermes runtime family to the SmartSpecPro worker ecosystem.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L83"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L83",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "939173b71d5c3833b4545d37fa61b632a8885429cba75b28bdb497ac7f76adfc",
+      "requirement_id": "REQ-54F7EED630E8",
+      "requirement_text": "2. Position Hermes as an external bring-your-own agent runtime, not as a Desktop Host core runtime.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e8275a13efd5d111b7af4e688a135e359bc69bcc79b42b137e7b4bae30688953",
+      "requirement_id": "REQ-22893A260B08",
+      "requirement_text": "3. Reuse existing delegated worker HTTP and MCP surfaces for Hermes platform access.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L85"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L85",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a42413e39dec2d668408d67343a5b759fc0c33144a95c4e58f1034095baf64f8",
+      "requirement_id": "REQ-65064F2D2BF8",
+      "requirement_text": "4. Let owner-bound Hermes workers participate in `external_connector` and bound-worker flows.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L86"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L86",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0530bd4d88f64bcc61038a661d95f84206dc3033c74ac3a673eff79afabb7611",
+      "requirement_id": "REQ-3DC75416D3D8",
+      "requirement_text": "5. Support Hermes as a channel-companion runtime for messaging and webhook-driven agent workflows.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L87"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "56d2e7799c41324cb0f85561e83e03d56a4a77c0777ebcee41627f3c41453ebc",
+      "requirement_id": "REQ-887F9920750D",
+      "requirement_text": "6. Preserve SmartSpecPro ownership of audit, billing, artifact publication, policy, and delegated auth.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L88"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L88",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4762f03b0be4e1d370ec56fa7976ddae2dd093ce3e6c2f1dc94da832b09fad48",
+      "requirement_id": "REQ-66E2F0510515",
+      "requirement_text": "7. Provide a clear migration and positioning story for OpenClaw-adjacent users who may adopt Hermes.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L89"
+      ],
+      "authority_source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md#L89",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ca8ef4b08fe0bf1bb55c5806d988c5d6f73c77664e022755d30d7285f0ed2b32",
+      "requirement_id": "REQ-41CFF8614D6A",
+      "requirement_text": "8. Keep rollout fail-closed and capability-driven.",
+      "source_spec_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

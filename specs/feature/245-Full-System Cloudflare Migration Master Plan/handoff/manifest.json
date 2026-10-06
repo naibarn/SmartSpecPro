@@ -505,7 +505,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
     "digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
@@ -651,6 +651,73 @@
         "kind": "TEST",
         "line": 22,
         "path": "apps/web/server/services/__tests__/postgresDelegatedWorkerSemaphore.integration.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-inventory-and-cloudflare-foundation: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-inventory-and-cloudflare-foundation",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-search-cache-kv-and-admin-control: implemented_locally_target_probe_required; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-search-cache-kv-and-admin-control",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "implemented_locally_target_probe_required"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-redis-responsibilities-and-durable-objects: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-redis-responsibilities-and-durable-objects",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-database-runtime-and-debian-retirement: partial_local_external_gates_open; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-database-runtime-and-debian-retirement",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "partial_local_external_gates_open"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROVISIONAL / R8 URGENT CUTOVER PRIORITY AMENDMENT / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "value": "PROVISIONAL / R8 URGENT CUTOVER PRIORITY AMENDMENT / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -710,6 +777,70 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-inventory-and-cloudflare-foundation: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-01-inventory-and-cloudflare-foundation",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-search-cache-kv-and-admin-control: implemented_locally_target_probe_required; commit_hash=missing",
+        "line": null,
+        "section": "section-02-search-cache-kv-and-admin-control",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "implemented_locally_target_probe_required"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-redis-responsibilities-and-durable-objects: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-03-redis-responsibilities-and-durable-objects",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-database-runtime-and-debian-retirement: partial_local_external_gates_open; commit_hash=missing",
+        "line": null,
+        "section": "section-04-database-runtime-and-debian-retirement",
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation/deep_implement_config.json",
+        "source_digest": "48dcc436cef1be54da28d41b8f14d4966628de13283712b2f06d91d6944632c8",
+        "value": "partial_local_external_gates_open"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROVISIONAL / R8 URGENT CUTOVER PRIORITY AMENDMENT / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "line": 6,
+        "source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md",
+        "source_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
+        "value": "PROVISIONAL / R8 URGENT CUTOVER PRIORITY AMENDMENT / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -784,8 +915,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 191,
-    "unresolved": 191
+    "total": 184,
+    "unresolved": 184
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.446947Z",

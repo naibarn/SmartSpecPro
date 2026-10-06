@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -18,6 +19,160 @@
       "requirement_digest": "888f8b1687ac722e85b50c4702ed9c905fb14404a9647637cb2da855583171e3",
       "requirement_id": "REQ-C54DA01D011B",
       "requirement_text": "Without this change, users must either:",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L45"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L45",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4a492df2b2609efef79f01f35b79617c48e59efd01f2575b4b1897cea1354c00",
+      "requirement_id": "REQ-C07763D73E26",
+      "requirement_text": "1. Add `fal-ai/gemini-3.1-flash-tts` to the existing fal.ai media model catalog.",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L46"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L46",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e7ef74de020047e4843a927058ba13b1afdf28c417f40f59df52f1c20b143208",
+      "requirement_id": "REQ-1A5C1E973761",
+      "requirement_text": "2. Support single-speaker and multi-speaker TTS in the same Media Studio flow.",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L47"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L47",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "633b4f4b4494a7fc6fcd93bb69335ade3395ca1d44402e989e558fe0df4b743c",
+      "requirement_id": "REQ-6D147D9E206B",
+      "requirement_text": "3. Keep the `voice` field available for simple narration.",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L48"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L48",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "071a171715631f73dae16c1ec6ad0811ffc455d68f0e239717fb6c598c6b5d89",
+      "requirement_id": "REQ-68E5F1920A18",
+      "requirement_text": "4. Expose `language_code` as an optional multilingual hint with auto-detect behavior when omitted.",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L49"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L49",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fbb0f7cb284ac4fa6b778e598d089a8bba604285794347250bab50fe692d6525",
+      "requirement_id": "REQ-CD5FC211E2AC",
+      "requirement_text": "5. Make `speakers` a structured array, not a raw JSON textarea.",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2572daf2feaef0a4ac546caaae5f95e4afc18b0a9f993b82baee4d95ed5fc084",
+      "requirement_id": "REQ-39F8745E6B11",
+      "requirement_text": "6. Preserve the structured speaker payload all the way to the generation service.",
+      "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "45c7ec10119d0cabe287aeb82f277a8ab9de20bde246e525d5df3dd400283570",
+      "requirement_id": "REQ-44E5283A6B05",
+      "requirement_text": "7. Keep the change backwards-compatible for existing audio models.",
       "source_spec_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
       "successor_mapping": [],
       "verification_evidence": [],

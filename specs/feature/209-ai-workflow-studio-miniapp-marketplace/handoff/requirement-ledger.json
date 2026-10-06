@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -92,28 +93,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L38"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L38",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fd2af8ce27e8fb7002193a87f26049e4a997143a48e770a540b3d5023e15e107",
-      "requirement_id": "REQ-8A9F84E0FEFD",
-      "requirement_text": "User sees ready-now / setup-required / unavailable options and chooses or accepts a recommendation",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L57"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L57",
@@ -150,6 +129,490 @@
       "requirement_digest": "bf6ddccd2c2596060abda076e96fad7322aaaf1f160ecf430fb0dc90200d1eb4",
       "requirement_id": "REQ-1AD2749566F8",
       "requirement_text": "Spec 209 SHALL deliver all of the following as one coherent system:",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L81"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9de9bcad5f3e69d8a40ae035ee3cb44de062a7015d256607b5cea962bb801609",
+      "requirement_id": "REQ-2A23A74CEF36",
+      "requirement_text": "1. AI-first workflow generation from natural language.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4524c43f06b090c8ec5f9154168705f564800dec1ae202a3792d5976fb28fe0e",
+      "requirement_id": "REQ-A0F21F2883EC",
+      "requirement_text": "2. AI-first modification of existing workflows.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L83"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L83",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "00977f9675182298e1926bddadd26c108e5d029a3bc740b2906fb35fdff305c9",
+      "requirement_id": "REQ-3D3D69CC2AB5",
+      "requirement_text": "3. Top-down visual workflow canvas.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "41648b256a61f3c51ccfa43a11f71edb063c2b75c6eb7c625de019ffa3b67479",
+      "requirement_id": "REQ-B6DF36A2A99B",
+      "requirement_text": "4. Nested workflows / subflows with explicit contracts.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L85"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L85",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "535ff6b49c25272e3b06c2a6d17ab0a637bcdc08b7a206b1a81066efc1658b69",
+      "requirement_id": "REQ-BE2AB06B3B7A",
+      "requirement_text": "5. Typed data binding between nodes.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L86"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L86",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "eacb0c664310399d7c7e44b7bf2048c17e5ae5c8863689db0e381bee67b8b14e",
+      "requirement_id": "REQ-45EFC3DF9129",
+      "requirement_text": "6. Schema-driven input forms.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L87"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e2ce2986033abd888505f67c1f81b7d33793b8591ad00a74dcd0eeec5578138c",
+      "requirement_id": "REQ-D20551C1EE75",
+      "requirement_text": "7. Schema-driven result rendering.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L88"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L88",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b91a51cf1d422c2ae37bbc37d0f8dfa479d7cd806efe30ce976aba456d8c5bf1",
+      "requirement_id": "REQ-9459D1C578F9",
+      "requirement_text": "8. Reusable workflows that can run without reopening the builder.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L89"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L89",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "70c9c541f0d83ebb36e5151999ab13590e58affd00dd48b37245b2fc44e6a756",
+      "requirement_id": "REQ-B3EDBF535CB2",
+      "requirement_text": "9. Full run, partial run, run-until, run-from, single-node and subflow execution.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L90"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L90",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d656e6cd47431707b03581d66e2980ab8f97864ea9993175be55972c8e45f444",
+      "requirement_id": "REQ-6B78194305FC",
+      "requirement_text": "10. Durable checkpoints and resume.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L91"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L91",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2d23697d34424bc69de86be8a2b9f193d52ec52b241c6b1999898ce3e90498be",
+      "requirement_id": "REQ-52A056AC53AC",
+      "requirement_text": "11. Node-level LLM/model selection.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L92"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L92",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "26d7058fcc50eff8c1c380471f0020e6bb074d4dfbc74cf4a58ae6886f41ce22",
+      "requirement_id": "REQ-11DEF162570D",
+      "requirement_text": "12. Node-level media model selection.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L93"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L93",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "68185371bdef72a2f30edba88b88603296881de9526d9e85d6ab3fa8b6445712",
+      "requirement_id": "REQ-E4E1918FD069",
+      "requirement_text": "13. Reusable model policies and provider fallback rules.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L94"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L94",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8d6f873a3f223abbdb75c2a4d282978ef1ceeed0b7dd553f60d264d7136cc68f",
+      "requirement_id": "REQ-A6E1295F0E14",
+      "requirement_text": "14. Runtime debugging, trace, logs, artifacts, cost and timing.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L95"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L95",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6235d5477ab03c15ca904a23637c8aa19ab83b5e036400937e0a7440864c923e",
+      "requirement_id": "REQ-8275AD45F0BA",
+      "requirement_text": "15. Workflow versioning, diff and rollback.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L96"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L96",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "abaa8bce36fd7dac5955150a1ede416308b797c6e5bb2f50a1aceadac17595da",
+      "requirement_id": "REQ-10FA4DB2F098",
+      "requirement_text": "16. Human approval and runtime user-input waits.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L97"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L97",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d940f1ea87e9f896b8f246cf513f18ef43bf9fe70276f04c1f7d19a1cd863ceb",
+      "requirement_id": "REQ-2BB9D9098398",
+      "requirement_text": "17. Publish-as-Mini-App.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L98"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L98",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b6c2ff8c34acacfe9c306d5abbfda9264529391b6f117f8c4bbf7ad37f3c0e8e",
+      "requirement_id": "REQ-2DA8152FB0D8",
+      "requirement_text": "18. Private, workspace, specific-user, shared-link and public Marketplace access.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L99"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L99",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f8273b894f6b5c4e404063ee3d5769457987e154f85dc72648c683f3ebfa57d6",
+      "requirement_id": "REQ-97A00732F51E",
+      "requirement_text": "19. Creator pricing and revenue participation using the existing SmartAIHub credit/economic plane.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L100"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L100",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "865cd5b1370bf745c1e41dedad0b5e4ef77a22aa01a722fee9e603838645be1e",
+      "requirement_id": "REQ-4340A9A8430A",
+      "requirement_text": "20. Marketplace-safe immutable published versions.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L101"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L101",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0415ddf1c6dae887fe68d5aaf899f9cfcb997b3e91bed11c386b4e1a88fafce9",
+      "requirement_id": "REQ-65A29132D2D0",
+      "requirement_text": "21. Full multi-tenant authorization, audit and billing attribution.",
+      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L102"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L102",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1f67a6fa2cbc5be323dc4cca88ec594f32c6ee023b6d227aea7b1dc05dc2c718",
+      "requirement_id": "REQ-81B95C932564",
+      "requirement_text": "22. Migration from existing Skills/Flows without creating a second orchestration or Job system.",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -972,28 +1435,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L457"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L457",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "85dfde7535668d027a3a91c807010f4087c51ba6b7cefea7254726f6e3a03edd",
-      "requirement_id": "REQ-39DD1EEEED3C",
-      "requirement_text": "What logical outcome and capability contract are required?",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L467"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L467",
@@ -1030,28 +1471,6 @@
       "requirement_digest": "b59da0514ea7c492df1bf52b4b438e007562e2bf354a5259bacaf114475ff35f",
       "requirement_id": "REQ-A42484C978B9",
       "requirement_text": "names, or stale browser state MUST NOT be treated as proof of readiness.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L476"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L476",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1f5d6e2dba7939f61efb5a4767ce9a62dacfc0cb48987dc8c6b06324a6504d25",
-      "requirement_id": "REQ-87E27F23FC1E",
-      "requirement_text": "required capabilities and compatible alternatives",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1206,28 +1625,6 @@
       "requirement_digest": "c4a948e39f8ffa629e4d3a7f17d8b807c4f398f6cb604bb2bbc5ad12bbc46c05",
       "requirement_id": "REQ-A70C2E3652C5",
       "requirement_text": "A Subflow SHALL behave as a reusable callable workflow with a stable contract.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L667"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L667",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "094d8c964a261c9a0ebc388b275d59d201cb283f504d8b4f0d5a246d9a3c8863",
-      "requirement_id": "REQ-2ACF5E39305A",
-      "requirement_text": "required: true",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1426,28 +1823,6 @@
       "requirement_digest": "36ab300ea0e77cbe33e70258b6b8f6ee577a89efe3f6df2790cd9023aa9bc56e",
       "requirement_id": "REQ-5930A1D0ACB1",
       "requirement_text": "Node data binding SHALL be schema-aware.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L795"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L795",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d0a3630555bbec7fc05a98d311c23b00fd1ab4d8296ac4a4125976d80b6a6959",
-      "requirement_id": "REQ-7482EBD11311",
-      "requirement_text": "required",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3084,28 +3459,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1711"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1711",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4f4f868b47d2b32c47e66a2619351fb776ab8779e5dc73be2bad8edee067f665",
-      "requirement_id": "REQ-A22E1D6A2019",
-      "requirement_text": "required permissions",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1717"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1717",
@@ -3392,28 +3745,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1881"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1881",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2a37164b4989d78caf5a022911548df63770830421d55333f41200cb35198e68",
-      "requirement_id": "REQ-380706BBBC6B",
-      "requirement_text": "Spec 207 authorization/reservation as required",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1903"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1903",
@@ -3560,28 +3891,6 @@
       "requirement_digest": "263437ed9f8eddf6e09920be1aa561692a933491525dff75962a57595d6d9ee2",
       "requirement_id": "REQ-4793C94C7550",
       "requirement_text": "Spec 209 UI SHALL map canonical Feature 195 state into workflow-friendly presentation such as:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1983"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L1983",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4b20002ccd2738cdab9a12641c533f4a4fa2b5bc312a4140d3cf82866ceee694",
-      "requirement_id": "REQ-8071A2109D76",
-      "requirement_text": "Reconcile Required",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4118,73 +4427,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2394"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2394",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "95d67e2bb83c400a8511e913bc680cdfe02d68d00e54ac820001a218ff9f3dd7",
-      "requirement_id": "REQ-87EE7B43B519",
-      "requirement_text": "unconnected required inputs",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2431",
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3393"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2431",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "31a3c3047299e54bb0685d4a7c29dd5b6542e2778ea3d844fb7e5e2f9b7ad31d",
-      "requirement_id": "REQ-B5DA0FB88FE8",
-      "requirement_text": "required integrations",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2432"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2432",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3a261d0440f41e02d8d785866c1749b3dce030b4b603ecbd6c639c29411cada2",
-      "requirement_id": "REQ-CB23134A5996",
-      "requirement_text": "required local Runner/browser if any",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2447"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2447",
@@ -4397,28 +4639,6 @@
       "requirement_digest": "23b0043b54998bc35c75ae576dd946c4ca82766a65d0b29f567942e93d98873a",
       "requirement_id": "REQ-ABA285936738",
       "requirement_text": "A publisher MUST NOT be able to expose a dependency beyond the rights granted by that dependency.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2562"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L2562",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "47cb80128d4032656bf93837e4d97ebd73c789e8b31b7ca69f2fac14bb743915",
-      "requirement_id": "REQ-F68113B2F7F4",
-      "requirement_text": "→ publication blocked or Skill must be replaced.",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5153,28 +5373,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3212"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3212",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "674501c5b9935be21bc1a0669c462fd8f2a837b2ec88148667c68a23bebe0261",
-      "requirement_id": "REQ-6A56ADA5DDF3",
-      "requirement_text": "required binding validation",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3228"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3228",
@@ -5277,28 +5475,6 @@
       "requirement_digest": "0f434c59311665ae9413db4a5f0a0004df4cead9412b853f2dc25a1861335467",
       "requirement_id": "REQ-5646E9BDA4BC",
       "requirement_text": "AI Builder SHALL be evaluated on:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3308"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3308",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e34fb7573f32c7495f1628b1f33023acdac93c20d9d3af0786d9caf63ab4ef0f",
-      "requirement_id": "REQ-463D5888A4AF",
-      "requirement_text": "silent-tool-switch rate (must be zero)",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5453,28 +5629,6 @@
       "requirement_digest": "4f8eda7a71b1f8672210ed505b493c12e5d21eb71bdb07018e550634e57ccc47",
       "requirement_id": "REQ-0821F52D4E77",
       "requirement_text": "A saved workflow SHALL not become structurally invalid merely because one external model disappears.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3394"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L3394",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1fa77855edf5a396613183b60c66dd3a791613573a903abbc7ea83f7b033553d",
-      "requirement_id": "REQ-9C5DC7B23507",
-      "requirement_text": "required Runner/device",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -10015,28 +10169,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L4729"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L4729",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6fcf023eb5bb1c38ee8befc2b6a62c82019491c0a0d8be81ed188d73b001204a",
-      "requirement_id": "REQ-135F775D528C",
-      "requirement_text": "refresh/rebase/merge required",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L4732"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L4732",
@@ -10183,28 +10315,6 @@
       "requirement_digest": "98b13ce4152f076071ae6c44085e6b9c5f50c7fa456fa7afab00c332b7efc479",
       "requirement_id": "REQ-014B30C4C3E0",
       "requirement_text": "Test fixtures SHALL support assertions such as:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L4786"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L4786",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "57f3d15c4c16e81ff5c185d5a8a2b45c60042cc9f8d2e945ec7dfc5f8195bb4d",
-      "requirement_id": "REQ-08C7E15D48B0",
-      "requirement_text": "required fields present",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11599,28 +11709,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5046"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5046",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5d492150616c2952dac73810d83a2dedaa9e6288ead073e5a5c426bbb08b5ed5",
-      "requirement_id": "REQ-E67057E3573D",
-      "requirement_text": "untrusted/unsigned package where signing is required",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5052"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5052",
@@ -11745,28 +11833,6 @@
       "requirement_digest": "8286f591e2f1dcd83ee6aa2f6b64204c3e7598cf751ae8fbb9e6930ce42c70c4",
       "requirement_id": "REQ-036B6A6C4B80",
       "requirement_text": "A human task SHALL define:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5104"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5104",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7791dbe9bbf8f8bb311f2fa67adedee30e6998e580c2de75b3a27f40347c5c24",
-      "requirement_id": "REQ-B98B444FC28B",
-      "requirement_text": "required response type",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -12207,28 +12273,6 @@
       "requirement_digest": "582ead1f530b5788e6c17926560f435ab2f827720b0164d277d57e8a60a7d22b",
       "requirement_id": "REQ-DBF9EADCBB9C",
       "requirement_text": "Ownership transfer SHALL require authorized action and SHALL preserve:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5308"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L5308",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1b52767600d1264aa01253d41f5e7f5443f4e5f0cbeea767a96f1c9a9c19ca1b",
-      "requirement_id": "REQ-071B7C6A7507",
-      "requirement_text": "required attribution",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -16659,50 +16703,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6379"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6379",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5b73830d49921ba7051b8e2a7720accf33511dd1602c897dcca7c932d7ddbaf1",
-      "requirement_id": "REQ-703ABE42DBF5",
-      "requirement_text": "required connection disclosures",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6380"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6380",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e4284fc5760e1d7264b47c5137701abd07803b0d5d662e378da5d16905938818",
-      "requirement_id": "REQ-90F36401D0FE",
-      "requirement_text": "consumer acceptance timestamp when required",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6397"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6397",
@@ -17539,28 +17539,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6515"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6515",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "500f0578ca458491729e264c18f99d6f6399baf9ffc913e568ad7903dbc7a43c",
-      "requirement_id": "REQ-A0599D63ECE9",
-      "requirement_text": "registration_mode: NONE | OPTIONAL | REQUIRED",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6522"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6522",
@@ -17663,28 +17641,6 @@
       "requirement_digest": "b9822b4f338da7a1c84cc065f356c49ef10bc45e86327c0c8fd21be551d4b558",
       "requirement_id": "REQ-76A5C05ECC17",
       "requirement_text": "The default card MUST show at least:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6545"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6545",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "975cdbaebaebb877054aa527f2d1def20e04ebbac27f25d5f10fc6c2a1ab0f3e",
-      "requirement_id": "REQ-5B2D7348B94F",
-      "requirement_text": "required external tools, required Skill bundles, readiness summary,",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -18001,28 +17957,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6671"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6671",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7b3362e9fe8bd1c97699e948c3df34c5995204ef0e82bd62a92cdc5b68630a39",
-      "requirement_id": "REQ-174A1751DD8D",
-      "requirement_text": "required capabilities, preferred tools, required Skill bundles, platform/runtime constraints",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6676"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6676",
@@ -18059,28 +17993,6 @@
       "requirement_digest": "18457ee5136fd90eb671b6bc04ad0178639eed37a8d30014da4862c9120144b4",
       "requirement_id": "REQ-6ABAB80C3547",
       "requirement_text": "structured facets above. Search SHALL support:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6683"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6683",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "71fce253d6e78d3f9386dc1b1f8057ac42cfd9873ef91c24634cbf70d14b5e5c",
-      "requirement_id": "REQ-E75B789BB3C2",
-      "requirement_text": "required external tool or Skill filtering",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -18265,50 +18177,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6734"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6734",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9ff3c0b5d96dc899768ac7341238ff51f23cf42472778e845c67b15fe42e57a5",
-      "requirement_id": "REQ-1EDEAE1545A7",
-      "requirement_text": "required Runner/device/browser profile",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6735"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6735",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "37c159040c9c50d16c8ee0f9d230da4ad1ba45e0ab6ca03c38ca45c38e619426",
-      "requirement_id": "REQ-A59F2B3DF0B6",
-      "requirement_text": "required scopes/permissions and user-owned connection type",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6743"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6743",
@@ -18323,28 +18191,6 @@
       "requirement_digest": "c7f3afaf0144bf8d4e78ca7fa4119bfab838940d390ee9c8e13ba7831bc2982b",
       "requirement_id": "REQ-FBBDAED66C3D",
       "requirement_text": "The listing SHALL show before Register, Select or Run:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6746"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6746",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0f7052121b4e75629f881fe3b109dac364bbd88ec1fc090d95de2f6d798db942",
-      "requirement_id": "REQ-8195CFECBB03",
-      "requirement_text": "Required capability / compatible choices",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -18411,28 +18257,6 @@
       "requirement_digest": "671db80efe6d5c043c211a2ffa49ccc1c14650955a565ed7bd364b83ef46c2fd",
       "requirement_id": "REQ-C97F9B82DCB2",
       "requirement_text": "another approved external-tool profile, the bundle SHALL declare:",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6768"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6768",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4af672b7ffc1fc60dbfdf4c0d1a844a344712618874bffc53ed0c7739d0bcc59",
-      "requirement_id": "REQ-0915047A9C4D",
-      "requirement_text": "all required nested Skill files and schemas",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -19607,28 +19431,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6961"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6961",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f5242550f2e07919f3cda32db8e514e55ae1c0e0d28983125de6fc344defafc2",
-      "requirement_id": "REQ-562850BF9A46",
-      "requirement_text": "required capability and input/output contract",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6978"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L6978",
@@ -19761,28 +19563,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7051"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7051",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "adec0eeddbe2e3c3547d00693f57bbe9dbb9d8b6aac4a8bfaa77589084d59660",
-      "requirement_id": "REQ-2CDCC5F4219E",
-      "requirement_text": "required permissions and scopes",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7056"
       ],
       "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7056",
@@ -19797,50 +19577,6 @@
       "requirement_digest": "e7c7f9bd059c9ebde49af7c1c1f3043c54f6db4c5930cfb195b331f8f2ca57f6",
       "requirement_id": "REQ-4757AD8110EE",
       "requirement_text": "The Builder MUST NOT infer readiness from a client-side tool label, an old",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7069"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7069",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3dfa0d396c26326f5e86e1979e2d9282064a724f90aa8e1dc1753031c7013ca1",
-      "requirement_id": "REQ-8C8B67910912",
-      "requirement_text": "Skill/bundle setup or user permission is still required.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7081"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7081",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6f2336515879ebc37b0d80a86c84c1cbb623f5d0d4eb5e765ec58ba47165756d",
-      "requirement_id": "REQ-C12CE0561223",
-      "requirement_text": "Required discovery or readiness evidence is unavailable.",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -20435,72 +20171,6 @@
       "requirement_digest": "c53d2ac55b4b6351d8588f191d0882c2a8dee46b564b8be6e7aa1915c3022933",
       "requirement_id": "REQ-32177EB273CE",
       "requirement_text": "- [ ] All option, readiness and selection APIs preserve existing tenant, entitlement, secret, economic and retired-system boundaries.",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7230"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7230",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6ee97c6c89d80b4c2b5a5b38fda6cd10aa98d63ca96559f3912a6dd6ce22a4e6",
-      "requirement_id": "REQ-A020E5BA971D",
-      "requirement_text": "- labels each option ready-now, setup-required, unavailable or unknown;",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7268"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7268",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b80023c4e1c799d4dd6ed7916b7fb00c6ab78deecf00793fd7d57e8f4e9f9dcb",
-      "requirement_id": "REQ-96F283D3AB6E",
-      "requirement_text": "13b. The published listing shows every required external tool, Runner/device,",
-      "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7291"
-      ],
-      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md#L7291",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3af75cd7ff3ac3099b2c9a6f6177b9968b6dc408331661158503d653127b1e2d",
-      "requirement_id": "REQ-A1E2E4676C36",
-      "requirement_text": "sees required inputs and estimated credits,",
       "source_spec_digest": "84f03b5c8b66a26def6c2f9e9b27e9c7ec86af23976a38d16de23dfe5062e9f4",
       "successor_mapping": [],
       "verification_evidence": [],

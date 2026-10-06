@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
     "digest": "23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
@@ -515,6 +515,17 @@
         "digest": "83d26145bb8ddb5b21fadd89569627c332d26d6a2ef8020f60de4fbf2198c253",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections/section-12-dependency-rollout-docs.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed - direction updated to official HyperFrames runtime platform",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
+        "source_digest": "23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
+        "value": "Proposed - direction updated to official HyperFrames runtime platform"
       }
     ],
     "stale_fields": [],
@@ -531,6 +542,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed - direction updated to official HyperFrames runtime platform",
+        "line": 5,
+        "source": "specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/spec.md",
+        "source_digest": "23af293b09ac3fcf4ee31a04dc9661c198e24f21884db15a4a6248c2ea7b4667",
+        "value": "Proposed - direction updated to official HyperFrames runtime platform"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -660,8 +683,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 492,
-    "unresolved": 492
+    "total": 504,
+    "unresolved": 504
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.099609Z",

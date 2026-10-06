@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -150,6 +151,160 @@
       "requirement_digest": "f4ba5a934e79eb8fb5a828358fcb02eed12dc21e9b2008c97e9c010a6b9642d0",
       "requirement_id": "REQ-7147DEEE3AD1",
       "requirement_text": "7. **Feature parity** — Any new Chat feature (new skill, memory improvement) should automatically work in Team Room",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L129"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L129",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "048f016ad9f23b1a633ab3a2ef2d4714588e8dcddc91fce7f58ede39f6461421",
+      "requirement_id": "REQ-D83FEDA82534",
+      "requirement_text": "1. Team Room agents respond in the correct language matching the objective",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L130"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L130",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5478e9cdc78be9174f6febfebf102bc9eeecef449c7f4587d6ac227d73e73c19",
+      "requirement_id": "REQ-2C788FA8FCB5",
+      "requirement_text": "2. Team Room agents use detected skills (not just team-discussion-assistant)",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L131"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L131",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b6be4bfe4156c8f5697faaf34bc0fe6c22e2d365eeed2ba70efbee53842a25ec",
+      "requirement_id": "REQ-489232CFEEAD",
+      "requirement_text": "3. Team Room agents don't loop with the same content",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L132"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L132",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ed92ca8a0bf3109f9556cc4d5e96387544042688f65d1da4945fce15fb6d33a6",
+      "requirement_id": "REQ-2F1194B7136E",
+      "requirement_text": "4. Team Room agents have memory context injected",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L133"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L133",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8b9f80b5fc07482ead1ca5040289ad799f0e0852b25676d186d9b1655ae7c426",
+      "requirement_id": "REQ-2E007634AE49",
+      "requirement_text": "5. Adding a new skill to Chat automatically makes it available in Team Room",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L134"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L134",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "432a7402fd1ae617e5d226537b700aa55c6a92ea3b0489cd6fc2b3a8c2e3280d",
+      "requirement_id": "REQ-730E3669A11C",
+      "requirement_text": "6. Existing team rooms and runs continue to work (backward compatible)",
+      "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L135"
+      ],
+      "authority_source": "specs/feature/051-team-room-reuse-chat-pipeline/spec.md#L135",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3e30807be81fce8581eda43d827bdab420d96c79bb8ac22c601f6dd79c8f9cbb",
+      "requirement_id": "REQ-37ABDA1B2332",
+      "requirement_text": "7. All existing tests pass",
       "source_spec_digest": "1a64721eae0c5e5d62e0e01d19fc579035d063694d03552533185959c45b78a8",
       "successor_mapping": [],
       "verification_evidence": [],

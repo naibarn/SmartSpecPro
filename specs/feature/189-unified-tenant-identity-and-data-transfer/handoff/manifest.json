@@ -296,7 +296,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
     "digest": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
@@ -420,6 +420,17 @@
         "digest": "84d20fe4766cae4a5ac79885b402da3712e6e71ec10038b4aed9882f9201c231",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/189-unified-tenant-identity-and-data-transfer/sections/section-08-verification-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: IMPLEMENTED LOCALLY / NOT ENABLED — additive schema, guarded identity move,",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
+        "source_digest": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
+        "value": "IMPLEMENTED LOCALLY / NOT ENABLED — additive schema, guarded identity move,"
       }
     ],
     "stale_fields": [],
@@ -436,6 +447,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: IMPLEMENTED LOCALLY / NOT ENABLED — additive schema, guarded identity move,",
+        "line": 4,
+        "source": "specs/feature/189-unified-tenant-identity-and-data-transfer/spec.md",
+        "source_digest": "e636171f8a795643862c89825b8bffc37b3fdf07269476339c7abf4e148f74fe",
+        "value": "IMPLEMENTED LOCALLY / NOT ENABLED — additive schema, guarded identity move,"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -530,8 +553,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 60,
-    "unresolved": 60
+    "total": 71,
+    "unresolved": 71
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.619566Z",

@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
     "digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
@@ -133,6 +133,17 @@
         "digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: FORTY-PASS DOCUMENT-AUDITED DESIGN / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 9,
+        "source": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
+        "source_digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
+        "value": "FORTY-PASS DOCUMENT-AUDITED DESIGN / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -149,6 +160,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: FORTY-PASS DOCUMENT-AUDITED DESIGN / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED",
+        "line": 9,
+        "source": "specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md",
+        "source_digest": "769f585b63b4e9eb008eaf7b7ad248b17a45a2ffa2418e7cf4162dfe16c2eb76",
+        "value": "FORTY-PASS DOCUMENT-AUDITED DESIGN / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
     "digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
@@ -440,6 +440,31 @@
         "digest": "8b9498c2b6dc0f1d53c58289da3ec8a063b5b805eebe5a2d9be64fa6f8397fa6",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/sections/section-09-observability-rollout-verification.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d72b83ab6",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-foundation-contracts: complete; commit_hash=d72b83ab6",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-foundation-contracts",
+        "source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json",
+        "source_digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Implemented in working tree — production/browser/live-credit validation pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
+        "source_digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+        "value": "Implemented in working tree — production/browser/live-credit validation pending"
       }
     ],
     "stale_fields": [],
@@ -456,6 +481,31 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d72b83ab6",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-foundation-contracts: complete; commit_hash=d72b83ab6",
+        "line": null,
+        "section": "section-01-foundation-contracts",
+        "source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/implementation/deep_implement_config.json",
+        "source_digest": "3cc182da33762e108fb82cd8956a2fd806669cb9b88490ae4035a9eb25ce71dc",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Implemented in working tree — production/browser/live-credit validation pending",
+        "line": 7,
+        "source": "specs/feature/141-marketplace-auto-review-staged-storyboard-pipeline/spec.md",
+        "source_digest": "a9ffa61f36b08510e10d60e7f711265cf87f3fef5d8594b864dd710dac212a6b",
+        "value": "Implemented in working tree — production/browser/live-credit validation pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -555,8 +605,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 116,
-    "unresolved": 116
+    "total": 128,
+    "unresolved": 128
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.284911Z",

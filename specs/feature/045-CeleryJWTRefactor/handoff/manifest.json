@@ -198,7 +198,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/045-CeleryJWTRefactor/spec.md",
     "digest": "b6595e76a8f078a8223d3791e4b2fc160a08e5ddf4521f1cfbebf35684a9283e",
@@ -287,6 +287,62 @@
         "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/045-CeleryJWTRefactor/sections/section-04-verification-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "273b5a86",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-automation-copilot-cleanup: complete; commit_hash=273b5a86",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-automation-copilot-cleanup",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "02d2c013",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-agency-creator-llm-client: complete; commit_hash=02d2c013",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-agency-creator-llm-client",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d0980833",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-agency-creator-internal-api: complete; commit_hash=d0980833",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-agency-creator-internal-api",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "3529c531",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-verification-tests: complete; commit_hash=3529c531",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-verification-tests",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
       }
     ],
     "stale_fields": [],
@@ -303,6 +359,60 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "273b5a86",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-automation-copilot-cleanup: complete; commit_hash=273b5a86",
+        "line": null,
+        "section": "section-01-automation-copilot-cleanup",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "02d2c013",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-agency-creator-llm-client: complete; commit_hash=02d2c013",
+        "line": null,
+        "section": "section-02-agency-creator-llm-client",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d0980833",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-agency-creator-internal-api: complete; commit_hash=d0980833",
+        "line": null,
+        "section": "section-03-agency-creator-internal-api",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "3529c531",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-verification-tests: complete; commit_hash=3529c531",
+        "line": null,
+        "section": "section-04-verification-tests",
+        "source": "specs/feature/045-CeleryJWTRefactor/implementation/deep_implement_config.json",
+        "source_digest": "0100efb4b070eaa891a3f81f68fc00133e92a0a183593b4757308e22e8f875d2",
+        "value": "complete"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

@@ -138,7 +138,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
     "digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
@@ -187,6 +187,17 @@
         "digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
+        "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
+        "value": "DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED"
       }
     ],
     "stale_fields": [],
@@ -203,6 +214,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED",
+        "line": 6,
+        "source": "specs/feature/252-AI Film Studio — Chat-First Director Graph/spec.md",
+        "source_digest": "4bb4f9da8bf18b4cba771e7416bb1c37786e18d11b111968a50e54f5a8f7129f",
+        "value": "DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

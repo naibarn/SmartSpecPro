@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
     "digest": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
@@ -555,6 +555,17 @@
         "digest": "6b09dfeea5fc2ef2ada52abb5fb1f4f4ea964c2acb711c3ecf44104ddac2c0ca",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/165-worker-comfyui-mcp-control/sections/section-09-integration-packaging-and-release.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready — spec audit closed (2026-08-27)",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
+        "source_digest": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
+        "value": "Implementation-ready — spec audit closed (2026-08-27)"
       }
     ],
     "stale_fields": [],
@@ -571,6 +582,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready — spec audit closed (2026-08-27)",
+        "line": 3,
+        "source": "specs/feature/165-worker-comfyui-mcp-control/spec.md",
+        "source_digest": "e88be316d6efea722a6572f64441e4bf0d6331ee82013dc320533ef9267f2dc0",
+        "value": "Implementation-ready — spec audit closed (2026-08-27)"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -740,8 +763,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 203,
-    "unresolved": 203
+    "total": 184,
+    "unresolved": 184
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.454433Z",

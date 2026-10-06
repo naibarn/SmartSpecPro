@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -26,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L408"
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L80"
       ],
-      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L408",
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L80",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -37,9 +38,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1c04ebb2c0c776d365d46cd1a19114cb487c66cb6bfd8113a208da03d85da24a",
-      "requirement_id": "REQ-D0C26623550B",
-      "requirement_text": "\"required\": [\"shotId\", \"scene\", \"actions\", \"camera\", \"continuityLocks\", \"referenceBindings\", \"dialogue\"],",
+      "requirement_digest": "ea704af812f833b65e83b85d929595f50652a98562fd42a4254b87adaccceebf",
+      "requirement_id": "REQ-9B4D52510C0C",
+      "requirement_text": "1. Provide rich, cinematic sound prompts for video models that support native audio when `nativeAudioEnabled === true`.",
       "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -48,10 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L446",
-        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L456"
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L81"
       ],
-      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L446",
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L81",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -60,9 +60,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ca233ff81345c331ce4fd7125f577b5d861a76951dc786fda0fe27460ada80bc",
-      "requirement_id": "REQ-078F98FD4E33",
-      "requirement_text": "- Dialogue: [Speaker] speaks with [Delivery]: \"[Exact Thai Dialogue]\". Visible mouth movement must lock with every syllable.",
+      "requirement_digest": "5ebd21ea67598dfa6726f14d049b3291f4fb7ab469944b8099302f0ca5531098",
+      "requirement_id": "REQ-FD39FF18EFB5",
+      "requirement_text": "2. Strictly enforce dialogue-only generation when `nativeAudioEnabled === false`, eliminating unwanted background noise and SFX hallucination.",
       "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -71,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L458"
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L82"
       ],
-      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L458",
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -82,9 +82,163 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4db2504bfeef3ab31fa0d20c326d1cd7c36d5e0ec1fdc7ab7e29ee2dd0457601",
-      "requirement_id": "REQ-F33223EF98A0",
-      "requirement_text": "- NEGATIVE AUDIO CONSTRAINT: Spoken dialogue only. Do not generate any sound effects, foley, footsteps, object handling sounds, room tone, ambience, or background music. The environment must remain acoustically clean and silent.",
+      "requirement_digest": "78ef4dfb7295829631a8ae0009f34158db7153c1e9ea76bdd1487226a020675b",
+      "requirement_id": "REQ-674F5837F026",
+      "requirement_text": "3. Bridge both prompt authoring engines:",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L83"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L83",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "36dfe99a14dca1232d06e6078f1e6b06abd188a2e476093435d00b9e5670dca6",
+      "requirement_id": "REQ-17EA8DDA3A48",
+      "requirement_text": "- **Legacy:** `verticalDramaVideoMotionPromptGeneration.ts`",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c63945d676607dff457ce076fd86f2b83317e7319ca5fdeda759e2e7fa51c2c2",
+      "requirement_id": "REQ-13F2A4DE9043",
+      "requirement_text": "- **Enhanced:** `verticalDramaEnhancedVideoPrompt.ts` + `generic-commercial-video-director` Python Agents SDK v11.",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L85"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L85",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "90ea02c50a7acf4f310e033bc59724606b95dfb92dea8d7434d2f2b019361d03",
+      "requirement_id": "REQ-1C12DAD09E94",
+      "requirement_text": "4. Establish the `SeriesSoundBible` and `ShotAudioIntent` schemas to ensure acoustic continuity (voice identity, room tone consistency) across consecutive shots.",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L86"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L86",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fde85786f664c5a3847205ecf784fd4a4ef270c20dcb8340e29ec09c0a48ba7e",
+      "requirement_id": "REQ-18A28BC16A73",
+      "requirement_text": "5. Create a model capability matrix for native audio (Gemini Omni, Grok Imagine 1.5, MiniMax H3, Seedance 2.0/2.5, Veo 3/3.1, Wan 3.x).",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L87"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0ff962c4d722498acba30258559ba4b9528e33b4eebd822c6630217ee5ac6757",
+      "requirement_id": "REQ-B1A240A39ADF",
+      "requirement_text": "6. Implement an automated Audio QC Engine (VAD, Faster-Whisper ASR, Lip-Sync, Event Detection, True Peak/Clipping).",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L88"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L88",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6efbe8700af5e93160f752a27df767a4b03e19c20db9f7f5fcacd21c05b2fb3b",
+      "requirement_id": "REQ-676FEE9BD0BB",
+      "requirement_text": "7. Implement a surgical repair loop: Prompt Patching, Demucs v4 AI Stem Separation (to extract voice and swap with TTS without re-rendering the whole video), and targeted regeneration.",
+      "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L89"
+      ],
+      "authority_source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md#L89",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8103cb37fab14934040de11c4b60c69524000e9ceaf754019fde24df0b7e6d85",
+      "requirement_id": "R128",
+      "requirement_text": "8. Support professional episode assembly with J-cuts, L-cuts, room-tone crossfading, dialogue-priority ducking, and EBU R128 loudness mastering (-14 LUFS for vertical social drama).",
       "source_spec_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
       "successor_mapping": [],
       "verification_evidence": [],

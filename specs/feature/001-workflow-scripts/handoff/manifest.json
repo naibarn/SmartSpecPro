@@ -100,7 +100,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/001-workflow-scripts/spec.md",
     "digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
@@ -168,6 +168,17 @@
         "kind": "TEST",
         "line": 89,
         "path": "tests/ss_autopilot/test_error_handler.py"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Active",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/001-workflow-scripts/spec.md",
+        "source_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+        "value": "Active"
       }
     ],
     "stale_fields": [],
@@ -199,6 +210,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Active",
+        "line": 6,
+        "source": "specs/feature/001-workflow-scripts/spec.md",
+        "source_digest": "345a500a1aee9a52053ea98d323f77b1fe960d82bf1f13411adccb3c865a9117",
+        "value": "Active"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

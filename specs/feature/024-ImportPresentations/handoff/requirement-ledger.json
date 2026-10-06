@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -18,6 +19,138 @@
       "requirement_digest": "0e023492a247593d6125c046945dd97542707958ee6436e1f53927f20ab8275b",
       "requirement_id": "REQ-870C3632871F",
       "requirement_text": "Users who have existing presentations in Google Slides or PowerPoint (.pptx) must currently recreate them manually inside the SmartSpecPro Presentation Editor. This is a significant barrier to adoption. The feature adds one-way import: convert external presentations into SmartSpecPro's internal `PresentationSlideContent` schema, placing the result in the user's library as an editable deck.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L18"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L18",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4f48b264787378373c8769d0e0d0725bf09d6cdb76b958ed1b1030becb70b44d",
+      "requirement_id": "REQ-FB82B9738019",
+      "requirement_text": "1. Allow users to **upload a `.pptx` file** and have it converted to an editable presentation deck.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L19"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L19",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7733f925b349c1995fe0887d820a8d3e31dbba6297edf19569e542462924b666",
+      "requirement_id": "REQ-C4E3F3F1E98A",
+      "requirement_text": "2. Allow users to **paste a Google Slides URL** and have it imported via the Google Slides API.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L20"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L20",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f2737194b1db8e1867d7042d851a7e0aa9f96a34b1f4d32f1117c5dd055ef09d",
+      "requirement_id": "REQ-1015F1F4982B",
+      "requirement_text": "3. Map all supported element types (text, image, rectangle, line) faithfully.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L21"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L21",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9a90ec0f2db557cd961eafae93288ad8e8787886c8afe30ec26db7722d9a27d9",
+      "requirement_id": "REQ-68874FB9F82A",
+      "requirement_text": "4. Log unsupported elements (table, chart, SmartArt, gradient, animation) as `fidelityWarnings` so users understand what was lost.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L22"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L22",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "be98af1417f26c332858b4325c8196ee36593819d22ac6053e94f8286a0a876a",
+      "requirement_id": "REQ-FBE2C8897433",
+      "requirement_text": "5. Present a **pre-import fidelity summary** so users can decide whether to proceed.",
+      "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/024-ImportPresentations/spec.md#L23"
+      ],
+      "authority_source": "specs/feature/024-ImportPresentations/spec.md#L23",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6961d19794bcfe9641db4f1fdc27bfcd84d38ed329a05543319e529e21e34bd1",
+      "requirement_id": "REQ-DBCFBC5D25D5",
+      "requirement_text": "6. Store the source attachment in `presentationSourceAttachments` for audit and re-import.",
       "source_spec_digest": "ee0ff7da5b872270e8143309c89967577b50efc203c8aa6757cd7931f505e6b7",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -271,7 +271,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
     "digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
@@ -320,6 +320,28 @@
         "digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED — implementation-ready architecture candidate; production certification pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
+        "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+        "value": "PROPOSED — implementation-ready architecture candidate; production certification pending"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready design candidate. This document defines contracts and acceptance gates; it is not evidence that the capability is implemented or production-certified.",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 20,
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
+        "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+        "value": "Implementation-ready design candidate. This document defines contracts and acceptance gates; it is not evidence that the capability is implemented or production-certified."
       }
     ],
     "stale_fields": [],
@@ -336,6 +358,28 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED — implementation-ready architecture candidate; production certification pending",
+        "line": 5,
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
+        "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+        "value": "PROPOSED — implementation-ready architecture candidate; production certification pending"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready design candidate. This document defines contracts and acceptance gates; it is not evidence that the capability is implemented or production-certified.",
+        "line": 20,
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
+        "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+        "value": "Implementation-ready design candidate. This document defines contracts and acceptance gates; it is not evidence that the capability is implemented or production-certified."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -355,8 +399,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 89,
-    "unresolved": 89
+    "total": 86,
+    "unresolved": 86
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.334781Z",

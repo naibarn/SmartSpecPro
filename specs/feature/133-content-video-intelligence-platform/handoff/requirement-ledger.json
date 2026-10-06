@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -84,50 +85,6 @@
       "requirement_digest": "242929dd3386d0aaa3700c4a75b28fa3ee2af72ea9c1dcbefc334c622e8fe83c",
       "requirement_id": "REQ-FADA18D2E284",
       "requirement_text": "new execution path — but BOTH must honor the identical contract in §6 from",
-      "source_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/133-content-video-intelligence-platform/spec.md#L506"
-      ],
-      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L506",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f742537429ca7650313974d916ae6d1bfe6e71ad09ff627cc84f3a86aa89a2a6",
-      "requirement_id": "REQ-CDD39548EEAC",
-      "requirement_text": "\"compositionId\": \"GenericTemplate\",            // must equal GENERIC_TEMPLATE_COMPOSITION_ID",
-      "source_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/133-content-video-intelligence-platform/spec.md#L513"
-      ],
-      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L513",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "71c17fc042b9a7749aa7aed14621f002b2c8a8d3be39f43721eb8d7f69daefde",
-      "requirement_id": "REQ-C60E63C2E2A2",
-      "requirement_text": "\"durationInFrames\": 1350                        // authoritative; worker must not recompute",
       "source_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -400,28 +357,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/133-content-video-intelligence-platform/spec.md#L1079"
-      ],
-      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1079",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c7f56e688a72a4514517ad6dfa8c24dc14a4d383c3bebae5f87dbed117ff4f63",
-      "requirement_id": "REQ-ED78F62ABE5C",
-      "requirement_text": "| Threat | Vector | Mitigation |",
-      "source_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/133-content-video-intelligence-platform/spec.md#L1081"
       ],
       "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1081",
@@ -546,28 +481,6 @@
       "requirement_digest": "8047051eb6bcb7da4ae677ff63afba0c46e02bfeb8ef6271012eaf5436a6c5f0",
       "requirement_id": "REQ-7C8A0A478D14",
       "requirement_text": "| Elevation | skills emitting unregistered scene/template ids | fail-closed enum validation at schema layer |",
-      "source_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/133-content-video-intelligence-platform/spec.md#L1100"
-      ],
-      "authority_source": "specs/feature/133-content-video-intelligence-platform/spec.md#L1100",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "40ac7ec9d63e25e5282d2c3842b0904a89c2b6309541e2d20ea15e06d5d54ade",
-      "requirement_id": "REQ-0D2C80885E31",
-      "requirement_text": "| Metric | Target |",
       "source_spec_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
       "successor_mapping": [],
       "verification_evidence": [],

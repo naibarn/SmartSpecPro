@@ -326,7 +326,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/036-LiveBrowserExperience/spec.md",
     "digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
@@ -460,6 +460,17 @@
         "digest": "80927f54c7f9a6dc519ad367b78208dec4e092c9680b8858125dac1f891728fd",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/036-LiveBrowserExperience/sections/section-07-observability-rollout-and-data-safety.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/036-LiveBrowserExperience/spec.md",
+        "source_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -476,6 +487,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/036-LiveBrowserExperience/spec.md",
+        "source_digest": "85dd3cabe0a11203824817b3a808c80f5fa253a629d22a626035b736a733c153",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

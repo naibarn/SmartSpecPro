@@ -348,7 +348,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/034-ResearchStoryboardBuilder/spec.md",
     "digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
@@ -494,6 +494,17 @@
         "kind": "TEST",
         "line": 158,
         "path": "apps/web/server/routers/skillDiscoveryTool.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/034-ResearchStoryboardBuilder/spec.md",
+        "source_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -518,6 +529,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/034-ResearchStoryboardBuilder/spec.md",
+        "source_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -627,8 +650,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 42,
-    "unresolved": 42
+    "total": 44,
+    "unresolved": 44
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.540345Z",

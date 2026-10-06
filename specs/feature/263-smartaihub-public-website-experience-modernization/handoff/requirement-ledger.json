@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -158,28 +159,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L89"
-      ],
-      "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L89",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "402f654b968f5a18c88ec3a9f72b3c52d8341447cadb4f9efbf991c5bf85e2d6",
-      "requirement_id": "REQ-49109D422612",
-      "requirement_text": "│ defines WHAT the public experience must communicate and protect",
-      "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L117"
       ],
       "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L117",
@@ -304,28 +283,6 @@
       "requirement_digest": "4716e39aba2476d50ef5a9be200b320a029aa8b33320c615206cbe5c91ffe7e9",
       "requirement_id": "REQ-B548A3DF9C65",
       "requirement_text": "The site MUST define explicit public journeys instead of treating every CTA as a generic signup link.",
-      "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L267"
-      ],
-      "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L267",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "be895e262fa707948e49fd068229175ee193f39decf35293567ce4a01ddff80f",
-      "requirement_id": "REQ-4D1A77583D42",
-      "requirement_text": "→ auth only when required",
       "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4823,28 +4780,6 @@
       "requirement_digest": "456f6fe8af3cafc1bc9cbe84779db20baabd9613deb129e81f2638e71b6cfa9b",
       "requirement_id": "REQ-4532C558FADE",
       "requirement_text": "Required editorial workflow:",
-      "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L2203"
-      ],
-      "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L2203",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "88990d9bf60e94641d677599c76d91fd3338ddebe0fabc1b93cf0043718525fc",
-      "requirement_id": "REQ-96B7D64D85A7",
-      "requirement_text": "→ Roll back if required",
       "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -9473,28 +9408,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3387"
-      ],
-      "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3387",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8925c6835cc23b524ac2cd8086e97ddc61c15bf02040bf21ed1f62c8d8dd6223",
-      "requirement_id": "REQ-BC8297552F6D",
-      "requirement_text": "- one automated test may satisfy multiple requirements only when the mapping is explicit;",
-      "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3388"
       ],
       "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3388",
@@ -9509,50 +9422,6 @@
       "requirement_digest": "9b24ee7f965749be0526c59db14ff9319c19da3ce8eb5b156ca04562bf45533e",
       "requirement_id": "REQ-A5CB6707983F",
       "requirement_text": "- manual design/legal/content approvals must produce an auditable evidence reference rather than an informal chat acknowledgment;",
-      "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3389"
-      ],
-      "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3389",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "44832fec81bdfe42a431e789d1cd65a6c6a2677d477fa4787c930fca947c539b",
-      "requirement_id": "REQ-7A77A04BDE9C",
-      "requirement_text": "- exceptions require approver, rationale, compensating control where applicable, and expiry/review date;",
-      "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3390"
-      ],
-      "authority_source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#L3390",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4982a5def6eedd857c5757cf0707d298fc72de0dadb14afd6b15faa1a1d5c637",
-      "requirement_id": "REQ-779CF1243701",
-      "requirement_text": "- a requirement marked `blocked` or `failed` cannot be silently converted to `done`;",
       "source_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 96 unresolved of 96
+- Requirements: 0 pass / 79 unresolved of 79
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Draft (Quad-reviewed — v1.4 addresses fourth-pass findings)` — `specs/feature/029-ClawFeature/spec.md#5`
+- Deep-implement section claims (15): COMPLETE: 15

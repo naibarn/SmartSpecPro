@@ -6,4 +6,11 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 311 unresolved of 311
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Implementation Specification` — `specs/feature/195-unified-async-job-control-plane/spec.md#4`
+- Deep-implement section claims (6): COMPLETE: 6

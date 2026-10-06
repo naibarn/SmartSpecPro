@@ -4,6 +4,12 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 89 unresolved of 89
+- Requirements: 0 pass / 107 unresolved of 107
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `In progress — automatic gate-controlled cutover implemented; production target proof remains required` — `specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#3`

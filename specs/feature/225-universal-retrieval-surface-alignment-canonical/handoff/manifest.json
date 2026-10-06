@@ -156,7 +156,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md",
     "digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
@@ -205,6 +205,17 @@
         "digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Architecture Freeze Candidate",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md",
+        "source_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
+        "value": "Proposed / Architecture Freeze Candidate"
       }
     ],
     "stale_fields": [],
@@ -221,6 +232,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Architecture Freeze Candidate",
+        "line": 4,
+        "source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md",
+        "source_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
+        "value": "Proposed / Architecture Freeze Candidate"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -240,8 +263,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 129,
-    "unresolved": 129
+    "total": 124,
+    "unresolved": 124
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.242307Z",

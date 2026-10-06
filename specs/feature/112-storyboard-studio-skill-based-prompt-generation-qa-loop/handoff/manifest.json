@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
     "digest": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
@@ -120,6 +120,17 @@
         "digest": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
+        "source_digest": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "line": 5,
+        "source": "specs/feature/112-storyboard-studio-skill-based-prompt-generation-qa-loop/spec.md",
+        "source_digest": "429703c1006e5ca19c47db60c305dadc6700f5321a225f78078e632a42c560ec",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 33,
-    "unresolved": 33
+    "total": 51,
+    "unresolved": 51
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.022832Z",

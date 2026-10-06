@@ -236,7 +236,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md",
     "digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
@@ -340,6 +340,17 @@
         "digest": "36159cd6aa0353aade37593ec37e1c94af77e94e9bbbd5f6d197e76568a8fa25",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/082-work-os-case-ledger-and-operating-queues/sections/section-06-rollout-regression-coverage-and-release-guardrails.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md",
+        "source_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -356,6 +367,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md",
+        "source_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -430,8 +453,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 85,
-    "unresolved": 85
+    "total": 92,
+    "unresolved": 92
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.850446Z",

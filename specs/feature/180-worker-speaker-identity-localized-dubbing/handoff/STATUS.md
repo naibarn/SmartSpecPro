@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 75 unresolved of 75
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `IMPLEMENTED WORKSPACE SLICE v2 — runtime/provider release proof pending` — `specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md#3`

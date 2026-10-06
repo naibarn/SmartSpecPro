@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,50 +41,6 @@
       "requirement_digest": "e6c724380acf28646571003050453774f9272af991f411800a8c89b05c30f861",
       "requirement_id": "REQ-0DE611C30069",
       "requirement_text": "The system SHALL support users who spend days, months or years discussing, researching, uploading material, changing direction, running experiments and gradually building systems without knowing the final destination at project start.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L51"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L51",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1a96803129e546c29be284738a972bef7ed4a4d012ee3faf4e58840c7ef68b31",
-      "requirement_id": "REQ-D21A6E2B015E",
-      "requirement_text": "Admin or project-owner approval where required",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L55"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L55",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8facc97be00491151ea7677c50a60b4c5b3a2d4eaddd9f3b577f7f776302961d",
-      "requirement_id": "REQ-ED700384293F",
-      "requirement_text": "Spec 224 development lifecycle when software development is required",
       "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -722,28 +679,6 @@
       "requirement_digest": "d3c878fbca541c64e1be3144f2da2c79d03a5635f175ae7a01033ad9600cf0be",
       "requirement_id": "REQ-972D9EDF1BA4",
       "requirement_text": "The reasoning engine SHALL be able to construct:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L609"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L609",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a3c72a1619249e8cd09f45ef99d20ee4b1aa30e2fb8bcf419314b3a412be738c",
-      "requirement_id": "REQ-D408AA5EA102",
-      "requirement_text": "SmartAIHub re-validates every required capability",
       "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
       "successor_mapping": [],
       "verification_evidence": [],

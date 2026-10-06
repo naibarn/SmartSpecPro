@@ -221,7 +221,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/068-billing-phase2-cards-autorenew/spec.md",
     "digest": "c3ed1d8452a5aefe4076702faaed4147c84da91746421e7542e534ebdc56513d",
@@ -320,6 +320,17 @@
         "digest": "9ed306423c5776b0a484e2b09f837a0b3004ed646beed0fd281a9c1995501e95",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/068-billing-phase2-cards-autorenew/sections/section-05-ui-security-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md",
+        "source_digest": "c3ed1d8452a5aefe4076702faaed4147c84da91746421e7542e534ebdc56513d",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -336,6 +347,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/068-billing-phase2-cards-autorenew/spec.md",
+        "source_digest": "c3ed1d8452a5aefe4076702faaed4147c84da91746421e7542e534ebdc56513d",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -405,8 +428,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 64,
-    "unresolved": 64
+    "total": 77,
+    "unresolved": 77
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.768962Z",

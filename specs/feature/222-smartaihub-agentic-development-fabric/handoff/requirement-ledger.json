@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -3525,28 +3526,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L2809"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L2809",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "135b50f70ce9dd9f9d9e5e5e9bd056cd4db5df14e7a7666e1a0c9a8d52b10dd1",
-      "requirement_id": "REQ-8CE5BB9F1430",
-      "requirement_text": "AND Canary evidence where required",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L2884"
       ],
       "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L2884",
@@ -4221,28 +4200,6 @@
       "requirement_digest": "04b0d8b9285bf8d6f3b556b97e9fa74bc80b03bedae96846e8210a1620e31a62",
       "requirement_id": "REQ-D402E21136B2",
       "requirement_text": "Spec 222 MUST be removable/disable-able without breaking authoritative execution.",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L3263"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L3263",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0f65f76c361b552bd7c599199eb31e5aa2a99636b6defe78f2134d48db7e97b1",
-      "requirement_id": "REQ-5C6C85304BAB",
-      "requirement_text": "6. preserve required audit/policy history",
       "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5475,28 +5432,6 @@
       "requirement_digest": "caa43f41d5e417046f604392e3d8c4e97831fc043fadf835a8462d1b40e528ff",
       "requirement_id": "REQ-F03082AB287C",
       "requirement_text": "A policy MUST NOT assume every task is familiar.",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L5397"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L5397",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "18f003a2434d41cd89211847c6dc5bbdb2069650a191fbf5afc96485454e5411",
-      "requirement_id": "REQ-B5CD51C1FE87",
-      "requirement_text": "What if p95 latency must be below Y?",
       "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7001,28 +6936,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L7371"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L7371",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c8046fcf2dad7252eb2d711aaf4d2d92f333dd28e5e7d4b53169e7f542425d48",
-      "requirement_id": "REQ-A66B4CD79075",
-      "requirement_text": "fall back from learned influence where required",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L7375"
       ],
       "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L7375",
@@ -7573,50 +7486,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8276"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8276",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1b6cd9287240f418128d98f7e1c3a95dc497e650a937668ebecbe2bf41fa7f37",
-      "requirement_id": "REQ-D4328EF91DF2",
-      "requirement_text": "required operating system",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8277"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8277",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4535be6edcbd0cf39c5098bcf235a66fd7735ce378d2ac0ce53155c3624a58d6",
-      "requirement_id": "REQ-C3B5CD6C85E0",
-      "requirement_text": "required hardware",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8316"
       ],
       "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8316",
@@ -7873,28 +7742,6 @@
       "requirement_digest": "123adea549411f2870500c7607e86039579d5fa058cdd3a80b600cd0ec943c14",
       "requirement_id": "REQ-5AFDAD93BD69",
       "requirement_text": "Therefore Spec 222 SHALL detect:",
-      "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8775"
-      ],
-      "authority_source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md#L8775",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e246fc267f01391edfb0e7061c9d3e6fd2afba19f09392060b6d497e4f500ed4",
-      "requirement_id": "REQ-36A77AA45EDE",
-      "requirement_text": "unseen required capabilities",
       "source_spec_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 130 unresolved of 130
+- Requirements: 0 pass / 144 unresolved of 144
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `DESIGN AMENDED — MEDIA/FOOTAGE/NEWS SCOPE ADDED — SPEC REVIEW PASSED (5 rounds)` — `specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#3`
+- Deep-implement section claims (8): COMPLETE: 8

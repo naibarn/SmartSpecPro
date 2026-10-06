@@ -1,6 +1,227 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L73"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L73",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "716ffa665fca18a178c51db0e5299b0cba0fa1b0f2ba324e424fd19fbd7e97a3",
+      "requirement_id": "REQ-B9DC65CAC1C9",
+      "requirement_text": "1. Define SmartAIHub as one product with web and desktop surfaces.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L74"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L74",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "043fe6bea527a72b0e0af4738469fa83226e9da07f60cca6c9f730ddeb905686",
+      "requirement_id": "REQ-98DEF7876866",
+      "requirement_text": "2. Elevate the existing Tauri shell into a governed Desktop Host.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "01d7c3a5ff469205b0f9b44a117136e11a45305c93d6e3113ec208fc296b1ab1",
+      "requirement_id": "REQ-0F949CF825C7",
+      "requirement_text": "3. Introduce a canonical desktop device identity, policy, and offboarding model.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L76"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e5378d2102bcb9a7e76d6d5d828d6fd82024c6f606d71ba093a667fe49cd82d2",
+      "requirement_id": "REQ-70699F0AA759",
+      "requirement_text": "4. Add signed package sync and materialization for desktop-local skills and agencies.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L77"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L77",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fdaa469041d2d77f26eb10c01417d4d6decaffc1f470d7a3098bb429755e51fc",
+      "requirement_id": "REQ-97702332E446",
+      "requirement_text": "5. Introduce Pi as the primary desktop-local agent runtime.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L78"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L78",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ef1dcb2bb5775f0dfa1a5a5b2c50c19f51d025a0fb32d596c72ef3f2f18e4d47",
+      "requirement_id": "REQ-88C78F11AEDD",
+      "requirement_text": "6. Introduce Agency Swarm as the bundled desktop-local multi-agent runtime.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L79"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L79",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d88d70f8d0bd81c815679d73ab25f63deb006a8407c1208c829dd48310f9b5db",
+      "requirement_id": "REQ-54C7394B483D",
+      "requirement_text": "7. Add a consented local file intelligence subsystem instead of relying on raw filesystem discovery by runtimes.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3030838496e973e2d041383a1a32ceca06161cdc0d68aa9141e4059d96ec422d",
+      "requirement_id": "REQ-E8E9E92EC2EC",
+      "requirement_text": "8. Keep all managed LLM traffic gateway-only.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L81"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "88fb379082c04e807bec03963e4693d74550634395be0a68f52e589aea65b364",
+      "requirement_id": "REQ-9285DD0CC906",
+      "requirement_text": "9. Preserve compatibility with the existing OpenClaw worker-runtime family.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4065a93e1c48f30595895308b79be0722ac652c5b08b666d7e93de6e70013aeb",
+      "requirement_id": "REQ-7267D7EEBE1B",
+      "requirement_text": "10. Provide enterprise-grade trust, revocation, audit, and quarantine controls across web and desktop.",
+      "source_spec_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

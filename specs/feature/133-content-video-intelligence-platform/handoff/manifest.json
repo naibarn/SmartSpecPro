@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/133-content-video-intelligence-platform/spec.md",
     "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
@@ -400,6 +400,17 @@
         "digest": "0ccc23942b7d16969b03f2e686ecd2fe507ffb811f9f6aa9b15515e7bf777730",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/133-content-video-intelligence-platform/sections/section-08-studios-ui.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/133-content-video-intelligence-platform/spec.md",
+        "source_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -416,6 +427,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/133-content-video-intelligence-platform/spec.md",
+        "source_digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -505,8 +528,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 37,
-    "unresolved": 37
+    "total": 33,
+    "unresolved": 33
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.237283Z",

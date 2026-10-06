@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -18,6 +19,94 @@
       "requirement_digest": "a0170f69d622a40ee78d30c9a56597ab7e14e46ce83aea696e588a5e41d9d5d8",
       "requirement_id": "REQ-BF04006523D8",
       "requirement_text": "The agent must know which model to use in advance, making poor choices likely (wrong capability,",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "360705bad7e94690b0890c323594b9e9b364fdab658bb02f2f5bc039be4d8f52",
+      "requirement_id": "REQ-D7AB3CD01AB8",
+      "requirement_text": "1. Implement `/api/internal/tools/model-suggest` endpoint per spec-035 section-03",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L52"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L52",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bb07f648eb8d797633b5e9049051855997e180a05336c213dadf6ede6b5bac2b",
+      "requirement_id": "REQ-D7D20F885CDD",
+      "requirement_text": "2. Wire model-suggest into `autoDraftTool.ts` as fallback when agent doesn't provide a model",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L53"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L53",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b833cb333b8f9f7de552e5c2af9babfbe6cf99c34a2d9d9c32f7ff216f0b599f",
+      "requirement_id": "REQ-A4FBFF1215E2",
+      "requirement_text": "3. Add telemetry: log agent-provided model vs. recommended model for divergence tracking",
+      "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L54"
+      ],
+      "authority_source": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md#L54",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3642df8f88c3ac0e4eac2f0cb3370f70984555069f5e1e706738f2deb0e721a5",
+      "requirement_id": "REQ-B7A9D846EE26",
+      "requirement_text": "4. All new code follows existing patterns: auth middleware, Vitest tests, tRPC conventions",
       "source_spec_digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
       "successor_mapping": [],
       "verification_evidence": [],

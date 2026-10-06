@@ -1,6 +1,161 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8b131e7473f8dd4d6b510ce882e20a145713413c39ff291a5a240cd96e8bb36b",
+      "requirement_id": "REQ-BEB5632C773E",
+      "requirement_text": "1. สร้าง 3 pre-configured agency templates ที่ทำงานได้ทันทีโดยไม่ต้อง configure: Deep Research, Storyboard Planner, Deck Builder",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L81"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L81",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "86a7e16561f1fbdbf696f94f7eb9c07f3d5a337167bc1ef8b08a55e5d642cb73",
+      "requirement_id": "REQ-36B248CDAD0E",
+      "requirement_text": "2. กำหนด `AgencyResultEnvelope` schema ที่ agent ทุกตัวต้อง output เมื่อต้อง route downstream",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L82",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "80f1256ab8ed55cf4310e2a14adc76c6dfac69928eb24a2eed5b32963e30d4fd",
+      "requirement_id": "REQ-1C3AA6412F6C",
+      "requirement_text": "3. สร้าง `ResultRouter` service ที่รับ envelope แล้ว dispatch ไปยัง Chat / Presentation Editor / Media Studio โดยอัตโนมัติ",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L83"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L83",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1a49850bb126d20bba726ad69770e8c0dd9705d04b67ae5e70ea456cbceac31b",
+      "requirement_id": "REQ-7AA0346E48F0",
+      "requirement_text": "4. เพิ่ม artifact tracking ใน `agency_runs` / `agency_messages` สำหรับ audit และ UI",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3a2773863549b05d25d5ac94c1acae7c7e2c92c69b963d7df9bae236dfd5f785",
+      "requirement_id": "REQ-3581D94D325B",
+      "requirement_text": "5. Deck Builder ต้องสร้าง presentation ที่เปิดใน editor ได้จริง ไม่ใช่แค่ text",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L85"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L85",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "68c2b4253be8aaf2131496c0bdcbe8dc27974ff3988d090c047329848a922af3",
+      "requirement_id": "REQ-0F142547C407",
+      "requirement_text": "6. ทุก LLM call ยังผ่าน SmartSpecPro gateway ตาม policy เดิม",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L86"
+      ],
+      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L86",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b7697356eb5af7219d7e9553524c064a5a1993d929629d0518276d4f09a395b4",
+      "requirement_id": "REQ-96BD1B942020",
+      "requirement_text": "7. ทุก RAG query ยังผ่าน tenant-scoped ACL เดิม",
+      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
@@ -92,96 +247,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1032",
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1078",
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1144"
-      ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1032",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "128e0bb122b35e298db76a7b1b6a8be6471549e0b8733f04b4613e0b293a93e9",
-      "requirement_id": "REQ-BF61D6E31B04",
-      "requirement_text": "You MUST wrap your final output in <sse:envelope>...</sse:envelope> tags.",
-      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1033"
-      ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1033",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ffebf89cf17c7042d8c4f5b9f1981f09522764bb0c35d72113c3fada1026b9be",
-      "requirement_id": "REQ-B742FAA38FA9",
-      "requirement_text": "The envelope payload MUST follow the ResearchReportPayload schema.",
-      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1079"
-      ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1079",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1b16851b4008f18901ddedf3cd1ea0b2c4d5c9325fa4d2f0336131ab699f4d87",
-      "requirement_id": "REQ-17FB9FBBD4C2",
-      "requirement_text": "The envelope payload MUST follow the VideoStoryboardPayload schema.",
-      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1145"
-      ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1145",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fd5b507f8bc32c970286e4ed4604464268f2e0f05d8b71fe517f482a559b09bf",
-      "requirement_id": "REQ-2D3A2FC1BEA9",
-      "requirement_text": "The envelope payload MUST follow the PresentationDeckPayload schema.",
-      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1211"
       ],
       "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1211",
@@ -218,28 +283,6 @@
       "requirement_digest": "1661978caa46c18b0d73fd466df4cccb6495f37b864ac97f6ab0d52ffce687c8",
       "requirement_id": "REQ-CDD042831157",
       "requirement_text": "**Required Phase 2 work**:",
-      "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1889"
-      ],
-      "authority_source": "specs/feature/034-ResearchStoryboardBuilder/spec.md#L1889",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "13ac7ffa42b6ded271978ee5b8bdc25cc5774fa3978ac046801da359bc3478d4",
-      "requirement_id": "REQ-B93768252A91",
-      "requirement_text": "// 1. List all active showcase projects (public, no auth required for listing)",
       "source_spec_digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
       "successor_mapping": [],
       "verification_evidence": [],

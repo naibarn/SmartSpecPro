@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -3781,28 +3782,6 @@
       "requirement_digest": "2192bcf7e63827ac3473c995e589279eca95eb9617c98fc060a9b571556d8f1f",
       "requirement_id": "REQ-2DD3E6FF5145",
       "requirement_text": "The presence of a provider approval API does **not** imply it intercepts all built-in tools, subprocesses, remote MCP connections, browser actions, nested tools or outbound network calls. Certification SHALL produce a per-tool **enforcement coverage matrix**:",
-      "source_spec_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2676"
-      ],
-      "authority_source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md#L2676",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "547605da5790a6795cbd7ee8697dea4125fb612d634916a29548570e8b278e12",
-      "requirement_id": "REQ-97CA97F84D0B",
-      "requirement_text": "required approval / receipt / idempotency support",
       "source_spec_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
       "successor_mapping": [],
       "verification_evidence": [],

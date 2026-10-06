@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "profile": "package",
+  "source_ref": "refs/heads/main",
+  "source_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
+  "command": "pnpm -C apps/web exec vitest run server/routers/contentQuality.test.ts server/routers/skills.zodValidation.test.ts server/services/skillFrontmatter.test.ts server/services/reviewerSkillsUpgrade.test.ts server/services/__tests__/productReviewSequentialStoryboardSkill.test.ts server/services/articleWriterSkillsUpgrade.test.ts",
+  "result": "FAIL",
+  "passed": 78,
+  "failed": 39,
+  "skipped": 0,
+  "test_files": [
+    {
+      "file": "apps/web/server/routers/contentQuality.test.ts",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/web/server/routers/skills.zodValidation.test.ts",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
+      "passed": 15,
+      "failed": 11,
+      "skipped": 0
+    },
+    {
+      "file": "apps/web/server/services/reviewerSkillsUpgrade.test.ts",
+      "passed": 17,
+      "failed": 28,
+      "skipped": 0
+    },
+    {
+      "file": "apps/web/server/services/skillFrontmatter.test.ts",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "apps/web/server/services/__tests__/productReviewSequentialStoryboardSkill.test.ts",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "failure_summary": {
+    "articleWriterSkillsUpgrade.test.ts": {
+      "passed": 15,
+      "failed": 11,
+      "findings": [
+        "7 skills lack the expected CMS JSON output section",
+        "3 skills fail execution_policy/content_quality assertions",
+        "creative-story-writer misses its explicit no-search/no-citation settings"
+      ]
+    },
+    "reviewerSkillsUpgrade.test.ts": {
+      "passed": 17,
+      "failed": 28,
+      "findings": [
+        "all 15 reviewers fail the required frontmatter assertions",
+        "13 reviewers lack the expected CMS JSON output section"
+      ]
+    }
+  },
+  "other_test_files_passed": [
+    "contentQuality.test.ts",
+    "skills.zodValidation.test.ts",
+    "skillFrontmatter.test.ts",
+    "productReviewSequentialStoryboardSkill.test.ts"
+  ],
+  "source_comparison": "The tested tracked source/test/skill paths were identical to origin/main at source_sha; no task migration changes those application paths.",
+  "runtime_note": "The task worktree used the existing primary checkout apps/web/node_modules via an ignored local symlink; no dependency installation occurred. Test source and repository content were loaded from this worktree."
+}

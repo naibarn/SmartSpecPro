@@ -1,6 +1,161 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L73"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L73",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0f7c45aeefa9d4cacc33aceda3fab7b32bf10a00f3cebdad0878f96633ce79dd",
+      "requirement_id": "REQ-C92C2A6E77B7",
+      "requirement_text": "1. Make every agent a governed registry object with identity, version, scope, and rollout metadata.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L74"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L74",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0c7d7e8e58b013de0271d0c0745b1d23c0b19e506774307daa42f904e981ff14",
+      "requirement_id": "REQ-BF75749B32A2",
+      "requirement_text": "2. Support multiple agent kinds without inventing separate governance systems.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b1e115737f6fee3b4041df2389b087318e9af908c2194b78ce47b9e7366857eb",
+      "requirement_id": "REQ-20B2010C0F63",
+      "requirement_text": "3. Bind agents to tool permissions, memory scope, budget limits, and escalation rules.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L76"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f70314bd88423ce417e95f442ca5bed1d017029ccddf377766addd767b2c107f",
+      "requirement_id": "REQ-F28E52BB6CD3",
+      "requirement_text": "4. Provide version promotion, shadow mode, canary, freeze, and rollback semantics.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L77"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L77",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b00634e0f91dc97119b5e08c9f9aa97939f72e051f7d43b328676beb19d91aad",
+      "requirement_id": "REQ-07F33F437B7A",
+      "requirement_text": "5. Let tenants and teams choose approved agent families without editing raw runtime definitions.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L78"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L78",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5e7b5eb2c8e651d3e15118125a751bc4d7d1aad20db8a2cbba910487e8a6c022",
+      "requirement_id": "REQ-694A2BD160D2",
+      "requirement_text": "6. Keep role agents from Feature 080 inside the same registry model as planner and reviewer style agents.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/083-agent-registry-and-organization-model/spec.md#L79"
+      ],
+      "authority_source": "specs/feature/083-agent-registry-and-organization-model/spec.md#L79",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b445f8eaf4957d597848501897683a317fdd028f7a52a4d01212da614995d306",
+      "requirement_id": "REQ-5FE486886399",
+      "requirement_text": "7. Capture outcome memory so future agent selection can be driven by evidence instead of only static labels.",
+      "source_spec_digest": "094057219d7bac1823d3714aabd2255ed16da7eefb5617af68eed275522f884c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

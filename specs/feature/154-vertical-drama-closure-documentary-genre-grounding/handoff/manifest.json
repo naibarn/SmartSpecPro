@@ -221,7 +221,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
     "digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
@@ -320,6 +320,17 @@
         "digest": "588d42221bc1946d655dcb8c7b57512d390be609139bfc2db269c885f11dfbb0",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/sections/index.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: implementation in progress (additive rollout)",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+        "source_digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "value": "implementation in progress (additive rollout)"
       }
     ],
     "stale_fields": [],
@@ -336,6 +347,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: implementation in progress (additive rollout)",
+        "line": 3,
+        "source": "specs/feature/154-vertical-drama-closure-documentary-genre-grounding/spec.md",
+        "source_digest": "0847bbf80791de58e6bb237d83c49ecdc74fa7a77cf0671f2b76c0ce8ff37903",
+        "value": "implementation in progress (additive rollout)"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
     "digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
@@ -590,6 +590,33 @@
         "digest": "49a45ff1e62f62c15e534d886add7af703d1ea8e68d67099b5b986ef9f898947",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/sections/section-12-test-implementation-gates.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+        "source_digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes:",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+        "source_digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": ""
       }
     ],
     "stale_fields": [],
@@ -606,6 +633,33 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+        "source_digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes:",
+        "line": 6,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md",
+        "source_digest": "e834e0658befad91a698edf7f61448d317eccdde76ed116a915e110652e5e80d",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": ""
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -810,8 +864,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 860,
-    "unresolved": 860
+    "total": 878,
+    "unresolved": 878
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.070483Z",

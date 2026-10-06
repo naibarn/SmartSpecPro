@@ -1,6 +1,183 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L69"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L69",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "879e56540769c0595475e9821207e3cab0fbf467cb679efc46207296e2fbb031",
+      "requirement_id": "REQ-FA7B5B8C4A32",
+      "requirement_text": "| G1 | Create/edit multi-slide presentations in Document Management | User can create, open, and save presentations from My Library |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L70"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b6a5f6554c06cfa3dcb7300276fd7f358f6a54e1fb204751e0ec86fa62a1e755",
+      "requirement_id": "REQ-AE8C0323471B",
+      "requirement_text": "| G2 | Canvas editor with drag-and-drop element positioning | Elements (image, video, audio, text) can be placed, moved, resized, rotated on canvas |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L71"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L71",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c08a4e8ea65747a85c63fbd2a7115128c708642da38082557adf3d89449b1aba",
+      "requirement_id": "REQ-388B57BBF378",
+      "requirement_text": "| G3 | Insert media from library or generate new | Insert dialog queries existing library + supports on-the-fly AI generation |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L72"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L72",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8f9901e5000b46cf104debe783cc0a9fd3afb0291bc6fabf52d15148e9c0b8ce",
+      "requirement_id": "REQ-0B5ACBF3772B",
+      "requirement_text": "| G4 | Fullscreen presentation playback | Play slides with transitions, auto-advance, keyboard navigation, and narration |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L73"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L73",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4d1a6f87ae21dfa2f2492c68fc9d6b1992c1b60c25c7981e0b30150e6b8842c6",
+      "requirement_id": "REQ-68E80443815D",
+      "requirement_text": "| G5 | Audio narration system | Per-slide audio or presentation-wide audio track with playback sync |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L74"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L74",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "93aeeaa5b9fc9fcf232e09e4a2698c6faccb7e656ec010fc8e7f8953a2201bc1",
+      "requirement_id": "REQ-883ED986A648",
+      "requirement_text": "| G6 | Convert to video | One-click export to MP4 via existing FFmpeg pipeline, with option to open in video editor |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "63f7776147dff2571f696c0d66691e123ece7d23fe69446ecd9736f2ebaca52c",
+      "requirement_id": "REQ-6A01AB021B14",
+      "requirement_text": "| G7 | RAG-searchable slides | Each slide indexed in library_chunks with text + AI image descriptions |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L76"
+      ],
+      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f66740bf1eb86a2bcdad29bc9fdec32de1175bc83b1f4afb3bb8b3ae378b0932",
+      "requirement_id": "REQ-95556AA0A603",
+      "requirement_text": "| G8 | Mobile-responsive viewer | Presentation viewer works on tablet/mobile with touch gestures |",
+      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
@@ -18,28 +195,6 @@
       "requirement_digest": "f91ce60413daf7e2530c64acb33fb8bb4ca17cc79d23db3e728f2938b0b19350",
       "requirement_id": "REQ-B61566FA9019",
       "requirement_text": "- Title (required)",
-      "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L2036"
-      ],
-      "authority_source": "specs/feature/018-SlideShowAndCanvasEdit/spec.md#L2036",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c140944f042ec01e629375b001c3f19fe98a50f55d13632f49bb457f26b25be1",
-      "requirement_id": "REQ-FA140504F792",
-      "requirement_text": "→ Public shared presentation viewer (read-only, no auth required)",
       "source_spec_digest": "735f065291abb0649ba2f856b5c27686313134b6b18cf3cd9514eee6980249f6",
       "successor_mapping": [],
       "verification_evidence": [],

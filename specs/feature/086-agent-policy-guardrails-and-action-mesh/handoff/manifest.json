@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/086-agent-policy-guardrails-and-action-mesh/spec.md",
     "digest": "4e6d11bb68e9a63e2fd55b1be224c80905e46242f0705b6018f7a4bdc7c37593",
@@ -120,6 +120,17 @@
         "digest": "4e6d11bb68e9a63e2fd55b1be224c80905e46242f0705b6018f7a4bdc7c37593",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/086-agent-policy-guardrails-and-action-mesh/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/086-agent-policy-guardrails-and-action-mesh/spec.md",
+        "source_digest": "4e6d11bb68e9a63e2fd55b1be224c80905e46242f0705b6018f7a4bdc7c37593",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/086-agent-policy-guardrails-and-action-mesh/spec.md",
+        "source_digest": "4e6d11bb68e9a63e2fd55b1be224c80905e46242f0705b6018f7a4bdc7c37593",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 37,
-    "unresolved": 37
+    "total": 44,
+    "unresolved": 44
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.867130Z",

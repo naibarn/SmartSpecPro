@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/072-claw-worker-platform-access/spec.md",
     "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
@@ -400,6 +400,17 @@
         "digest": "c9811b6ce7c1a909b254a41e4af8c50a48ef45d30cf43aa65295ce0fb7ed452e",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/072-claw-worker-platform-access/sections/section-08-rollout-docs-and-regression.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/072-claw-worker-platform-access/spec.md",
+        "source_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -416,6 +427,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/072-claw-worker-platform-access/spec.md",
+        "source_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -505,8 +528,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 155,
-    "unresolved": 155
+    "total": 167,
+    "unresolved": 167
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.791672Z",

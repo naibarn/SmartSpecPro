@@ -394,7 +394,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
     "digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
@@ -515,6 +515,28 @@
         "kind": "SOURCE",
         "line": 12,
         "path": "apps/web/server/services/economicRefundContract.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft for implementation — Revision R4 plus 207–210 repository convergence audit completed 2026-09-19",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
+        "source_digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "value": "Draft for implementation — Revision R4 plus 207–210 repository convergence audit completed 2026-09-19"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Implementation status:** Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger.",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 9,
+        "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
+        "source_digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "value": "Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger."
       }
     ],
     "stale_fields": [],
@@ -539,6 +561,28 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft for implementation — Revision R4 plus 207–210 repository convergence audit completed 2026-09-19",
+        "line": 4,
+        "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
+        "source_digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "value": "Draft for implementation — Revision R4 plus 207–210 repository convergence audit completed 2026-09-19"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Implementation status:** Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger.",
+        "line": 9,
+        "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
+        "source_digest": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93",
+        "value": "Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -623,8 +667,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 462,
-    "unresolved": 462
+    "total": 469,
+    "unresolved": 469
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.870469Z",

@@ -333,7 +333,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md",
     "digest": "f4c7c1ee6648960007463926262e7a6b864ba9a1286e99e22805ac11fd3962e3",
@@ -483,6 +483,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

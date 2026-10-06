@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
     "digest": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
@@ -565,6 +565,17 @@
         "digest": "83a212953a2d818df9a4d61c473b53a9f5ecaf215322be079153c1becfb7b565",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/174-vertical-drama-object-reference-catalog/sections/section-10-integration-release.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** DESIGN — 80-PASS AUDITED; BASELINE/RELEASE GATES EXPLICIT",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
+        "source_digest": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
+        "value": "DESIGN — 80-PASS AUDITED; BASELINE/RELEASE GATES EXPLICIT"
       }
     ],
     "stale_fields": [],
@@ -581,6 +592,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** DESIGN — 80-PASS AUDITED; BASELINE/RELEASE GATES EXPLICIT",
+        "line": 3,
+        "source": "specs/feature/174-vertical-drama-object-reference-catalog/spec.md",
+        "source_digest": "0cef38d318397fc5b2b90fed5a563b8047d334cc67963004fd4279432ff25368",
+        "value": "DESIGN — 80-PASS AUDITED; BASELINE/RELEASE GATES EXPLICIT"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

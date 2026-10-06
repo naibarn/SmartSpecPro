@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 59 unresolved of 59
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Implemented, migrated, signing key provisioned, and enabled for the pilot tenant; Hermes/Claude/Codex live compatibility gates remain separate evidence work` — `specs/feature/147-mcp-zero-config-oauth-onboarding/spec.md#3`

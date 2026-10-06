@@ -168,7 +168,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md",
     "digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
@@ -217,6 +217,17 @@
         "digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Target maintenance architecture; unified implementation pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md",
+        "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
+        "value": "Proposed / Target maintenance architecture; unified implementation pending"
       }
     ],
     "stale_fields": [],
@@ -233,6 +244,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Target maintenance architecture; unified implementation pending",
+        "line": 4,
+        "source": "specs/feature/228-SmartAIHub Autonomous Maintenance, Issue & Improvement Management System/spec.md",
+        "source_digest": "a510bff188def12c2c8cb84ce1e94c1fb6648945119c4914638ad8630f28d616",
+        "value": "Proposed / Target maintenance architecture; unified implementation pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -252,8 +275,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 702,
-    "unresolved": 702
+    "total": 716,
+    "unresolved": 716
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.277180Z",

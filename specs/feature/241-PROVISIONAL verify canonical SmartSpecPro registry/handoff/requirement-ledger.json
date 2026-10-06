@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -194,28 +195,6 @@
       "requirement_digest": "d30c4022a3f20cf135595b2077654ef18d523d555eb8d48aa3314f2d7a615c4b",
       "requirement_id": "REQ-EC11BE50B9D0",
       "requirement_text": "- Every external provider capability (`MUSE_PERSONAL`, `GEMINI_SPARK`, `GROK_BOT`, `HERMES_BOT`) is feature-flagged and **account-/connection-certified** under Spec 239. Unsupported external dispatch or memory sync must remain explicitly unavailable, not emulated by browser automation.",
-      "source_spec_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L210"
-      ],
-      "authority_source": "specs/feature/241-PROVISIONAL verify canonical SmartSpecPro registry/spec.md#L210",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9ec31c61f0955138eaea1c6ef91acd40584f52706c24e4049a74028221ec2ab9",
-      "requirement_id": "REQ-B87447F6D9C1",
-      "requirement_text": "matchedEvidenceRefs: string[];               // Must be authorized source references.",
       "source_spec_digest": "0f3847de05fa1a8a12ecaab21554cf715abd32ee96f77adb56d91aacc5d16b0a",
       "successor_mapping": [],
       "verification_evidence": [],

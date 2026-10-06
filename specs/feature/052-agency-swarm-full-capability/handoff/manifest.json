@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/052-agency-swarm-full-capability/spec.md",
     "digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
@@ -550,6 +550,73 @@
         "digest": "ab2840b6388ccb479afd93a56c30cc86091c51ca430a854ea51e7d3f1c22bf00",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/052-agency-swarm-full-capability/sections/section-23-feature-flags-integration.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "64b9b30f",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-database-migration: complete; commit_hash=64b9b30f",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-database-migration",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "7c7d92f8",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-custom-tools-backend: complete; commit_hash=7c7d92f8",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-custom-tools-backend",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "4bda9eca",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-custom-tools-frontend: complete; commit_hash=4bda9eca",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-custom-tools-frontend",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "e4f17ee2",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-openapi-import: complete; commit_hash=e4f17ee2",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-openapi-import",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/052-agency-swarm-full-capability/spec.md",
+        "source_digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -566,6 +633,70 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "64b9b30f",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-database-migration: complete; commit_hash=64b9b30f",
+        "line": null,
+        "section": "section-01-database-migration",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "7c7d92f8",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-custom-tools-backend: complete; commit_hash=7c7d92f8",
+        "line": null,
+        "section": "section-02-custom-tools-backend",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "4bda9eca",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-custom-tools-frontend: complete; commit_hash=4bda9eca",
+        "line": null,
+        "section": "section-03-custom-tools-frontend",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "e4f17ee2",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-openapi-import: complete; commit_hash=e4f17ee2",
+        "line": null,
+        "section": "section-04-openapi-import",
+        "source": "specs/feature/052-agency-swarm-full-capability/implementation/deep_implement_config.json",
+        "source_digest": "94790c4966f6dac6476f15d60214eb76fb5351a344292343a88a0975bcd2869e",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/052-agency-swarm-full-capability/spec.md",
+        "source_digest": "a47105d73c4bd7b7c47866e5669864e03af11867d257c4212b836a1c4c628f1e",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -730,8 +861,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 18,
-    "unresolved": 18
+    "total": 15,
+    "unresolved": 15
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.661216Z",

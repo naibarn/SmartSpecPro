@@ -135,7 +135,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
     "digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
@@ -184,6 +184,17 @@
         "digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — design-reviewed; M0 repository-contract reconciliation, provider probes, Thai benchmarks and production evidence remain required",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
+        "source_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+        "value": "Proposed — design-reviewed; M0 repository-contract reconciliation, provider probes, Thai benchmarks and production evidence remain required"
       }
     ],
     "stale_fields": [],
@@ -200,6 +211,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — design-reviewed; M0 repository-contract reconciliation, provider probes, Thai benchmarks and production evidence remain required",
+        "line": 4,
+        "source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md",
+        "source_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+        "value": "Proposed — design-reviewed; M0 repository-contract reconciliation, provider probes, Thai benchmarks and production evidence remain required"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -219,8 +242,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 97,
-    "unresolved": 97
+    "total": 101,
+    "unresolved": 101
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.472778Z",

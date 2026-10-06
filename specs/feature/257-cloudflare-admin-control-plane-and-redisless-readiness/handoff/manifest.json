@@ -108,7 +108,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
     "digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
@@ -157,6 +157,17 @@
         "digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / PROVISIONAL NUMBER / PLANNING ONLY / NOT IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
+        "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
+        "value": "PROPOSED / PROVISIONAL NUMBER / PLANNING ONLY / NOT IMPLEMENTED"
       }
     ],
     "stale_fields": [],
@@ -173,6 +184,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / PROVISIONAL NUMBER / PLANNING ONLY / NOT IMPLEMENTED",
+        "line": 5,
+        "source": "specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness/spec.md",
+        "source_digest": "11710b35b29506b1e29d8cf81dacea3312e400f140edf98338b57481e38772bb",
+        "value": "PROPOSED / PROVISIONAL NUMBER / PLANNING ONLY / NOT IMPLEMENTED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

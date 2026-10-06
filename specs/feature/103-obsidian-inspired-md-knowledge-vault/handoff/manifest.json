@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
     "digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
@@ -440,6 +440,17 @@
         "digest": "6d0db8a7084f4645ccdf7484c281d4efc15a5eb92d5a5eceef9bcdba206c1fb7",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/103-obsidian-inspired-md-knowledge-vault/sections/section-08-end-to-end-sequence-flows.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+        "source_digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -456,6 +467,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Draft",
+        "line": 5,
+        "source": "specs/feature/103-obsidian-inspired-md-knowledge-vault/spec.md",
+        "source_digest": "cb07e728bd34eb7d34e0b1fe34752f6f29ee334a5fabb89a789a81f410692069",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -555,8 +578,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 26,
-    "unresolved": 26
+    "total": 54,
+    "unresolved": 54
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.967646Z",

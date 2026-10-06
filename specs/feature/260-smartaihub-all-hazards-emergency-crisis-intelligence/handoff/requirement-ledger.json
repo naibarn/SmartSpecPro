@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -6255,28 +6256,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L3738"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L3738",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3b035acef90c4f3e023519544350787c581eb27c26ef2523a4794eb0013b3839",
-      "requirement_id": "REQ-E6934250CA40",
-      "requirement_text": "→ authentication required",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L3752"
       ],
       "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L3752",
@@ -6533,28 +6512,6 @@
       "requirement_digest": "d9fe3eb9a6eedb01d3f67d942e8368a0e52af9ccfa1139e23d819382f8bb0ae1",
       "requirement_id": "REQ-15DD61246F86",
       "requirement_text": "Public APIs MUST remain usable by normal unauthenticated users without",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L3969"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L3969",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c326290ec22aacc9506024ac846687cc6f5f3dee0fd2ab0dd97277b6b778eb7f",
-      "requirement_id": "REQ-FA1C263F5DC0",
-      "requirement_text": "→ login if required",
       "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8433,28 +8390,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L5726"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L5726",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "71a9e2759d509e7aba05b1e991033c5da3d5b0d518c0993732fc64be4f7464dd",
-      "requirement_id": "REQ-825C4911A336",
-      "requirement_text": "→ Human/policy verification when required",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L5773"
       ],
       "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L5773",
@@ -9731,28 +9666,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L8060"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L8060",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "50f9cc9b22c8c56dd8169becc8b60f9e3b0106499d68a2040ad13a39fd9679b7",
-      "requirement_id": "REQ-0104DED3F138",
-      "requirement_text": "→ reroute only if required",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L8104"
       ],
       "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L8104",
@@ -10325,28 +10238,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L9352"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L9352",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d0a3630555bbec7fc05a98d311c23b00fd1ab4d8296ac4a4125976d80b6a6959",
-      "requirement_id": "REQ-205302A256AC",
-      "requirement_text": "required",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L9503"
       ],
       "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L9503",
@@ -10779,28 +10670,6 @@
       "requirement_digest": "708cb1005ad2c70f68d545d3d1c2aeb4c612177c3eb74b24c0ad6c1710b0ed48",
       "requirement_id": "REQ-0EC785A90863",
       "requirement_text": "surfaces MUST NOT expose credit balance or private trip history",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L10478"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L10478",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ecb9c360320fc7d6079a3aaa82044bf382bf13d4e51d939729213bd46a370b03",
-      "requirement_id": "REQ-F32C2BBE527F",
-      "requirement_text": "→ user choice if required",
       "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11483,28 +11352,6 @@
       "requirement_digest": "62c4468eaf0ccef4512b6963083650c4eeffc876d7d9016a57b6288529f5464d",
       "requirement_id": "REQ-1D7D0BA26A2B",
       "requirement_text": "Usage and capacity telemetry MUST identify the correct account reference",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L12303"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L12303",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b9d871b065362af19e08c4c764f6e14684e794aa7ce3e905f739bd85b4eea3db",
-      "requirement_id": "REQ-648B89660A43",
-      "requirement_text": "only if required authorization/state can be safely established",
       "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -12649,28 +12496,6 @@
       "requirement_digest": "3de9d83f90b78406410be8b61ff7487edcf490e8647dc74aaa36ec0fecac7482",
       "requirement_id": "REQ-B620877D47F7",
       "requirement_text": "It MUST NOT create: - a second scheduler authority; - a second research",
-      "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L15659"
-      ],
-      "authority_source": "specs/feature/260-smartaihub-all-hazards-emergency-crisis-intelligence/spec.md#L15659",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7c53775a0d8ea4fd7950d48eb38871969e500477a30e19de3f0c5af88e7632bc",
-      "requirement_id": "REQ-37838DC78D67",
-      "requirement_text": "→ Human Review when required",
       "source_spec_digest": "e6b616b487ef5946ff2c02c4885693bb33973ab5ea3a11f9cb9f8d24875fe244",
       "successor_mapping": [],
       "verification_evidence": [],

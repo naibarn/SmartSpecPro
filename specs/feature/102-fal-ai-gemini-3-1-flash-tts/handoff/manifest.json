@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
     "digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
@@ -240,6 +240,59 @@
         "digest": "62c7c9c6641f4a397394e0dd772d5c6c95c9db174055b10f9a04681fcafbe45b",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/sections/section-03-audio-payload-and-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "fd5614b5",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-catalog-and-seed: complete; commit_hash=fd5614b5",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-catalog-and-seed",
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json",
+        "source_digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "fd5614b5",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-shared-input-schema-and-ui: complete; commit_hash=fd5614b5",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-shared-input-schema-and-ui",
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json",
+        "source_digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "fd5614b5",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-audio-payload-and-tests: complete; commit_hash=fd5614b5",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-audio-payload-and-tests",
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json",
+        "source_digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+        "source_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -256,6 +309,57 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "fd5614b5",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-catalog-and-seed: complete; commit_hash=fd5614b5",
+        "line": null,
+        "section": "section-01-catalog-and-seed",
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json",
+        "source_digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "fd5614b5",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-shared-input-schema-and-ui: complete; commit_hash=fd5614b5",
+        "line": null,
+        "section": "section-02-shared-input-schema-and-ui",
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json",
+        "source_digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "fd5614b5",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-audio-payload-and-tests: complete; commit_hash=fd5614b5",
+        "line": null,
+        "section": "section-03-audio-payload-and-tests",
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/implementation/deep_implement_config.json",
+        "source_digest": "66b5557d1b707d6ef6f13251c1f769a9fb891c49dad9d1179edfbc550c324586",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/102-fal-ai-gemini-3-1-flash-tts/spec.md",
+        "source_digest": "9be35ddb6cbc15af1a220da60bc8133ea2e0ca32ecaa39a0a33c7efc34506f6d",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -305,8 +409,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 76,
-    "unresolved": 76
+    "total": 83,
+    "unresolved": 83
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.961984Z",

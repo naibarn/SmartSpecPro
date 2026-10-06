@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -510,28 +511,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/214-node-type-contract-architecture/spec.md#L369"
-      ],
-      "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L369",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8b41ca0e4a58f6aa8c06d76ce990cd9683773e3f23b37d28f30f9fadd2127634",
-      "requirement_id": "REQ-DA438037D8E5",
-      "requirement_text": "required?: boolean;",
-      "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/214-node-type-contract-architecture/spec.md#L394"
       ],
       "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L394",
@@ -686,28 +665,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/214-node-type-contract-architecture/spec.md#L495"
-      ],
-      "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L495",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cdbd85708bd79d0766afc2701c0f747556fc8990e670c75ee57e3625a2a3fcb0",
-      "requirement_id": "REQ-FA899212249F",
-      "requirement_text": "streaming: \"none\" | \"optional\" | \"required\";",
-      "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/214-node-type-contract-architecture/spec.md#L523"
       ],
       "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L523",
@@ -832,28 +789,6 @@
       "requirement_digest": "00040c0ddbde78c88e9ce2a7e92354dee38a16cf57c2d446a13c43c967c805a6",
       "requirement_id": "REQ-41D2D89F4133",
       "requirement_text": "Provider/tool/model/workflow identity MUST NOT be encoded into `typeId`.",
-      "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/214-node-type-contract-architecture/spec.md#L677"
-      ],
-      "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L677",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "aa366e307ea5a75acc0813055c2e066af8ec8605d0a4199d5eb9e2ad6278f8e7",
-      "requirement_id": "REQ-ED1EB6AB2DF0",
-      "requirement_text": "required: boolean;",
       "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1039,28 +974,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/214-node-type-contract-architecture/spec.md#L996"
-      ],
-      "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L996",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "06ff4476f0eacb3fda6ba469139af1e927d102b40a1da398bf07d289efae97d9",
-      "requirement_id": "REQ-8F625F1F366D",
-      "requirement_text": "× required TH + EN prompts",
-      "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/214-node-type-contract-architecture/spec.md#L1011"
       ],
       "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L1011",
@@ -1163,28 +1076,6 @@
       "requirement_digest": "87f067f9e8d683653af3c72dae5197f506b58f190da9602bd47e7bfee04daa91",
       "requirement_id": "REQ-A1C7C70283B3",
       "requirement_text": "A failure MUST NOT automatically create a new Node Type.",
-      "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/214-node-type-contract-architecture/spec.md#L1115"
-      ],
-      "authority_source": "specs/feature/214-node-type-contract-architecture/spec.md#L1115",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "30a6990693bbdf366d199522c67ada158d32b0862d059dcce43d0e1e2a6e587d",
-      "requirement_id": "REQ-104ADEB917E8",
-      "requirement_text": "→ human.approval when required",
       "source_spec_digest": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798",
       "successor_mapping": [],
       "verification_evidence": [],

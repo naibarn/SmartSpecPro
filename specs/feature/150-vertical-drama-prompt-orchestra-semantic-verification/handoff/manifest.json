@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
     "digest": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
@@ -120,6 +120,17 @@
         "digest": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC READY FOR IMPLEMENTATION — implementation not started by this spec",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
+        "source_digest": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
+        "value": "SPEC READY FOR IMPLEMENTATION — implementation not started by this spec"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPEC READY FOR IMPLEMENTATION — implementation not started by this spec",
+        "line": 3,
+        "source": "specs/feature/150-vertical-drama-prompt-orchestra-semantic-verification/spec.md",
+        "source_digest": "f7f88ad54a8672e48b25b040c0f9142ad9cd9a515dfee9ad3bb7157f5d94ded5",
+        "value": "SPEC READY FOR IMPLEMENTATION — implementation not started by this spec"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 73,
-    "unresolved": 73
+    "total": 85,
+    "unresolved": 85
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.356308Z",

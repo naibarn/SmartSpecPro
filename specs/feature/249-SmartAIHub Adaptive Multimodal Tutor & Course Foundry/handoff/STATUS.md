@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 235 unresolved of 235
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `FORTY-PASS DOCUMENT-AUDITED DESIGN / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED` — `specs/feature/249-SmartAIHub Adaptive Multimodal Tutor & Course Foundry/spec.md#9`

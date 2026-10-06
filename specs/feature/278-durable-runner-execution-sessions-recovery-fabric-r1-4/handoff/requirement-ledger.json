@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -150,28 +151,6 @@
       "requirement_digest": "abdf0e8433829160574bb2747df68bdb41f5429d2e0d7764348ad24e91144e9d",
       "requirement_id": "REQ-148DB467B76E",
       "requirement_text": "For execution environments that cannot preserve the exact operating-system process across host replacement, the same abstraction SHALL provide the strongest available continuity semantics:",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L132"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L132",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1dccff9dfc5c7f66040123d5d060626a867951a1c39f4de6313c1d026a81f7b2",
-      "requirement_id": "REQ-4603B7F41038",
-      "requirement_text": "orchestrator must retry or reconstruct work",
       "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -635,28 +614,6 @@
       "requirement_digest": "e2211c655aabb7e4b6241110bcfc24855a69b1a3b9767f3d8ef4b3189b9a49d1",
       "requirement_id": "REQ-8B96C4C8F2F8",
       "requirement_text": "Workspace isolation, Git worktree isolation and process continuity SHALL NOT be represented as equivalent to OS/container security isolation.",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L508"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L508",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bcabb52a2cb55be25957d760d107d2ed9e193a7e0142c8fd63dcdc2afc8fdfe5",
-      "requirement_id": "REQ-3EE1D41D7244",
-      "requirement_text": "required_safety_features   bounded required-feature set / bitset",
       "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2909,72 +2866,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1545"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1545",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "36afe816bf6e45aecb3535574c2aaa3ccc52f6758600c46cff7980df5a47a9da",
-      "requirement_id": "REQ-0FB75E22F843",
-      "requirement_text": "required capability",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1546"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1546",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c97deacde207839bd2ade34e0d53a3707199b5db879af4f95ec67f6629d7ba5d",
-      "requirement_id": "REQ-FCCFED3131A1",
-      "requirement_text": "required agent/harness",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1569"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1569",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "195281a8cdea4610dc22329f0ca10a67d34d621319b0f87fcc7fb2af279a8947",
-      "requirement_id": "REQ-2208C72FF233",
-      "requirement_text": "2. PREPARE / ADMISSION request with required resource envelope",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1576"
       ],
       "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1576",
@@ -3165,28 +3056,6 @@
       "requirement_digest": "1597dfc92fc04ce0a44ed037937f0a800d3a8434ad62174f9d3e776942e5687f",
       "requirement_id": "REQ-BC79142EA1D5",
       "requirement_text": "Each checkpoint SHALL have a versioned manifest containing at minimum:",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1680"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L1680",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e9baa91cc29bd9f0fdee06b2a03e132a0b6171da3723e67befd237633b322bf5",
-      "requirement_id": "REQ-45EB07369963",
-      "requirement_text": "environment/toolchain fingerprint where required",
       "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4295,28 +4164,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2174"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2174",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6df8419e22f185cde6b7ac3f76abbb7db940d418208ce4ca7aeb5d8e34d90065",
-      "requirement_id": "REQ-35DFFC82C8B4",
-      "requirement_text": "new process required",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2186"
       ],
       "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2186",
@@ -4507,50 +4354,6 @@
       "requirement_digest": "581628a4d3000150228930222eb6f7ced32b70544534bbd59ab98920699d2e19",
       "requirement_id": "REQ-1224CB83EE11",
       "requirement_text": "- un-authoritative disconnected work MUST NOT automatically settle as billable success;",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2259"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2259",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "63f3e60b72f40b96c0b8ce37bf4d6af521997553f62f4e8da4ef3d2b5eff2ec6",
-      "requirement_id": "REQ-DFA826712107",
-      "requirement_text": "GPU: not required",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2287"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2287",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ab071cb487ae7e57204a244171a07f2e8816a63c92038ffdd006389e19eba003",
-      "requirement_id": "REQ-E87F9E6A230A",
-      "requirement_text": "No task restart was required.",
       "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5373,28 +5176,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2757"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2757",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d23527d52e21e226c20bb38a1332fac67277b6dca743fcbb18a2bc8bc8cbf162",
-      "requirement_id": "REQ-2DAB2CD2BEC5",
-      "requirement_text": "ACP if provider supports required semantics",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2781"
       ],
       "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L2781",
@@ -6004,50 +5785,6 @@
       "requirement_digest": "e530ea8650957f30fbe132a5c29f7604b4bdb419f21a34222f998f66936dc2bc",
       "requirement_id": "REQ-C6277C0DA01C",
       "requirement_text": "Cloud drivers SHALL pass their own guarantee vector. A Cloudflare Container/Sandbox path MUST NOT inherit the local PTY driver's `PROCESS_PERSISTENT` certification.",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L3766"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L3766",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9b0d68332f0b0d546959c9e1461c61935356aeb426199ce548cc673cc4d6d0f4",
-      "requirement_id": "REQ-FAEF7BCE1446",
-      "requirement_text": "Required safety subset:",
-      "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L3771"
-      ],
-      "authority_source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md#L3771",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "94f33504b29cfc47c7b8382afe252fbf401f212057b7ab97ecebc22093ad33ca",
-      "requirement_id": "REQ-6EA36005CA96",
-      "requirement_text": "required-safety-feature negotiation",
       "source_spec_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
       "successor_mapping": [],
       "verification_evidence": [],

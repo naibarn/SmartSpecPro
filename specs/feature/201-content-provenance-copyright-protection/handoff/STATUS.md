@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 251 unresolved of 251
+- Requirements: 0 pass / 271 unresolved of 271
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Proposed for implementation — Revision 1.3` — `specs/feature/201-content-provenance-copyright-protection/spec.md#5`
+- Deep-implement section claims (10): COMPLETE: 10

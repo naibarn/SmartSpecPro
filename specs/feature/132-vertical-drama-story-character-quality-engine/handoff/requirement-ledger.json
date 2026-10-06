@@ -1,6 +1,139 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L70"
+      ],
+      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "05b36e78b5db1f2f9ac87f449fca7182f15ed7dc33130c2c161845bf8e3f5e29",
+      "requirement_id": "REQ-42BB2B5AE86E",
+      "requirement_text": "1. **User-defined premise (โจทย์เรื่องของผู้ใช้)** — the create wizard's step 1",
+      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L76"
+      ],
+      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3cd7c455ab1c3068873621434bfbb889f4b3d98b6aa52574faa99e6973817654",
+      "requirement_id": "REQ-5534DA2E9A40",
+      "requirement_text": "2. **Story engineering, not bigger context** — add explicit control structures",
+      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "033d803ec00d314b0bb53e36777c25289d5b4baca036c9ab4b0ac564b5e36ca0",
+      "requirement_id": "REQ-10650CD8D84A",
+      "requirement_text": "3. **Multi-pass QC** — split quality review into named orthogonal passes",
+      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L84"
+      ],
+      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L84",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7cb0290dbccc2f4c11400e6d3f788f0c5c4fdbf776155ed8a8c2e185140718ca",
+      "requirement_id": "REQ-758FE5AA2CC1",
+      "requirement_text": "4. **Targeted revision** — never regenerate the whole season for a local",
+      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L87"
+      ],
+      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L87",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bcb876d3a2618eb4794e64752467d05d46daf85281d13e47f9008ab5fa2e9919",
+      "requirement_id": "REQ-A16F5510ED62",
+      "requirement_text": "5. **Characters with real personality** — structured personality + speech",
+      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L92"
+      ],
+      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L92",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f5f907d35fb85ab10df38b0aa66f40b5cc65adb0ad503ed9d57591c221f1bade",
+      "requirement_id": "REQ-B7AF205C6E82",
+      "requirement_text": "6. **One criteria set everywhere** — the same quality rules apply when the",
+      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
@@ -114,50 +247,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L314"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L314",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "723391f271970d278b38a93beeaf79a49768f36a2514a6fe04d76fe3f13d48d6",
-      "requirement_id": "REQ-C0864783C81C",
-      "requirement_text": "- The synthesized draft's logline and mainPlot must be traceable to the",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L315"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L315",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "94a3397c94f8b8c24b2e203e2f5381e803bd4bfa9e652a0fbc6eba5a0879b76f",
-      "requirement_id": "REQ-68BD6CBF8704",
-      "requirement_text": "premise: a reader comparing them side by side must see the user's story.",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L420"
       ],
       "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L420",
@@ -202,28 +291,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L443"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L443",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fe7f22260e47ca608fd47fb69882e36fdc979cae0f92b7f2d0d3743620089964",
-      "requirement_id": "REQ-895A7246A80E",
-      "requirement_text": "audienceTakeaway,         // what the viewer must retain",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L461"
       ],
       "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L461",
@@ -260,138 +327,6 @@
       "requirement_digest": "cba04ae2345a682a27e1ad80a0631cc6b469665bdcde328cb90d043891275317",
       "requirement_id": "REQ-FE71DF2B39C1",
       "requirement_text": "that changes a shot's dialogue must keep the contract or explicitly emit an",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L482"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L482",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1086dc123a7f9d74ac95295c0e1cc6d4d6fdc33c0c86df64ff463a3b292b228a",
-      "requirement_id": "REQ-9A268BCE9345",
-      "requirement_text": "- Mystery must be understandable, not merely vague. Every abstract/poetic/",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L483"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L483",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4d8804152bb6866087d644b85d27d5b7877ddbcedd3d8777823cc1c4c290459c",
-      "requirement_id": "REQ-F00692CCF42B",
-      "requirement_text": "symbolic line must be grounded by a clear line before or after it.",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L487"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L487",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c1b5ac2a84c19d8f0fe6ea0d1f0e34c1daec636620d49f913736b2586cfc751e",
-      "requirement_id": "REQ-62BA8CBB7404",
-      "requirement_text": "must also carry emotion, fear, doubt, urgency, resistance, or intention.",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L491"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L491",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "35bf916e1edda5843f3d0f4dcda1f5d286e1a3fda6cd70a2fb1bc106ce270d14",
-      "requirement_id": "REQ-1D587F5B0718",
-      "requirement_text": "remember). New clues must map to contract.newClueIds.",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L497"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L497",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a614b11a402740a36ebbaf5217e4193fd484bdd3273db92d7f0d23d331748c7b",
-      "requirement_id": "REQ-32B311AD0948",
-      "requirement_text": "- Spoken register (ภาษาพูด ไม่ใช่ภาษาเขียน): dialogue must use the natural",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L506"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L506",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b1803609e6fd4025de70e6758a159460fdff009d3dc6af6cf4effa8f902d4d7d",
-      "requirement_id": "REQ-F511BB24117F",
-      "requirement_text": "- Distinct voices: every line must be consistent with the speaker's speech",
       "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1016,28 +951,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1089"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1089",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cb4d8efa9679d5e50156865ca44ba714a46af7e0c6c0ab3b4948dd4d3781d323",
-      "requirement_id": "REQ-26E7848C76AB",
-      "requirement_text": "continuityRole: string,         // what this angle must stay consistent with",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1111"
       ],
       "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1111",
@@ -1052,94 +965,6 @@
       "requirement_digest": "790923e28f724abadb734ed681c4cbbfc8579db37cb7a09c194038e5f1e98539",
       "requirement_id": "REQ-184ACF13F1AD",
       "requirement_text": "required palette):",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1124"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1124",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bd6b9be56ac384b2a7a4a7830d52b21918f16e97bcbfb9f51ceb70a60e387657",
-      "requirement_id": "REQ-59921E2FD552",
-      "requirement_text": "- The 9-angle set must include a BALANCED MIX across the 9 named functions —",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1125"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1125",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a3349e5258a7d356ceaabe8a34ce9ffe60d411de923b3388bc3c5a91b425b6f2",
-      "requirement_id": "REQ-DCE52B09602D",
-      "requirement_text": "not every function must appear in every set (a given shot may not call for",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1126"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1126",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b8d262d1ddb5c3dae5a945cdbc794286da0b956ad0a705ad2ce8690c7b86560b",
-      "requirement_id": "REQ-0F33249E989C",
-      "requirement_text": "a \"clue/object insert,\" for example), but the set must show clear variety:",
-      "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1128"
-      ],
-      "authority_source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md#L1128",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6513d4682830088a24baa63b35c38bf4a7fcfef35d5e850485166ac299a3a7c5",
-      "requirement_id": "REQ-94F6DD5F2AA2",
-      "requirement_text": "and at least 5 distinct storyFunction values must appear across the 9.",
       "source_spec_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
       "successor_mapping": [],
       "verification_evidence": [],

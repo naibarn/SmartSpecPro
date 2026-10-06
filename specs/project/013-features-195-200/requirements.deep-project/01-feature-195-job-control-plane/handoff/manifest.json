@@ -121,7 +121,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/01-feature-195-job-control-plane/spec.md",
     "digest": "a6c838ade37f27aee859435d8624f6adb79c51046cdc109041b4a03b82c5d5b9",
@@ -271,6 +271,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

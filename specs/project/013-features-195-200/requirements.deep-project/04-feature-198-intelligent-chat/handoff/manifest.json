@@ -100,7 +100,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/04-feature-198-intelligent-chat/spec.md",
     "digest": "8ce9ff68997b6d0522d116ebad9cc131ef405b9580891858b0deaa8597569c7e",
@@ -208,6 +208,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

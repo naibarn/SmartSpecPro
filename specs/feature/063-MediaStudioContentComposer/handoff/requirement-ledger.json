@@ -1,6 +1,205 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L60"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L60",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a5ad755910a03dfdeb6e894fb24515a1323fd6fceee9c0c19d3e78c67c1c4561",
+      "requirement_id": "REQ-CA389E03FD0E",
+      "requirement_text": "1. Add a dedicated content article panel inside Media Studio.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L61"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L61",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "31d36e6b2ae94adc03bf2d1248d1280969bff8030defb2a17bb524cf818e88f2",
+      "requirement_id": "REQ-D01DE5CC03AA",
+      "requirement_text": "2. Let the user enter a topic and choose the generation source from skills or agencies.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L62"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dfe9fe991115b03d16898b8c0c1a04292698dd56eba2cf0993101606c0c18544",
+      "requirement_id": "REQ-C13DAD4FAD20",
+      "requirement_text": "3. Let the user toggle web search and thinking.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L63"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L63",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "00e7516b9866e35d02e8659ceae4b64be52a34a69ce4f67a493badabd4370e0a",
+      "requirement_id": "REQ-6A26357BD46E",
+      "requirement_text": "4. Generate an article draft and preview it as HTML before publishing.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L64"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L64",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "77b2718631a64c9543e8bc9fcb328922e9f8ee2687b035a835e305c4e98b8ff9",
+      "requirement_id": "REQ-1CDBAFA509B8",
+      "requirement_text": "5. Attach 1 to 6 library-backed images or videos to the article.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2fee549b0422dcfe257e700cd85de603e42f2e876d63ee8d45aeb3ffa4d1dc17",
+      "requirement_id": "REQ-4A669927F123",
+      "requirement_text": "6. Route the article to Docs, Blog, or Social post.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3820b43d255151ef0d539fc8422ca8e5da0e1624cb6e19f3d1d18768ae8b31c7",
+      "requirement_id": "REQ-8C8B00D3E717",
+      "requirement_text": "7. For Social post, support platform selection first, then page/channel/account selection.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L67"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L67",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "01ca2d31b405b2e14d8bb7228f8c5bf15e938b769c2a2da4452e2128ac52c89f",
+      "requirement_id": "REQ-EFB9B567DAE8",
+      "requirement_text": "8. Restrict Docs and Blog options to admins and domain admins.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/063-MediaStudioContentComposer/spec.md#L68"
+      ],
+      "authority_source": "specs/feature/063-MediaStudioContentComposer/spec.md#L68",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "19fb591ba38c4c75bd69fea8ade9b15808d210f4ca64b16960b9ca2c89a9206a",
+      "requirement_id": "REQ-CB3FD5E40DC2",
+      "requirement_text": "9. Keep the current media generation flow available as a separate path.",
+      "source_spec_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

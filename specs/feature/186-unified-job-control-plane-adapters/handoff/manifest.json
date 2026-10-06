@@ -465,7 +465,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
     "digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
@@ -689,6 +689,17 @@
         "digest": "2b176e18a18cd0301fc7c762fb2aefb42e91b1dd3209574ebc8ce5bc0de7a4ee",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/186-unified-job-control-plane-adapters/sections/section-08-verification-operations.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IN PROGRESS — the canonical control plane is runtime-neutral.",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
+        "source_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+        "value": "IN PROGRESS — the canonical control plane is runtime-neutral."
       }
     ],
     "stale_fields": [],
@@ -705,6 +716,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IN PROGRESS — the canonical control plane is runtime-neutral.",
+        "line": 3,
+        "source": "specs/feature/186-unified-job-control-plane-adapters/spec.md",
+        "source_digest": "94924d760d0fe9d7954f4263c964fb5562e1cb82b37c58b7f74ad63369919905",
+        "value": "IN PROGRESS — the canonical control plane is runtime-neutral."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

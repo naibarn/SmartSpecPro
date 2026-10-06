@@ -296,7 +296,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/056-agency-memory-vector-rag/spec.md",
     "digest": "22e2e5d62aa0442ccbe369a8fa97594bad4fa8cf6561b998719f4048be4cabb8",
@@ -420,6 +420,17 @@
         "digest": "2dbec934492ce27e80c9166f4981fcdde5809efa7d9679edb2bf9055ba79e7fc",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/056-agency-memory-vector-rag/sections/section-10-tests-verification.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/056-agency-memory-vector-rag/spec.md",
+        "source_digest": "22e2e5d62aa0442ccbe369a8fa97594bad4fa8cf6561b998719f4048be4cabb8",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -436,6 +447,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/056-agency-memory-vector-rag/spec.md",
+        "source_digest": "22e2e5d62aa0442ccbe369a8fa97594bad4fa8cf6561b998719f4048be4cabb8",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

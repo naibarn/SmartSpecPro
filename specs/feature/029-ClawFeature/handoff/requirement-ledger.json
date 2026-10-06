@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -202,28 +203,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L352"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L352",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "177d69c0cbe78a244c08011615bf1c1aacf9704f0d8c3d85110289a9464f35ad",
-      "requirement_id": "REQ-B1E06C53CB00",
-      "requirement_text": "// Initialization (required)",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/029-ClawFeature/spec.md#L396"
       ],
       "authority_source": "specs/feature/029-ClawFeature/spec.md#L396",
@@ -290,28 +269,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L426"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L426",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b163e9b0ab6238f40602b96c9701b93140f26e75113224c6ce299b7e0ccc1d20",
-      "requirement_id": "REQ-3E6529EDF8F1",
-      "requirement_text": "allowed_origins TEXT[] DEFAULT '{}',          -- CORS whitelist (NEW-SEC-10: empty = NO origins allowed; must configure at least one)",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/029-ClawFeature/spec.md#L448"
       ],
       "authority_source": "specs/feature/029-ClawFeature/spec.md#L448",
@@ -348,28 +305,6 @@
       "requirement_digest": "35c50d81f41bbb6a0af63cc7168ca5f74e98efc125115e9a02379bb838601e45",
       "requirement_id": "REQ-D0669FC010D0",
       "requirement_text": "- **`credit_source: 'visitor'`**: Visitor must log in with SmartSpecPro account; their credits used",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L533"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L533",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5229de12d09858cc9b75b6fcab511ad9e782c96b3fcaf8b31eaa55c67b55bf2f",
-      "requirement_id": "REQ-4A4897EAD549",
-      "requirement_text": "allowedDomains: { type: 'array', items: { type: 'string' }, description: 'Required: domains the agent can visit (empty = DENY ALL — NEW-SEC-01)' },",
       "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -510,94 +445,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L929"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L929",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3373294b34ac5ee874e24eb8f3607e7f450b6d4351437c284e7c4454f1c87093",
-      "requirement_id": "REQ-90AA677E3B4F",
-      "requirement_text": "├─ 1. Verify signature (HMAC or token) — MUST be FIRST step (NEW-SEC-23)",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L959"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L959",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f04275527581ca13f4db26f736006571ab00c5fcdc03a9a71347234d76852657",
-      "requirement_id": "REQ-1D3DCCE768ED",
-      "requirement_text": "auth_secret_encrypted TEXT NOT NULL,         -- Encrypted via crypto.ts; REQUIRED for all auth types",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L968"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L968",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "96190898ddd90ee9c2fec091b6f27704abd28ebd4a3cc9a2daee53676f76dd9c",
-      "requirement_id": "REQ-337FC66BFF0E",
-      "requirement_text": "-- Implementation MUST use regex replacement, NOT a template engine:",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L972"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L972",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ec7bfd3600069679861a29427bdae2d5bf19d3076141b9001a87b05f4e1ee66d",
-      "requirement_id": "REQ-F7D0966FCD02",
-      "requirement_text": "-- **CRITICAL (NEW-SEC-23): Template substitution MUST run AFTER auth verification.**",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/029-ClawFeature/spec.md#L1010"
       ],
       "authority_source": "specs/feature/029-ClawFeature/spec.md#L1010",
@@ -642,138 +489,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1087"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1087",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b07c482267087a4f6951893056f861ba7b353184d776a9e5dee7cedc706a8fc7",
-      "requirement_id": "REQ-70BBFE019D42",
-      "requirement_text": "// MUST verify message belongs to ctx.userId's conversation (ownership check)",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1177"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1177",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c458eda2c9980f1ee059fecdb467f5886562bffa9278b6fa31acdfb9bfa9e2c9",
-      "requirement_id": "REQ-AC162599B63D",
-      "requirement_text": "// ISSUE-P1: buildChatContext() signature must change — add tenantId parameter",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1180"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1180",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ab01fc14bcbee4b7d94e9da7d10e2f121a8b8099cfb480343d9f394c2ddcf251",
-      "requirement_id": "REQ-F04C7E5A10AE",
-      "requirement_text": "// All callers must be updated: channelGateway.ts line 381, chat.ts router, etc.",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1184"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1184",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d960e31e3e86a46b61da166db6a904e64dc4e9cbba101e7725bf8966a2f3e412",
-      "requirement_id": "REQ-8F909D014349",
-      "requirement_text": "// that builds context for memory operations. This function must ALSO receive tenantId",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1187"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1187",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "07781c3420f5319a18b59d02c13cff221ff5b6a5c187b5cd3f3ebb3d45941c19",
-      "requirement_id": "REQ-6012B394CE2A",
-      "requirement_text": "//   2. memoryService.ts → buildChatContext() (INDEPENDENT — must also resolve persona + tenantId)",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1311"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1311",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d17e89c1ba4392b727a1b876b48eb14de96493e516af93b8b34d6e925f96814a",
-      "requirement_id": "REQ-D35A1EF8513F",
-      "requirement_text": "-- Tenant isolation: resolvePersona() MUST verify persona.tenantId === conversation.tenantId",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/029-ClawFeature/spec.md#L1436"
       ],
       "authority_source": "specs/feature/029-ClawFeature/spec.md#L1436",
@@ -810,50 +525,6 @@
       "requirement_digest": "13405c6201cc10fc30f4eb801eabb97e4b499f9d354e7cb362ea7d67cbc82374",
       "requirement_id": "REQ-2B77F5771ECC",
       "requirement_text": "- **Independent permission check (NEW-SEC-03):** Even if agencyId is in the `allowedAgencies` list, the server MUST independently verify that the calling user has execute permission on the target agency (same RBAC check as `POST /api/agencies/:id/run`). The `allowedAgencies` list in `toolConfig` is user-editable — it cannot be the sole access control gate.",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1496"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1496",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4e5160dd408a768e5e1775b5d36553d3cfe19de9c40fd20c44dee00585bbe664",
-      "requirement_id": "REQ-E8D50C12886E",
-      "requirement_text": "-- Conditions (ALL must match)",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1517"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1517",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9d521c4063450490565a4bde7072740c666a210d84748cd185911944485ce6da",
-      "requirement_id": "REQ-6BB95EE8287D",
-      "requirement_text": "-- CRITICAL: This table is queried on EVERY inbound channel message. Must have index.",
       "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1118,30 +789,6 @@
       "requirement_digest": "3a8c131a5c2e21b72415bc5fec877d5764b12bb9cafdfcb6afb36d5f3090ff2b",
       "requirement_id": "REQ-99438FC4476F",
       "requirement_text": "This section consolidates all security requirements identified during the SEC-01 through SEC-22 security audit, plus NEW-SEC-01 through NEW-SEC-40 from review rounds 2 and 3. All items marked **BLOCKER** must be resolved before implementation begins.",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1772",
-        "specs/feature/029-ClawFeature/spec.md#L1782",
-        "specs/feature/029-ClawFeature/spec.md#L1795"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1772",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "23e5df210d8a093eb1964d20cfc6f029072cb1edadaa3132b028a37c51852e63",
-      "requirement_id": "REQ-10F29A5AB0BB",
-      "requirement_text": "| ID | Feature | Finding | Fix Applied In Spec |",
       "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1582,28 +1229,6 @@
       "requirement_digest": "c7b98193820606d8c4b18947acaa2dc00f3e97585c599f6693cd9454a1343290",
       "requirement_id": "REQ-015F03E1DEFB",
       "requirement_text": "| SEC-22 | F04 Canvas | Sandbox CSP | Added iframe sandbox attrs + CSP headers |",
-      "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/029-ClawFeature/spec.md#L1807"
-      ],
-      "authority_source": "specs/feature/029-ClawFeature/spec.md#L1807",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "779efb08416089f1fcaa6326d2e104c8187cd9a3a94a5c1a2be9fa4ff53f7495",
-      "requirement_id": "REQ-92400D090E93",
-      "requirement_text": "| OWASP Category | Addressed By |",
       "source_spec_digest": "de6f93e78bd48c689a2a05bb093800763a08e207d25197ab5888c84637960242",
       "successor_mapping": [],
       "verification_evidence": [],

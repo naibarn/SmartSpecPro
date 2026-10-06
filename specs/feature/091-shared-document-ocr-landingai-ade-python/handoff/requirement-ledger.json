@@ -1,6 +1,139 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7b56f9e9bce2ef9cea23da5d2811d0e9ac6b111c0c32de61d7aa9c34296a4a04",
+      "requirement_id": "REQ-F01D6D3C356F",
+      "requirement_text": "- Reuse one Python-based document parsing service across SmartSpecPro.",
+      "source_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9620daffd2ba38281368e3dbb249bd120e7eb09d959bc14864e6000dfbfdca59",
+      "requirement_id": "REQ-DAF7C8840D55",
+      "requirement_text": "- Support PDF and image documents used in finance and library workflows.",
+      "source_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L52"
+      ],
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L52",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "aff622aebedb4a57a23fff72a62980747282afd220b05f4e338166bc8bde64a0",
+      "requirement_id": "REQ-E12E82BDEE4C",
+      "requirement_text": "- Preserve a parse-first / extract-second document workflow.",
+      "source_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L53"
+      ],
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L53",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6a78ec944319875e6a4bd62915ca6f3753eb97e409c42c315f8bc32c5b74d414",
+      "requirement_id": "REQ-E09B63E5F3CB",
+      "requirement_text": "- Normalize extracted text, markdown, and structured fields into a shared shape.",
+      "source_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L54"
+      ],
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L54",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fb3e623114b79390e39e44f19c3910829969fc5fb1700b48e4c96dea5e095d2d",
+      "requirement_id": "REQ-2BADADCDDBDD",
+      "requirement_text": "- Preserve tenant / project / owner scoping and audit trails.",
+      "source_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L55"
+      ],
+      "authority_source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md#L55",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6e07813d182db807c1e1f62e70bbe7c43152bc55fbfcdc2f62d6a9f054c57d12",
+      "requirement_id": "REQ-5BE80D3A215E",
+      "requirement_text": "- Use public or temporary public URLs for document processing.",
+      "source_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

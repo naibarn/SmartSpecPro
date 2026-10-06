@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -84,6 +85,160 @@
       "requirement_digest": "b7f622d26a800d36378f15351aea41767d53679da84377cc140186f9d8fd502d",
       "requirement_id": "REQ-7A4D786872F8",
       "requirement_text": "Inventory work in Features 187 and 188 may begin in parallel with Feature 189. However, Feature 187 may not freeze or promote tenant-owned data until Feature 189's tenant ownership rules are stable, and Feature 188 may not enable activation until both handoffs pass. Feature 189 consumes Feature 186 ports and must not implement Cloudflare, Hyperdrive, or generic adapter work.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L59"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L59",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "326cb11a7be142b04b6c40f67437366038b4867947c57faeb22ecd80ae000895",
+      "requirement_id": "REQ-41E37F57B7AB",
+      "requirement_text": "1. Keep the current mini server usable as a complete development environment throughout every migration phase.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L60"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L60",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c791ef487411b1ec9da31deadc09fa421e0c753eccd570e1fc6e9c68b4b9713c",
+      "requirement_id": "REQ-76810242EBDB",
+      "requirement_text": "2. Establish Cloudflare production entrypoints without requiring a simultaneous rewrite of all Node, Python, worker, or domain services.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L61"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L61",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6870ab8c991d7a0af9f1b6e1d75cacaa149c2c29ebb1d8ecdc36e7f47b36e714",
+      "requirement_id": "REQ-D0006FE7EDE4",
+      "requirement_text": "3. Prepare and validate database access, binary storage, search, scheduling, and asynchronous execution independently, then switch approved production boundaries in one coordinated window.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L62"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "caf2141f77729b04b6a73ed38c2744665971f54a7d3fdf8314eeaf731e70010f",
+      "requirement_id": "REQ-8F03C893E468",
+      "requirement_text": "4. Preserve `worker_jobs.id` as the canonical identity across local, legacy production, staging, cutover, and Cloudflare runtimes.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L63"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L63",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "79aef20c30f26aab29fbb127fb31aefb2ca4fe18a88688c3284a5012df5503c3",
+      "requirement_id": "REQ-C133875E2353",
+      "requirement_text": "5. Make dev-to-production promotion deterministic, auditable, repeatable, and easy to roll back.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L64"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L64",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5a74750e6a6a5871b87014a99fb4a372ab9d940784f960d26fb53f1f9d5079d6",
+      "requirement_id": "REQ-6F5481E7AFA0",
+      "requirement_text": "6. Prevent development data, credentials, queue messages, and provider side effects from leaking into production.",
+      "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f3b2c2462425de260401268322042ca101674a567c214a5a324838f0750bb0e4",
+      "requirement_id": "REQ-4F33C82DC5BC",
+      "requirement_text": "7. Prove performance and operational efficiency against a measured baseline rather than treating a successful deploy or `/healthz` response as production readiness.",
       "source_spec_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
       "successor_mapping": [],
       "verification_evidence": [],

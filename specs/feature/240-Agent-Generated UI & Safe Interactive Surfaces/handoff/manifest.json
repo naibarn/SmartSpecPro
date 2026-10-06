@@ -303,7 +303,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
     "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
@@ -352,6 +352,17 @@
         "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "value": "R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -368,6 +379,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED",
+        "line": 4,
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
+        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "value": "R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -387,8 +410,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 155,
-    "unresolved": 155
+    "total": 148,
+    "unresolved": 148
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.384178Z",

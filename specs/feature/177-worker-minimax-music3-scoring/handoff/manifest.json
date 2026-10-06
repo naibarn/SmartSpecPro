@@ -92,7 +92,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
     "digest": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
@@ -162,6 +162,17 @@
         "kind": "SOURCE",
         "line": 127,
         "path": "apps/worker-app/src/types/audioScoring.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPECIFICATION — implementation not started by this task",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
+        "source_digest": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
+        "value": "SPECIFICATION — implementation not started by this task"
       }
     ],
     "stale_fields": [],
@@ -200,6 +211,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** SPECIFICATION — implementation not started by this task",
+        "line": 3,
+        "source": "specs/feature/177-worker-minimax-music3-scoring/spec.md",
+        "source_digest": "da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650",
+        "value": "SPECIFICATION — implementation not started by this task"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

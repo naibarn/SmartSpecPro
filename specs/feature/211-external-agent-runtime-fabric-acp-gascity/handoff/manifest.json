@@ -339,7 +339,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
     "digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
@@ -453,6 +453,17 @@
         "digest": "c25f6997c432c5584711fe34aa6eb6334a4b368f339111ff8e07f9b922f85f4e",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/sections/section-06-conformance-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Architecture Freeze Candidate / Ready for implementation planning",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
+        "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+        "value": "Architecture Freeze Candidate / Ready for implementation planning"
       }
     ],
     "stale_fields": [],
@@ -469,6 +480,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Architecture Freeze Candidate / Ready for implementation planning",
+        "line": 4,
+        "source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md",
+        "source_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
+        "value": "Architecture Freeze Candidate / Ready for implementation planning"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -553,8 +576,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 522,
-    "unresolved": 522
+    "total": 505,
+    "unresolved": 505
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.973807Z",
