@@ -1,0 +1,11 @@
+{
+  "canonical_path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
+  "revision": "R1.2",
+  "spec_md_sha256": "f98e292d6fd681de118534f64fcd9091e22a88d2fb5e4be787a83023052114b3",
+  "source_docx_sha256": "8f3910655dd8b6e26560f39aaca4d0a39b26dbc6861aa874bbb451ffc001cce9",
+  "preserved_as": [
+    "history/R1.2/spec-r1.2.md",
+    "history/R1.2/spec-r1.2-source.docx"
+  ],
+  "superseded_by_archive_sha256": "4594567f4b7561e2cc50e7f0519b93d95cf4a5b57f99ac625deabe94ef482045"
+}

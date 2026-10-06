@@ -10,9 +10,9 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
         "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
     ],
     "predecessors": [],
@@ -21,8 +21,8 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
-    "expected_spec_digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b"
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a"
   },
   "continuation": {
     "next_action": null,
@@ -36,9 +36,9 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
         "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -63,29 +63,29 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
         "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 2,
   "identity": {
-    "canonical_path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
-    "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+    "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+    "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T09:28:58.148063Z",
+      "last_evidence_at": "2026-10-06T09:28:58.193296Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": "2026-10-06T11:34:46+07:00",
-      "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
+      "spec_created_at": null,
+      "spec_last_changed_at": null
     },
     "revision": "1.4",
-    "slug": "288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract",
-    "spec_id": "288",
-    "title": "SPEC-288 — SmartAIHub Resource Fabric & Portable Application Backend Contract"
+    "slug": "293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
+    "spec_id": "293",
+    "title": "SPEC-293 — SmartAIHub Unified Git Workspace & Repository Federation"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -95,16 +95,16 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
-    "integrated": true,
-    "integrated_at": "2026-10-06T04:36:24Z"
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "VALIDATION_PENDING",
-    "previous_state": "DISCOVERING",
+    "current_state": "DISCOVERING",
+    "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T09:28:58.148063Z"
+    "updated_at": "2026-10-06T09:28:58.193296Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,31 +114,26 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T09:28:58.148063Z",
+    "reconciled_at": "2026-10-06T09:28:58.193296Z",
     "sources": [
       {
-        "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
         "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "**Status:** Proposed / 100-Pass Hardened",
+        "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
-        "source": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
-        "source_digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
-        "value": "Proposed / 100-Pass Hardened"
+        "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+        "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
       }
     ],
-    "stale_fields": [
-      "continuation_assessment",
-      "implementation_mapping",
-      "requirements",
-      "verification"
-    ],
+    "stale_fields": [],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -157,19 +152,19 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "**Status:** Proposed / 100-Pass Hardened",
+        "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
         "line": 4,
-        "source": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
-        "source_digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
-        "value": "Proposed / 100-Pass Hardened"
+        "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
+        "source_digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
+        "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+        "digest": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a",
         "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md"
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
       }
     ],
     "implementation_equivalence": "UNASSESSED",
@@ -183,11 +178,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 341,
-    "unresolved": 341
+    "total": 228,
+    "unresolved": 228
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T09:28:58.148063Z",
+  "updated_at": "2026-10-06T09:28:58.193296Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

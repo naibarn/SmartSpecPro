@@ -1,0 +1,17 @@
+{
+  "canonical_spec_id": "288",
+  "revision": "1.4",
+  "source_archive": "SpecR10.zip",
+  "source_archive_sha256": "4594567f4b7561e2cc50e7f0519b93d95cf4a5b57f99ac625deabe94ef482045",
+  "source_members": {
+    "spec.md": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
+    "spec.docx": "2d8fddf428d832aff7aeafea8e3b540efb680ca3cde04de49cb701d6a6ad98ba"
+  },
+  "previous_canonical": {
+    "revision": "1.2",
+    "spec_md_sha256": "f98e292d6fd681de118534f64fcd9091e22a88d2fb5e4be787a83023052114b3",
+    "source_docx_sha256": "8f3910655dd8b6e26560f39aaca4d0a39b26dbc6861aa874bbb451ffc001cce0",
+    "preserved_under": "history/R1.2/"
+  },
+  "disposition": "CANDIDATE_NEWER_PROMOTED_WITH_PRIOR_REVISION_PRESERVED"
+}
