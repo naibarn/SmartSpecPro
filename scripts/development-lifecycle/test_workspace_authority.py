@@ -164,6 +164,27 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(result["receipt"]["canonical_user_workspace_sha"], integrated)
         self.assertEqual(result["receipt"]["task_id"], "run-224")
 
+    def test_canonical_workspace_fast_forwards_when_main_is_checked_out_elsewhere(self) -> None:
+        git(self.canonical, "switch", "-c", "user-session")
+        main_checkout = self.root / "main-checkout"
+        git(self.canonical, "worktree", "add", str(main_checkout), "main")
+        main_checkout_sha = git(main_checkout, "rev-parse", "HEAD")
+        (self.seed / "tracked.txt").write_text("v2\n", encoding="utf-8")
+        git(self.seed, "add", "tracked.txt")
+        git(self.seed, "commit", "-m", "integrated v2")
+        integrated = git(self.seed, "rev-parse", "HEAD")
+        git(self.seed, "push", "origin", "main")
+
+        result = authority.converge_canonical_workspace(
+            self.canonical, self.policy, integrated_sha=integrated
+        )
+
+        self.assertEqual(result["status"], "USER_WORKSPACE_CONVERGED")
+        self.assertEqual(git(self.canonical, "branch", "--show-current"), "user-session")
+        self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), integrated)
+        self.assertEqual(git(main_checkout, "branch", "--show-current"), "main")
+        self.assertEqual(git(main_checkout, "rev-parse", "HEAD"), main_checkout_sha)
+
     def test_dirty_canonical_workspace_is_snapshotted_and_never_overwritten(self) -> None:
         original = (self.canonical / "tracked.txt").read_text(encoding="utf-8")
         (self.canonical / "tracked.txt").write_text("user work\n", encoding="utf-8")
