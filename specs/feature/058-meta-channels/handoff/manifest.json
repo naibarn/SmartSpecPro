@@ -363,7 +363,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/058-meta-channels/spec.md",
     "digest": "72883318c300bcdb2b4806e155b278fdd46c29e330bdde8cba162eb87b5762b2",
@@ -533,6 +533,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -657,8 +658,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 44,
-    "unresolved": 44
+    "total": 31,
+    "unresolved": 31
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.709055Z",

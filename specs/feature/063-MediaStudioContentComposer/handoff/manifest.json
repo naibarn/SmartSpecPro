@@ -296,7 +296,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/063-MediaStudioContentComposer/spec.md",
     "digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
@@ -420,6 +420,17 @@
         "digest": "8588d30b0e92432650a543356e6e42f240bf32526deb6c52ab90553626b4119e",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/063-MediaStudioContentComposer/sections/section-10-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/063-MediaStudioContentComposer/spec.md",
+        "source_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -436,6 +447,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/063-MediaStudioContentComposer/spec.md",
+        "source_digest": "b395e78702f8ef07165c01c61fb3fa787d8cace81a2513010afd16e09e9f2160",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -530,8 +553,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 43,
-    "unresolved": 43
+    "total": 52,
+    "unresolved": 52
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.743266Z",

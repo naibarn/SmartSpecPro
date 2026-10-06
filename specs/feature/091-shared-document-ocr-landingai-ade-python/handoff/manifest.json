@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
     "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
@@ -240,6 +240,17 @@
         "digest": "51c92bc87141300818d41eb90ef22bb6b5d21e40e2b070dcea9c47e27362e28d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/sections/section-04-rollout-and-regression-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
+        "source_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -256,6 +267,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
+        "source_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -305,8 +328,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 18,
-    "unresolved": 18
+    "total": 24,
+    "unresolved": 24
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.885828Z",

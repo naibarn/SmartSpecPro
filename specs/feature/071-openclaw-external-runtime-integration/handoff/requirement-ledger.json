@@ -1,6 +1,139 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L55"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L55",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "27da8d2afbb7fc1cf0ee6ab8610181f35c4f43de72de987657a6af308645d296",
+      "requirement_id": "REQ-DF17D02FABF8",
+      "requirement_text": "1. Register OpenClaw gateways as first-class workers inside SmartSpecPro.",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L56"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L56",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fb46344e72e42daec69444ca4a55a54f7e4b3a1f0bc5795e29adca5dce69b655",
+      "requirement_id": "REQ-D1925E8CB871",
+      "requirement_text": "2. Expose a worker/job/artifact model that future runtimes can reuse, while implementing only `openclaw_gateway` in this feature.",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L57"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L57",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9fb2aa429289a1e51b4f698a40b2afa8b5c0e56ec56eb275c595adbe58d47db6",
+      "requirement_id": "REQ-A7343A5BF284",
+      "requirement_text": "3. Let personas, workflows, and team members target OpenClaw through capability intent rather than hard-coded runtime assumptions.",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L58"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L58",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d10800cda11807e8a0bd0878749fa67e5928d9a42f0b920293acb562f86be3a0",
+      "requirement_id": "REQ-B01BEC8E79DD",
+      "requirement_text": "4. Preserve SmartSpecPro ownership of auth, policy, audit, artifact publication, and indexing.",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L59"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L59",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2ddc56bc71352be88181bd55352e388d3f9dcad4e6a45f794df0656b1e8f4c98",
+      "requirement_id": "REQ-9E4EAB522C8E",
+      "requirement_text": "5. Keep current team and orchestration flows backward-compatible during migration from plain string connectors to registered workers.",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L60"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L60",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "34fac685e671481856529968b8b5f7b933bf661b98a0446c89df2b7ba8d7f1ca",
+      "requirement_id": "REQ-0ED6755C7317",
+      "requirement_text": "6. Define a concrete gateway compatibility profile so Claw-family runtimes can reuse SmartSpecPro's central LLM proxy where the current code already supports it.",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
@@ -488,72 +621,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L542"
-      ],
-      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L542",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "73e8590418c9ee69584a6bff7dc7084c47f982d481570611085c7fd85f2c7107",
-      "requirement_id": "REQ-B8EC4688AA08",
-      "requirement_text": "- API key",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L543"
-      ],
-      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L543",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "394c3146d84d85b297351efcb535246e670c24fa60865ac02cf82cdd8ab570b1",
-      "requirement_id": "REQ-E5EEC6B94A21",
-      "requirement_text": "- signed bearer token",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L544"
-      ],
-      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L544",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fba0c128947d2dffd22f690251c22b0dcd4a58ca912f16c2a6e0f348f8b92767",
-      "requirement_id": "REQ-3E39F1A7E98A",
-      "requirement_text": "- approved internal token path",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/071-openclaw-external-runtime-integration/spec.md#L546"
       ],
       "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L546",
@@ -568,50 +635,6 @@
       "requirement_digest": "385565684aac6b45b92fe9f4cacb4f992aad60f598b0eae7968e1944e1b9a812",
       "requirement_id": "REQ-47809883AE8E",
       "requirement_text": "Implementation must not:",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L548"
-      ],
-      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L548",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "142bac2da71d8125702169231d8c11c1260b54c62b0c774e48b0e922e19ce163",
-      "requirement_id": "REQ-239B23ACBAEF",
-      "requirement_text": "- rely on API-key-only fields being present when the route is reachable by other auth modes",
-      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L549"
-      ],
-      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L549",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "59ea4a6e4246a0b8f5bd247848fcf3dec5098bbabd92f98a6c6db9a3f5c8481a",
-      "requirement_id": "REQ-1CF4519A7C9E",
-      "requirement_text": "- fall back to `tenantId = \"default\"` for external callers when tenant identity can be derived from auth",
       "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1184,6 +1207,72 @@
       "requirement_digest": "3b81bc68b37e219ba4c2b08ae0be8c4efd4e0a71678cb2839c1b430e4c471efd",
       "requirement_id": "REQ-9262FDBBEDA3",
       "requirement_text": "- acceptance for this feature should include one paused external-connector run rendered correctly in the existing workflow board",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L673"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L673",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dad18fec976a76e5558a37cee76656a9d38d78e3891b7788c1883350085763a3",
+      "requirement_id": "REQ-D4283768BC65",
+      "requirement_text": "- SmartSpecPro owns auth, policy, and audit",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L674"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L674",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a2e4136a542d01a2ac80b24ccedb51fe307deeb91d432e4204ef57bbba280c6b",
+      "requirement_id": "REQ-9A55C3A38557",
+      "requirement_text": "- OpenClaw workers execute only within explicit tenant and worker policy",
+      "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/071-openclaw-external-runtime-integration/spec.md#L675"
+      ],
+      "authority_source": "specs/feature/071-openclaw-external-runtime-integration/spec.md#L675",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bcfaf7c4ede4198444f5af96533213400f37d0bd83564b441816351ff7edb3fa",
+      "requirement_id": "REQ-1A4A5FDE309C",
+      "requirement_text": "- no unrestricted shell or filesystem promises are implied by OpenClaw registration",
       "source_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
       "successor_mapping": [],
       "verification_evidence": [],

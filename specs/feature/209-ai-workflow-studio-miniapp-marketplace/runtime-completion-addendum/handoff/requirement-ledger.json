@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,6 +41,160 @@
       "requirement_digest": "d1ab7499a4f9f3e3e27fb4cdf27375dba4da446df5ebae4185feb76f273b11ca",
       "requirement_id": "REQ-19576BA20AE7",
       "requirement_text": "- Retired systems must not be used or reintroduced.",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L27"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L27",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "acb5b11e6de99bfbb5bbb16c332cff5ba1f077f50130b0cbb6508e00a88447cd",
+      "requirement_id": "REQ-CE5FC7C279D4",
+      "requirement_text": "1. Library and Marketplace can load, filter, inspect, preflight and select a",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L29"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L29",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1d52abd62d26a1b35172e9043f2ef01310b1be4de7ade0705e1edf46e7722ca2",
+      "requirement_id": "REQ-DD0C2330FE68",
+      "requirement_text": "2. A saved Workflow Version can produce a canonical Feature 195 Job plan and",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L31"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L31",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c3c0f0b93ad4b44115d5c4822bfabe5e9efe6450106e9425bb6ad8b6d3ec2c2f",
+      "requirement_id": "REQ-8BB22D19258D",
+      "requirement_text": "3. Marketplace invocation rechecks entitlement, dependency readiness, version",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L33"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L33",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "65b5a79c227d82df02cf9375fdfcefa5768440bce4faf35854c8643d9495c3d0",
+      "requirement_id": "REQ-469969CCB730",
+      "requirement_text": "4. Full, partial, run-from and run-until modes use checkpoints and the same",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L35"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L35",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3da1968c87eb0143739506a0ef25859bdd00fe8a1a6402dd52d958213cbdf538",
+      "requirement_id": "REQ-C180866A9924",
+      "requirement_text": "5. Human approval, retry, cancel and resume are durable, idempotent and",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L37"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L37",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1d3ce37f97e9ce5a01f8fb725d7a0bf1f0b77dc9b3f5966279ee1a6125cbb668",
+      "requirement_id": "REQ-B9DC6C830CF3",
+      "requirement_text": "6. Outputs, artifacts and previews are schema-driven, tenant-safe and served",
+      "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L39"
+      ],
+      "authority_source": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/spec.md#L39",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c0ea75fc22f83f63993467b47d86d68ab06869c0c5c629a3b635be0e938345f2",
+      "requirement_id": "REQ-50F705DBEB6A",
+      "requirement_text": "7. Trace, logs and events are reconstructible from canonical Job events and",
       "source_spec_digest": "c41ed697095644dfa61edb57a7014ebd87f51650a6b47610749e0448f3b982e3",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -236,7 +236,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
     "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
@@ -340,6 +340,48 @@
         "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
+        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes: Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "relation": "SUPERSEDES",
+        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
+        "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
+        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "target_ambiguous": true,
+        "target_candidates": [
+          {
+            "path": "specs/feature/059-external-worker-provider-framework",
+            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
+            "spec_id": "059",
+            "title": "059 - SmartSpecPro Distributed Worker Runtime"
+          },
+          {
+            "path": "specs/feature/059-knplabai-multi-provider-expansion",
+            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
+            "spec_id": "059",
+            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
+          }
+        ],
+        "target_spec_ids": [
+          "059"
+        ],
+        "value": "Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature"
       }
     ],
     "stale_fields": [],
@@ -356,6 +398,48 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
+        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes: Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature",
+        "line": 7,
+        "relation": "SUPERSEDES",
+        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
+        "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
+        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "target_ambiguous": true,
+        "target_candidates": [
+          {
+            "path": "specs/feature/059-external-worker-provider-framework",
+            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
+            "spec_id": "059",
+            "title": "059 - SmartSpecPro Distributed Worker Runtime"
+          },
+          {
+            "path": "specs/feature/059-knplabai-multi-provider-expansion",
+            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
+            "spec_id": "059",
+            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
+          }
+        ],
+        "target_spec_ids": [
+          "059"
+        ],
+        "value": "Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -430,8 +514,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 63,
-    "unresolved": 63
+    "total": 67,
+    "unresolved": 67
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.821860Z",

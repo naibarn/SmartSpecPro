@@ -326,7 +326,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/033-Browser-Automation-Policy/spec.md",
     "digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
@@ -460,6 +460,17 @@
         "digest": "9877d1be51c674c51178d1b1d904d2c3712caeb4a5e83dec3021c798c85baca2",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/033-Browser-Automation-Policy/sections/section-07-rollout-migrations-and-release-gates.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft — v0.4",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/033-Browser-Automation-Policy/spec.md",
+        "source_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "value": "Draft — v0.4"
       }
     ],
     "stale_fields": [],
@@ -476,6 +487,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft — v0.4",
+        "line": 5,
+        "source": "specs/feature/033-Browser-Automation-Policy/spec.md",
+        "source_digest": "f0088daf93600c4418ab003f91ced8579655e61d8fba4470584121f5564e837c",
+        "value": "Draft — v0.4"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -580,8 +603,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 48,
-    "unresolved": 48
+    "total": 53,
+    "unresolved": 53
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.532756Z",

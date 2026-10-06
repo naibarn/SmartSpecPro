@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
     "digest": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
@@ -120,6 +120,17 @@
         "digest": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
+        "source_digest": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "line": 5,
+        "source": "specs/feature/111-presentation-builder-split-layer-video-editor/spec.md",
+        "source_digest": "997fff19bfba7fbc50d0d465c06d87e4fb0384954d4823870ebbea3c746c478a",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 41,
-    "unresolved": 41
+    "total": 53,
+    "unresolved": 53
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.017993Z",

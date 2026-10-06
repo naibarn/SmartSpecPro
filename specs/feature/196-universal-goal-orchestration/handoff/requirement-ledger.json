@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -114,72 +115,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L109"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L109",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "504e17e04ebd1de2e9393245a3eb7ce5bf481f12d8d07d34ef0d4a2068c50c3a",
-      "requirement_id": "REQ-E2EFDF09811D",
-      "requirement_text": "What must be done?",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L172"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L172",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ad9ad8a5f92e734cb1ed409d299d78a84350f61beea18b11a0f406567c20a0a5",
-      "requirement_id": "REQ-96C334EB1920",
-      "requirement_text": "- Grok Bot has mobile apps for iPhone and Android; the mobile app connects to the same Bots, conversations, routines, connectors and cloud computer, and cloud work continues when the app closes.",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L173"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L173",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "00e9469eb794f9b8df712c829aef647daeea026c099aea816af135d53d097dfc",
-      "requirement_id": "REQ-6AC3765974BA",
-      "requirement_text": "- Gemini mobile supports text, voice and Live conversations; Android can act as a mobile assistant and both Android/iOS have mobile experiences.",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/196-universal-goal-orchestration/spec.md#L175"
       ],
       "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L175",
@@ -238,28 +173,6 @@
       "requirement_digest": "4341ae1b4c3a9cd5f2663783bee974802737a8e0054d1ed1256fc30788b5ab24",
       "requirement_id": "REQ-BF136D235749",
       "requirement_text": "The system must resolve all channels to a canonical:",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L380"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L380",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "45bd5816066c8afdd010e485fc71a546ec2fbdde5ba7eacd6be3e9e4701da9c7",
-      "requirement_id": "REQ-EFB9AC9E1B1A",
-      "requirement_text": "required destinations",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -378,28 +291,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L1425"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1425",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7c969089199df91bdf9a7c61158123f95293295ec37848162be8f81869c30133",
-      "requirement_id": "REQ-4617FDAB6B3C",
-      "requirement_text": "approval required for quality/cost change",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/196-universal-goal-orchestration/spec.md#L1447"
       ],
       "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1447",
@@ -436,50 +327,6 @@
       "requirement_digest": "8866b2a213552acb8e282ab07006f67435bda46f0707bc57664514a4be7460bd",
       "requirement_id": "REQ-96B489F0DEEA",
       "requirement_text": "Mobile must be a first-class client of the same Goal/Run APIs, not a separate backend.",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L1668"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1668",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4a8e89b29053cade18226c87e18e8934cd61a0e858828f3f4b242ca488ad1a3c",
-      "requirement_id": "REQ-03B7CEA95A50",
-      "requirement_text": "Open Web/Plugin UI when detailed manual action is required",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L1712"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L1712",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d1c6db4d07f9ff94ea5083c22100fe5efb855c607010b234b46fd07d6fcf5b88",
-      "requirement_id": "REQ-7D7E4AF1DC36",
-      "requirement_text": "approval required",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -576,6 +423,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2202"
+      ],
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2202",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "41eb5da803b9f6760f261bf81c2986a64fd09a71e37ff82107326edf483e061b",
+      "requirement_id": "REQ-3FC92E6CB5E4",
+      "requirement_text": "- distinguish general information from diagnosis/treatment",
+      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/196-universal-goal-orchestration/spec.md#L2203"
       ],
       "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2203",
@@ -590,6 +459,50 @@
       "requirement_digest": "5195b033c45ccbd527ee77dd15d1b8e09635520ce713ecdc4813b307b14726e9",
       "requirement_id": "REQ-1F09DC4FBBA3",
       "requirement_text": "- use authoritative sources when research is required",
+      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2204"
+      ],
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2204",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "942a2eb8850fb1045cfe7b968d69845c06c1852cc971068504384b2b0cfdf6f8",
+      "requirement_id": "REQ-28A91B910D0C",
+      "requirement_text": "- surface uncertainty/need for professional care where appropriate",
+      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/196-universal-goal-orchestration/spec.md#L2205"
+      ],
+      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L2205",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "25694973983dbc55566ac494f66424696f7e90bf7d456feef75ce67a55dbf050",
+      "requirement_id": "REQ-15E95E924F8D",
+      "requirement_text": "- do not allow generic autonomous Agent to make high-stakes decisions without policy controls",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2754,50 +2667,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5048"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5048",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e2d1aebae8822b32d5a2b3a1f082c4f376dcf1335f97767ac256976f0b7f9b16",
-      "requirement_id": "REQ-6E6AF8A40139",
-      "requirement_text": "required connection",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5049"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5049",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4f1110860adaba8ddb999eadfea21a2780a36bb9ebe58a4bf2d3bd97f1c67b63",
-      "requirement_id": "REQ-4C840FE7CD8B",
-      "requirement_text": "required device/runtime",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/196-universal-goal-orchestration/spec.md#L5074"
       ],
       "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5074",
@@ -2878,28 +2747,6 @@
       "requirement_digest": "5b160082fe806993a0f04e5dc4e04bc20ccbb4e6e9eb96bcd50b4fc264f2f5ae",
       "requirement_id": "REQ-B2BE1F910A81",
       "requirement_text": "The compiled graph MUST be acyclic unless an iterative loop is explicitly represented as a bounded iteration construct with:",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5132"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5132",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "61e9346c1f4c3326a44ad4e64e6ee536b98ee2cfb0bc5ff4b0128771cd9578bc",
-      "requirement_id": "REQ-8FD8AB3A4AD5",
-      "requirement_text": "required manual UI",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2996,28 +2843,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5225"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5225",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "36afe816bf6e45aecb3535574c2aaa3ccc52f6758600c46cff7980df5a47a9da",
-      "requirement_id": "REQ-C1F4802ADD6C",
-      "requirement_text": "required capability",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/196-universal-goal-orchestration/spec.md#L5239"
       ],
       "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5239",
@@ -3032,28 +2857,6 @@
       "requirement_digest": "04bbda41e9bd2891f6ffd7611e0a293949b2d8b3107db3ab3f5b3bf772072488",
       "requirement_id": "REQ-EB1D53FF52ED",
       "requirement_text": "Feature 196 MUST support normalized binding strength for Runner-hosted Agent/tool resolution.",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5244"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5244",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "373dbf1197d70fa851f2d79fa483f3e57c083788c0d50b9d80db71fbcdac2305",
-      "requirement_id": "REQ-331986BDD657",
-      "requirement_text": "REQUIRED",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3583,28 +3386,6 @@
       "requirement_digest": "d334eaae89665ed232d6505c37ba6aeee149d7d72b240bcae3202d685c8d68d1",
       "requirement_id": "REQ-189DAB33F3E7",
       "requirement_text": "Planner MUST specify whether SmartAIHub capability usage is:",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5749"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5749",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6a89a76e0ca9ed5031b7d6de9a484293a2f02716d12d97bcc67e941ee6843a6b",
-      "requirement_id": "REQ-BF07DFAE4004",
-      "requirement_text": "REQUIRED      # must use SmartAIHub capability for this step",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4163,50 +3944,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5996"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5996",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9e8f9823db3e43567fe6912041dc4e873157824e496c7606a71a95d4fbccceae",
-      "requirement_id": "REQ-9D43312886C5",
-      "requirement_text": "required artifact types",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L5997"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L5997",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d9ce5cb0aa23651ddff30114aa40e8c6ecc2012f969be99dd534bfabb355b610",
-      "requirement_id": "REQ-47BE3588542B",
-      "requirement_text": "required result summary/metadata",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/196-universal-goal-orchestration/spec.md#L6002"
       ],
       "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6002",
@@ -4595,28 +4332,6 @@
       "requirement_digest": "53226c16ae2c8a10a8a888a77d783f967b330ccc6c9f68d593f1409164926c11",
       "requirement_id": "REQ-D4F76A2624F6",
       "requirement_text": "Goal/Command identity, permissions and learning evidence MUST preserve the role.",
-      "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/196-universal-goal-orchestration/spec.md#L6233"
-      ],
-      "authority_source": "specs/feature/196-universal-goal-orchestration/spec.md#L6233",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "05c5c12c289ef4c8cd1c6f1e50eefcaacd1ccd1aa766cccc5b349c7048b1835d",
-      "requirement_id": "REQ-08986AB4C379",
-      "requirement_text": "binding = REQUIRED Claude for current scope",
       "source_spec_digest": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b",
       "successor_mapping": [],
       "verification_evidence": [],

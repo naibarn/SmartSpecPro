@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
     "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
@@ -235,6 +235,33 @@
         "digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
+        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "value": "Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "**Supersedes:** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker c",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 12,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
+        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
       }
     ],
     "stale_fields": [],
@@ -251,6 +278,33 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists",
+        "line": 3,
+        "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
+        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "value": "Proposed / Target post-cutover retrieval architecture; partial provider/search implementation exists"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "**Supersedes:** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker c",
+        "line": 12,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
+        "source_digest": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "** Retrieval implementation details that assume pgvector is the production vector database. It does not retroactively rewrite already-implemented specs; consumers shall migrate to this spec through the shared Retrieval Broker contract."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -270,8 +324,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 72,
-    "unresolved": 72
+    "total": 95,
+    "unresolved": 95
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.298981Z",

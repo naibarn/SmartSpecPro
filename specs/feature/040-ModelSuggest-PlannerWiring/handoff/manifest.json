@@ -236,7 +236,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/040-ModelSuggest-PlannerWiring/spec.md",
     "digest": "f614aa5cd60bab68a2468c50a95aca73084598661879f4ce30e14e7207e83636",
@@ -340,6 +340,76 @@
         "digest": "7f31887593c6ad72608acd53b7e81a7e7d801d4813b96f710d6d5004cc3d4f6b",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/040-ModelSuggest-PlannerWiring/sections/section-05-auto-draft-wiring.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "214a8ad3",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-suggest-model-function: complete; commit_hash=214a8ad3",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-suggest-model-function",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "b25e69fc",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-verify-token-security: complete; commit_hash=b25e69fc",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-verify-token-security",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "be359a99",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-handler-audit-and-errors: complete; commit_hash=be359a99",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-handler-audit-and-errors",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bb9070c2",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-route-registration: complete; commit_hash=bb9070c2",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-route-registration",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "4541f9cf",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-auto-draft-wiring: complete; commit_hash=4541f9cf",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-auto-draft-wiring",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
       }
     ],
     "stale_fields": [],
@@ -356,6 +426,73 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "214a8ad3",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-suggest-model-function: complete; commit_hash=214a8ad3",
+        "line": null,
+        "section": "section-01-suggest-model-function",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "b25e69fc",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-verify-token-security: complete; commit_hash=b25e69fc",
+        "line": null,
+        "section": "section-02-verify-token-security",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "be359a99",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-handler-audit-and-errors: complete; commit_hash=be359a99",
+        "line": null,
+        "section": "section-03-handler-audit-and-errors",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bb9070c2",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-route-registration: complete; commit_hash=bb9070c2",
+        "line": null,
+        "section": "section-04-route-registration",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "4541f9cf",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-auto-draft-wiring: complete; commit_hash=4541f9cf",
+        "line": null,
+        "section": "section-05-auto-draft-wiring",
+        "source": "specs/feature/040-ModelSuggest-PlannerWiring/implementation/deep_implement_config.json",
+        "source_digest": "4d4d69d286b15f375b885f1ca318ec77e6b8a2f283d59464505fbf7b4174b979",
+        "value": "complete"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -430,8 +567,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 9,
-    "unresolved": 9
+    "total": 13,
+    "unresolved": 13
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.586612Z",

@@ -6,4 +6,10 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 40 unresolved of 40
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 3
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `DESIGN CANDIDATE / NOT IMPLEMENTED / NUMBERING UNVERIFIED` — `specs/feature/239-External Personal Agent Interoperability/spec.md#6`

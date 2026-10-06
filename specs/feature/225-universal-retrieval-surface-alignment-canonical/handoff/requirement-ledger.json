@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -700,50 +701,6 @@
       "requirement_digest": "f3a3b2fa221637832efcebbcdf4727f87ed6a4810d8995f535283b69c27e57fb",
       "requirement_id": "REQ-43B274B0B0DE",
       "requirement_text": "Users SHALL be told whether a job can continue when their device is offline.",
-      "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L577"
-      ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L577",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8983dcdf01cd6073553ae4ea2bae4918da676f4481ca7f75c0829ec80711a3c0",
-      "requirement_id": "REQ-FC61505D1F6D",
-      "requirement_text": "Office PC required — Waiting for SmartAIHub Runner on \"Office PC\".",
-      "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L579"
-      ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L579",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "911ac5fce717e2712309643de82faf9ea556aa5026a65cbb3c85d6c479cd4d9e",
-      "requirement_id": "REQ-0C513E680C94",
-      "requirement_text": "Authenticated browser session required — Human sign-in needed.",
       "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1558,72 +1515,6 @@
       "requirement_digest": "e4c4ce486bc8d058a07b01b274a6d10262aeb8f52d460a61d287e7190a038361",
       "requirement_id": "REQ-84F5D8BB11C4",
       "requirement_text": "Before or during material-cost tasks, mobile SHALL be able to show:",
-      "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1261"
-      ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1261",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1918a2677c9c91385760b7c823fa0d4be98d1af46c4e165be563ef30a78fe70d",
-      "requirement_id": "REQ-900DA7582D97",
-      "requirement_text": "additional-cost approval if required",
-      "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1276"
-      ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1276",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e12f5239ff8de214d037400b474665da88b970aaf6de3d426d781710fd66a2bd",
-      "requirement_id": "REQ-E7C555853E30",
-      "requirement_text": "Browser required",
-      "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1277"
-      ],
-      "authority_source": "specs/feature/225-universal-retrieval-surface-alignment-canonical/spec.md#L1277",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ff96d898cf0bff9ebdc45e5bc5e5d140a118c517a8e8447f58f1d315ccc68a49",
-      "requirement_id": "REQ-CF62B358EDFC",
-      "requirement_text": "Your PC is not required",
       "source_spec_digest": "4a9a7287eeca7135fbe07c7aa4d9f22b70fae9d8b7823da5f249cb2aa7650ac5",
       "successor_mapping": [],
       "verification_evidence": [],

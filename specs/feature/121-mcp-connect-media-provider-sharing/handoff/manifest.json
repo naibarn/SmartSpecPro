@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
     "digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
@@ -505,6 +505,17 @@
         "digest": "fc01d30a5b1ce60bb9324e110f5e9e270c9ba43a61f95063aaaf0587e696bcec",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/121-mcp-connect-media-provider-sharing/sections/section-09-observability-release-gates.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+        "source_digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -521,6 +532,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "line": 5,
+        "source": "specs/feature/121-mcp-connect-media-provider-sharing/spec.md",
+        "source_digest": "776ca8084fbb783634cb813fc2b5f8083e27c0fe480ec37ac973c11df9cf854e",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -640,8 +663,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 254,
-    "unresolved": 254
+    "total": 252,
+    "unresolved": 252
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.128613Z",

@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/128-age-aware-safety-policy/spec.md",
     "digest": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
@@ -515,6 +515,17 @@
         "digest": "faa6c67135e082b3bc0fe51e5cccd10c265132885690c23880863965914dccc3",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/128-age-aware-safety-policy/sections/section-12-rollout-verification.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/128-age-aware-safety-policy/spec.md",
+        "source_digest": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -531,6 +542,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed",
+        "line": 5,
+        "source": "specs/feature/128-age-aware-safety-policy/spec.md",
+        "source_digest": "49af520f145ddd5b3571c506e5b5ed6135917652e833e7a12467cb9b98177af2",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -660,8 +683,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 242,
-    "unresolved": 242
+    "total": 256,
+    "unresolved": 256
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.182993Z",

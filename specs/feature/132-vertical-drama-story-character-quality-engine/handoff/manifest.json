@@ -421,7 +421,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
     "digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
@@ -764,6 +764,17 @@
         "kind": "TEST",
         "line": 104,
         "path": "apps/web/client/src/components/verticalDramaSeries/__tests__/VerticalDramaCharacterVoiceCastingCard.pure.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+        "source_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -1005,6 +1016,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/132-vertical-drama-story-character-quality-engine/spec.md",
+        "source_digest": "a9dccb700a8e27983d80738b53971a65eac308a051e67915a4216c0c69f05ade",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -1094,8 +1117,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 57,
-    "unresolved": 57
+    "total": 49,
+    "unresolved": 49
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.229684Z",

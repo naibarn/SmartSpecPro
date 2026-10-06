@@ -1,6 +1,227 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L59"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L59",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f5726d7e4893be7c36a8d571342e15ab55c10639b94fcbcb19110a8d379b7817",
+      "requirement_id": "REQ-9AB124151D89",
+      "requirement_text": "1. Introduce persistent role agents that can own recurring responsibilities across departments.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L60"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L60",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5837a0c851c0d6e2b8eec2b8658e920d85311052f4e918ddb46da3da7f932a35",
+      "requirement_id": "REQ-E3A7F271B33D",
+      "requirement_text": "2. Provide a control-room monitor where operators can configure, observe, and govern AI roles as if they were an organization chart.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L61"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L61",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "966eb3cac95cd177ce7fb84978ca6037e2ea1a02f1190ba2482d1d8e181c603b",
+      "requirement_id": "REQ-7821DD529DCB",
+      "requirement_text": "3. Let role agents talk to each other, delegate tasks, and coordinate through structured communication instead of ad hoc prompts.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L62"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L62",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "244319ea25a4d15e4fa594a1e8e4253754b5366e831c004cfb6927f817f0e16a",
+      "requirement_id": "REQ-283FFC4BC043",
+      "requirement_text": "4. Support schedule-driven and event-driven routine work, not just one-off jobs.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L63"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L63",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1581d83f02fe82f054b5fb3fe6cdb75091a8c083559977fd837aeb9b56009538",
+      "requirement_id": "REQ-CEACE37FEA87",
+      "requirement_text": "5. Keep human-in-the-loop limited to narrow, high-value boundaries.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L64"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L64",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8213e2046c1fa5145a229b8e4153699b7185f2c0d1e2c3308266fddce23d5e52",
+      "requirement_id": "REQ-417B893B26B1",
+      "requirement_text": "6. Improve quality over time through replay, benchmark comparison, and gated self-improvement.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fa0d99f484fe35b9ba8491e83e24b955c485e26f02b4e2ad11a8802adba58571",
+      "requirement_id": "REQ-96A2DA3D4F1C",
+      "requirement_text": "7. Preserve strong trust, budget, connector, and audit boundaries.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "39426de81a25b14962aa79c5dc12adc733cabe5ec51a4cd4d2ea8a6a6ae1829b",
+      "requirement_id": "REQ-A1EFAA1D3C80",
+      "requirement_text": "8. Avoid extra manual installation requirements by using SmartAIHub-managed web, desktop-host, and worker-fabric paths.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L67"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L67",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dca79713f8e8e8cf23b37655d2ca189e23f9ec287b9183e10d50e7688f462bc8",
+      "requirement_id": "REQ-6E139394685A",
+      "requirement_text": "9. Survive long-running operation through checkpoints, watchdogs, resume flows, and idempotent routines.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L68"
+      ],
+      "authority_source": "specs/feature/080-autonomous-team-monitor-and-persistent-role-agents/spec.md#L68",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c210a254a9f361d24a6c255b29ea4487bd681c3922811d7b0e2fb03bb443304d",
+      "requirement_id": "REQ-5500118D3E2B",
+      "requirement_text": "10. Reuse Feature 079 workpacks as the canonical execution unit for role-owned work.",
+      "source_spec_digest": "c1f25102d35ec79ba9ea58411f865a4aef006057577d6c05920cd9ed1400d812",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

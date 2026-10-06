@@ -122,7 +122,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/251-creator-workspace-media-localization/spec.md",
     "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
@@ -171,6 +171,17 @@
         "digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/251-creator-workspace-media-localization/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DESIGN_PROPOSAL_NOT_IMPLEMENTED_NOT_PRODUCTION_CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/251-creator-workspace-media-localization/spec.md",
+        "source_digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "value": "DESIGN_PROPOSAL_NOT_IMPLEMENTED_NOT_PRODUCTION_CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -187,6 +198,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DESIGN_PROPOSAL_NOT_IMPLEMENTED_NOT_PRODUCTION_CERTIFIED",
+        "line": 6,
+        "source": "specs/feature/251-creator-workspace-media-localization/spec.md",
+        "source_digest": "776654e70dc755b7bfc413e97293f2ef65a46f2623d38a8002696767d2cbfbd8",
+        "value": "DESIGN_PROPOSAL_NOT_IMPLEMENTED_NOT_PRODUCTION_CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

@@ -243,7 +243,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/059-knplabai-multi-provider-expansion/spec.md",
     "digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
@@ -347,6 +347,17 @@
         "digest": "317ac4fc62bc82751af56329f3c4f7d2506248c7b00b31ebdfc9cc2df60adb84",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/059-knplabai-multi-provider-expansion/sections/section-08-tests-verification.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed (Revised after 4-domain review)",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md",
+        "source_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+        "value": "Proposed (Revised after 4-domain review)"
       }
     ],
     "stale_fields": [],
@@ -363,6 +374,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed (Revised after 4-domain review)",
+        "line": 5,
+        "source": "specs/feature/059-knplabai-multi-provider-expansion/spec.md",
+        "source_digest": "2474bf48e28af57d02dfb9447de9acccf033b107e2827851c3d9fc39fe43d3ea",
+        "value": "Proposed (Revised after 4-domain review)"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -437,8 +460,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 10,
-    "unresolved": 10
+    "total": 3,
+    "unresolved": 3
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.719640Z",

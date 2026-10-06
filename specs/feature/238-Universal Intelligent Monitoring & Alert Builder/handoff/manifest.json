@@ -210,7 +210,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
     "digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
@@ -259,6 +259,17 @@
         "digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
+        "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+        "value": "PROPOSED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -275,6 +286,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "line": 7,
+        "source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md",
+        "source_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
+        "value": "PROPOSED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -294,8 +317,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 73,
-    "unresolved": 73
+    "total": 71,
+    "unresolved": 71
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.366494Z",

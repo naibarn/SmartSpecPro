@@ -96,7 +96,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
     "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
@@ -145,6 +145,33 @@
         "digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "supersedes: revision 1.1",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 8,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+        "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "revision 1.1"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 10,
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+        "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "value": "PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -161,6 +188,33 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "supersedes: revision 1.1",
+        "line": 8,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+        "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "revision 1.1"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "line": 10,
+        "source": "specs/feature/243-Managed Cloud Agent & Hosted Harness Integration/spec.md",
+        "source_digest": "2fe5690bf16193aa71bd612c3d56e01919eade3b35667298783fce650bc60f4c",
+        "value": "PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -180,8 +234,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 192,
-    "unresolved": 192
+    "total": 191,
+    "unresolved": 191
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.415742Z",

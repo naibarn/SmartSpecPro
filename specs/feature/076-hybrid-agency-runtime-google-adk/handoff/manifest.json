@@ -176,7 +176,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md",
     "digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
@@ -260,6 +260,87 @@
         "digest": "74a6aeec0c6d65ee2a4c3aa131bdc1c1e21043352b95b336cc58151775161916",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/076-hybrid-agency-runtime-google-adk/sections/section-05-rollout-tests-and-guardrails.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-document-model-and-subgraphs: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-document-model-and-subgraphs",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-canonical-ir-and-compile-planning: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-canonical-ir-and-compile-planning",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-runtime-adapters-and-bridge-orchestration: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-runtime-adapters-and-bridge-orchestration",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-agency-builder-ux-and-migration: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-agency-builder-ux-and-migration",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-rollout-tests-and-guardrails: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-rollout-tests-and-guardrails",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md",
+        "source_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -276,6 +357,83 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-document-model-and-subgraphs: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-document-model-and-subgraphs",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-canonical-ir-and-compile-planning: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-canonical-ir-and-compile-planning",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-runtime-adapters-and-bridge-orchestration: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-03-runtime-adapters-and-bridge-orchestration",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-agency-builder-ux-and-migration: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-04-agency-builder-ux-and-migration",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-rollout-tests-and-guardrails: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-05-rollout-tests-and-guardrails",
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/implementation/deep_implement_config.json",
+        "source_digest": "527b3c41dbcebefd7f207d88cb89cfe4a6acdb5181105c373dd7e752dcdd6ee3",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md",
+        "source_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -330,8 +488,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 75,
-    "unresolved": 75
+    "total": 83,
+    "unresolved": 83
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.816027Z",

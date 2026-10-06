@@ -418,7 +418,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md",
     "digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
@@ -656,6 +656,17 @@
         "kind": "TEST",
         "line": 38,
         "path": "apps/web/server/services/__tests__/runnerExecutionSessionService.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Additive implementation-ready architecture specification",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md",
+        "source_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
+        "value": "Proposed / Additive implementation-ready architecture specification"
       }
     ],
     "stale_fields": [],
@@ -722,6 +733,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Additive implementation-ready architecture specification",
+        "line": 4,
+        "source": "specs/feature/278-durable-runner-execution-sessions-recovery-fabric-r1-4/spec.md",
+        "source_digest": "8973e0263cfba991db278e072fe4fe602f62ecb724fc28874c7f5b7ffa08d3e0",
+        "value": "Proposed / Additive implementation-ready architecture specification"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -881,8 +904,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 344,
-    "unresolved": 344
+    "total": 332,
+    "unresolved": 332
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.750355Z",

@@ -7,6 +7,7 @@
   "properties": {
     "schema_version": {"const": 1}, "spec_id": {"type": "string"},
     "spec_digest": {"type": "string"}, "generation": {"type": "integer", "minimum": 0},
+    "reconciliation_version": {"type": "integer", "minimum": 1},
     "requirements": {"type": "array", "items": {"type": "object", "required": ["requirement_id", "authority_source", "requirement_digest", "applicability", "current_relevance", "successor_mapping", "implementation_status", "implementation_evidence", "verification_method", "verification_evidence", "evidence_sha", "evidence_freshness", "blocker", "next_action", "final_state"], "properties": {
       "requirement_id": {"type": "string"}, "authority_source": {"type": "string"}, "requirement_digest": {"type": "string"},
       "applicability": {"type": "string"}, "current_relevance": {"type": "string"}, "successor_mapping": {"type": "array"},

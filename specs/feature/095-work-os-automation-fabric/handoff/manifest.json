@@ -236,7 +236,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/095-work-os-automation-fabric/spec.md",
     "digest": "21c2cfe5216762329fa3af18c942b146c2048589bd53649a902e8032199ab033",
@@ -356,6 +356,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -430,8 +431,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 8,
-    "unresolved": 8
+    "total": 16,
+    "unresolved": 16
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.902372Z",

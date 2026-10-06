@@ -2,12 +2,18 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.spec_handoff.index import build_views, status_drift, write_views
+from tools.spec_handoff.index import _review_priority, build_views, status_drift, write_views
 from tools.spec_handoff.inventory import inventory
 from tools.spec_handoff.reconcile import reconcile_one
 
 
 class IndexTests(unittest.TestCase):
+    def test_review_priority_uses_risk_evidence_without_recommending_implementation(self):
+        self.assertEqual(_review_priority({"record_kind": "MALFORMED_CANDIDATE"}), "R0_DATA_INTEGRITY")
+        self.assertEqual(_review_priority({"configured_root": "specs/security", "record_kind": "CANONICAL_SPEC"}), "R0_SECURITY")
+        self.assertEqual(_review_priority({"authority": "AUTHORITY_CONFLICT", "record_kind": "CANONICAL_SPEC"}), "R1_IDENTITY_CONFLICT")
+        self.assertEqual(_review_priority({"current_reference_counts": {"SOURCE": 2}, "record_kind": "CANONICAL_SPEC"}), "R1_RUNTIME_REFERENCE")
+
     def test_every_discovered_record_appears_once_in_global_index(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -22,6 +28,9 @@ class IndexTests(unittest.TestCase):
             self.assertEqual(len(keys), len(set(keys)))
             self.assertEqual(len(keys), discovered["invariants"]["record_count"])
             self.assertTrue(view["reconciliation-report.json"]["invariant_discovered_equals_indexed"])
+            self.assertTrue(view["continuation-queue.json"]["records"] == [])
+            self.assertEqual(len(view["continuation-queue.json"]["reconciliation_review"]), 2)
+            self.assertEqual(view["continuation-queue.json"]["reconciliation_review"][0]["priority"], "R0_DATA_INTEGRITY")
 
     def test_missing_handoff_is_visible_and_does_not_claim_complete(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
     "digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
@@ -540,6 +540,33 @@
         "digest": "ba98e68c62d87e8f58bf70c92ca13b110f4a7877f822d9223018a13694491dcf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/075-unified-web-desktop-agent-platform/sections/section-12-omnivoice-governance-rollout-and-regression.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
+        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 7,
+        "relation": "SUPERSEDES",
+        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
+        "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
+        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model"
       }
     ],
     "stale_fields": [],
@@ -556,6 +583,33 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
+        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "value": "Proposed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "Supersedes: conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model",
+        "line": 7,
+        "relation": "SUPERSEDES",
+        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
+        "source": "specs/feature/075-unified-web-desktop-agent-platform/spec.md",
+        "source_digest": "82d3a1a5f77c610947ba2a153e0d89df7a9571ec3bbd3a4bbd98ad588de49ef6",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-framework where this feature defines the canonical desktop-host model"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -710,8 +764,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 138,
-    "unresolved": 138
+    "total": 148,
+    "unresolved": 148
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.810190Z",

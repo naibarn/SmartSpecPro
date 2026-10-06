@@ -411,7 +411,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/250-Development-Reliability/spec.md",
     "digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
@@ -460,6 +460,33 @@
         "digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/250-Development-Reliability/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R0.8 CROSS-SPEC DESIGN PROPOSAL — NOT APPROVED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 8,
+        "source": "specs/feature/250-Development-Reliability/spec.md",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "value": "R0.8 CROSS-SPEC DESIGN PROPOSAL — NOT APPROVED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "supersedes: [\"R0.5 owner-confirmed design candidate within this unapproved proposal lineage only\"]",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 9,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/250-Development-Reliability/spec.md",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "[\"R0.5 owner-confirmed design candidate within this unapproved proposal lineage only\"]"
       }
     ],
     "stale_fields": [],
@@ -476,6 +503,33 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R0.8 CROSS-SPEC DESIGN PROPOSAL — NOT APPROVED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "line": 8,
+        "source": "specs/feature/250-Development-Reliability/spec.md",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "value": "R0.8 CROSS-SPEC DESIGN PROPOSAL — NOT APPROVED / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_RELATIONSHIP",
+        "confidence": "LOW",
+        "excerpt": "supersedes: [\"R0.5 owner-confirmed design candidate within this unapproved proposal lineage only\"]",
+        "line": 9,
+        "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
+        "source": "specs/feature/250-Development-Reliability/spec.md",
+        "source_digest": "f33ed3b8119e72bc8a6f746d6b96322cb9deaa7e57e9512269dd1c0e68771f2b",
+        "target_ambiguous": true,
+        "target_candidates": [],
+        "target_spec_ids": [],
+        "value": "[\"R0.5 owner-confirmed design candidate within this unapproved proposal lineage only\"]"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

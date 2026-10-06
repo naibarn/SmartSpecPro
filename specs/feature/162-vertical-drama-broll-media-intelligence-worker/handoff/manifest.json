@@ -363,7 +363,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
     "digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
@@ -512,6 +512,17 @@
         "digest": "cb79971217631a7ac560146d74e93ee834029e61cf762d2e77a4fb243365877b",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/sections/section-06-integration-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — implementation-ready design, PoC-first rollout<br>",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+        "source_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+        "value": "Proposed — implementation-ready design, PoC-first rollout<br>"
       }
     ],
     "stale_fields": [],
@@ -528,6 +539,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — implementation-ready design, PoC-first rollout<br>",
+        "line": 3,
+        "source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+        "source_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
+        "value": "Proposed — implementation-ready design, PoC-first rollout<br>"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -647,8 +670,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 269,
-    "unresolved": 269
+    "total": 268,
+    "unresolved": 268
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.427043Z",

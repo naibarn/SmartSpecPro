@@ -327,7 +327,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md",
     "digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
@@ -441,6 +441,17 @@
         "digest": "e47ba0880171be2a314b10d7d6c50f3527742e52f52b9180476909cd4cebb5ea",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/sections/section-06-certification-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Architecture Freeze Candidate / Ready for implementation planning; repository alignment is partial and the Orca route is not production-enabled",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md",
+        "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "value": "Architecture Freeze Candidate / Ready for implementation planning; repository alignment is partial and the Orca route is not production-enabled"
       }
     ],
     "stale_fields": [],
@@ -457,6 +468,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Architecture Freeze Candidate / Ready for implementation planning; repository alignment is partial and the Orca route is not production-enabled",
+        "line": 4,
+        "source": "specs/feature/210-orca-runtime-adapter-cli-agent-execution-bridge/spec.md",
+        "source_digest": "71c3b5e135f52730f4a72f242921c3cc329c4638879c55ab4558e7f335efec11",
+        "value": "Architecture Freeze Candidate / Ready for implementation planning; repository alignment is partial and the Orca route is not production-enabled"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -541,8 +564,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 486,
-    "unresolved": 486
+    "total": 495,
+    "unresolved": 495
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.951296Z",

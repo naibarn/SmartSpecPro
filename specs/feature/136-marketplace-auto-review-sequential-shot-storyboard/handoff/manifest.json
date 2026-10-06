@@ -341,7 +341,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
     "digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
@@ -480,6 +480,17 @@
         "digest": "1c24db9609711f0769d028934011d684d5cb3c699f3a54928ba3ef11a8a7874d",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/sections/section-13-cinematic-prompt-engines.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
+        "source_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -496,6 +507,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/136-marketplace-auto-review-sequential-shot-storyboard/spec.md",
+        "source_digest": "f1f186a4bedd647dcc48f0703266ba521b7dba5bfcc03d09053bacd5ba17f65b",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -605,8 +628,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 75,
-    "unresolved": 75
+    "total": 86,
+    "unresolved": 86
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.256079Z",

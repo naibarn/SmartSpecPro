@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -194,28 +195,6 @@
       "requirement_digest": "563b5f132e64173d3a599c54851dde272c2c4ace3138af299d711d2de60eb2c2",
       "requirement_id": "REQ-60E43AC37433",
       "requirement_text": "verified derived outputs for this source-footage flow; it must not request or",
-      "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L224"
-      ],
-      "authority_source": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md#L224",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4b46110be7832f1dbaafe894e8cd7f66051a883e7770670cab00a0071493114a",
-      "requirement_id": "REQ-C00D8D37E52D",
-      "requirement_text": "-> approved start frame/reference pack when generation is required",
       "source_spec_digest": "ce06f0c6378716144f1777c088fb0ea2a5b5407bdd460f71b6d49c39d8a33217",
       "successor_mapping": [],
       "verification_evidence": [],

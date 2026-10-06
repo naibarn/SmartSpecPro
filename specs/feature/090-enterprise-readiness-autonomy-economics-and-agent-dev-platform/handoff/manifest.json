@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md",
     "digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
@@ -120,6 +120,17 @@
         "digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md",
+        "source_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/090-enterprise-readiness-autonomy-economics-and-agent-dev-platform/spec.md",
+        "source_digest": "ae40f2b3d899408a3ae22730cf0e9d0a8512888878483c984ea5c7d26614aa27",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 60,
-    "unresolved": 60
+    "total": 66,
+    "unresolved": 66
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.881988Z",

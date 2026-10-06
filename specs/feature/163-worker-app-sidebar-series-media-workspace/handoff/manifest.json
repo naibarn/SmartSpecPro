@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
     "digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
@@ -505,6 +505,17 @@
         "digest": "733d7c5f875849cb7cd9f8d8246ef49912b48418cc340d642bf616beec4f6ce4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/163-worker-app-sidebar-series-media-workspace/sections/section-06-integration-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — implementation-ready design<br>",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+        "source_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "value": "Proposed — implementation-ready design<br>"
       }
     ],
     "stale_fields": [],
@@ -521,6 +532,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — implementation-ready design<br>",
+        "line": 3,
+        "source": "specs/feature/163-worker-app-sidebar-series-media-workspace/spec.md",
+        "source_digest": "f01e53ddd7279baf7e38214ed32bbff2b6cd00fde1ec87e926f9acfb02e4b425",
+        "value": "Proposed — implementation-ready design<br>"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -640,8 +663,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 107,
-    "unresolved": 107
+    "total": 115,
+    "unresolved": 115
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.440229Z",

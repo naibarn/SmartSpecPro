@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -334,28 +335,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L108"
-      ],
-      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L108",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "793c621042e8c8b187c7692c339ac28f55373309adece02ebea5629d0c401f0d",
-      "requirement_id": "REQ-009850DDEA79",
-      "requirement_text": "capability: { id: string; contractVersion: string; required: string[];",
-      "source_spec_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L164"
       ],
       "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L164",
@@ -480,28 +459,6 @@
       "requirement_digest": "7c5bd4036e38c010fa90bf3072a7b55886e74c2942123a0d552de924836c4f8f",
       "requirement_id": "REQ-6F1E98D0A1AA",
       "requirement_text": "**Phase B — rank only eligible offers:** Use measured task-family quality, first-preview latency, total expected cost (including retries/transfer/egress), data locality, recovery probability, current queue and user preference. Ranking configuration/version must be logged and comprehensible; a model suggestion is advisory. If no offer satisfies required fidelity or consent, return `NEEDS_DECISION` or `DEGRADED` with an honest explanation and alternatives (e.g., accept a lower-fidelity video-reference route, supply a Runner, select region-compatible provider or defer). No automatic weakening of approved creative constraints.",
-      "source_spec_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L188"
-      ],
-      "authority_source": "specs/feature/254-SmartAIHub-AI-Film-Studio-External-Intelligence-Adaptive-Execution/spec.md#L188",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ddea9286079f93fdb8db81eb02a5c3392e5948325b51d027597725cf35b9c6ba",
-      "requirement_id": "REQ-3B3C1EB97C95",
-      "requirement_text": "| Task / device profile | Default eligible path | Fallback requiring check |",
       "source_spec_digest": "2119f2c178a34009653a17dddded659d1bd25d0a6bc7b71dd545104009933b58",
       "successor_mapping": [],
       "verification_evidence": [],

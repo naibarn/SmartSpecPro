@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/066-beam-billing-invoice-phase1/spec.md",
     "digest": "538d8e736792d0969a84eccdb92f9c54dadb01b4c9bf9fe5b45ee25887f20a0a",
@@ -380,6 +380,17 @@
         "digest": "ecc16d51ae1a53ce735f9b4733e2d6baa04dc50976d41e10996887409cc4a974",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/066-beam-billing-invoice-phase1/sections/section-08-notifications-tests-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/066-beam-billing-invoice-phase1/spec.md",
+        "source_digest": "538d8e736792d0969a84eccdb92f9c54dadb01b4c9bf9fe5b45ee25887f20a0a",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -396,6 +407,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/066-beam-billing-invoice-phase1/spec.md",
+        "source_digest": "538d8e736792d0969a84eccdb92f9c54dadb01b4c9bf9fe5b45ee25887f20a0a",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -480,8 +503,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 154,
-    "unresolved": 154
+    "total": 169,
+    "unresolved": 169
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.757844Z",

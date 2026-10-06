@@ -332,7 +332,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/035-AutoDraftContentAutomation/spec.md",
     "digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
@@ -482,6 +482,31 @@
         "kind": "SOURCE",
         "line": 198,
         "path": "python-backend/app/core/seed.py"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "7434f2f4",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-shared-infra: complete; commit_hash=7434f2f4",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-shared-infra",
+        "source": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json",
+        "source_digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/035-AutoDraftContentAutomation/spec.md",
+        "source_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -520,6 +545,31 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "7434f2f4",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-shared-infra: complete; commit_hash=7434f2f4",
+        "line": null,
+        "section": "section-01-shared-infra",
+        "source": "specs/feature/035-AutoDraftContentAutomation/implementation/deep_implement_config.json",
+        "source_digest": "b3f4ac63724e273516bef45db634d2d38e9795690b946649d3d0bb118e30784c",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/035-AutoDraftContentAutomation/spec.md",
+        "source_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -619,8 +669,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 124,
-    "unresolved": 124
+    "total": 100,
+    "unresolved": 100
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.549632Z",

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1126,28 +1127,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L655"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L655",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "75a57b3e0f1a2a32e3134f860a9bf8dbf16ae8ac48ab559412b2221124f99703",
-      "requirement_id": "REQ-2B856A50079C",
-      "requirement_text": "Approval is requested only when required",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md#L680"
       ],
       "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L680",
@@ -1545,29 +1524,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1045",
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2577"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1045",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bf85736daf1e4a67889ce358deef8531622d3beb94a2a12933afc231729830a8",
-      "requirement_id": "REQ-EB001753A1D1",
-      "requirement_text": "approval.required",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1051"
       ],
       "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1051",
@@ -1942,50 +1898,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1222"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1222",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ab7cd1cbfde4446bebae5ae16f2f7d5c0b2f0df85503ed66aca8627253d90552",
-      "requirement_id": "REQ-448DEE74A197",
-      "requirement_text": "required assets",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1223"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1223",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a913060d74cb6878145bfd2cd02666d39095c5324f48490af434d641cdeb42c2",
-      "requirement_id": "REQ-9AB1C07A5A89",
-      "requirement_text": "required dialogue",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1229"
       ],
       "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1229",
@@ -2154,28 +2066,6 @@
       "requirement_digest": "12023b69506ed824484552d7d6c4671c871a5a7319f194ae896e429d1d6e7f8b",
       "requirement_id": "REQ-8CE7E76B188E",
       "requirement_text": "If a feature is unsupported, the UI MUST hide or disable it with an explicit reason.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1636"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L1636",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "26348536562e9e106557e835587da3e995bbcabde310913daf28530d7d365e26",
-      "requirement_id": "REQ-B2F30EE5A6F3",
-      "requirement_text": "→ approval.required",
       "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2492,28 +2382,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2004"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2004",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "72a6edd0811577ffdbc810be20f7fca5c752508cc2977881bda0a5408239484b",
-      "requirement_id": "REQ-665B769892DD",
-      "requirement_text": "Required runtime: xxx",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2014"
       ],
       "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2014",
@@ -2748,28 +2616,6 @@
       "requirement_digest": "fde3eb2a523a10de01f887d6f2b5a616553ff297bd465ba6af3399693a50f799",
       "requirement_id": "REQ-215C77135B75",
       "requirement_text": "A node is eligible only if all required constraints are satisfied:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2224"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L2224",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "26089c010e7c6dac1f5b27408052a1e99aa1778cf53598d79ec27cca10e30525",
-      "requirement_id": "REQ-92E851984B93",
-      "requirement_text": "required capability available",
       "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3240,28 +3086,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3059"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3059",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "85249bbccf4da12b511a353663dbd2ded0c9ec50f0717b5345af15a0a27fd0af",
-      "requirement_id": "REQ-088F46184EE6",
-      "requirement_text": "● Login required",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3075"
       ],
       "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3075",
@@ -3320,28 +3144,6 @@
       "requirement_digest": "2a3d963dd69ddd1b5cf447c1e6ead4c3e6dc4926db00cca9af751418e6fabe12",
       "requirement_id": "REQ-E0E768D83682",
       "requirement_text": "SmartAIHub Chat SHALL support coding-agent jobs as first-class conversation objects.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3182"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3182",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d1c6db4d07f9ff94ea5083c22100fe5efb855c607010b234b46fd07d6fcf5b88",
-      "requirement_id": "REQ-F8DAA0B63249",
-      "requirement_text": "approval required",
       "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3474,29 +3276,6 @@
       "requirement_digest": "2d4ab7a91f8a3153c1a406c2c7ad57681fbf8f6eb4d5446b8df3b38206c087f4",
       "requirement_id": "REQ-13C69203374D",
       "requirement_text": "Actual route naming SHALL follow existing API conventions.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3435",
-        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L4803"
-      ],
-      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L3435",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "85a092fd18daf7b23e80670cbf7d4117d161cb777810acce914cdcdb54381096",
-      "requirement_id": "REQ-AFB74FA5CF3C",
-      "requirement_text": "coding_agent.approval.required",
       "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
       "successor_mapping": [],
       "verification_evidence": [],

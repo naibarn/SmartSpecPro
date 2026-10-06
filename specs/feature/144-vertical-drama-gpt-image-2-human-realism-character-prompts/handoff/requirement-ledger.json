@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -224,6 +225,116 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L125"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L125",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "738c02ce2c167f01ae5f7087f738e36ecd4580878b004754e9f12d6a041f63af",
+      "requirement_id": "REQ-284DE77E1E56",
+      "requirement_text": "- varied but restrained skin microstructure;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L126"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L126",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5a069518726290cef441a1dd623cde4fe1d1933893e33bef873ff2e5aa42f3e0",
+      "requirement_id": "REQ-EDC800597EC7",
+      "requirement_text": "- subtle asymmetry and age-appropriate facial anatomy;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L127"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L127",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ffa1bf3ea7d854fb464874647840222212092479379619737accb0a59406ea26",
+      "requirement_id": "REQ-EDC84F7FF14B",
+      "requirement_text": "- local color and reflectance variation rather than uniform gloss;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L128"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L128",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3d6665589cbb4335ded8d1ee431b69e7d9491a8c47bbb441a8c810477d8288d2",
+      "requirement_id": "REQ-91488BD89D61",
+      "requirement_text": "- believable eyes, lips, brows, hair strands, body posture, hands, feet, and",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L130"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L130",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1ba66af861423b9689d0cf72ed758c7fe0006235ecd95c3e47c6838096de962e",
+      "requirement_id": "REQ-4BF83D6B0DDC",
+      "requirement_text": "- realistic optical depth, highlight roll-off, and motivated lighting.",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L134"
       ],
       "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L134",
@@ -312,6 +423,116 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L148"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L148",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c5904385c8869753392b8d73353bbb3439b99fd5a86c6aad8be81cfb1b0cab50",
+      "requirement_id": "REQ-0B61AEB102B2",
+      "requirement_text": "- use one complete `prompt` field;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L149"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L149",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7b7c14e16120f0d6819e55d43505350fd497fc5f9d8bb4017e547582a69bca37",
+      "requirement_id": "REQ-DA4C9A77D4D5",
+      "requirement_text": "- include avoidance constraints as natural prose inside that prompt;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L150"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L150",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dd17aa985d3266cf9eb98c5d456be97befc96722bd3d17c5b04d7bccd361b44d",
+      "requirement_id": "REQ-D26D5976D5B7",
+      "requirement_text": "- do not send a separate `negative_prompt` field;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L151"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L151",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "28a764945b7db3c888db2fef29ec994cea769b2ef8fc43672d4ca85c5e8a454c",
+      "requirement_id": "REQ-9BABC4DA052F",
+      "requirement_text": "- do not rely on a hidden comma-list appended after the main prompt;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L152"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L152",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "935436d79994cc33c5f5c375448e212a3f21aa0a61d1aa6fd63c8a04499756ac",
+      "requirement_id": "REQ-A17F0B2EEAA2",
+      "requirement_text": "- do not silently truncate a prompt above the selected model's capability limit.",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L155"
       ],
       "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L155",
@@ -348,6 +569,138 @@
       "requirement_digest": "e28db6688637114d0fc8823c734bcdbb2682312e519f5e559a3fd6dc9ebad79a",
       "requirement_id": "REQ-FB2EC1C65A99",
       "requirement_text": "Human realism must never override:",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L162"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L162",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "770d7370dec6c82512f8a9f16fc1fda134a6635d00dc079fb3447b8f07550054",
+      "requirement_id": "REQ-8C89E2A24B9A",
+      "requirement_text": "1. child safety and age appropriateness;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L163"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L163",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c59dafe16d608c3c9580f365744d5769d98f3eb78d93ba19666bf2902ebf28df",
+      "requirement_id": "REQ-02C9F98E7106",
+      "requirement_text": "2. explicit identity/reference facts;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L164"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L164",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "22e7945565e37bddae64605eb6bdfd9f7c5fef67b2ba9cdc93f394bad68d6fed",
+      "requirement_id": "REQ-E83D894AF647",
+      "requirement_text": "3. approved canonical Character DNA;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L165"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L165",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f006cb7e047c511ba511f3998d37a321c186e3739afe28a9cb2ad3428b16d56b",
+      "requirement_id": "REQ-49B96B25424D",
+      "requirement_text": "4. series and cast continuity;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L166"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L166",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e3cbe505612ec60f954892639f0d8e4cd0622fde8d7be9b8e24c79b2291e7ff9",
+      "requirement_id": "REQ-5B0624F5494B",
+      "requirement_text": "5. role truth and user-approved visible variation;",
+      "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L167"
+      ],
+      "authority_source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md#L167",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e7aeeb28bc9783d4944f48e64e8ff00d28d4ad496882618a4b1157d854cd8e46",
+      "requirement_id": "REQ-6C2E44F6ECBC",
+      "requirement_text": "6. the Human Realism rendering layer.",
       "source_spec_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
       "successor_mapping": [],
       "verification_evidence": [],

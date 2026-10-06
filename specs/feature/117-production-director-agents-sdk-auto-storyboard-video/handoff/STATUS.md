@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 860 unresolved of 860
+- Requirements: 0 pass / 878 unresolved of 878
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Proposed` — `specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md#5`
+- Relationship candidate: `SUPERSEDES`  — unresolved target; target ambiguous (`specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md#6`)

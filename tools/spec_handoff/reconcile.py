@@ -13,9 +13,12 @@ from .inventory import inventory, json_bytes
 from .relationships import build_relationship_graph
 from .source_evidence import collect_git_times, collect_source_evidence_for_inventory, git_file_times
 from .store import _atomic_write, _file_lock, handoff_dir, read_manifest, render_status
+from .declared_claims import collect_declared_claims, resolve_claim_targets
 
 _NORMATIVE = re.compile(r"\b(must|shall|required|acceptance criteria|must not|shall not)\b", re.I)
+_DECLARED_GOAL = re.compile(r"^\*\*goal\*\*\s*:", re.I)
 _REQ_ID = re.compile(r"\b((?:REQ|FR|NFR|AC|R)[-_ ]?\d+[A-Z0-9._-]*)\b", re.I)
+_REQUIREMENT_HEADINGS = ("requirements", "acceptance criteria", "functional scope", "non-functional requirements", "goals", "success criteria", "detailed section specifications")
 _MANUAL_FIELDS = ("disposition", "continuation_assessment", "authority", "lifecycle")
 
 
@@ -24,22 +27,34 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
     lines = text.splitlines()
     in_requirements = False
     current_level = 0
+    fence_marker: str | None = None
     selected: list[tuple[int, str]] = []
     for number, line in enumerate(lines, start=1):
+        fence = re.match(r"^\s*(```+|~~~+)", line)
+        if fence:
+            marker = fence.group(1)[0]
+            fence_marker = None if fence_marker == marker else marker if fence_marker is None else fence_marker
+            continue
+        if fence_marker:
+            continue
         heading = re.match(r"^(#{1,6})\s+(.+?)\s*#*\s*$", line)
         if heading:
             level = len(heading.group(1))
             title = heading.group(2).casefold()
             if in_requirements and level <= current_level:
                 in_requirements = False
-            if any(word in title for word in ("requirement", "acceptance criteria", "functional scope", "non-functional")):
+            if "non-goal" in title:
+                in_requirements, current_level = False, level
+            elif any(word in title for word in _REQUIREMENT_HEADINGS):
                 in_requirements, current_level = True, level
             continue
         candidate = line.strip()
         if not candidate or candidate.startswith("<!--") or re.fullmatch(r"[| :\-]+", candidate):
             continue
-        is_normative = bool(_NORMATIVE.search(candidate))
-        if (in_requirements and re.match(r"^(?:[-*+]\s+|\d+[.)]\s+|\|)", candidate)) or is_normative:
+        is_normative = bool(_NORMATIVE.search(candidate) or _DECLARED_GOAL.match(candidate))
+        markdown_list = bool(re.match(r"^(?:[-*+]\s+|\d+[.)]\s+|\|)", candidate))
+        table_header = candidate.startswith("|") and number < len(lines) and bool(re.fullmatch(r"[| :\-]+", lines[number].strip()))
+        if (in_requirements and markdown_list and not table_header) or is_normative:
             selected.append((number, candidate))
     requirements = []
     seen: set[str] = set()
@@ -89,7 +104,7 @@ def extract_requirements(spec_path: Path, spec_id: str, digest: str) -> dict[str
             "evidence_sha": None, "evidence_freshness": "UNKNOWN", "blocker": None,
             "next_action": "Review normative Spec and extract requirement-level ledger entries.", "final_state": "OPEN",
         })
-    return {"schema_version": 1, "spec_id": spec_id, "spec_digest": digest, "generation": 0, "requirements": requirements}
+    return {"schema_version": 1, "reconciliation_version": 2, "spec_id": spec_id, "spec_digest": digest, "generation": 0, "requirements": requirements}
 
 
 def _supporting_evidence(spec_dir: Path) -> list[dict[str, str]]:
@@ -112,10 +127,16 @@ def _apply_manual(manifest: dict[str, Any]) -> dict[str, Any]:
     for field in _MANUAL_FIELDS:
         if field in manual:
             manifest[field] = manual[field]
+    conclusions = manual.get("relevance_conclusions", {})
+    if isinstance(conclusions, dict):
+        allowed = {"current_architecture_fit", "successor_or_supersession", "current_runtime_dependency", "current_product_relevance", "residual_requirements", "security_data_compliance_obligations", "implementation_equivalence", "conflict_duplication_risk", "deployment_reality", "residual_requirement_assessment"}
+        for field, value in conclusions.items():
+            if field in allowed:
+                manifest["relevance_assessment"][field] = value
     return manifest
 
 
-def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_record: dict[str, Any] | None = None, relationship_claims: list[dict[str, Any]] | None = None, source_references: list[dict[str, Any]] | None = None, observed_times: dict[str, str | None] | None = None) -> dict[str, Any]:
+def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_record: dict[str, Any] | None = None, relationship_claims: list[dict[str, Any]] | None = None, source_references: list[dict[str, Any]] | None = None, declared_claims: list[dict[str, Any]] | None = None, observed_times: dict[str, str | None] | None = None) -> dict[str, Any]:
     spec_path = spec_dir / "spec.md"
     raw = spec_path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
@@ -147,6 +168,7 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
     evidence = [{"path": spec_path.relative_to(repo).as_posix(), "kind": "NORMATIVE_SPEC", "digest": digest}] + _supporting_evidence(spec_dir)
     reconciled_at = previous["reconciliation"].get("reconciled_at") or utc_now()
     source_references = source_references or []
+    declared_claims = declared_claims if declared_claims is not None else collect_declared_claims(spec_dir, repo)
     metadata = previous["identity"].setdefault("metadata", {"spec_created_at": None, "spec_last_changed_at": None, "implementation_last_touched_at": None, "last_evidence_at": None, "last_runtime_reference_at": None})
     if not metadata.get("spec_created_at") or not metadata.get("spec_last_changed_at"):
         observed_times = observed_times or git_file_times(repo, spec_path.relative_to(repo).as_posix())
@@ -160,7 +182,7 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
         "current_product_relevance": "UNASSESSED", "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED", "implementation_equivalence": "UNASSESSED",
         "conflict_duplication_risk": "REVIEW_REQUIRED" if relationship_claims else "UNASSESSED",
-        "active_references": source_references[:500], "deployment_reality": "UNVERIFIED", "evidence": evidence[:100],
+        "active_references": source_references[:500], "declared_claims": declared_claims[:200], "deployment_reality": "UNVERIFIED", "evidence": evidence[:100],
     }
     duplicate_ids = []
     try:
@@ -182,16 +204,31 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
         if conflicts:
             rationale = "Duplicate identity requires explicit authority resolution before continuation."
         previous["continuation_assessment"] = {"decision": decision, "confidence": "UNRESOLVED", "rationale": rationale, "residual_requirements": [], "evidence": evidence[:20] + [{"kind": "SOURCE_REFERENCE", **ref} for ref in source_references[:20]], "next_action": "Review consolidated ambiguity evidence and assess current relevance."}
-    previous["reconciliation"].update({"mode": "AUTOMATED_CONSERVATIVE", "confidence": "LOW" if evidence or source_references else "UNRESOLVED", "sources": evidence[:100] + [{"kind": "SOURCE_REFERENCE", **ref} for ref in source_references[:100]], "inferred_fields": ["authority.status", "disposition.value", "continuation_assessment.decision"], "unproven_fields": ["current relevance", "implementation equivalence", "deployment reality", "acceptance"], "reconciled_at": reconciled_at})
+    previous["reconciliation"].update({"mode": "AUTOMATED_CONSERVATIVE", "confidence": "LOW" if evidence or source_references or declared_claims else "UNRESOLVED", "sources": evidence[:100] + [{"kind": "SOURCE_REFERENCE", **ref} for ref in source_references[:100]] + [{"kind": "AUTHOR_DECLARED_CLAIM", **claim} for claim in declared_claims[:100]], "inferred_fields": ["authority.status", "disposition.value", "continuation_assessment.decision"], "unproven_fields": ["current relevance", "implementation equivalence", "deployment reality", "acceptance"], "reconciled_at": reconciled_at})
     previous["lifecycle"]["updated_at"] = previous["reconciliation"]["reconciled_at"]
     _apply_manual(previous)
     ledger = extract_requirements(spec_path, previous["identity"]["spec_id"], digest)
     ledger_path = handoff_dir(spec_dir) / "requirement-ledger.json"
+    old_ledger = None
     if ledger_path.exists():
         old_ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
-        if old_ledger.get("spec_digest") == digest and previous.get("manual_decisions", {}).get("requirements"):
-            ledger["requirements"] = previous["manual_decisions"]["requirements"]
+        if old_ledger.get("spec_digest") == digest:
             ledger["generation"] = old_ledger.get("generation", 0)
+            saved_requirements = previous.get("manual_decisions", {}).get("requirements", {})
+            if isinstance(saved_requirements, list):  # compatibility with early handoff previews
+                saved_requirements = {row.get("requirement_id"): row for row in saved_requirements if isinstance(row, dict)}
+            if isinstance(saved_requirements, dict):
+                for requirement in ledger["requirements"]:
+                    saved = saved_requirements.get(requirement.get("requirement_id"))
+                    if isinstance(saved, dict) and saved.get("source_spec_digest") == digest:
+                        requirement.update(saved)
+    if old_ledger is not None:
+        old_generation = old_ledger.get("generation", 0)
+        old_compare = copy.deepcopy(old_ledger)
+        new_compare = copy.deepcopy(ledger)
+        old_compare.pop("generation", None)
+        new_compare.pop("generation", None)
+        ledger["generation"] = old_generation + (1 if old_compare != new_compare else 0)
     summary = {"total": len(ledger["requirements"]), "applicable": 0, "pass": 0, "fail": 0, "unresolved": 0, "blocked_true_external": 0, "not_applicable": 0}
     for requirement in ledger["requirements"]:
         state = requirement.get("final_state", "OPEN")
@@ -211,7 +248,7 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
     state_changed = (not had_manifest) or comparable_before != comparable_after
     previous["generation"] = before.get("generation", 0) + (1 if state_changed else 0)
     status = render_status(previous, ledger)
-    result = {"manifest": previous, "ledger": ledger, "evidence_count": len(evidence), "status": status}
+    result = {"manifest": previous, "ledger": ledger, "evidence_count": len(evidence) + len(declared_claims), "status": status}
     if write:
         target = handoff_dir(spec_dir)
         with _file_lock(target / ".write.lock"):
@@ -234,6 +271,7 @@ def reconcile_all(repo: Path, *, write: bool = False) -> dict[str, Any]:
     discovered = inventory(repo)
     graph = build_relationship_graph(repo, discovered)
     source_map = collect_source_evidence_for_inventory(repo, discovered)
+    declared_map = {record["path"]: resolve_claim_targets(collect_declared_claims(repo / record["path"], repo), discovered["records"]) for record in discovered["records"] if record["root_kind"] == "CANONICAL" and record["record_kind"] == "CANONICAL_SPEC"}
     observed_times = collect_git_times(repo, [record["spec_path"] for record in discovered["records"] if record["root_kind"] == "CANONICAL" and record["record_kind"] == "CANONICAL_SPEC" and record.get("spec_path")])
     claims: dict[str, list[dict[str, Any]]] = {}
     for edge in graph["edges"]:
@@ -244,7 +282,7 @@ def reconcile_all(repo: Path, *, write: bool = False) -> dict[str, Any]:
     for record in discovered["records"]:
         if record["root_kind"] == "CANONICAL" and record["record_kind"] in {"CANONICAL_SPEC", "INVALID_SPEC"} and record.get("spec_path"):
             try:
-                outcome = reconcile_one(repo / record["path"], repo, write=write, inventory_record=record, relationship_claims=claims.get(str(record.get("spec_id")), []), source_references=source_map.get(str(record.get("spec_id")), []), observed_times=observed_times.get(record["spec_path"]))
+                outcome = reconcile_one(repo / record["path"], repo, write=write, inventory_record=record, relationship_claims=claims.get(str(record.get("spec_id")), []), source_references=source_map.get(str(record.get("spec_id")), []), declared_claims=declared_map.get(record["path"], []), observed_times=observed_times.get(record["spec_path"]))
                 manifest = outcome["manifest"]
                 outcomes.append({"record_key": record["record_key"], "spec_id": manifest["identity"]["spec_id"], "generation": manifest["generation"], "disposition": manifest["disposition"]["value"], "lifecycle": manifest["lifecycle"]["current_state"], "continuation": manifest["continuation_assessment"]["decision"], "confidence": manifest["reconciliation"]["confidence"], "requirements": len(outcome["ledger"]["requirements"]), "evidence": outcome["evidence_count"]})
             except (OSError, UnicodeError, ValueError) as exc:

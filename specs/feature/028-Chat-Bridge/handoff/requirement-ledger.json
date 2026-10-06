@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -62,6 +63,116 @@
       "requirement_digest": "00b698aa88c6c186d525861ccfd677847ce01769f0401bf4365e099de8e462cd",
       "requirement_id": "REQ-33869C536B1F",
       "requirement_text": "| Channel abstraction | NOT IMPLEMENTED | Required for multi-channel sync |",
+      "source_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/028-Chat-Bridge/spec.md#L52"
+      ],
+      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L52",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f6880cc97368c258c42ab1c5d056bfee79629d257da09fda1c391a67f6c810fe",
+      "requirement_id": "REQ-B7CFCD7265AB",
+      "requirement_text": "1. Allow users to continue SmartSpecPro conversations from Telegram.",
+      "source_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/028-Chat-Bridge/spec.md#L53"
+      ],
+      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L53",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f8da0152e45aa0ae11330d5009e3714338d2d419ec1d2d1477241bdc5488a07c",
+      "requirement_id": "REQ-7356ABF9B924",
+      "requirement_text": "2. Keep web chat and Telegram synchronized as one logical conversation.",
+      "source_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/028-Chat-Bridge/spec.md#L54"
+      ],
+      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L54",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "87504d671d24a58bb2bc0d6584cdc2bde406d076e6d3a7fc05dffa525f8afd06",
+      "requirement_id": "REQ-7B1F5DE69941",
+      "requirement_text": "3. Preserve all existing billing, memory, audit, approvals, safety, and tool execution policies.",
+      "source_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/028-Chat-Bridge/spec.md#L55"
+      ],
+      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L55",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d663d7ff775cb7987b6f01643bfdbf6341e62130d3740b1de68529c5d0d576c3",
+      "requirement_id": "REQ-4DA37C7B9541",
+      "requirement_text": "4. Support both single-agent (chat) and multi-agent (agency-swarm) flows without channel-specific drift.",
+      "source_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/028-Chat-Bridge/spec.md#L56"
+      ],
+      "authority_source": "specs/feature/028-Chat-Bridge/spec.md#L56",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b0a1739e37a1dc7761c7fa9ef38addd95691836e403a6bea396d1d386649db48",
+      "requirement_id": "REQ-7899B76353E4",
+      "requirement_text": "5. Provide a channel abstraction reusable for future channels (LINE, WhatsApp, Slack).",
       "source_spec_digest": "cb4de2e3ad6a89eaf8d1db12315e77b42bd66db358c093c50e0bb0847a2290d9",
       "successor_mapping": [],
       "verification_evidence": [],

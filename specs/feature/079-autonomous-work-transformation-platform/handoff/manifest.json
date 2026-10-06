@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/079-autonomous-work-transformation-platform/spec.md",
     "digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
@@ -440,6 +440,17 @@
         "digest": "2fdf99d12f17f9e8209a4d9e12ac484c7ec46212bda8912c71aacdb7a2eeb891",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/079-autonomous-work-transformation-platform/sections/section-08-telemetry-rollout-and-gating.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/079-autonomous-work-transformation-platform/spec.md",
+        "source_digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -456,6 +467,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/079-autonomous-work-transformation-platform/spec.md",
+        "source_digest": "9e64ce8daf88bc163d3ff58b613376aa332fd698a25990c7efd232aa0de6c0d8",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -555,8 +578,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 203,
-    "unresolved": 203
+    "total": 214,
+    "unresolved": 214
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.832393Z",

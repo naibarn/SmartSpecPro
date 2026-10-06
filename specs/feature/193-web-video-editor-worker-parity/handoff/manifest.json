@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/193-web-video-editor-worker-parity/spec.md",
     "digest": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
@@ -520,6 +520,17 @@
         "digest": "53cf758403f7b224b88df75d283d1c44a4afe7ab0aefb93514ccdbea0e15e643",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/193-web-video-editor-worker-parity/sections/section-07-tests-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED LOCALLY — browser parity path, shared evidence/cut-map",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/193-web-video-editor-worker-parity/spec.md",
+        "source_digest": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
+        "value": "IMPLEMENTED LOCALLY — browser parity path, shared evidence/cut-map"
       }
     ],
     "stale_fields": [],
@@ -536,6 +547,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED LOCALLY — browser parity path, shared evidence/cut-map",
+        "line": 3,
+        "source": "specs/feature/193-web-video-editor-worker-parity/spec.md",
+        "source_digest": "fc0b231b625883e43cd88046feb223faa4ae8bb3dd0e0ba39a52e45ada4f3e6a",
+        "value": "IMPLEMENTED LOCALLY — browser parity path, shared evidence/cut-map"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

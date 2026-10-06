@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,6 +41,138 @@
       "requirement_digest": "88519195575e5d13a18332c2d434fb1da39417674f03fe841f8eef502848a620",
       "requirement_id": "REQ-4AD12594C909",
       "requirement_text": "- pack installation must never bypass tenant policy or team ownership rules",
+      "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L53"
+      ],
+      "authority_source": "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L53",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1959612327611139664084571448ace9056afc5005a9863325d08b4f4d3dcef4",
+      "requirement_id": "REQ-469C7EBFBCD3",
+      "requirement_text": "1. Let tenants install end-to-end operational packs instead of only single skills.",
+      "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L54"
+      ],
+      "authority_source": "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L54",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "81ab1e5a2450b5732252a3765c08ca9b88b262b2e5e26002ba5372ad704af765",
+      "requirement_id": "REQ-67FADA2529D5",
+      "requirement_text": "2. Package workpacks, role blueprints, policy presets, and benchmark evidence together when needed.",
+      "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L55"
+      ],
+      "authority_source": "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L55",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ec29f3df3ed3a5f50136f2a7769db784ab290de617b189c2756a11c62b291ee9",
+      "requirement_id": "REQ-CBC46AE4057B",
+      "requirement_text": "3. Show compatibility, prerequisites, trust labels, and evaluation posture before install.",
+      "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L56"
+      ],
+      "authority_source": "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L56",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b71f81cbb123104cb24420f4eb91f1ee2431c0521aacb23065676d5b7ac276d3",
+      "requirement_id": "REQ-3C6189B805BB",
+      "requirement_text": "4. Support staged rollout and rollback of installed packs.",
+      "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L57"
+      ],
+      "authority_source": "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L57",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "701b77a9f06574f70863e95589429b3e40879c46afaaf9e47c590bd6a1d93d3d",
+      "requirement_id": "REQ-B39DD2B398BC",
+      "requirement_text": "5. Reuse the existing marketplace foundations where possible.",
+      "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L58"
+      ],
+      "authority_source": "specs/feature/089-workforce-exchange-and-installable-operations-packs/spec.md#L58",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fd120771a1d41700b82eb32b96e7d2d6fb4fd2e886678d3c6f09b0f4b2490c5d",
+      "requirement_id": "REQ-7EF0DE1CF21A",
+      "requirement_text": "6. Preserve outcome memory so future installations can see what worked, what regressed, and what should be tuned before the next rollout.",
       "source_spec_digest": "baa3238c00af6e9b4d54aee654c1b46de60d69fafc791b72af6c63e0f5dd8802",
       "successor_mapping": [],
       "verification_evidence": [],

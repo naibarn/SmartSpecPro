@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -136,6 +137,138 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L123"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L123",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "807e50f439ad8d0896d90366029e32247d379d6cafc6f060a780e9171489114a",
+      "requirement_id": "REQ-CD919C7EA022",
+      "requirement_text": "1. Establish a small, versioned, workload-oriented Vectorize topology:",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L135"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L135",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1d4dbaefed1e670ea128601fc062ef22b97dc22189031c7a8b56444b5450bffa",
+      "requirement_id": "REQ-CB6DC80A07E9",
+      "requirement_text": "2. Define a consistent boundary model:",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L137"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L137",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "528dcb5ccc07a3f13286a2a5813f2b0d4297fd5cd249b8bb3eaa2f19a86e4830",
+      "requirement_id": "REQ-CCBA17892895",
+      "requirement_text": "- native Vectorize `namespace` for an intentional partition, normally",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L140"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L140",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e9138b9a9ef11b1686146eb77b629e58aeef0e6bbbccc91b403602791369348a",
+      "requirement_id": "REQ-327377EFA383",
+      "requirement_text": "- metadata filters for `tenant_id`, `user_id`, `workspace_id`, `plugin_id`,",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L142"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L142",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "57ee2067a84235ef100f7afc55d896c3631ff5c372fa7ac690d1aae4090da6a5",
+      "requirement_id": "REQ-AA453CD40F5D",
+      "requirement_text": "- server-derived authorization for every query, mutation, and delete.",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L144"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L144",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2ac1e732b5a764aa78da402bfd20ea477ec6fc0d7c0f7d42903dd055399259b2",
+      "requirement_id": "REQ-364B28EBFDDE",
+      "requirement_text": "3. Add a PostgreSQL vector projection registry that records at least:",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L157"
       ],
       "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L157",
@@ -150,6 +283,182 @@
       "requirement_digest": "10ef0d6fd104ed7c278c6f6a786e9419fd0554b9bbcc48d753c4c421cc4603b7",
       "requirement_id": "REQ-EF5291357E3A",
       "requirement_text": "It must also retain the canonical source identity, vector ID, tenant",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L161"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L161",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "14bfc8791a4b5e3c1b664684ca66d749c8ebfe74736269495e0b19269452cb08",
+      "requirement_id": "REQ-8C4E1E106873",
+      "requirement_text": "4. Make semantic image and video retrieval useful in real product flows:",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L163"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L163",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fe7457c38eaa57f6721004cca52c62ebbd42687ab72638fcdae7b522a5e09cf1",
+      "requirement_id": "REQ-CB7675437375",
+      "requirement_text": "- text queries retrieve visually or semantically matching images and video",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L165"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L165",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "aaa7024cad15dedabb0cb46283031630c90dbb878b7c415b598d41825d939320",
+      "requirement_id": "REQ-CEF2CDD4BA5A",
+      "requirement_text": "- an attached product image retrieves visually similar product images;",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L166"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L166",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f5ac8e189a58de49c75f9e59867392a70b592d6c93ae6fbdf6303a5c02e305be",
+      "requirement_id": "REQ-3D76CCF27085",
+      "requirement_text": "- video results return source asset IDs and relevant timestamps;",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L167"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L167",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "dc89f7058efe36ec68df78b23e9e4bb8b1a7a03be947fd432ada5f0ca53050aa",
+      "requirement_id": "R2",
+      "requirement_text": "- result hydration reads canonical data from PostgreSQL/R2 before returning",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L170"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L170",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5b6bf15f0d98ebbab1604b03b6a791c9ab3382f1971b84fd8f497868dd303872",
+      "requirement_id": "R2-170",
+      "requirement_text": "5. Rebuild active vector workloads from canonical SQL/R2 source data, with",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L175"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L175",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b50524514f600bb713ec428f266e0acf7910ce741394a02b161bd72ba92bbb20",
+      "requirement_id": "REQ-11C71D850922",
+      "requirement_text": "6. Retire unused vector systems and vector-only structures without deleting",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L178"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L178",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8b9dbbe9ec8ed72ffa37d4ba5459df8b295d13fb029835e7eae72bb3b2dcef23",
+      "requirement_id": "REQ-61B48C5559AA",
+      "requirement_text": "7. Prevent migration bloat by rebuilding only eligible canonical source rows.",
       "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -202,6 +511,94 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L187"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L187",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a40ce4a937e0e349042f28e3fff6282d65a4eb78c57727a5c952ae9def97fcd0",
+      "requirement_id": "REQ-C4F84C9B50FA",
+      "requirement_text": "- Remove duplicate indexing paths and provider-selection ambiguity.",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L188"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L188",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "693769ae3140cbe62851d4d07d634d2beff0a82191cf2c244ea506e09adcd2ea",
+      "requirement_id": "REQ-13272FCFD5B5",
+      "requirement_text": "- Make storage growth attributable by workload, index version, tenant, and",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L190"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L190",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "53fc243f2d0f9c92c51d2862a45f1ff5bb7941da5945f256ebabcbf23feb0e01",
+      "requirement_id": "REQ-0DE22DB50528",
+      "requirement_text": "- Make model upgrades an explicit re-index operation rather than an implicit",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L192"
+      ],
+      "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L192",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4eee7ab4790c5ec8e3481b643dc5b331d64d4ce24af4a5b58f275cc0f1d49992",
+      "requirement_id": "REQ-8F4D2469DAA3",
+      "requirement_text": "- Reduce operational dependencies by removing unused Chroma services, volumes,",
+      "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L209"
       ],
       "authority_source": "specs/feature/194-vectorize-pgvector-chroma-retirement/spec.md#L209",
@@ -236,7 +633,7 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "910fa1a5168b4031951caf4404dff36c5c044e562183ca39060e96ff82718ceb",
-      "requirement_id": "R2",
+      "requirement_id": "R2-223",
       "requirement_text": "- Every result must be hydrated and authorized from PostgreSQL/R2.",
       "source_spec_digest": "4a4800c6b9b8692d50f6209fc654d20b4ed88dacce766ffc553bb26b3de3cbf7",
       "successor_mapping": [],

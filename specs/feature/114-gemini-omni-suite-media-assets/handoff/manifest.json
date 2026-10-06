@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/114-gemini-omni-suite-media-assets/spec.md",
     "digest": "f732b39e3395edf9f4ed63f8ec20be974815619a5a273243ac7b31475a4e732f",
@@ -516,6 +516,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -630,8 +631,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 719,
-    "unresolved": 719
+    "total": 736,
+    "unresolved": 736
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.038332Z",

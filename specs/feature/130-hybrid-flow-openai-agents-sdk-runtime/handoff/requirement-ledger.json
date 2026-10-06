@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -84,6 +85,160 @@
       "requirement_digest": "baad996291815f53fe7faa49d564684586040e797bbf638ef967ad610c3bdfee",
       "requirement_id": "REQ-FA9DB0B1EF49",
       "requirement_text": "This makes Hybrid Flow appear agency-owned even when the user starts from Chat. The target runtime must be independent from Agency workflow. Agency may use Hybrid Flow later as one surface, but Chat must not depend on Agency routes or published agencies to run Hybrid Flow.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L94"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L94",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "603324bf9ca8ba9955f6b01bee1d2afa47b49527276617629d357ecfba72684b",
+      "requirement_id": "REQ-52C5855158CA",
+      "requirement_text": "1. Make Hybrid Flow useful for real complex work, not just status simulation.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L95"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L95",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b187a30859a531aaf545da73d239466d1611b2bcd0894d7766922d199584f626",
+      "requirement_id": "REQ-D9575F0C23B1",
+      "requirement_text": "2. Keep simple Chat commands fast and predictable.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L96"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L96",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4a279e4e626c1ee09fe21437e969db0dc5d9109fc921fe2534ba45c3747806d2",
+      "requirement_id": "REQ-98284F35E392",
+      "requirement_text": "3. Give users confidence by showing actual stage outputs, evidence, review results, and approval points.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L97"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L97",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "03e92ad7cfccd76f30c9e00cec973292250c9bde13885aa98b939b5ded3a985b",
+      "requirement_id": "REQ-C755A8478C4A",
+      "requirement_text": "4. Make Hybrid Flow independent from legacy Agency workflow.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L98"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L98",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7931e1d2acfc7a6800ed9ccbc29513a8054c216f27f31dfeb221f4424b5c6c30",
+      "requirement_id": "REQ-77C963D5A5FC",
+      "requirement_text": "5. Use OpenAI Agents SDK as the standard runtime path.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L99"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L99",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8f1358bb86e976957c0906fc5a4265a535169340324e4c3b05153b838ba23a8b",
+      "requirement_id": "REQ-633758915DC5",
+      "requirement_text": "6. Preserve product controls: tenant policy, credits, model governance, permissions, audit, traces, checkpoints, and rollback.",
+      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L100"
+      ],
+      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L100",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9809bf4600e32ac837ff9768c2bdf6bd30bab64024d401b0da8658e767a88c0d",
+      "requirement_id": "REQ-1B2757BDF723",
+      "requirement_text": "7. Provide a clear migration path away from `agency-swarm`.",
       "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1698,28 +1853,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L735"
-      ],
-      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L735",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "eadeb42225147a2cdbc5314e8dc11c60aa162d95c2e38bb7d93f84935f16202d",
-      "requirement_id": "REQ-4F8CDC17456E",
-      "requirement_text": "| Operation | Purpose | Notes |",
-      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L737"
       ],
       "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L737",
@@ -1888,28 +2021,6 @@
       "requirement_digest": "074e49636c9f593edc8e2426b764100dffd214d83e777128275f664de39ad465",
       "requirement_id": "REQ-351DBDE073C1",
       "requirement_text": "| `getRuntimeHealth` | expose adapter/contract compatibility | admin or diagnostic only |",
-      "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L748"
-      ],
-      "authority_source": "specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/spec.md#L748",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9757630febe64615f4a2fb8973b0fb8f0b4eaf609f0753d66b64aa64a13f360b",
-      "requirement_id": "REQ-E5F9093FA6B0",
-      "requirement_text": "| Operation | Purpose |",
       "source_spec_digest": "2e617edd9db25a451ee308bee5229be8f9cf8c05eee373a3ac86188ed52ec24d",
       "successor_mapping": [],
       "verification_evidence": [],

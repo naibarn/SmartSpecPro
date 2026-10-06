@@ -188,6 +188,14 @@ def update_requirement_ledger(spec_dir: Path, *, expected_manifest_generation: i
         updated_manifest = json.loads(json.dumps(manifest))
         updated_manifest["generation"] = expected_manifest_generation + 1
         updated_manifest["updated_at"] = utc_now()
+        manual_decisions = updated_manifest.setdefault("manual_decisions", {})
+        saved_requirements = manual_decisions.get("requirements", {})
+        if isinstance(saved_requirements, list):
+            saved_requirements = {row.get("requirement_id"): row for row in saved_requirements if isinstance(row, dict)}
+        if not isinstance(saved_requirements, dict):
+            saved_requirements = {}
+        saved_requirements[requirement_id] = json.loads(json.dumps(requirement))
+        manual_decisions["requirements"] = saved_requirements
         summary = {"total": len(updated_ledger["requirements"]), "applicable": 0, "pass": 0, "fail": 0, "unresolved": 0, "blocked_true_external": 0, "not_applicable": 0}
         for row in updated_ledger["requirements"]:
             state = row.get("final_state", "OPEN")
@@ -216,7 +224,15 @@ def render_status(manifest: dict[str, Any], ledger: dict[str, Any]) -> str:
     assessment = manifest.get("continuation_assessment", {})
     lifecycle = manifest.get("lifecycle", {})
     summary = manifest.get("requirements_summary", {})
-    return "\n".join([
+    claims = manifest.get("relevance_assessment", {}).get("declared_claims", [])
+    status_claims = [claim for claim in claims if claim.get("claim_kind") == "DECLARED_STATUS"]
+    relationship_claims = [claim for claim in claims if claim.get("claim_kind") == "DECLARED_RELATIONSHIP"]
+    section_claims = [claim for claim in claims if claim.get("claim_kind") == "SECTION_STATUS_ASSERTION"]
+    section_counts: dict[str, int] = {}
+    for claim in section_claims:
+        status = str(claim.get("value", "UNKNOWN")).upper()
+        section_counts[status] = section_counts.get(status, 0) + 1
+    lines = [
         "<!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->",
         f"# {identity.get('spec_id', 'UNKNOWN')} — {identity.get('title', 'Untitled')}", "",
         f"- Disposition: `{disp.get('value', 'INVALID_OR_UNKNOWN')}` ({disp.get('confidence', 'UNRESOLVED')})",
@@ -225,4 +241,17 @@ def render_status(manifest: dict[str, Any], ledger: dict[str, Any]) -> str:
         f"- Requirements: {summary.get('pass', 0)} pass / {summary.get('unresolved', 0)} unresolved of {summary.get('total', len(ledger.get('requirements', [])))}",
         f"- Next action: {assessment.get('next_action', 'Reconcile evidence.')}",
         f"- Manifest generation: {manifest.get('generation', 0)}", "",
-    ])
+    ]
+    if claims:
+        lines.extend(["## Source-declared status and relationship claims", "", "These are cited author/artifact claims for review; they do not set canonical status by themselves.", ""])
+        for claim in status_claims[:8]:
+            lines.append(f"- Status claim: `{claim.get('value', '')[:180]}` — `{claim.get('source')}#{claim.get('line') or 'json'}`")
+        if section_claims:
+            summary_text = ", ".join(f"{status}: {count}" for status, count in sorted(section_counts.items()))
+            lines.append(f"- Deep-implement section claims ({len(section_claims)}): {summary_text}")
+        for claim in relationship_claims[:12]:
+            targets = ", ".join(item.get("path", "?") for item in claim.get("target_candidates", [])) or "unresolved target"
+            ambiguity = "; target ambiguous" if claim.get("target_ambiguous") else ""
+            lines.append(f"- Relationship candidate: `{claim.get('relation')}` {claim.get('value', '')[:140]} — {targets}{ambiguity} (`{claim.get('source')}#{claim.get('line')}`)")
+        lines.append("")
+    return "\n".join(lines)

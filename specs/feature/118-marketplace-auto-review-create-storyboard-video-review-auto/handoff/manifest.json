@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
     "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
@@ -120,6 +120,17 @@
         "digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Implemented snapshot",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+        "source_digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "value": "Implemented snapshot"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Implemented snapshot",
+        "line": 5,
+        "source": "specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md",
+        "source_digest": "580bfb67a0b618b9dab5a95b6e0bb9591532181c99cccfa38ee25fa4bd0a5243",
+        "value": "Implemented snapshot"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

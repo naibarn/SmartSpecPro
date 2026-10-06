@@ -326,7 +326,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
     "digest": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
@@ -460,6 +460,17 @@
         "digest": "54a7b409f1a0b13d056cd042b61746b6ab3e0d55604a752f074cb2e5a8886b0c",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/sections/section-10-integration-gates.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED LOCALLY / NOT ACTIVATED — additive platform-operation",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
+        "source_digest": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
+        "value": "IMPLEMENTED LOCALLY / NOT ACTIVATED — additive platform-operation"
       }
     ],
     "stale_fields": [],
@@ -476,6 +487,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED LOCALLY / NOT ACTIVATED — additive platform-operation",
+        "line": 3,
+        "source": "specs/feature/188-admin-platform-operations-and-cloudflare-cutover/spec.md",
+        "source_digest": "82f4e1143c31f3ebc39842029b539d8b8f50e99ad93e88a6b590c470aa1b25d4",
+        "value": "IMPLEMENTED LOCALLY / NOT ACTIVATED — additive platform-operation"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

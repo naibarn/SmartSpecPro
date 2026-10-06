@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -106,50 +107,6 @@
       "requirement_digest": "ba6dc6497780cfb6425578ae591ddba0a99feb7b6313261796e16ba6273b1551",
       "requirement_id": "REQ-6462767ECECB",
       "requirement_text": "**Intent compiler SHALL:**",
-      "source_spec_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L155"
-      ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L155",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "06d5d2d769345f2b2f3a0706b8408a32586652f9b32caedd27e4c2dcb9bf904f",
-      "requirement_id": "REQ-47A24D1144AB",
-      "requirement_text": "{\"source_id\": \"tmd_radar_verified_adapter\", \"required\": true, \"freshness_slo_minutes\": 20},",
-      "source_spec_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L156"
-      ],
-      "authority_source": "specs/feature/238-Universal Intelligent Monitoring & Alert Builder/spec.md#L156",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1bd2ffdd2118eb37995e9960e22a7b3fcf2dda5216ca4528c598f4a795ee3e33",
-      "requirement_id": "REQ-4F19C12A0E33",
-      "requirement_text": "{\"source_id\": \"river_telemetry_verified_adapter\", \"required\": false, \"freshness_slo_minutes\": 20}",
       "source_spec_digest": "4a40c34f17518bf8b7db4e6feced5c93174d2eb4567f30824d62cb449ec6571a",
       "successor_mapping": [],
       "verification_evidence": [],

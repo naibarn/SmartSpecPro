@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md",
     "digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
@@ -120,6 +120,17 @@
         "digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md",
+        "source_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md",
+        "source_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 47,
-    "unresolved": 47
+    "total": 53,
+    "unresolved": 53
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.859821Z",

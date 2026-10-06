@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -392,6 +393,402 @@
       "requirement_digest": "8907b5ab8c5d44f9457a62a0418c523409b5c18a81396d47515972b61215c576",
       "requirement_id": "REQ-7357161C58D5",
       "requirement_text": "The implementation SHALL:",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L189"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L189",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8de2bc86904ee11343e8a361a03b3a879a254281b897a2b3c3f3634639df1e14",
+      "requirement_id": "REQ-35C6C9E436B3",
+      "requirement_text": "1. provide a platform-neutral Publishing Compliance Engine;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L190"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L190",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "94fce732a826377103656705f05c29c84af81513fc784b698ec4460c0d34aa2e",
+      "requirement_id": "REQ-B5401A548B9D",
+      "requirement_text": "2. ship YouTube as the first production policy adapter;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L191"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L191",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ba7aeb3ba64b80b8487c8273a8a2f4c35273ea8c4db54f7c9cfc95f17d9de7f2",
+      "requirement_id": "REQ-26AAF854B7D8",
+      "requirement_text": "3. perform multimodal analysis of final content, not script-only analysis;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L192"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L192",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9b9b6db2d9ecd6d717659755902ac57c9ee60325500b73bbda88a9ca041cf0ea",
+      "requirement_id": "REQ-4975632CE376",
+      "requirement_text": "4. model EDSA WHAT/WHERE context explicitly;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L193"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L193",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b5e2a8a4dc746a107143e2f14e85aa7e1db9d7fb86167ffda961b069d1c24b89",
+      "requirement_id": "REQ-3A889DC9E069",
+      "requirement_text": "5. distinguish platform no-exception / destination-restriction findings from remediable context deficiencies without treating either as video-production failure;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L194"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L194",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a22936fee4698026697f8d8bd7e98551f614af0441c5f071da6e846b3384960b",
+      "requirement_id": "REQ-3AC8E4E0D755",
+      "requirement_text": "6. separate Community Guidelines, EDSA, monetization, copyright, privacy, AI disclosure and audience classification;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L195"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L195",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b07cebea6b1af4faf276c0fd3a640b43d16525ded46dee14d0fca9b0a25f2c46",
+      "requirement_id": "REQ-B0DDC885EE73",
+      "requirement_text": "7. integrate policy checks into creation workflows before final render;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L196"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L196",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a6aa293e85b825699a83040523225496e7ab3e07e1bead0b695b888857784b0e",
+      "requirement_id": "REQ-E20EB5166E8D",
+      "requirement_text": "8. offer safe automatic remediation where edits are allowed, with prompt/script/media remediation implemented Skill-first and semantically verified;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L197"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L197",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b5a5d7b8c64c303fdd63a938d2d8c4233c5127299a5622cd8cccb358e63ef80f",
+      "requirement_id": "REQ-3A999F92BE6E",
+      "requirement_text": "9. bound automatic repair/regeneration loops by attempt, cost and time budgets, then warn-and-complete instead of trapping the creative workflow;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L198"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L198",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8cf5d81b510c6d5d6a25fd721f4095192a64c8abd80b9ab47a001ae767573474",
+      "requirement_id": "REQ-B30A2C82BBFB",
+      "requirement_text": "10. require human review at configurable risk thresholds;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L199"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L199",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1f171094eb05d823371f7d3bb011dbf13aab10e5d83a1dfb02433d5c00759802",
+      "requirement_id": "REQ-D845345D4B80",
+      "requirement_text": "11. produce tamper-evident evidence bundles;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L200"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L200",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3f96b2faa15e061e8ae716557c796a8178269b8e161a771f6ea17bf23e968bee",
+      "requirement_id": "REQ-EE16945FF220",
+      "requirement_text": "12. support policy versioning, diffing and re-certification;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L201"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L201",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9deb5cbc09522f997e703eb2a8626cf20c3cab65fa1f3917a853c443f679ce77",
+      "requirement_id": "REQ-0C111FC5C2C2",
+      "requirement_text": "13. support tenant-specific policy overlays without weakening SmartAIHub safety/legal controls;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L202"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L202",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2144980f0d5ee0a7aa5d81233a42de24f23b57757f891f568c5fc5845e1d0d35",
+      "requirement_id": "REQ-3220B1F1C392",
+      "requirement_text": "14. support multilingual video, captions, dubbing and localized metadata;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L203"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L203",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3130bc90d75e630e4ff2baa0f5e52a1f44be835426f17a4cbd91078023a544cf",
+      "requirement_id": "REQ-D962FB3C869F",
+      "requirement_text": "15. support derivative formats such as Shorts and reframed exports;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L204"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L204",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f39653fc0d8b9f984a5c9902451d290aa08eb39b003fc659942da832c43debde",
+      "requirement_id": "REQ-A96633975E4D",
+      "requirement_text": "16. provide APIs, workflow nodes and UI suitable for SmartAIHub Media Studio;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L205"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L205",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8112e86306d5c5e211f04711b1e6b4d987521ad541aaba2098464337b2580985",
+      "requirement_id": "REQ-A15644E9E737",
+      "requirement_text": "17. integrate with existing worker job / Runner infrastructure;",
+      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L206"
+      ],
+      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L206",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "eef610408de81635acd4620253b8877e78ca337c4237a9b9360e80714016c27c",
+      "requirement_id": "REQ-EFC8FE74A2ED",
+      "requirement_text": "18. remain compatible with future Facebook, Instagram, TikTok, X and other platform adapters.",
       "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2116,28 +2513,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1101"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1101",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8335762eaa5a8eb4a860ad8013d6f0ba86ddb4e42e204ac8d7409a1e485bb23e",
-      "requirement_id": "REQ-9AE461C74EB6",
-      "requirement_text": "Subproblem A — preserve required plot action",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1114"
       ],
       "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1114",
@@ -2240,28 +2615,6 @@
       "requirement_digest": "8dc4569d8cd3956473ea7ce28dcb235ae7bdb1627401b2ddc5337ddcfd6a433a",
       "requirement_id": "REQ-5A92AF754781",
       "requirement_text": "Every remediation loop SHALL preserve immutable candidate lineage. A candidate MAY replace the current working candidate only when it improves the configured objective without violating semantic-fidelity floors.",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1164"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1164",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "644936ac41b2a420813a3eff9fa0e813a8a621b5f126890558763f7a95e68683",
-      "requirement_id": "REQ-AA6710422DBD",
-      "requirement_text": "character/object lock     hard floor where required",
       "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2578,50 +2931,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1344"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1344",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "63a6b38af049fbc9893f5e509aff972e60b1dcc5d26af13f79fef73b923539c2",
-      "requirement_id": "REQ-DD188F0D7E6F",
-      "requirement_text": "Required: video or audio context",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1352"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1352",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "60d1d54a89ec7be2dce0e6e681a53e89b31b059f03e9bbf1d0f80fe3591d9a58",
-      "requirement_id": "REQ-DDA13E7932EE",
-      "requirement_text": "[Edit Shot/Scene source if meaning must change]",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1357"
       ],
       "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1357",
@@ -2834,28 +3143,6 @@
       "requirement_digest": "1ac85513044fda3e121cc90b067d87ea559c504a8d58c8e639ad17e14b44a025",
       "requirement_id": "REQ-C151D1A0C012",
       "requirement_text": "The YouTube adapter SHALL evaluate whether disclosure is required under current policy.",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1487"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L1487",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "373dbf1197d70fa851f2d79fa483f3e57c083788c0d50b9d80db71fbcdac2305",
-      "requirement_id": "REQ-E295E300480E",
-      "requirement_text": "REQUIRED",
       "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3714,50 +4001,6 @@
       "requirement_digest": "932fc308a3b66b176631356217f80cd7cbfe5f8f196d41cae0650ea57eb72dea",
       "requirement_id": "REQ-F98E21469344",
       "requirement_text": "User SHALL approve any externally submitted appeal unless an official API and explicit tenant policy authorize automatic submission.",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2044"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2044",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f25ab1e12db6cd9e2e089e649385f6a366dd1f8848830078325e96df87cc8581",
-      "requirement_id": "REQ-0F9A6FB0724B",
-      "requirement_text": "│ Synthetic media disclosure  NOT_REQUIRED / REQUIRED         │",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2051"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2051",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "83819d4101dd9336f0aa04d33defe744e9733c3f6da77b7d951ee278931626cb",
-      "requirement_id": "REQ-51F2A0C08095",
-      "requirement_text": "│   Required: video/audio                                    │",
       "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4646,28 +4889,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2857"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2857",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4c5ab8993ae02e8787333cf9acc330ce1f11787671e5ebef1392b23168c38250",
-      "requirement_id": "REQ-3FC29DD128A9",
-      "requirement_text": "“Create a Shorts version but preserve all required context.”",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2860"
       ],
       "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L2860",
@@ -5108,50 +5329,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3225"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3225",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "af7032a25310499f9ef5349582034b95790b10212d3e32a2f24a65373a3a5216",
-      "requirement_id": "REQ-D614DCADE945",
-      "requirement_text": "Does human review remain required after the fix?",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3250"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3250",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "174e96a6df1bf6d31cdb9add01a345a27ea216b8e0ed7b1c603ea407aa71f788",
-      "requirement_id": "REQ-64B705DAEAEF",
-      "requirement_text": "Human review required",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3298"
       ],
       "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3298",
@@ -5240,28 +5417,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3465"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3465",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a76a9fac90c6f6764e9b9dda089b4b706fa68f267c3a5b857a47676686050674",
-      "requirement_id": "REQ-2CBCE88FAE0C",
-      "requirement_text": "Domain lifecycle ownership SHALL NOT be collapsed.",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3468"
       ],
       "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3468",
@@ -5342,50 +5497,6 @@
       "requirement_digest": "c23470471719abe467aa68d7c7b8e3fab6f1362034f381395893f2b682ba694d",
       "requirement_id": "REQ-1CBE38FE86A9",
       "requirement_text": "> Create → understand policy → preserve context → remediate → verify the actual final media → record evidence → obtain the required human/platform decisions → publish → monitor.",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3709"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3709",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7f3fb550549424dbb89e5f373127c1ab4e8b67dcd92d4656c06703aac80549e1",
-      "requirement_id": "REQ-CD6AF68840B3",
-      "requirement_text": "\"synthetic_media_disclosure\": \"REQUIRED\",",
-      "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3741"
-      ],
-      "authority_source": "specs/feature/227-policy-retrieval-alignment-canonical/spec.md#L3741",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "18fd07bd52b6df7f79443c3e6d38a841e682fe90cf696278a658863dad68769d",
-      "requirement_id": "REQ-3ACC5206CD28",
-      "requirement_text": "\"required\": [\"INCREMENTAL_RESCAN\", \"FINAL_FULL_SCAN\"]",
       "source_spec_digest": "519da3b729d174c2e1ad8268a9d7f1bc602c6c3705a6d9f8fffdb9fec906e18d",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -191,7 +191,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
     "digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
@@ -280,6 +280,17 @@
         "digest": "8e818d02913c123451f458811fb4c427602a691def9fd9feef43ff9f5bc1c893",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/175-vertical-drama-native-cinematic-audio/sections/section-06-storyboard-ui-and-metering.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** DESIGN — READY FOR USER REVIEW",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+        "source_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "value": "DESIGN — READY FOR USER REVIEW"
       }
     ],
     "stale_fields": [],
@@ -296,6 +307,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** DESIGN — READY FOR USER REVIEW",
+        "line": 3,
+        "source": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+        "source_digest": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58",
+        "value": "DESIGN — READY FOR USER REVIEW"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -355,8 +378,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 21,
-    "unresolved": 21
+    "total": 28,
+    "unresolved": 28
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.528717Z",

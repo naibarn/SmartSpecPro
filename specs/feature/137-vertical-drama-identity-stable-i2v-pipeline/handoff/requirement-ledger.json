@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -172,28 +173,6 @@
       "requirement_digest": "5659771b8e3b164d4ff1bbfed84432ed352a5e9109ad57dfedddfd2ccbfd4b6a",
       "requirement_id": "REQ-FC2D6D3FDF5B",
       "requirement_text": "the elements this pipeline must control (identity, safety, observability",
-      "source_spec_digest": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md#L364"
-      ],
-      "authority_source": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md#L364",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a96e07286146ecd2cb2130246aad9a907a8c938748b7bb5d2c97626ea467f04e",
-      "requirement_id": "REQ-8A000C0E1F71",
-      "requirement_text": "\"name\": \"string\",                       // must match characterIdentityMap names",
       "source_spec_digest": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -1,6 +1,183 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L112"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L112",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "42f11c9cfae472ba2ed6c477c68cfa242720edac7ab3211401f8ed41c0a4a92f",
+      "requirement_id": "REQ-FDF6FCD06AA5",
+      "requirement_text": "- Keep Agency Builder as the primary visual authoring UI.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L113"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L113",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "37060a6efb01c3a754f280a380c3883f170e2935885fff5f7c9d17c590e58839",
+      "requirement_id": "REQ-8590F3A4F56C",
+      "requirement_text": "- Preserve existing Agency Swarm agency behavior by default.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L114"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L114",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c4fbc4422281d60765fcde905e9a4c876f294afa3225ba4a97430b1d2468df52",
+      "requirement_id": "REQ-46B81B980489",
+      "requirement_text": "- Allow a new agency version to opt into ADK 2.0 at workflow or subgraph level.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L115"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L115",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bb4160c1f38153d2d1d2e956f285aabf3437455818de9e0661d42a709b172894",
+      "requirement_id": "REQ-364EAA74C4B5",
+      "requirement_text": "- Support explicit subgraph partitioning between `agency_swarm` and `adk2`.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L116"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L116",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "cf4f0610020eb9364c241551fbdc264f09cdcab548b0404da44f42d9661917bf",
+      "requirement_id": "REQ-A9C34DB86E27",
+      "requirement_text": "- Add compile-time validation, capability checks, and lowering diagnostics.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L117"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L117",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8b2cae34754af8cbcbadcaa3ccf6de95581d47a57d6eb6bf8385a88227c7d0cf",
+      "requirement_id": "REQ-30300C8DA0CD",
+      "requirement_text": "- Support bridge contracts for cross-engine execution.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L118"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L118",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d8538c20d7ff368fe7f197b58f2d5dd3b2cff0128ff2b04990773f62ccd9f7b2",
+      "requirement_id": "REQ-0A55E26C25CE",
+      "requirement_text": "- Preserve current tool assignment semantics on nodes.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L119"
+      ],
+      "authority_source": "specs/feature/076-hybrid-agency-runtime-google-adk/spec.md#L119",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6d055e5c38a03a0ec280b2c153822602f80ecc83313429dc45e56a55dd2b8d58",
+      "requirement_id": "REQ-CF633A61CD3D",
+      "requirement_text": "- Support trace visibility down to subgraph and bridge level.",
+      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md",
     "digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
@@ -240,6 +240,17 @@
         "digest": "65f74d9cc88ffce33d58bee2b3305bb5c43618ae3d70b3b2871f74330ade8292",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/sections/section-04-rollout-governance-and-migration.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md",
+        "source_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -256,6 +267,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/081-hermes-agent-runtime-gateway-and-channel-interop/spec.md",
+        "source_digest": "dbdaf7afbebbb98b8ad3f988cda35e2746858e98e78121b5326810815acbe121",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -305,8 +328,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 17,
-    "unresolved": 17
+    "total": 25,
+    "unresolved": 25
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.846393Z",

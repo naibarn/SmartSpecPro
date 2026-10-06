@@ -391,7 +391,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
     "digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
@@ -605,6 +605,17 @@
         "kind": "SOURCE",
         "line": 1145,
         "path": "apps/web/server/routers/verticalDramaSeries.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md. 2026-07-07 production-grade upgrade: §7.7 story density/speech budget, §8.8 guided product",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+        "source_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "value": "Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md. 2026-07-07 production-grade upgrade: §7.7 story density/speech budget, §8.8 guided production wizard, §13.1 tie-in naturalness QC, §14.1 dialogue coverage, §16.1 quality-review auto-improve loop, §23 traceability — see section-13/section-14 and reviews/production-grade-upgrade-audit-2026-07-07.md. 2026-07-08 to 2026-07-09 sync-to-shipped pass (this version): async story jobs + deep story drafts §8.2.3, season dramaturgy critic §6.8.2/§16.2, length-aware format profiles §7.8, tie-in aware deep drafts §13.2, ad banner overlay §13.3, beyond-plan sanity §11.8, final render suite §12.4, character reference v2 §9.3, voice casting §14.2, read-only share links §24 (proposed, not yet built) — see §0 Changelog, §23.1, and reviews/spec-sync-audit-2026-07-09.md)"
       }
     ],
     "stale_fields": [],
@@ -657,6 +668,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md. 2026-07-07 production-grade upgrade: §7.7 story density/speech budget, §8.8 guided product",
+        "line": 5,
+        "source": "specs/feature/131-vertical-drama-series-storyboard-video-flow/spec.md",
+        "source_digest": "f997c87965c6a257ddae8fd0aba8b7bf231840dfbcef74788c89f007254aeb14",
+        "value": "Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md. 2026-07-07 production-grade upgrade: §7.7 story density/speech budget, §8.8 guided production wizard, §13.1 tie-in naturalness QC, §14.1 dialogue coverage, §16.1 quality-review auto-improve loop, §23 traceability — see section-13/section-14 and reviews/production-grade-upgrade-audit-2026-07-07.md. 2026-07-08 to 2026-07-09 sync-to-shipped pass (this version): async story jobs + deep story drafts §8.2.3, season dramaturgy critic §6.8.2/§16.2, length-aware format profiles §7.8, tie-in aware deep drafts §13.2, ad banner overlay §13.3, beyond-plan sanity §11.8, final render suite §12.4, character reference v2 §9.3, voice casting §14.2, read-only share links §24 (proposed, not yet built) — see §0 Changelog, §23.1, and reviews/spec-sync-audit-2026-07-09.md)"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -806,8 +829,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 209,
-    "unresolved": 209
+    "total": 214,
+    "unresolved": 214
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.214703Z",

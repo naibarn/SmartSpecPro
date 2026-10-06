@@ -333,7 +333,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/031-SocialAdsManagement/spec.md",
     "digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
@@ -467,6 +467,17 @@
         "digest": "8ecc22f89309ea8b5c22c0090b4addd6499c65d4e73a5c4b26b700b0142fd734",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/031-SocialAdsManagement/sections/section-13-observability-oauth.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft — pending user approval",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/031-SocialAdsManagement/spec.md",
+        "source_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+        "value": "Draft — pending user approval"
       }
     ],
     "stale_fields": [],
@@ -483,6 +494,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft — pending user approval",
+        "line": 5,
+        "source": "specs/feature/031-SocialAdsManagement/spec.md",
+        "source_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+        "value": "Draft — pending user approval"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

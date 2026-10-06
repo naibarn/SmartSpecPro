@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md",
     "digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
@@ -400,6 +400,17 @@
         "digest": "940d96730a5a430f9ccdc561de905f51d91380f85db42628838959aca5c29cfc",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/074-claw-worker-mcp-platform-completion/sections/section-08-docs-observability-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md",
+        "source_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -416,6 +427,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md",
+        "source_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -505,8 +528,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 118,
-    "unresolved": 118
+    "total": 126,
+    "unresolved": 126
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.804197Z",

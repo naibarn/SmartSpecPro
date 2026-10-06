@@ -295,7 +295,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
     "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
@@ -344,6 +344,17 @@
         "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "value": "R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED"
       }
     ],
     "stale_fields": [],
@@ -360,6 +371,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED",
+        "line": 6,
+        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
+        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "value": "R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -379,8 +402,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 90,
-    "unresolved": 90
+    "total": 88,
+    "unresolved": 88
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.567624Z",

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,6 +41,138 @@
       "requirement_digest": "8d548c2a701be84923b39ae365f0e91661a85e4857bc3c1492446799a0f7a627",
       "requirement_id": "REQ-99E764670A01",
       "requirement_text": "- handoff state must preserve the owning tenant, user, and team context across resumes and forks",
+      "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L71"
+      ],
+      "authority_source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L71",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9310455f9d7f469d81d561d7bc5587c29c170fc03f940bdb7516bd6e3a4d9d03",
+      "requirement_id": "REQ-0DB5F69CE5BC",
+      "requirement_text": "1. Make handoff a first-class runtime concept instead of an implicit side effect.",
+      "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L72"
+      ],
+      "authority_source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L72",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ce68d316f9fa1bf50a9344a5e3814531a4884812656be4c30a9208abae23101d",
+      "requirement_id": "REQ-1F65542F8798",
+      "requirement_text": "2. Provide one durable run ledger for workpack runs, role routines, and human interruptions.",
+      "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L73"
+      ],
+      "authority_source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L73",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d8676ad4009fbd9c768712f7b1fe4311145e74f82bb86833626b846af3c8b195",
+      "requirement_id": "REQ-43E70ECD9929",
+      "requirement_text": "3. Support pause, resume, retry, replay, and fork from known checkpoints.",
+      "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L74"
+      ],
+      "authority_source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L74",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ed5ea15c4d007a36eb96fb5d597b77ee7179353e218b0a25752504c9dc3b1e1d",
+      "requirement_id": "REQ-AE4E07F7FF7F",
+      "requirement_text": "4. Preserve decision records and handoff reasons across agent, human, and runtime boundaries.",
+      "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "97e0567fab90cf745d1330f615a2c6366e33eee4ee6d7b0c577b45aa0dec9bf0",
+      "requirement_id": "REQ-73DC72F6FC47",
+      "requirement_text": "5. Expose one timeline for operators, replay tooling, and audits.",
+      "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L76"
+      ],
+      "authority_source": "specs/feature/084-stateful-handoff-and-durable-run-ledger/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "04466c22701ca8d7c5e31cfb1a8f1015e1301b93978daf84ac11360206243d47",
+      "requirement_id": "REQ-0EC3101C5BEF",
+      "requirement_text": "6. Preserve outcome memory so the platform can learn from each execution without rewriting the canonical ledger.",
       "source_spec_digest": "7a769c6a08b5485cd90825c4f5c324d9e943c6852fbcf6f5a99ee85f46bcfa9a",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/050-library-pgvector-full-integration/spec.md",
     "digest": "dad0a3fd34b4866f485db6f9aa45b7e083f394f9f220a11d7d8806d6e8c64ba0",
@@ -120,6 +120,17 @@
         "digest": "dad0a3fd34b4866f485db6f9aa45b7e083f394f9f220a11d7d8806d6e8c64ba0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/050-library-pgvector-full-integration/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/050-library-pgvector-full-integration/spec.md",
+        "source_digest": "dad0a3fd34b4866f485db6f9aa45b7e083f394f9f220a11d7d8806d6e8c64ba0",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "line": 3,
+        "source": "specs/feature/050-library-pgvector-full-integration/spec.md",
+        "source_digest": "dad0a3fd34b4866f485db6f9aa45b7e083f394f9f220a11d7d8806d6e8c64ba0",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 145,
-    "unresolved": 145
+    "total": 162,
+    "unresolved": 162
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.648402Z",

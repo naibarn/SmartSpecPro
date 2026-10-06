@@ -232,7 +232,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md",
     "digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
@@ -393,6 +393,17 @@
         "kind": "TEST",
         "line": 122,
         "path": "apps/web/server/services/__tests__/agenticDevelopmentFabricContracts.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Design Specification — Canonical Alignment Revision 17",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md",
+        "source_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
+        "value": "Proposed / Design Specification — Canonical Alignment Revision 17"
       }
     ],
     "stale_fields": [],
@@ -522,6 +533,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Design Specification — Canonical Alignment Revision 17",
+        "line": 4,
+        "source": "specs/feature/222-smartaihub-agentic-development-fabric/spec.md",
+        "source_digest": "7eb635bd785ea788d3041569a5d7f2b83907f3f123589f8d55ffd16a20e4a12b",
+        "value": "Proposed / Design Specification — Canonical Alignment Revision 17"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -541,8 +564,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 414,
-    "unresolved": 414
+    "total": 407,
+    "unresolved": 407
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.157683Z",

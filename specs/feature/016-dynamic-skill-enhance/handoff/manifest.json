@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/016-dynamic-skill-enhance/spec.md",
     "digest": "0eae851a0134bce4d36b9b2af1fc684af910e0f02a3f2b576071da47a03dfd9c",
@@ -416,6 +416,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -505,8 +506,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1,
-    "unresolved": 1
+    "total": 5,
+    "unresolved": 5
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.436979Z",

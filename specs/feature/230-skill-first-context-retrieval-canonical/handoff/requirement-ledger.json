@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -312,28 +313,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L389"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L389",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "42ef0e7881affd7b1b9c532a2e181c134a1ee30bef733d174d2cad2187d840e9",
-      "requirement_id": "REQ-0772DD4593C2",
-      "requirement_text": "What must never be done",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L393"
       ],
       "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L393",
@@ -620,94 +599,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L809"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L809",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "22d181d34c8a2d5fa22183d6d366e39ea267a95fdba9f2a118ea2410b2d353f5",
-      "requirement_id": "REQ-E7F71C8DEF03",
-      "requirement_text": "required tools",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L847"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L847",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c3b9ccfee1cbe157f377d2afaf247a78bd3e478aa08a3f58dead6ae3cd232a99",
-      "requirement_id": "REQ-F979EB6D1891",
-      "requirement_text": "local repository/state is required",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L849"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L849",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7f3b47cd1b6602ce3df6a0c83f99878b1897cc30011399c9c0e856508d31541b",
-      "requirement_id": "REQ-BB0EE6FABD8B",
-      "requirement_text": "private/local resources are required",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L857"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L857",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fdda9dd585d02f999003c138cf07a5f443a96559b3d80468e91d0e147f38ec0b",
-      "requirement_id": "REQ-5C3F8A9482B2",
-      "requirement_text": "clean reproducible environment required",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L868"
       ],
       "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L868",
@@ -766,28 +657,6 @@
       "requirement_digest": "09fc6e07a5e41c30ba32d9e70b18fe98839fc63bc234dc9ba74c861fe051ccff",
       "requirement_id": "REQ-45C891C1C486",
       "requirement_text": "If implementation discovers a new required capability:",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L920"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L920",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9b702e03a0c586b551aaaef81947438aa0a26edbc8799e164186661b6da9e404",
-      "requirement_id": "REQ-3DA033A2F4EC",
-      "requirement_text": "→ policy/owner approval as required",
       "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -964,28 +833,6 @@
       "requirement_digest": "54728bcff16e152bc0ba4a4532aff39f739c0219e837ce8e66b592a21b8cc24b",
       "requirement_id": "REQ-B8E815F8B4CC",
       "requirement_text": "The UI SHOULD show estimates/budgets and allow Tenant policy limits. Child Skill Engineering jobs must receive bounded sub-budgets rather than unlimited inheritance.",
-      "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1098"
-      ],
-      "authority_source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md#L1098",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e9626a5abd59b66a505b4466587c843938884bf992139cd96c4c1b8cd03de905",
-      "requirement_id": "REQ-DF2C7AED35F6",
-      "requirement_text": "required evidence",
       "source_spec_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
       "successor_mapping": [],
       "verification_evidence": [],

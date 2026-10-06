@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
     "digest": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
@@ -120,6 +120,17 @@
         "digest": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: P1/P2/P3 code complete; 137/138/139 consistency flags are default-on with explicit tenant opt-out preserved; live provider/browser evidence and labeled rollout calibration pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
+        "source_digest": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
+        "value": "P1/P2/P3 code complete; 137/138/139 consistency flags are default-on with explicit tenant opt-out preserved; live provider/browser evidence and labeled rollout calibration pending"
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: P1/P2/P3 code complete; 137/138/139 consistency flags are default-on with explicit tenant opt-out preserved; live provider/browser evidence and labeled rollout calibration pending",
+        "line": 5,
+        "source": "specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md",
+        "source_digest": "aff269e0ed5de00707629491bf337995f1f69b72789e65a56bcbbb7d77a4a0b1",
+        "value": "P1/P2/P3 code complete; 137/138/139 consistency flags are default-on with explicit tenant opt-out preserved; live provider/browser evidence and labeled rollout calibration pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 35,
-    "unresolved": 35
+    "total": 34,
+    "unresolved": 34
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.264745Z",

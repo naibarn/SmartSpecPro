@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1544,94 +1545,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1193"
-      ],
-      "authority_source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1193",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d92ad6c0f686409d480f6c03fea75e61e424f8a38b6ae1a847e3c5b2c4e159d2",
-      "requirement_id": "REQ-C818D829EC97",
-      "requirement_text": "+ faster queue processing",
-      "source_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1194"
-      ],
-      "authority_source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1194",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8dc94d2b7ba6495d58b78cea921967c971d876e110b846ed389369745e7c6307",
-      "requirement_id": "REQ-DCBB2BAC1D5B",
-      "requirement_text": "- more Container starts and higher operational complexity",
-      "source_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1197"
-      ],
-      "authority_source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1197",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8904c27cf20bae2d2edfb008cea3d76c7b3d391b37dd3915fd99ff8c138bcb19",
-      "requirement_id": "REQ-7A8EDDA9D90F",
-      "requirement_text": "+ lower cost / simpler operation",
-      "source_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1198"
-      ],
-      "authority_source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1198",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cd3a86a601b2c6f503e174fc331c411a9e3d9eec5f76946dae46a71dd010bad6",
-      "requirement_id": "REQ-F3D60555CAC8",
-      "requirement_text": "- users may wait longer",
-      "source_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1211"
       ],
       "authority_source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1211",
@@ -1668,28 +1581,6 @@
       "requirement_digest": "a1b19846db16bc3606a81afb4cae90285e519a3aebfb11bb3e80ba7b8ec527f0",
       "requirement_id": "REQ-03B33CB628E7",
       "requirement_text": "Settings requiring deployment MUST show:",
-      "source_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1315"
-      ],
-      "authority_source": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md#L1315",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6b86b29f51d01a4d066ad068f109aaea26cc2c3ce9595450306ff658c740c156",
-      "requirement_id": "REQ-CA059D468E4C",
-      "requirement_text": "Deployment required",
       "source_spec_digest": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54",
       "successor_mapping": [],
       "verification_evidence": [],

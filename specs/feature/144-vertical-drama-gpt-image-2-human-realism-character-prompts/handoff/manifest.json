@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
     "digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
@@ -500,6 +500,87 @@
         "digest": "8620e9c50ff5692fc1791e5fb86c3cb315aeb1a068f9eab56b029dae21e004e4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections/section-05-verification-and-ab-evaluation.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bf864ba77",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-capability-and-catalog: complete; commit_hash=bf864ba77",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-capability-and-catalog",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-skill-and-generation-contract: complete; commit_hash=bd247fa2d",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-skill-and-generation-contract",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-character-render-normalizer: complete; commit_hash=bd247fa2d",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-character-render-normalizer",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-transport-persistence-and-compatibility: complete; commit_hash=bd247fa2d",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-transport-persistence-and-compatibility",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-verification-and-ab-evaluation: complete; commit_hash=bd247fa2d",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-verification-and-ab-evaluation",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PROPOSED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
+        "source_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+        "value": "PROPOSED"
       }
     ],
     "stale_fields": [],
@@ -516,6 +597,83 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bf864ba77",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-capability-and-catalog: complete; commit_hash=bf864ba77",
+        "line": null,
+        "section": "section-01-capability-and-catalog",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-skill-and-generation-contract: complete; commit_hash=bd247fa2d",
+        "line": null,
+        "section": "section-02-skill-and-generation-contract",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-character-render-normalizer: complete; commit_hash=bd247fa2d",
+        "line": null,
+        "section": "section-03-character-render-normalizer",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-transport-persistence-and-compatibility: complete; commit_hash=bd247fa2d",
+        "line": null,
+        "section": "section-04-transport-persistence-and-compatibility",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "bd247fa2d",
+        "commit_hash_length": 9,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-verification-and-ab-evaluation: complete; commit_hash=bd247fa2d",
+        "line": null,
+        "section": "section-05-verification-and-ab-evaluation",
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation/deep_implement_config.json",
+        "source_digest": "e4a62d193e1a641ff2b401f5f111dc87e67e7da39c6225057ae736d4f8a9a71b",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PROPOSED",
+        "line": 3,
+        "source": "specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/spec.md",
+        "source_digest": "41abc807a3e3b8ec40599fe6e0f249e165636d26e4f9fa5e1d231be88b5d2c03",
+        "value": "PROPOSED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -630,8 +788,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 78,
-    "unresolved": 78
+    "total": 94,
+    "unresolved": 94
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.308961Z",

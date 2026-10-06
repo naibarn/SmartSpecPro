@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -128,28 +129,6 @@
       "requirement_digest": "b9790b66fd765ad1779d5ad7544e74e87136508cac41d5abe21c505178d2f22d",
       "requirement_id": "REQ-316D3ED318FD",
       "requirement_text": "> **Frozen boundary:** Specs 1–214 including 199/200/212/213 are implementation history, not retroactive editing targets. Use later additive contracts, adapter packages and backlog items. Spec 224 must remain unchanged during its active implementation; pass any development tasks via its existing approved ingress.",
-      "source_spec_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L127"
-      ],
-      "authority_source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L127",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7cbbd8c872eae0780718f42937490a4f251016e4366ca244d44b261dbfae8d29",
-      "requirement_id": "REQ-D41700D2C6D7",
-      "requirement_text": "Approval + Spec 207 quote/reservation as required",
       "source_spec_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -568,28 +547,6 @@
       "requirement_digest": "44426f2950b695d1beef8de4511a6552b3dd9d3c57415b258a04de191bba1279",
       "requirement_id": "REQ-DD716394E40F",
       "requirement_text": "- Optional local ComfyUI integration goes through the **registered Runner**; its `object_info`/queue/history/socket APIs are adapter details and not direct permissions. Backend adapters must verify actual installed nodes and media contracts.",
-      "source_spec_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L434"
-      ],
-      "authority_source": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L434",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cba185e037892afa51e87bdbf7c3d44cf359eba88a1ef034136386c34b9b464c",
-      "requirement_id": "REQ-B85864D7A067",
-      "requirement_text": "2. Confirm target asset/project and define what must remain unchanged.",
       "source_spec_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
       "successor_mapping": [],
       "verification_evidence": [],

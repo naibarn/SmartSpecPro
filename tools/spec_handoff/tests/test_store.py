@@ -95,6 +95,49 @@ class StoreTests(unittest.TestCase):
                     expected_spec_digest=manifest["identity"]["digest"], expected_canonical_sha=None,
                     requirement_id=ledger["requirements"][0]["requirement_id"], changes={"next_action": "retry"})
 
+    def test_requirement_update_survives_reconciliation_for_same_spec_digest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = self.setup_spec(root)
+            reconcile_one(spec, root, write=True)
+            manifest = read_manifest(spec)
+            ledger = json.loads((spec / "handoff/requirement-ledger.json").read_text())
+            req = ledger["requirements"][0]
+            update_requirement_ledger(
+                spec,
+                expected_manifest_generation=manifest["generation"],
+                expected_ledger_generation=ledger["generation"],
+                expected_spec_digest=manifest["identity"]["digest"],
+                expected_canonical_sha=None,
+                requirement_id=req["requirement_id"],
+                changes={"applicability": "APPLICABLE", "verification_evidence": ["tests/result.json"], "final_state": "FAIL", "next_action": "Repair the failing requirement."},
+            )
+            reconciled = reconcile_one(spec, root, write=True)
+            saved = reconciled["ledger"]["requirements"][0]
+            self.assertEqual(saved["final_state"], "FAIL")
+            self.assertEqual(saved["verification_evidence"], ["tests/result.json"])
+
+    def test_requirement_update_is_not_reapplied_after_normative_digest_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = self.setup_spec(root)
+            reconcile_one(spec, root, write=True)
+            manifest = read_manifest(spec)
+            ledger = json.loads((spec / "handoff/requirement-ledger.json").read_text())
+            req = ledger["requirements"][0]
+            update_requirement_ledger(
+                spec,
+                expected_manifest_generation=manifest["generation"],
+                expected_ledger_generation=ledger["generation"],
+                expected_spec_digest=manifest["identity"]["digest"],
+                expected_canonical_sha=None,
+                requirement_id=req["requirement_id"],
+                changes={"applicability": "APPLICABLE", "verification_evidence": ["tests/result.json"], "final_state": "FAIL"},
+            )
+            (spec / "spec.md").write_text("# Changed\nRequirement R1 changed.\n", encoding="utf-8")
+            reconciled = reconcile_one(spec, root, write=True)
+            self.assertNotEqual(reconciled["ledger"]["requirements"][0]["final_state"], "FAIL")
+
     def test_manual_decision_survives_inference_seed_rerun(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

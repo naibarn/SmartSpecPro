@@ -114,7 +114,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
     "digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
@@ -163,6 +163,17 @@
         "digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED — additive specification; not implemented or production-certified",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
+        "source_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+        "value": "PROPOSED — additive specification; not implemented or production-certified"
       }
     ],
     "stale_fields": [],
@@ -179,6 +190,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED — additive specification; not implemented or production-certified",
+        "line": 5,
+        "source": "specs/feature/236-AI Live Commerce & Project Library Broadcast Engine/spec.md",
+        "source_digest": "c3f6801f1c55e235d75db425e0b2d9f16332450274c0b818e43c6988dc7a86af",
+        "value": "PROPOSED — additive specification; not implemented or production-certified"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

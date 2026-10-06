@@ -4,6 +4,12 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 35 unresolved of 35
+- Requirements: 0 pass / 34 unresolved of 34
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `P1/P2/P3 code complete; 137/138/139 consistency flags are default-on with explicit tenant opt-out preserved; live provider/browser evidence and labeled rollout calibration pending` — `specs/feature/137-vertical-drama-identity-stable-i2v-pipeline/spec.md#5`

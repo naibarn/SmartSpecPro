@@ -270,7 +270,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
     "digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
@@ -349,6 +349,17 @@
         "digest": "3042cacffd1c009d2c1d8bcd30c53f776d12c6c765ce664cb68444621eaf7bb5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/implementation/audits/12-round-settlement-followup-2026-09-18.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Ready for implementation planning",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
+        "source_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
+        "value": "Proposed / Ready for implementation planning"
       }
     ],
     "stale_fields": [],
@@ -365,6 +376,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Ready for implementation planning",
+        "line": 3,
+        "source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
+        "source_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
+        "value": "Proposed / Ready for implementation planning"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -414,8 +437,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 639,
-    "unresolved": 639
+    "total": 602,
+    "unresolved": 602
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.846123Z",

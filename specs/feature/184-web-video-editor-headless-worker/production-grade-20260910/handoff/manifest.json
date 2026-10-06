@@ -251,7 +251,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/184-web-video-editor-headless-worker/production-grade-20260910/spec.md",
     "digest": "ba947a22f5c72ac287c401ea5939f1e1a3b590be2a77d98df264b29fe4ff88ea",
@@ -376,6 +376,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

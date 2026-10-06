@@ -201,7 +201,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
     "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
@@ -271,6 +271,17 @@
         "kind": "TEST",
         "line": 22,
         "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Bootstrap contract implemented; intent router, cross-harness runtime and web control surface remain pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+        "source_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "value": "Bootstrap contract implemented; intent router, cross-harness runtime and web control surface remain pending"
       }
     ],
     "stale_fields": [],
@@ -309,6 +320,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Bootstrap contract implemented; intent router, cross-harness runtime and web control surface remain pending",
+        "line": 4,
+        "source": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
+        "source_digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
+        "value": "Bootstrap contract implemented; intent router, cross-harness runtime and web control surface remain pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -328,8 +351,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 133,
-    "unresolved": 133
+    "total": 126,
+    "unresolved": 126
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.306374Z",

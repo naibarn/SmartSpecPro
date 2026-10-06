@@ -236,7 +236,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md",
     "digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
@@ -340,6 +340,17 @@
         "digest": "78c538e2e324c41e6df21ad394582f61d62b5e4a913de3e72c4d2e1fc96d5fee",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/sections/section-06-evidence-gates.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED LOCALLY — Waves 1–5 use the PostgreSQL Job Control",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md",
+        "source_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "value": "IMPLEMENTED LOCALLY — Waves 1–5 use the PostgreSQL Job Control"
       }
     ],
     "stale_fields": [],
@@ -356,6 +367,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED LOCALLY — Waves 1–5 use the PostgreSQL Job Control",
+        "line": 3,
+        "source": "specs/feature/186-unified-job-control-plane-adapters/hard-cutover/spec.md",
+        "source_digest": "6adf7841e577fedf2dc15a205f6635c540d955f01ef2cc422e3564d2eb5bc82b",
+        "value": "IMPLEMENTED LOCALLY — Waves 1–5 use the PostgreSQL Job Control"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

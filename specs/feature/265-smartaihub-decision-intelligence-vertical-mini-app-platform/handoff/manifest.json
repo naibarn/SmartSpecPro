@@ -263,7 +263,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md",
     "digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
@@ -371,6 +371,17 @@
         "kind": "TEST",
         "line": 16,
         "path": "apps/web/drizzle/__tests__/spec265266DurableFoundationMigration.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — Design complete for planning; implementation is pending the dependency gates below; supersedes Spec 265 R1.1 where more specific",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md",
+        "source_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
+        "value": "Proposed — Design complete for planning; implementation is pending the dependency gates below; supersedes Spec 265 R1.1 where more specific"
       }
     ],
     "stale_fields": [],
@@ -402,6 +413,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed — Design complete for planning; implementation is pending the dependency gates below; supersedes Spec 265 R1.1 where more specific",
+        "line": 6,
+        "source": "specs/feature/265-smartaihub-decision-intelligence-vertical-mini-app-platform/spec.md",
+        "source_digest": "0682e59c64c68aee7e92d02bd8291f0af3bfea392a7e4f3d80bf90f26da16e4a",
+        "value": "Proposed — Design complete for planning; implementation is pending the dependency gates below; supersedes Spec 265 R1.1 where more specific"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -466,8 +489,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 165,
-    "unresolved": 165
+    "total": 162,
+    "unresolved": 162
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.714306Z",

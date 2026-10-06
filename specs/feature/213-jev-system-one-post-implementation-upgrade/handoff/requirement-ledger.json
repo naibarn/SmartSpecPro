@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -106,94 +107,6 @@
       "requirement_digest": "3a5b957c80018ae7a26450622d032869f63cd199d601c8196f5e9aee0975b906",
       "requirement_id": "REQ-B4DCB18D22B9",
       "requirement_text": "The new implementation SHALL preserve the canonical Spec 208 execution hierarchy:",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L77"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L77",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1ba7522c24d6c380b5c7103883aaef68c003acbb6f7451c583d166fa39b2d6d6",
-      "requirement_id": "REQ-777FAEAE7F1D",
-      "requirement_text": "↓ when deeper reasoning is required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L97"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L97",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2994ea63255ff89f227af26e5696d889c774489e05be50ef3a1baa7050db74c4",
-      "requirement_id": "REQ-0A2E79C88A44",
-      "requirement_text": "What is newly required?",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L98"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L98",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d9449c1bed2b70f258aa2b7f79ddba34061db8546d3f8ee72405c41a8a361652",
-      "requirement_id": "REQ-8FB3A0E00D40",
-      "requirement_text": "Which migrations are required?",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L109"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L109",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fb7bbefff75bbf4709a2f384bcc87bc3a7456984b658f7acd6a033df4d2a2771",
-      "requirement_id": "REQ-A391AE6BC189",
-      "requirement_text": "Spec 213 = required post-implementation upgrade of the Jev/System-One path",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -950,28 +863,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L711"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L711",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5ab1c794aa0cc9f8fa44d652a3013ab95192bbf6b50eee68059916a895b4ccfd",
-      "requirement_id": "REQ-1F8DC5003A15",
-      "requirement_text": "if required, choose option/subcontrol",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L720"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L720",
@@ -1668,28 +1559,6 @@
       "requirement_digest": "650b79d1dad95cf131dedc8ca264fa5f7d02cb7d2434844d5fd0cab41bcc9a8f",
       "requirement_id": "REQ-DBD20354D562",
       "requirement_text": "Decision requests MUST operate on the normalized Spec 208 observation/candidate contract.",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L1333"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L1333",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "edb38c8789eea8ca1ca97e56d7ce8b2d75163bb09414735867ba322951fec183",
-      "requirement_id": "REQ-D19A444A19E7",
-      "requirement_text": "vision fallback if required",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4668,28 +4537,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2355"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2355",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7fa14004d560d06b3c4d213083db6cf7de6d4c39fda919f7097322690351defa",
-      "requirement_id": "REQ-5CA44E4F50BD",
-      "requirement_text": "→ approval where required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2360"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2360",
@@ -6472,140 +6319,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3452"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3452",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0706626640b55e9da54d184497c4abcf98137868bfdb5c314976bbaf50c41325",
-      "requirement_id": "REQ-FEDD289F47FA",
-      "requirement_text": "choice          required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3453",
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3459"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3453",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cb4d1d6bd9c078dbcb3b5ff23ad381e8e078d203bec1ce65fd7fd7e6b4be89ce",
-      "requirement_id": "REQ-4FA1A231D77E",
-      "requirement_text": "probabilities   required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3454",
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3460"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3454",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2a36969906d0aacd04e6d94b5bf38f608c4366ec3a0a085bd95d1ff71f3cac49",
-      "requirement_id": "REQ-CA88D5FDB4EF",
-      "requirement_text": "confidence      required; derived from probability-distribution shape",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3457"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3457",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1729426c820ef4d7594dce97b7aae389f594e6aa5dc180c71c97391cbdecaccf",
-      "requirement_id": "REQ-538D7E0EB2C9",
-      "requirement_text": "score           required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3458"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3458",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "901032b53f565ab4cbc456ce62701a04dea9cc5055e31d41a86843d9b53b55be",
-      "requirement_id": "REQ-F0DF0463BBA3",
-      "requirement_text": "legend          required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3463"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3463",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d140648e94c75e98efb53540738c1923be92799fe49240f2c0410183479ba427",
-      "requirement_id": "REQ-0D16BE2235C6",
-      "requirement_text": "noul            required; probability of yes in [0,1]",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3469"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3469",
@@ -7552,28 +7265,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3820"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3820",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2165facfb8d0485479b391a1652aa74e28ea14e2e2eb93674954542b917478cb",
-      "requirement_id": "REQ-E6B114ED36D7",
-      "requirement_text": "all required answers present            → continue validation",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3828"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L3828",
@@ -8168,28 +7859,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4215"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4215",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "49b3ca353f062e9f953c4262d8ed2b63cfd1996154e3fd1bedca5ec4483e0a04",
-      "requirement_id": "REQ-2F944EA8F12C",
-      "requirement_text": "all applicable Section 44 acceptance criteria passed",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4220"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4220",
@@ -8292,28 +7961,6 @@
       "requirement_digest": "411856d79969f100183048bda597a3f2f85d5d355362d10129c80ac335f2f5d2",
       "requirement_id": "REQ-9FFA45FF4ABB",
       "requirement_text": "Every production question SHALL have self-contained model-visible instructions/criteria that define:",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4263"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4263",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f3c5b90c23245d6883408feea3f2bcced17a3db8ab1fb9e6050db38c9a7189f5",
-      "requirement_id": "REQ-2C8A7F729269",
-      "requirement_text": "what must not be inferred",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -9532,50 +9179,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4724"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4724",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "23547e8581d899d4e6d0e18e03889dff856747724ec642c507bb03d3f4653596",
-      "requirement_id": "REQ-DE8557AAAD33",
-      "requirement_text": "missing required executable field            → fail closed",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4725"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4725",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0c0adf4655f1e38bf633db017e6c77406eb00cd5f59d7b325e016f8bde01a1b4",
-      "requirement_id": "REQ-5DA6086F1BBC",
-      "requirement_text": "changed meaning/type of required field       → fail closed",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4730"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L4730",
@@ -10610,28 +10213,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5044"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5044",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a03ebd7a38f7d77b8df9bc84d36187a92e06040e6c7de2eb359554fcd8b7b049",
-      "requirement_id": "REQ-669BCEECEC9E",
-      "requirement_text": "all applicable acceptance criteria pass",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5049"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5049",
@@ -11204,28 +10785,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5306"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5306",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0c4171718fc28fb7af891502d740bb80bc3a0e7e2bfa2f8814d941f49e7b4d61",
-      "requirement_id": "REQ-019EED924E9B",
-      "requirement_text": "window/tab/app owns the expected foreground/input context when required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5309"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5309",
@@ -11394,28 +10953,6 @@
       "requirement_digest": "5965708742de2ab14b59a101bf5d7769f71bdb2cf7b2bc8e0adfff4e6d6751ba",
       "requirement_id": "REQ-E0C49C177713",
       "requirement_text": "The executor SHALL maintain a `precondition_fingerprint` or equivalent deterministic validation set for the chosen action.",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5392"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5392",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "601e25af861aaad9cc5c44ea1049f5934c4761f8be3588d431c45ee165515aa2",
-      "requirement_id": "REQ-E388FCD77240",
-      "requirement_text": "→ focused element/window identity must match",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11790,28 +11327,6 @@
       "requirement_digest": "c28f81b177bde0ac6c248dc0396bae47999a2c6043bec0c8b416b250d1e1e21d",
       "requirement_id": "REQ-EE42D8878CF1",
       "requirement_text": "The request builder SHALL use a **trusted fixed schema** for candidate criteria and place observed values only in explicitly data-bearing fields.",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5537"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L5537",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b32873564589132ee227c350127a55747a8ff4f973010a3666c03a5829598e1c",
-      "requirement_id": "REQ-E97CAC6A5B6F",
-      "requirement_text": "→ MUST NOT become trusted `not_for` guidance",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -13074,28 +12589,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6042"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6042",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3c20ae21e0cd0af5d8fdc32b8b4affc99cb9c56d085e59f8f3671c6605726216",
-      "requirement_id": "REQ-7CC06225733E",
-      "requirement_text": "all applicable acceptance criteria through Section 171 pass",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6045"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6045",
@@ -13726,28 +13219,6 @@
       "requirement_digest": "4c2a2d10a27183258f171f4f71d6625b69d782bacefc12f6e8ab363e170e5108",
       "requirement_id": "REQ-61AADD51E4A5",
       "requirement_text": "Sensitive fields SHALL preserve the minimum state needed for correct decisions without exposing the secret value.",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6259"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6259",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d0a3630555bbec7fc05a98d311c23b00fd1ab4d8296ac4a4125976d80b6a6959",
-      "requirement_id": "REQ-C422FF5F3007",
-      "requirement_text": "required",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -14540,28 +14011,6 @@
       "requirement_digest": "3c1fc51fb63e77bc5d4702dc1e6a784296e2001f54295d254b9cc7e2d33e8c9e",
       "requirement_id": "REQ-963AE5E1E1FF",
       "requirement_text": "An applied action SHALL be bound to the exact execution surface identity, not to whichever tab/window becomes active later.",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6434"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L6434",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7ce3a5cd990b0c54ee5780ece3403d127f119c7cb9ca0d228e72e008b8997919",
-      "requirement_id": "REQ-1106F4E2B985",
-      "requirement_text": "focus precondition when required",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -16220,28 +15669,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7059"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7059",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "045d7d8e6039adb6de796f853db72b924347b88f2117474337abbd3b683c82ab",
-      "requirement_id": "REQ-0911AAC1C367",
-      "requirement_text": "all applicable acceptance criteria through Section 202 pass",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7062"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7062",
@@ -16432,28 +15859,6 @@
       "requirement_digest": "cb667e0cf83b05abda98d42fb9776fc5e68499bfabd01ef93f995afdd77f9e6c",
       "requirement_id": "REQ-B17A23803D6F",
       "requirement_text": "The Runner/Browser Companion SHALL maintain attachment provenance such as:",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7134"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7134",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "70b148f751eb2e5bea4d67fbf4eaeea164d95d64c58f5ffb76503ddff7aa4132",
-      "requirement_id": "REQ-368D0AD08E26",
-      "requirement_text": "binding_grant / user selection reference when required",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -17738,50 +17143,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7577"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7577",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4dcdb054b77bf9381649061b2879f83237be655eedcee18f1fa8e222a3256305",
-      "requirement_id": "REQ-2515A70B095A",
-      "requirement_text": "T1  zero candidates during loading must not become global BLOCKED",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7578"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7578",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5a30e02eef6e0241e630bf6d5298e25f71c8693bebf095d56d20359d4977977f",
-      "requirement_id": "REQ-56E0F557145B",
-      "requirement_text": "T2  same-label controls with different semantic_effect_id must not deduplicate",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7628"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7628",
@@ -18522,28 +17883,6 @@
       "requirement_digest": "6a24dd6b006e5f04c7c2feb768600dc45e185f43f7d08eeb2011b661658defe5",
       "requirement_id": "REQ-4D1B57FE4C77",
       "requirement_text": "An implementation SHALL NOT claim **Spec 213 Revision 7 complete** unless:",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7775"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L7775",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d811341eb7f640fab2db28ce1e1b1434c387667f20f67de3622a5df6c08dbe6f",
-      "requirement_id": "REQ-09F1BAF8ED78",
-      "requirement_text": "all applicable acceptance criteria through Section 225 pass",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -20554,28 +19893,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L8570"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L8570",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "92a6243bb727328bba06e5606099fbc18a34d2cb9c16d790ad8501e95d19b12d",
-      "requirement_id": "REQ-D8DA6DF1711A",
-      "requirement_text": "all applicable acceptance criteria through Section 250 pass",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L8599"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L8599",
@@ -21874,28 +21191,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9362"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9362",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b04bfc2158f3e877e799a75439dd492427ab31987545120c8549c1de9cc404c3",
-      "requirement_id": "REQ-E0FFA01F9951",
-      "requirement_text": "no Computer Use architecture rollback required",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9365"
       ],
       "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9365",
@@ -22636,28 +21931,6 @@
       "requirement_digest": "864d5893f0177a9ad471ca6552d08e2ebaaa4433db9c786c668388c20ec887db",
       "requirement_id": "REQ-B55A98EFFB58",
       "requirement_text": "An implementation SHALL NOT claim **Spec 213 Revision 9 complete** unless:",
-      "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9449"
-      ],
-      "authority_source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9449",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "59df74c793cbe321013c57040f8a875c083bd251218a52f0d477718050e52057",
-      "requirement_id": "REQ-9D9B9B763237",
-      "requirement_text": "Revision 9 acceptance criteria 241–272 pass",
       "source_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
       "successor_mapping": [],
       "verification_evidence": [],

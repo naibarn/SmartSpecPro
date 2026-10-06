@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/183-public-site-webmcp/spec.md",
     "digest": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
@@ -240,6 +240,17 @@
         "digest": "c1d10a45e5c1799238e3b62acec3eff52d8102f36c2d073d78440cc351a9e3a4",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/183-public-site-webmcp/sections/section-05-proof-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PLANNED — no application implementation or browser compatibility proof yet.",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/183-public-site-webmcp/spec.md",
+        "source_digest": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
+        "value": "PLANNED — no application implementation or browser compatibility proof yet."
       }
     ],
     "stale_fields": [],
@@ -256,6 +267,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PLANNED — no application implementation or browser compatibility proof yet.",
+        "line": 3,
+        "source": "specs/feature/183-public-site-webmcp/spec.md",
+        "source_digest": "71d90a0bbd49fbabc69b61dbbe2af1e3f327d0b2fa8f9195c6f1293696b5c195",
+        "value": "PLANNED — no application implementation or browser compatibility proof yet."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

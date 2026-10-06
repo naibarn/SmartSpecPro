@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -172,28 +173,6 @@
       "requirement_digest": "d9f46b8ae0685bfc442f58063119e847dae98f8d93462c96daf0a783cb7c5e22",
       "requirement_id": "REQ-315BD0FEC56A",
       "requirement_text": "Percentage/ETA MUST include provenance/confidence and MUST NOT be invented as native progress.",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L204"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L204",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9a133b5e40034a9b3b62d7e45c618054e6d85f4928bda4a196c1a3f23b954eba",
-      "requirement_id": "REQ-D08DFF339D8B",
-      "requirement_text": "AND required artifact commit succeeded",
       "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -400,28 +379,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L643"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L643",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "57b507709d99eb02dc01562fa06062299e936ea7df028ec8d7a1e49be429f84e",
-      "requirement_id": "REQ-CB84767C9781",
-      "requirement_text": "required capability: code.refactor",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L655"
       ],
       "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L655",
@@ -524,28 +481,6 @@
       "requirement_digest": "38b2a9f5c1eb26c0b6d6c2318624bf5ee859e206bda108e78e526e1789317e50",
       "requirement_id": "REQ-BB4A8D36C4CE",
       "requirement_text": "Managed mode MUST be explicit in Plan/policy.",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L867"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L867",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "373dbf1197d70fa851f2d79fa483f3e57c083788c0d50b9d80db71fbcdac2305",
-      "requirement_id": "REQ-B6E5E5FD9025",
-      "requirement_text": "REQUIRED",
       "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -744,28 +679,6 @@
       "requirement_digest": "2ec83cd5becae7516da2a486620848149570c4982cde79a987dce95942e207fd",
       "requirement_id": "REQ-B9049B12A8FD",
       "requirement_text": "Required dispositions:",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1370"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L1370",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "db01518ef7f4a536474d26f1f742d65dda866a673c81c2fb56f8267adc26047d",
-      "requirement_id": "REQ-76BAC9AC4EDF",
-      "requirement_text": "stopped — required internal capability unavailable",
       "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2820,28 +2733,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2943"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2943",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b1c0415d106ae1bb97578c6cff91ea83f08483734feca3cae40127be54752df8",
-      "requirement_id": "REQ-AC09771890B3",
-      "requirement_text": "required output schema",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2958"
       ],
       "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L2958",
@@ -3172,28 +3063,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3294"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3294",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2eb56cfff4f9904ca5c26bbb3224482a85779122e1ba49988d1075f243e75c22",
-      "requirement_id": "REQ-3E4691990DA9",
-      "requirement_text": "required outputs",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3305"
       ],
       "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3305",
@@ -3274,28 +3143,6 @@
       "requirement_digest": "0743ac4e816d84f5326d3c550d7bb0a8f66895708664077f49d1ec9d3b1566fe",
       "requirement_id": "REQ-D2486F0C3353",
       "requirement_text": "Learning MUST distinguish inability from temporary unavailability.",
-      "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3406"
-      ],
-      "authority_source": "specs/feature/197-runner-adaptive-execution-fabric/spec.md#L3406",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ac910a1abf6f32bd13d0723354ca176b706bb30f56909f8e277f8cdc6ecc4e1f",
-      "requirement_id": "REQ-402ABAD93945",
-      "requirement_text": "Grok accepted then repeatedly reports missing required capability",
       "source_spec_digest": "3a51bcc689d71e7003b2145d0a36a6dbf5bc84882097ae87399e6e28bc863a81",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1192,28 +1193,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L923"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L923",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4b749613b9963df5724678b23f820aa0f21af10784d3b1a9ea09445ee6c496c9",
-      "requirement_id": "REQ-BA2B946E3533",
-      "requirement_text": "resumable: required",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L932"
       ],
       "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L932",
@@ -1736,95 +1715,6 @@
       "requirement_digest": "f5e123821f2776ac2d2dd3dc5d6e2a669e4ca541ae9a22c056d2a874a87223a6",
       "requirement_id": "REQ-D72CAA6371AD",
       "requirement_text": "Packages MUST declare secret requirements only by logical key.",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1207"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1207",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3ae796d6796be615eafec8c076c2282f95e060b1bc86a635b0d3859404aea670",
-      "requirement_id": "REQ-0304016F6FE8",
-      "requirement_text": "- id: accounting.oauth",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1209"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1209",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "094d8c964a261c9a0ebc388b275d59d201cb283f504d8b4f0d5a246d9a3c8863",
-      "requirement_id": "REQ-2A8C10321416",
-      "requirement_text": "required: true",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1212"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1212",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6df8dceaaf269bb86280f20c4aec0947e40570b23f6c226324675acfeaa8f981",
-      "requirement_id": "REQ-D85868314D1B",
-      "requirement_text": "- id: openai.api_key",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1214",
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3203"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1214",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4adba39492a24d59a48e795c18879c47965143f663f2613d0d9e5580d91f22e7",
-      "requirement_id": "REQ-D083B609C79D",
-      "requirement_text": "required: false",
       "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2397,72 +2287,6 @@
       "requirement_digest": "3fdf0b88be051c1eeec459ed68f3359a0efcd3a33c97c5bc648305ba60854cf7",
       "requirement_id": "REQ-65E75CC16C3F",
       "requirement_text": "- ephemeral workspace",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1335"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1335",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f18dbe860b0da41bb9facc63e6a3f103ae7caff60faace6e3eb49c312b070859",
-      "requirement_id": "REQ-559DD5F1C431",
-      "requirement_text": "- id: app-db",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1340"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1340",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "42bf12edb0402df1cf928017bfaa4de300756a9bc557e54875bb3ee5606a4cfa",
-      "requirement_id": "REQ-279F7263E777",
-      "requirement_text": "- id: assets",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1344"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L1344",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a1d72f712459c05efb51d01e71b6d0a7a6d3b7ab313ff143ea420a0bd9c9f224",
-      "requirement_id": "REQ-4D06C0EADE32",
-      "requirement_text": "- id: semantic-index",
       "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -9954,72 +9778,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3845"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3845",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5cd4cf1bc49ca8067b200cab34c8f75f5eb181cf4ceee0eef582dc76ff7e7cdb",
-      "requirement_id": "REQ-D4D25BC128A4",
-      "requirement_text": "- spaas.events.delivery-semantics/v1",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3846"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3846",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "78b1fa4e3963da1a00716175f5f0d9895053a5b970c7b797ce76c91920f3877b",
-      "requirement_id": "REQ-1FD706592510",
-      "requirement_text": "- spaas.runtime.reconciliation/v1",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3848"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3848",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9cc30e7c0513e1e797119b0485b073a5952aa66cbd12d30789d1f370fd399b74",
-      "requirement_id": "REQ-16F7E53F96D9",
-      "requirement_text": "- spaas.delivery.canary/v1",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3851"
       ],
       "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L3851",
@@ -16841,50 +16599,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L4473"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L4473",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6e91471da1ca445f1eae8bfa1d3b33920a932204835894915fe8f05dd04b1f6f",
-      "requirement_id": "REQ-BEE411AA492D",
-      "requirement_text": "- componentId: coding-worker",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L4482"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L4482",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8e1b20601be0fef6d7f064a6fa20a856e727efb7260cdbf8eeb8cb84289ffe9f",
-      "requirement_id": "REQ-11EE0E036F77",
-      "requirement_text": "required: [...]",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L4494"
       ],
       "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L4494",
@@ -21505,50 +21219,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5478"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5478",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6eaa948911afa686b72ab5f17492c2ce312745e11e4e26e4944aef5a03da52a1",
-      "requirement_id": "REQ-F411F135109C",
-      "requirement_text": "required:",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5494"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5494",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "73ef14966fe3c9086169edc7eddb00c8a3be62c4e06c349e74aaaa8c5e1c4406",
-      "requirement_id": "REQ-B731BDDC2390",
-      "requirement_text": "required: FAIL_CLOSED",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5501"
       ],
       "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5501",
@@ -21607,28 +21277,6 @@
       "requirement_digest": "dd82a2ee13903def9f958a2171120bb858fd7f156b63ae881365e25e0f9899c6",
       "requirement_id": "REQ-2764BE6C5DEE",
       "requirement_text": "These states MUST NOT be collapsed.",
-      "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5533"
-      ],
-      "authority_source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L5533",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "156771bcd423b9bc8a6481daf15b199796fa73e2575a0aa4089be09c1e47fffb",
-      "requirement_id": "REQ-B988905AF223",
-      "requirement_text": "requirement: 'REQUIRED' | 'OPTIONAL';",
       "source_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -172,28 +173,6 @@
       "requirement_digest": "f076c2c435074a0226aa3f0344c954b797bc401b1abb9ae9bc55fca18da71e97",
       "requirement_id": "REQ-4EC5319F35C4",
       "requirement_text": "ACP v2 features MAY be implemented behind explicit capability/feature gates and SHALL NOT be assumed stable.",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L163"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L163",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "642a481c3d12e4ae023978c89a0a17e7267248c93dfc76f4a6eef7154c00b157",
-      "requirement_id": "REQ-BD861CFBCDE5",
-      "requirement_text": "Gas City ↔ Beads compatibility: MUST be independently certified",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -722,50 +701,6 @@
       "requirement_digest": "66057fde6ec0015050a9bfbd79dc02cb47fa298fff9014a30f64d9554dfa9249",
       "requirement_id": "REQ-28204B6E9454",
       "requirement_text": "the delegation policy SHALL define:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L818"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L818",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "489bc0908ac49d470c1ab946edda99ab08fe978cb220aeb8ca06cd3732004439",
-      "requirement_id": "REQ-45423340AC69",
-      "requirement_text": "required isolation",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L820"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L820",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4ff1c8e02a79a6009c81d95c4f11e381a9c35fcf11de367000a3a2cb9a576b56",
-      "requirement_id": "REQ-1233C61DA923",
-      "requirement_text": "required structured protocol",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1919,28 +1854,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L1844"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L1844",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "add423fb0f4513141ae9b7a34b8e6d445d51d3d59410a4945f610206407b4a55",
-      "requirement_id": "REQ-B3A3EE975D6D",
-      "requirement_text": "agent.permission.required",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L1866"
       ],
       "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L1866",
@@ -2779,28 +2692,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2361"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2361",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "609119fc86cf8cbf7e9a06e9dff7a960207103ef86a294c2d5c9e050ce147c3a",
-      "requirement_id": "REQ-654DB160BF8C",
-      "requirement_text": "image/history replay restores required content",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2366"
       ],
       "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2366",
@@ -3167,50 +3058,6 @@
       "requirement_digest": "0e5835a1e2e7fa586b75231a9fc0283dd49109c9f1e40a0de9aa61a652eb64f5",
       "requirement_id": "REQ-6D3BB3E00DBF",
       "requirement_text": "SmartAIHub SHALL track:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2689"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2689",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6fe2896ebcd1a5e7db93baa3acc6752afa09866af4e9a893dae844d8e97a0e72",
-      "requirement_id": "REQ-64624EA82C0B",
-      "requirement_text": "must finish",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2691"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L2691",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "32545d81ed0271de1fb709ba3b226e47111f58437d735f0443a937da227fdb98",
-      "requirement_id": "REQ-B0566A9DB56E",
-      "requirement_text": "must be cancelled",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3739,28 +3586,6 @@
       "requirement_digest": "4c6158b1396affbc86b3b061d00540b5cb205e4e6c4e3ec55092307624638c09",
       "requirement_id": "REQ-30478FAF7E29",
       "requirement_text": "Upgrade preflight SHALL verify:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L3124"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L3124",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "196a993f3a75e33bc93845652433d5193ed33b32f94ce33f97d4c6a690ff9f5c",
-      "requirement_id": "REQ-F653BEDE6ABE",
-      "requirement_text": "required dispatcher configuration",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -5001,28 +4826,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L3967"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L3967",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b970d41a3475e463070bd890b04cf6f189d2c8dd1dff02030ad2cde21bfd7902",
-      "requirement_id": "REQ-3538308378FB",
-      "requirement_text": "perform migration only if explicitly required/supported",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L3972"
       ],
       "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L3972",
@@ -5345,28 +5148,6 @@
       "requirement_digest": "b060719f66df86719a9ebaf73f7a6dcaa5f41504e504cadb70b022c292cc3a8d",
       "requirement_id": "REQ-305EEB33E886",
       "requirement_text": "Gas City Kubernetes execution SHALL explicitly classify every runtime surface as:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L4297"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L4297",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dfce971d7220558d53b3ff63e5d8e59447c774958f849f6146283bd90636ebb9",
-      "requirement_id": "REQ-E3D94E655E63",
-      "requirement_text": "logs/evidence required for reconciliation",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6189,28 +5970,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5286"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5286",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "efa9fd3f891560aec6ecb14ebd018006668888926f25c599165a8bf1b1973bea",
-      "requirement_id": "REQ-42C6CA1598EA",
-      "requirement_text": "required features",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5415"
       ],
       "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5415",
@@ -6247,28 +6006,6 @@
       "requirement_digest": "2b04a3ddae14531868c1233038bc2b872cf8835abfeeb755811e297ec88615bf",
       "requirement_id": "REQ-0E2C43D1C1DE",
       "requirement_text": "Protocol parser SHALL:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5667"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5667",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "46d2168df5f420176cb43aff2946ef5250c3341a197b197c4b8260557dc479ea",
-      "requirement_id": "REQ-0B3070238B59",
-      "requirement_text": "reject malformed required fields",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6335,28 +6072,6 @@
       "requirement_digest": "7368ae473a3ea888a047478fe0d336f27952df680d0544abb0d67a38725bb620",
       "requirement_id": "REQ-92C2A49AE5B1",
       "requirement_text": "Advanced Runtime Infrastructure SHALL expose, when a managed store is in use:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5899"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L5899",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3646f854fca9cad26f388f96b036b8136fa7abf4face4bfb12b8fc3be3854d2d",
-      "requirement_id": "REQ-CFA8B57562A3",
-      "requirement_text": "recovery required flag",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6491,28 +6206,6 @@
       "requirement_digest": "5de693b9430ff2612d04d82a8a8cf50df15d0dc44d731c12ba4717d265deed9b",
       "requirement_id": "REQ-B43CFF81137E",
       "requirement_text": "Required:",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L6272"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L6272",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "13bd91ce9b587cf8435d262e50c08bc45375dddc6f159c48f8036ffa7cd737d6",
-      "requirement_id": "REQ-D5CA9D074657",
-      "requirement_text": "fallback after ambiguous execution → reconciliation required",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6667,28 +6360,6 @@
       "requirement_digest": "e280ffbe6bbb8ff7d10ace74832d4667990f271e2e3ce4610a6dfdcc203a2f34",
       "requirement_id": "REQ-D2E433F7FB29",
       "requirement_text": "Server must not persist raw streaming terminal/text deltas at full fidelity by default.",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L6455"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L6455",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "07ca43e0994a61c7d6fa83bcbd41295ad888aaf8f19ee1d1d248be9da07ed8fe",
-      "requirement_id": "REQ-9CE180F8B852",
-      "requirement_text": "required isolation available",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11177,50 +10848,6 @@
       "requirement_digest": "eaf99f933aa0b79a7cda7d4481a2e2f9f544bdb4a57b7956b34c309364eb0764",
       "requirement_id": "REQ-A9A7A2A63B9A",
       "requirement_text": "200. Revision 6 regression suite passes all 24 newly audited effective-config/authoritative-read/handoff/deployment dimensions.",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7161"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7161",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "95331c2188d83d7375f97a89ace22b9c1e672c66d51d0aef89c66783f3b0597a",
-      "requirement_id": "REQ-117E2E191439",
-      "requirement_text": "→ no workflow migration required",
-      "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7272"
-      ],
-      "authority_source": "specs/feature/211-external-agent-runtime-fabric-acp-gascity/spec.md#L7272",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "390176d72b33b9955321200c6f6d3ab1452fd1169d459574b2bac4eaa31ec715",
-      "requirement_id": "REQ-8631FBCC91CC",
-      "requirement_text": "→ required context rehydrated through Context Package",
       "source_spec_digest": "9d63eed208fe32374d5025752b25b9484e92682c9a498732f364dd6e2095a8f1",
       "successor_mapping": [],
       "verification_evidence": [],

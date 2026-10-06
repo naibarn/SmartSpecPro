@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
     "digest": "4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
@@ -620,6 +620,17 @@
         "digest": "a90d1e5c7fdfc25bec2f049c749f4a485739642e653f0674762af659b0715498",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/180-worker-speaker-identity-localized-dubbing/sections/section-12-voice-training-evaluation-promotion.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED WORKSPACE SLICE v2 — runtime/provider release proof pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
+        "source_digest": "4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
+        "value": "IMPLEMENTED WORKSPACE SLICE v2 — runtime/provider release proof pending"
       }
     ],
     "stale_fields": [],
@@ -636,6 +647,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTED WORKSPACE SLICE v2 — runtime/provider release proof pending",
+        "line": 3,
+        "source": "specs/feature/180-worker-speaker-identity-localized-dubbing/spec.md",
+        "source_digest": "4f4adb4f2cc3232b7e18de74a54fa054c27eb35c66ae122b8b05a8bf45f01c1b",
+        "value": "IMPLEMENTED WORKSPACE SLICE v2 — runtime/provider release proof pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

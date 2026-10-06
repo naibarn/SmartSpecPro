@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -70,28 +71,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L41"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L41",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fa7119b9ff801a69c8ab5b2c0bafd1790e1dac84cfdfbffe406a7e44dd8414a3",
-      "requirement_id": "REQ-F43CE3991911",
-      "requirement_text": "Feature 195 worker_jobs / selected runtime adapters where required",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L48"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L48",
@@ -106,50 +85,6 @@
       "requirement_digest": "0041a42bb2cd9c216b681b8710caf007658a116168a4a18a2c76ea5a8ece19b9",
       "requirement_id": "REQ-AC3B72E08ED0",
       "requirement_text": "The harness MUST distinguish:",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L58"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L58",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "066d9be9b9c6b35bd6fc5fda58b2957cc6d7ecca7360e9b92912ea11a2b9a087",
-      "requirement_id": "REQ-EE3CD25EF2A2",
-      "requirement_text": "permissions, targets, failure handling and verifiers required",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L88"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L88",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ae06ef271e7e46f4f44c3aca3cd2dd937f89403bc93e5e32d74f0a4bfc38ad00",
-      "requirement_id": "REQ-2EEC54A7C12F",
-      "requirement_text": "-> 2 required canonical localizations: th + en",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -392,28 +327,6 @@
       "requirement_digest": "90d58f1359cd007d03a67f7f4f32bae53873dcdd8515ab4acaf6b4560e1e4a90",
       "requirement_id": "R20",
       "requirement_text": "**Current canonical benchmark artifacts are Revision 20: `spec-212-use-cases-2930-bilingual.json` and `spec-212-marketplace-catalog-2930-bilingual.json`.** Earlier corpus filenames appearing in historical revision sections are superseded artifacts and MUST NOT be used as the current source of truth. The repository-local source of truth is this `spec.md` plus the R20 companion manifests in the same feature directory; R19 artifacts remain historical evidence only.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L353"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L353",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "36afe816bf6e45aecb3535574c2aaa3ccc52f6758600c46cff7980df5a47a9da",
-      "requirement_id": "REQ-42D132C22D7A",
-      "requirement_text": "required capability",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2557,28 +2470,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L2669"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L2669",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "df923553f225443b00686f66848061a8eba889bacbee757404e33ececb4ee1bf",
-      "requirement_id": "REQ-8A9045912F30",
-      "requirement_text": "input field becomes required",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L2678"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L2678",
@@ -3151,94 +3042,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3480"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3480",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3c775f171c86b7475a9656fb240106a72889cac18cf49a43739c81063fb2e46b",
-      "requirement_id": "REQ-230289BA02AB",
-      "requirement_text": "required inputs parameterized",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3533"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3533",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8bd128f4273e7305513ed290b094ba4f733c7e1625b268dc7af7d64316ebff1d",
-      "requirement_id": "REQ-D45C3653E7F3",
-      "requirement_text": "Required setup indicators",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3565"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3565",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "864bf39ad7d2a0bafd40d6b91ce8606db2fea562c40e2e168b651d1cb664a2f1",
-      "requirement_id": "REQ-187A2E2C925D",
-      "requirement_text": "Required inputs",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3566"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3566",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f152c7f271ba5f795a83caf83374ee536bf0dbb84ed742d2184f9ea8644cfc80",
-      "requirement_id": "REQ-E8F4B28F80AE",
-      "requirement_text": "Required connections/tools",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3644"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L3644",
@@ -3437,28 +3240,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L4136"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L4136",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ab82a426471e1c6159de11d62e996b40237f84e87a2cd57710bd5d66a9226cf8",
-      "requirement_id": "REQ-13F98220017C",
-      "requirement_text": "→ inspect required connections/capabilities",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L4143"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L4143",
@@ -3473,28 +3254,6 @@
       "requirement_digest": "8dd3a4158c3804f1b5f9c9574db79f146893165f61a39054386a337dc14fd160",
       "requirement_id": "REQ-D44A894DEA79",
       "requirement_text": "Marketplace template certification does not guarantee that every user has required credentials, Runner or external services.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L4155"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L4155",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fad31cde52da194008f4536fc0033e9cb9824e20eb7b834037179460d27918ab",
-      "requirement_id": "REQ-B804CAD7B253",
-      "requirement_text": "browser login if required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6518,75 +6277,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5668"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5668",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "22e7ca2fe04211917717612c7bae989b01470d08afc92dbec47997067c68a270",
-      "requirement_id": "REQ-49B3CF777D44",
-      "requirement_text": "different required dependency class",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5673"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5673",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5d1ac372f5d4fdb9c301e4c9273e8eab7d4e1d459af9c737886b2727b6f6f119",
-      "requirement_id": "REQ-F12C435E9F11",
-      "requirement_text": "different required software / Runner capability",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5699",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11575",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11764",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L12712"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5699",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "048be76d56e3a27f7cd4ce06e2b08bb99e3aab3a9826c579ed6854d29ed8c9ca",
-      "requirement_id": "REQ-BD457DCBE300",
-      "requirement_text": "required capability classes",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5745"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5745",
@@ -6645,94 +6335,6 @@
       "requirement_digest": "326edeb8561a1b667513c45abbfd027579df38a69b568c96e1428abb9e415c28",
       "requirement_id": "REQ-DA1C11F70B01",
       "requirement_text": "Every Solution Variant SHALL expose its dependency manifest.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5801"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5801",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "02741b44a9f56ddaae832c0d49cab71d0a20b94b5bac7b4ca6fb53f5f1864610",
-      "requirement_id": "REQ-027DFE7EE73B",
-      "requirement_text": "Required connection/account",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5802"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5802",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3d2851c7ddfba9df333d97a8145585c3475254a9ebac02571388cd23bb66b8e4",
-      "requirement_id": "REQ-388772B7B5F1",
-      "requirement_text": "Required secret reference",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5817"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5817",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7d538b75f8f9e128bd3b69aeffda0261f3d374b4a8dfd6f98a21a1c75804754f",
-      "requirement_id": "REQ-4FF85F21FE22",
-      "requirement_text": "= explicitly required by the Variant",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5820"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L5820",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1e1f23796355b8bc348b97b3d86e9e03cba64a83e159110a98abd49e7b7f57d0",
-      "requirement_id": "REQ-3352A6F23E69",
-      "requirement_text": "= required through a Skill/Subflow/Agent/Template dependency",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8479,72 +8081,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7454"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7454",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2f0405d24c12fcc210ac499a99a01aa756b8c05aba4b4dd028c19560c30ee3a6",
-      "requirement_id": "REQ-CD9C6AE89D6E",
-      "requirement_text": "can see required tools",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7489"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7489",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "44d6ea94a97ca087607faf186d5f73fb70abf2e485fc178fbc2a566b78a0bd04",
-      "requirement_id": "REQ-1FFF56FD955E",
-      "requirement_text": "6. Admin global editing required separation-of-duties and creator-rights governance.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7492"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7492",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7e236b5b35658be0dcb6ff828b021c20f5ca6233e1389b74efc457df0b91ee71",
-      "requirement_id": "REQ-FE9AF8E7BEF3",
-      "requirement_text": "9. Cost/privacy/egress changes required explicit consent boundaries.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7528"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7528",
@@ -8581,28 +8117,6 @@
       "requirement_digest": "406fbb274836ca67ecb37285f0a085b7586aabb89b84ceef29dd2b47d4e111de",
       "requirement_id": "REQ-9358FA197D2D",
       "requirement_text": "Before a candidate Template Version is attached/promoted under an existing Variant, Spec 212 SHALL classify the change:",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7578"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7578",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d81aba2fe888dcd75485e3a7ab49ec2b79e98f5302199b4b749b02f8cab62215",
-      "requirement_id": "REQ-B0EBF536805A",
-      "requirement_text": "change Local-only to Cloud-required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8765,29 +8279,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7901",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10103"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7901",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cb3c8375854e413a74aaf26a772951129e79c4a8aea0e47a4c1bdfb12ee458d3",
-      "requirement_id": "REQ-C06AC1092583",
-      "requirement_text": "required account",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7979"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L7979",
@@ -8846,28 +8337,6 @@
       "requirement_digest": "9c5a7d2f5afa440a0a4768aeded339bf87a871bae0aa4c6532f488744431eca7",
       "requirement_id": "REQ-23CC0F515E7B",
       "requirement_text": "The UI/provenance SHALL make the relationship clear.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8107"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8107",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8bac40089cec969edb4823a45d6eec2eede170d21fa9aed900502256e7ae2805",
-      "requirement_id": "REQ-4010E0752571",
-      "requirement_text": "reason required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -8956,28 +8425,6 @@
       "requirement_digest": "78789271214eb4760010534803059909b89548c86c6a9e509cef2a3f44258cc7",
       "requirement_id": "REQ-B1790ACE92DF",
       "requirement_text": "A stale estimate must be revalidated before material economic commitment.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8322"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8322",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "24a9b58759a50d08b7f329c36dfabd5300b578f0ca8f79249fe3e4f3ca93e746",
-      "requirement_id": "REQ-30DDAA20AD6B",
-      "requirement_text": "→ approval if required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -9998,142 +9445,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8627",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8659"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8627",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6eaa948911afa686b72ab5f17492c2ce312745e11e4e26e4944aef5a03da52a1",
-      "requirement_id": "REQ-D54C9D352AEF",
-      "requirement_text": "required:",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8636",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8660"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8636",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "968e2f55b669ca795903fc5b97c2fb284bf5f2f3cb7fc94bfdab4110dfcebc84",
-      "requirement_id": "REQ-8746DD3E2C47",
-      "requirement_text": "- code.repository.read",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8637",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8661"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8637",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fe82c65b90cebac7e2e6f7c9a5462f1794f9fa7794ea7c6c740f1e37ce1b13fb",
-      "requirement_id": "REQ-FB5770A5F827",
-      "requirement_text": "- code.repository.write",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8638"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8638",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "755a1b80948b7c842fec38f63fe1229f04e9f7d49fbacae161c2140694726ebf",
-      "requirement_id": "REQ-1795B2C7D82A",
-      "requirement_text": "- shell.execute",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8639",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8663"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8639",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fc08b69050f2fe952e2d79eb8d8f5c47db042e0c14214b9d5733f85ac51fb543",
-      "requirement_id": "REQ-AF54DBA21BF8",
-      "requirement_text": "- browser.verify",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8640"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8640",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "310c7928b9bc8c7fd166a1c9ad0eab2a1447163c502bf684de20e5325f07cd03",
-      "requirement_id": "REQ-8825587D1C26",
-      "requirement_text": "- smartaihub.skill.video_edit",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8645"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8645",
@@ -10156,138 +9467,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8662"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8662",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4b1bc8c774dfbe6cbd30a950bca86ce0f24509aa150b48c41ac24d1bbd79eaac",
-      "requirement_id": "REQ-DE81D2A6662A",
-      "requirement_text": "- code.test.execute",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8665"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8665",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "72cd1f12a1b7c844aa41abae8550ebfc340fca4734b476d884ba7355d1fe55b0",
-      "requirement_id": "REQ-9721C43679EE",
-      "requirement_text": "- code.review.external",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8667"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8667",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "42289aed93701625d885624a894392c73d945d6c0645a090502f1b4a1b6db927",
-      "requirement_id": "REQ-E566E2FF149F",
-      "requirement_text": "- multi_agent.review",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8676"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8676",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3e5502f928f80ffa2c11a4768bb160856cecf5550862653bef70c27b4b38641f",
-      "requirement_id": "REQ-A8BF69451854",
-      "requirement_text": "- CODE_CHANGE",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8679"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8679",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "23e560f07310035b78ccea65cdf4b129506739e66a495953cae61d43a5b08041",
-      "requirement_id": "REQ-35AE4FE0C2E0",
-      "requirement_text": "- tests_pass",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8680"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8680",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "73d27fadc17df875d0b1ece13620967a872da41e0e6f3bd80f19c5b3fe076064",
-      "requirement_id": "REQ-B397E18341B1",
-      "requirement_text": "- ui_smoke_test",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8687"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8687",
@@ -10302,50 +9481,6 @@
       "requirement_digest": "791f6b0b1abbda7cf3c186b1494e46a08e65283967dacc9a1a9d08537fbc5d5a",
       "requirement_id": "REQ-C34C3B753D32",
       "requirement_text": "The manifest SHALL be validated against the original natural-language use case.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8692"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8692",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ee4dabbedd9727b8f878ac99a408b2a7f5461d6f14b4b5e2f96257c55b3d4465",
-      "requirement_id": "REQ-0615F132CA03",
-      "requirement_text": "missing required outcome",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8710"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8710",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "373dbf1197d70fa851f2d79fa483f3e57c083788c0d50b9d80db71fbcdac2305",
-      "requirement_id": "REQ-64254C970ACB",
-      "requirement_text": "REQUIRED",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -10456,28 +9591,6 @@
       "requirement_digest": "2464c93b22b9736947df8aee357b5843f2099d2b82526194eb5451d7e2a9e347",
       "requirement_id": "REQ-C96258BD6FDC",
       "requirement_text": "Spec 212/Shared Capability Registry SHALL support logical substitution candidates.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8945"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L8945",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "265e0f09f8a557e2db971f7d970dc7b27a033188ae3f6eb5492911e0008a8c3e",
-      "requirement_id": "REQ-E0D83F923488",
-      "requirement_text": "required logical capability",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -10926,28 +10039,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L9815"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L9815",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bf12652b43060d684e2c25276566e2ca3f99ba0626ae3c89a2593f0116f008e4",
-      "requirement_id": "REQ-3D902CFA8201",
-      "requirement_text": "same required capabilities",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L9861"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L9861",
@@ -10984,28 +10075,6 @@
       "requirement_digest": "0f9ac46b672a7aaba5285ec0d49ba6874785f44e193f81a568fbb8c02f90a16e",
       "requirement_id": "REQ-56A84F9E8123",
       "requirement_text": "Personal methods may collect private feedback but SHALL NOT inflate public reviews/popularity before promotion.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L9990"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L9990",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f708ee3b79de86aa45707c3819bdc55a090413d8da100c382952750f876bd005",
-      "requirement_id": "REQ-C7D6C9AEC3C7",
-      "requirement_text": "! Local Runner not required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -12004,28 +11073,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10447"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10447",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7f9c932de1b1ca854ccf37cc8d24f5a7f8246fab95742d202234ef347ea42faa",
-      "requirement_id": "REQ-6B6EFF73D146",
-      "requirement_text": "1. derive the actual required capabilities;",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10497"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10497",
@@ -12150,28 +11197,6 @@
       "requirement_digest": "8b821b812ecd83687790aee2f0c0240b55ec2a49a23f993d7096acfc0c16d498",
       "requirement_id": "REQ-54F12ABB2D06",
       "requirement_text": "Renaming or reorganizing a category MUST NOT destroy historical analytics.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10628"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L10628",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5d5eb35db7d32981038b142d41c36c7c76aba98962824b11e461cef2eaa41687",
-      "requirement_id": "REQ-F2D10F1F39AE",
-      "requirement_text": "required capabilities",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -12576,28 +11601,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11070"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11070",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "be0faf48c034141dd5f9a7a9d5709f5e52a2d0dd60645ddee93aed0868debba1",
-      "requirement_id": "REQ-FE73F67E843C",
-      "requirement_text": "approvals that would be required",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11077"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11077",
@@ -12766,28 +11769,6 @@
       "requirement_digest": "97e02a52e076a4eeea271e541920596d3badc91367adf4b6dc4f1887cefed5b3",
       "requirement_id": "REQ-FCA890E424F7",
       "requirement_text": "Therefore oracle modifications SHALL be audited and compared like product code changes.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11268"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L11268",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4795dd8f581322fbaddd2cd8319d5ee81f6a4bb2e36e989bb24a99cd26d61c49",
-      "requirement_id": "REQ-92320D9A1532",
-      "requirement_text": "required capability classes covered",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -16294,28 +15275,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13111"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13111",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e04182a9d42d815f893f6b58e2f259310535029f8ddf1e6aeacc6eba4be1e468",
-      "requirement_id": "REQ-9E73C9C938A8",
-      "requirement_text": "required locales complete",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13132"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13132",
@@ -16646,28 +15605,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13226"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13226",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "034a147465e21eef52902c70e31de73240d4f3a5324add9f92bca03fa5038631",
-      "requirement_id": "REQ-EBF441906198",
-      "requirement_text": "→ required language/modalities",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13289"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13289",
@@ -16704,28 +15641,6 @@
       "requirement_digest": "cc758094369171e8651379b3899b8264263b54ef55c1693e6991637a055fa10e",
       "requirement_id": "REQ-9C6FED8088C4",
       "requirement_text": "`RequirementManifest` SHALL be independently revisioned from:",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13356"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13356",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "79149b0a3e3fdc1248a795c1e3830569cfd836e58d2c2cc3b1c666f45982a69b",
-      "requirement_id": "REQ-6D4F3951E864",
-      "requirement_text": "→ required revalidation/re-certification",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -16822,28 +15737,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13532"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13532",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "531346e4ff4cdf14c07050204e8ae599d89e351d3d4955febebae8363d1c2217",
-      "requirement_id": "REQ-371A888DAFA0",
-      "requirement_text": "→ revalidation / re-certification / approval as required",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13608"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13608",
@@ -16858,28 +15751,6 @@
       "requirement_digest": "767f32588202ccfaf8dd2cfd23ac0518c28f569389258437295dd403290021e4",
       "requirement_id": "REQ-C527127ECF55",
       "requirement_text": "This is required to know what cancellation can actually undo.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13715"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L13715",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "081c263468a3852cec28594726e4f9385af9b51e84c9815f27ffab7c12e6972b",
-      "requirement_id": "REQ-CD381E930658",
-      "requirement_text": "required dependencies",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -17870,28 +16741,6 @@
       "requirement_digest": "01c23abaa853efe33f6366649838d8d8ff4ff5a84a0e5ecb34cab85bda5e06ba",
       "requirement_id": "REQ-2CA4BCAF1FE9",
       "requirement_text": "Conflicts SHALL be deterministic and explainable.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L14320"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L14320",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d76eb9f2ee9ced12a4b3cb4a384eac376fa9c5c5a41efcdfbc985e9cc52dcf8e",
-      "requirement_id": "REQ-DEEF9763E3CF",
-      "requirement_text": "resume → reauthorization required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -19022,28 +17871,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15370"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15370",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0aac7f6e43d05aa4d5ab19114ef663deb611d518494f0c07a15072af055252db",
-      "requirement_id": "REQ-B2AF4F7F3CC4",
-      "requirement_text": "required role/skill",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15413"
       ],
       "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15413",
@@ -19102,28 +17929,6 @@
       "requirement_digest": "e9e29aca62d5ed02a4e820a1387dc50e920eb54842173b9839baf1601610d6e5",
       "requirement_id": "REQ-EA4BEB973A3A",
       "requirement_text": "Analytics SHALL handle:",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15577"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15577",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c7e830a723af6dd1dfb6d82724c05594538a2fc2cece46247c0123319ca47e3e",
-      "requirement_id": "REQ-E829BF0D8D5E",
-      "requirement_text": "migration required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -19806,28 +18611,6 @@
       "requirement_digest": "1367b49f940de81b92f25244aee6e84cdcb3b9d97ba8388aa7bb1b5c72869df8",
       "requirement_id": "REQ-06FBDF898CE5",
       "requirement_text": "Quorum policy SHALL identify approver independence and role constraints where material.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15878"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L15878",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "931553bde3f03b7444e73d65df574f21cc68e325bfd3e98b415b56a4686a954e",
-      "requirement_id": "REQ-39C5B7D7364E",
-      "requirement_text": "required quorum satisfied",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -20620,29 +19403,6 @@
       "requirement_digest": "c346a30a86f0cf9353bd99d4c3985969ad47c8525a1ce49d0571a3b28211c2af",
       "requirement_id": "REQ-76C1FB36EDA2",
       "requirement_text": "- [ ] 2,810-record corpus manifest validates.",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L16650",
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L16886"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L16650",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "637dedaf0a1bccaeec161bf405dd812fb66962a6383ef79e4595b89db30d1548",
-      "requirement_id": "REQ-13E346C3474B",
-      "requirement_text": "TH + EN required",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -22249,28 +21009,6 @@
       "requirement_digest": "0395917c84019374a5b7df7817f4f88c382257be63861f6ada3e4de48aaa4319",
       "requirement_id": "REQ-7CB4EBBF6ADF",
       "requirement_text": "Before a public Mini App version becomes invocable, validation SHALL cover at least:",
-      "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L17307"
-      ],
-      "authority_source": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md#L17307",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "27efec49f6d8009e38f3d313a9cf75745fe6b8a0fdb90e953f753339a46d78a8",
-      "requirement_id": "REQ-E9DBD0E513FF",
-      "requirement_text": "required connections/permissions",
       "source_spec_digest": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942",
       "successor_mapping": [],
       "verification_evidence": [],

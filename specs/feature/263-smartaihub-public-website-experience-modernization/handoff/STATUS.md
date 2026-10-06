@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 437 unresolved of 437
+- Requirements: 0 pass / 431 unresolved of 431
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.` — `specs/feature/263-smartaihub-public-website-experience-modernization/spec.md#3`
+- Deep-implement section claims (5): PARTIAL: 5

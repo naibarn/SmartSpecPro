@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
     "digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
@@ -240,6 +240,17 @@
         "digest": "390c41c31a3c6029020a26bc1daaeb6c7253c43e20d85b2dff05efccb70a94b3",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/sections/section-04-quality-security-and-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+        "source_digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -256,6 +267,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/126-storyboard-webgpu-client-capture-acceleration/spec.md",
+        "source_digest": "91428fba7e2da03d04324ee59a9a63bc0de43ff6888ea2f08f18fc7a53cadb9c",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -305,8 +328,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 18,
-    "unresolved": 18
+    "total": 33,
+    "unresolved": 33
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.170697Z",

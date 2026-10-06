@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -40,28 +41,6 @@
       "requirement_digest": "699358152cd527838f2f7ef421ef4628c024cb09099807fa69f48d57e15bf414",
       "requirement_id": "REQ-B94139EB04B3",
       "requirement_text": "This contract defines canonical execution semantics aligned with the Spec 214 manifest contract. The repository does not establish whether deployed user workflows require compatibility with the 112 pre-canonical `nodeType` names. A read-only production inventory and rollback plan are required before any destructive clean-slate cutover; until then, preserve existing persisted data and fail closed on unsupported legacy shapes.",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L44"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L44",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e205fb27d5ab2e30e24689f8750f9267a8e7ecb49c653b090f2c999376b9fbe9",
-      "requirement_id": "REQ-CA1056BBC13E",
-      "requirement_text": "Feature 195 worker_jobs where physical async work is required",
       "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -158,28 +137,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L192"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L192",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8b41ca0e4a58f6aa8c06d76ce990cd9683773e3f23b37d28f30f9fadd2127634",
-      "requirement_id": "REQ-3C7F37F71BAB",
-      "requirement_text": "required?: boolean;",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L205"
       ],
       "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L205",
@@ -246,28 +203,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L259"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L259",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c8806380134e4c4e2917b49963563d6e4fa481aaef26f0be20fe5fbaf3f6adb8",
-      "requirement_id": "REQ-12558A9B41BD",
-      "requirement_text": "config: unknown; // MUST validate against the versioned scope-kind schema",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L263"
       ],
       "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L263",
@@ -282,50 +217,6 @@
       "requirement_digest": "3c9def1cdd318fceea1f9a596a17084e393fdc7439592295d5da2e5d2f1e104e",
       "requirement_id": "REQ-66FA6CC6C281",
       "requirement_text": "Required profiles include:",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L317"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L317",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9da24f64b6d881362ca694de9388db7de4f443fc16ffbe8d957d01a900031185",
-      "requirement_id": "REQ-6B98AFECB163",
-      "requirement_text": "config: unknown; // MUST validate against PolicyDescriptor(kind, policyVersion)",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L336"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L336",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "539fe1d8605700e111f76ae6092caf97e96c0a4e15b6139205bd594e7a71b42e",
-      "requirement_id": "REQ-E467C5C1CFA4",
-      "requirement_text": "config: unknown; // MUST validate against the instrumentation descriptor schema",
       "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -898,28 +789,6 @@
       "requirement_digest": "361aa698414f8b52b734fd9a793b799ac50c06db8683233b078de26b35afbf8b",
       "requirement_id": "REQ-001203895D6C",
       "requirement_text": "Retries MUST distinguish:",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1055"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1055",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a339362fe9117cd35d8d271ac5ea936973184b549c9630ad1acbbb05b6e1aa0b",
-      "requirement_id": "REQ-5BD26E7310E5",
-      "requirement_text": "user correction required",
       "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1580,28 +1449,6 @@
       "requirement_digest": "63a9b1d1e69429bdc0bff1a0e41fa395bd75073d26f6317de1e4898734bcf698",
       "requirement_id": "REQ-3227F4FE76E3",
       "requirement_text": "Untrusted retrieved/web/model content MUST NOT elevate tool privileges.",
-      "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1563"
-      ],
-      "authority_source": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md#L1563",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "de47d7e72cbde60a33f4aa093f273ef5a03c0c610ab93c79f9b73c11754ff75c",
-      "requirement_id": "REQ-66F67A920EBA",
-      "requirement_text": "mutual authentication where required",
       "source_spec_digest": "44471940a38e71992e1542921cef353cb05697337b428469120e8a136efca42a",
       "successor_mapping": [],
       "verification_evidence": [],

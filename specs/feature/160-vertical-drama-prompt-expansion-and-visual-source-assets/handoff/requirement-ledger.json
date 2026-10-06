@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -48,6 +49,226 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L35"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L35",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3ab1ca7c0f50badf5722bc7434ad5989efaba4c8c245c4112008cdbb79946f8b",
+      "requirement_id": "REQ-D8F0ECAD17E0",
+      "requirement_text": "1. Let a creator preview an AI-expanded brief in a dialog, inspect assumptions and research evidence, then explicitly apply or cancel it.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L36"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L36",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0ca024308235a2c3f50191ebab9e9dce6dc80af8755ee8b96c54b93fcfbcf4e1",
+      "requirement_id": "REQ-7F1FCC5DFD9D",
+      "requirement_text": "2. Use web research when the prompt names an identifiable place, venue, product, software, website, or URL.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L37"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L37",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0fa5e9e7349afaa45173bcacc07e72e0c955c8ea298687572e966782e59849b4",
+      "requirement_id": "REQ-FC6398942F69",
+      "requirement_text": "3. Treat broad topics as creative interpretation unless the user supplies evidence; never present invented details as verified facts.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L38"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L38",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6b28a9337dd7b9c51c0f204efd48782790ef0723f03fcb36612d185d038887e6",
+      "requirement_id": "REQ-E5034DAF6957",
+      "requirement_text": "4. Create editable visual/media slots from the confirmed brief without creating paid image tasks.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L39"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L39",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "00b6e3ef30e2300223df8870c906bfc0b6c5e7942fa20a709422fcb81945e246",
+      "requirement_id": "REQ-66876C1D9919",
+      "requirement_text": "5. Generate prompts per slot or in a selected batch using the existing skill/media generation path.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L40"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L40",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a8351601f2bad0016347089d323373c5a5103de9fa74ef6f7de27da3a10ae750",
+      "requirement_id": "REQ-47AF4EC67858",
+      "requirement_text": "6. Generate images per slot or in a selected batch using existing credit, task, import, and managed-media contracts.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L41"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L41",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e69d53fb5cb7b2faa7cc122ec1cb050f20f5b97129492e5162e312c7a19bb096",
+      "requirement_id": "REQ-E7D66FD424E4",
+      "requirement_text": "7. Accept creator-uploaded real photos and video footage, including multiple usable time segments from one footage file.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L42"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L42",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "10cef9dac6987ee409dcdb3fa61d7d146980a19541b47c0bb5c43afa627d3563",
+      "requirement_id": "REQ-7BFA831B3CCB",
+      "requirement_text": "8. Classify each visual/media slot into explicit semantic roles:",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L43"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L43",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7902f67be6759a9c11784a3d09bca75db20f2b874a82db1512e0dddd899a522c",
+      "requirement_id": "REQ-E81D8DD846F4",
+      "requirement_text": "- `scene_anchor`: place, venue, interior, exterior, route, or environment that can define a scene;",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L44"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L44",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e8c34e098e671892f7ac6ffb89ce773fc701fd796a4923dcf783e7b5e809fdc1",
+      "requirement_id": "REQ-1E71A284398E",
+      "requirement_text": "- `subject_reference`: product, object, UI, dish/detail, material, or other subject reference that supplements a scene;",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L45"
       ],
       "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L45",
@@ -62,6 +283,138 @@
       "requirement_digest": "4683e58dc68534c766e33644fb49357fc1828a3f5148ab59485d041f1a6961b8",
       "requirement_id": "REQ-5CDEAE80E9A8",
       "requirement_text": "- `b_roll_insert`: planned cutaway, insert, overlay, still B-roll, or video footage segment that must not silently become a start frame.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L46"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L46",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "8e4652e9624e6272cf187a7238e26fa6025a236b6a8e48a7c8a24c24cba2e26d",
+      "requirement_id": "REQ-345E068A6756",
+      "requirement_text": "9. Distinguish media modality, origin, evidence status, and semantic role; an AI-generated image is never equivalent to creator footage.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L47"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L47",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e4061def8c649498e62fe976ac6ab1f4b324f63c50e1e3bbf0e08a810d064d86",
+      "requirement_id": "REQ-275C0878E9D2",
+      "requirement_text": "10. Propagate one immutable visual-source snapshot and fingerprint into draft, full story, shot plans, and final B-roll assembly.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L48"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L48",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6733ecc10989d172cf0139152309a032276526fa3bac29d81aead259efe392f7",
+      "requirement_id": "REQ-52E696EC61AB",
+      "requirement_text": "11. Add a dedicated `news_report` profile with claim/evidence/attribution/freshness/correction contracts.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L49"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L49",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f4050a972f87d699377eafe5a833048321fe410ffe0231e39bd9a19a1e752536",
+      "requirement_id": "REQ-1B381A6B569A",
+      "requirement_text": "12. Allow users to override an AI role recommendation while showing the consequence of that override.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L50"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L50",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f7ce020a3b2332fe7430ce86e81b460844d6d387e3f4a2c0ca026b942832dca9",
+      "requirement_id": "REQ-9899E3166FCA",
+      "requirement_text": "13. Let episode shots select Story Source media with conflict-aware behavior when an existing start frame or scene anchor is present.",
+      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L51"
+      ],
+      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L51",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a5ed342234fef33512129e5aec3ec92596c1ecf3cecca7c984ac5e0a603365ac",
+      "requirement_id": "REQ-6CD0BFE2E052",
+      "requirement_text": "14. Preserve tenant isolation, rights/disclosure state, media durability, credit idempotency, and legacy source/scene behavior.",
       "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -268,28 +621,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L236"
-      ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L236",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "aa366e307ea5a75acc0813055c2e066af8ec8605d0a4199d5eb9e2ad6278f8e7",
-      "requirement_id": "REQ-1E8A011E8F09",
-      "requirement_text": "required: boolean;",
-      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L244"
       ],
       "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L244",
@@ -480,28 +811,6 @@
       "requirement_digest": "41ab6f77ed2660ec348901ef0f098b53045c21627cc3afcf8f7b55b41e50ab04",
       "requirement_id": "REQ-A83D6C951605",
       "requirement_text": "- Generated maps, diagrams, reconstructions, or AI visuals must be labelled as illustration and cannot satisfy `verified_source` evidence.",
-      "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L365"
-      ],
-      "authority_source": "specs/feature/160-vertical-drama-prompt-expansion-and-visual-source-assets/spec.md#L365",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9998a43b161a0cac050d8dfbb32f28eed3df1bb2fb8b98b26ad9a75944326e49",
-      "requirement_id": "REQ-9B207BEADDEC",
-      "requirement_text": "sourceGatePolicy: \"required\";",
       "source_spec_digest": "3d9f8a0833aff32c639ff87eb46388e82bdc9d5fd59aa8a09da56b1f3d95c08d",
       "successor_mapping": [],
       "verification_evidence": [],

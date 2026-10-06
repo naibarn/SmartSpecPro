@@ -4,6 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `DISCOVERING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 11 unresolved of 11
+- Requirements: 0 pass / 12 unresolved of 12
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 5
+
+## Source-declared status and relationship claims
+
+These are cited author/artifact claims for review; they do not set canonical status by themselves.
+
+- Status claim: `Draft — v0.5 (Revised after round-4 review)` — `specs/feature/031-PlaywrightVision/spec.md#5`
+- Deep-implement section claims (12): COMPLETE: 12

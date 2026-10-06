@@ -276,7 +276,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
     "digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
@@ -409,6 +409,17 @@
         "kind": "TEST",
         "line": 236,
         "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Incremental Upgrade Specification",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
+        "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+        "value": "Proposed / Incremental Upgrade Specification"
       }
     ],
     "stale_fields": [],
@@ -510,6 +521,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Incremental Upgrade Specification",
+        "line": 4,
+        "source": "specs/feature/226-SmartAIHub Device-Independent Agent Platform Upgrade & Compatibility Bridge/spec.md",
+        "source_digest": "3fa2dfe394d6bef7775d87f39f4cd729513426b26c45af25e68e27065fd3bc01",
+        "value": "Proposed / Incremental Upgrade Specification"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -529,8 +552,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 278,
-    "unresolved": 278
+    "total": 269,
+    "unresolved": 269
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.251011Z",

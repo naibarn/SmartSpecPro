@@ -628,7 +628,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
     "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
@@ -1229,6 +1229,17 @@
         "kind": "TEST",
         "line": 383,
         "path": "apps/web/server/services/llmRouter.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
+        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
       }
     ],
     "stale_fields": [],
@@ -1708,6 +1719,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
+        "line": 3,
+        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
+        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -1817,8 +1840,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 89,
-    "unresolved": 89
+    "total": 87,
+    "unresolved": 87
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.314880Z",

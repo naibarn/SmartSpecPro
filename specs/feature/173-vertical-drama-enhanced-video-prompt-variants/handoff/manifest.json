@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
     "digest": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
@@ -510,6 +510,17 @@
         "digest": "416bd31ccc5d2b10b4eba16e0445ccacb01597537b06c8eba41da0530ed0aa67",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/sections/section-04-model-routing-rollout-and-proof.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** DESIGN — READY FOR USER REVIEW",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+        "source_digest": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
+        "value": "DESIGN — READY FOR USER REVIEW"
       }
     ],
     "stale_fields": [],
@@ -526,6 +537,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** DESIGN — READY FOR USER REVIEW",
+        "line": 3,
+        "source": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+        "source_digest": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c",
+        "value": "DESIGN — READY FOR USER REVIEW"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -650,8 +673,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 182,
-    "unresolved": 182
+    "total": 192,
+    "unresolved": 192
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.509307Z",

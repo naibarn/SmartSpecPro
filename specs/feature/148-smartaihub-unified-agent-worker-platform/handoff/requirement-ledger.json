@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1434,28 +1435,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L715"
-      ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L715",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "afc40cd34466fa45dfb2c0c8ea5984528a662ff64617047e9876a1e8a48b78a4",
-      "requirement_id": "REQ-C846B26D1517",
-      "requirement_text": "required scopes/capabilities",
-      "source_spec_digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L724"
       ],
       "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L724",
@@ -1470,50 +1449,6 @@
       "requirement_digest": "c0e1fdfe76ec89a5481da39ee986f791661c8986a1c450be3aef58257b8d2368",
       "requirement_id": "REQ-F710CC499F95",
       "requirement_text": "diagnostic. The operation must resolve to one of the registered capability",
-      "source_spec_digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L734"
-      ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L734",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "96cbe0f575548647c1f1df8691aca6753a2adcd9aa3b747b0b1f9bf0dd132cc0",
-      "requirement_id": "REQ-4866847ADF46",
-      "requirement_text": "-> show plan, required device, estimated credits, and approval needs",
-      "source_spec_digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L738"
-      ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L738",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "78f0f0478455e674eed516040836f79ba96389bb91f6710f5ebaa577760cc4b1",
-      "requirement_id": "REQ-45EA0229BFE3",
-      "requirement_text": "-> user confirms sensitive or billable actions when required",
       "source_spec_digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1756,28 +1691,6 @@
       "requirement_digest": "76a309a7987979000f3764ede1bd3dba50ae2d7b50acecd48f4f428102c9f4c6",
       "requirement_id": "REQ-35878BE2CBAD",
       "requirement_text": "must not treat a lost channel as a failed task. The UI shows transport state",
-      "source_spec_digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L832"
-      ],
-      "authority_source": "specs/feature/148-smartaihub-unified-agent-worker-platform/spec.md#L832",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7cee69131b8d104053ebc3dc8087e7024de24822d802b907863f0205e5d978a5",
-      "requirement_id": "REQ-A1D4B0B3D9EA",
-      "requirement_text": "followUpActions[] (registered operation id, required scope, confirmation state)",
       "source_spec_digest": "c3949650025158fc0f53b024c884b72b186f44961693b6fa08f0d975e44dc37c",
       "successor_mapping": [],
       "verification_evidence": [],

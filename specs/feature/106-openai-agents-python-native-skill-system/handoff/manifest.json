@@ -206,7 +206,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
     "digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
@@ -300,6 +300,17 @@
         "digest": "07802a703db28e931b1bfb30ec82bc018bdb8c5b28dde9c5505c8fed0c7d9051",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/106-openai-agents-python-native-skill-system/sections/section-05-security-tests-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+        "source_digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -316,6 +327,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/106-openai-agents-python-native-skill-system/spec.md",
+        "source_digest": "8946a035f495b2eadcb249bfccb49e8ac8e4d003c61f417c4240c27e537ffeaa",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -380,8 +403,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 98,
-    "unresolved": 98
+    "total": 114,
+    "unresolved": 114
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.985514Z",

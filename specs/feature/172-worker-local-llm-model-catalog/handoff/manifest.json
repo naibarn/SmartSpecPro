@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/172-worker-local-llm-model-catalog/spec.md",
     "digest": "09e3960008b5673f84be1f465c2b39290fbd2118870dea2324ca9eac02a09a42",
@@ -516,6 +516,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -630,8 +631,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 70,
-    "unresolved": 70
+    "total": 80,
+    "unresolved": 80
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.502456Z",

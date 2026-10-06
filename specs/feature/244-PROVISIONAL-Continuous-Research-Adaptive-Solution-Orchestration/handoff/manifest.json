@@ -268,7 +268,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
     "digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
@@ -317,6 +317,17 @@
         "digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: \"PROPOSED / ADDITIVE SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED / R13 HARDENED\"",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 8,
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "value": "\"PROPOSED / ADDITIVE SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED / R13 HARDENED\""
       }
     ],
     "stale_fields": [],
@@ -333,6 +344,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: \"PROPOSED / ADDITIVE SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED / R13 HARDENED\"",
+        "line": 8,
+        "source": "specs/feature/244-PROVISIONAL-Continuous-Research-Adaptive-Solution-Orchestration/spec.md",
+        "source_digest": "c679fa083fbc0fbb60ad3f9b27f1c796a7873287d3f78a685d7f97d616d2fdbb",
+        "value": "\"PROPOSED / ADDITIVE SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION-CERTIFIED / R13 HARDENED\""
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -352,8 +375,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 219,
-    "unresolved": 219
+    "total": 218,
+    "unresolved": 218
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.426629Z",

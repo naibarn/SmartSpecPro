@@ -145,7 +145,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
     "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
@@ -243,6 +243,17 @@
         "kind": "TEST",
         "line": 24,
         "path": "apps/web/server/services/__tests__/managedRuntimeDeploymentContracts.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Partial deployment contract slice present; Cloudflare integration pending",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
+        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "value": "Proposed / Partial deployment contract slice present; Cloudflare integration pending"
       }
     ],
     "stale_fields": [],
@@ -309,6 +320,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Partial deployment contract slice present; Cloudflare integration pending",
+        "line": 4,
+        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
+        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "value": "Proposed / Partial deployment contract slice present; Cloudflare integration pending"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -328,8 +351,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 140,
-    "unresolved": 140
+    "total": 145,
+    "unresolved": 145
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.125439Z",

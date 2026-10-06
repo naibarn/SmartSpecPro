@@ -341,7 +341,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/113-marketplace-capture-extension/spec.md",
     "digest": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
@@ -480,6 +480,17 @@
         "digest": "d0a4a665251e8a8615a77f5c946684f55bec995cb591d8e06b4bb5e98e0eb1a5",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/113-marketplace-capture-extension/sections/section-11-security-qa-release.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/113-marketplace-capture-extension/spec.md",
+        "source_digest": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
+        "value": "Proposed"
       }
     ],
     "stale_fields": [],
@@ -496,6 +507,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "Status: Proposed",
+        "line": 5,
+        "source": "specs/feature/113-marketplace-capture-extension/spec.md",
+        "source_digest": "1867ffa8384f2999543679813035d8466adbb9b330b0cae02b012fb8f2b6c22a",
+        "value": "Proposed"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -605,8 +628,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 186,
-    "unresolved": 186
+    "total": 194,
+    "unresolved": 194
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.028654Z",

@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
     "digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
@@ -120,6 +120,17 @@
         "digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IN PROGRESS — provider-neutral local adapter/Worker contract and evidence-only target preflight are implemented; `ops/feature-187/local-readiness-manifest.yaml` records local readiness, while no target-account runtime or product",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
+        "source_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+        "value": "IN PROGRESS — provider-neutral local adapter/Worker contract and evidence-only target preflight are implemented; `ops/feature-187/local-readiness-manifest.yaml` records local readiness, while no target-account runtime or production cutover is included in this document."
       }
     ],
     "stale_fields": [],
@@ -136,6 +147,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IN PROGRESS — provider-neutral local adapter/Worker contract and evidence-only target preflight are implemented; `ops/feature-187/local-readiness-manifest.yaml` records local readiness, while no target-account runtime or product",
+        "line": 3,
+        "source": "specs/feature/187-cloudflare-hybrid-migration-and-dev-prod-sync/spec.md",
+        "source_digest": "a232217356080a06e064acdef47ad7e411a8ed8dc952430a6532125e0e44981d",
+        "value": "IN PROGRESS — provider-neutral local adapter/Worker contract and evidence-only target preflight are implemented; `ops/feature-187/local-readiness-manifest.yaml` records local readiness, while no target-account runtime or production cutover is included in this document."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -155,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 102,
-    "unresolved": 102
+    "total": 109,
+    "unresolved": 109
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:00.606008Z",

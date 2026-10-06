@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -48,6 +49,50 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L23"
+      ],
+      "authority_source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L23",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c93938238efa68a0e09a65c5112606fa9eaf99d001f3deed75943857c7523a06",
+      "requirement_id": "REQ-80190AE7B2B3",
+      "requirement_text": "1. Expose stable, tenant-scoped speech operations to Chat, Mini Chat, Media Studio, Video Editor, Workflow Studio, Mini Apps, Meeting/Research tools and project knowledge ingestion.",
+      "source_spec_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L24"
+      ],
+      "authority_source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L24",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "35b7d58d23c6b51677a3f0cf419a64ed62317acf0b35b7d4b982fa3a1fb26225",
+      "requirement_id": "REQ-B35DDA114C72",
+      "requirement_text": "2. Support `transcribe.batch`, `transcribe.stream`, `speech.synthesize`, `speech.converse`, `speech.turn_detect` and optionally `speech.align`, `speech.diarize`, `audio.understand` only where a verified provider supplies them or a documented composition exists.",
+      "source_spec_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L25"
       ],
       "authority_source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L25",
@@ -70,6 +115,28 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L26"
+      ],
+      "authority_source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L26",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "78e8b4ff08e76d54bf95d61cd7a716f657f3bd884bc6b430e53c595fd2251ca8",
+      "requirement_id": "REQ-E08444AA8E8E",
+      "requirement_text": "4. Prioritize Thai and mixed Thai/English with reproducible evaluation and human-reviewed quality gates.",
+      "source_spec_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L27"
       ],
       "authority_source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L27",
@@ -84,6 +151,28 @@
       "requirement_digest": "b6319c9fd570284654504e2f9254b23b57319265d9374d1a680035325f50b8a4",
       "requirement_id": "REQ-98C1EFDF9768",
       "requirement_text": "5. Operate on the current CPU-only Debian server through hosted APIs with **zero local speech models required**; migrate gradually to Cloudflare without downtime or changing public contracts.",
+      "source_spec_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L28"
+      ],
+      "authority_source": "specs/feature/247-Multi-Provider Speech & Voice Gateway/spec.md#L28",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "af0054cf12aa52de03cda1d5328b7c996d02bc3cd611448f2a4b4e0487320f4d",
+      "requirement_id": "REQ-A7DD4ACE3643",
+      "requirement_text": "6. Deliver auditable usage accounting, no duplicate customer charges on retries, and explicit handling of provider-side costs after ambiguous timeouts.",
       "source_spec_digest": "0a346ee58a2fcd1aea674992339e314e55a102923f3ae00b885b5c4ac6e61eb7",
       "successor_mapping": [],
       "verification_evidence": [],

@@ -363,7 +363,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
     "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
@@ -519,6 +519,87 @@
         "kind": "TEST",
         "line": 213,
         "path": "apps/web/client/src/pages/Home.test.tsx"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-public-inventory-and-truth: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-public-inventory-and-truth",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-shell-content-and-retired-claims: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-shell-content-and-retired-claims",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-homepage-experience: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-homepage-experience",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-film-flagship-and-handoff: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-film-flagship-and-handoff",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-seo-accessibility-and-proof: partial; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-05-seo-accessibility-and-proof",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
+        "source_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "value": "IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open."
       }
     ],
     "stale_fields": [],
@@ -543,6 +624,83 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-public-inventory-and-truth: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-01-public-inventory-and-truth",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-shell-content-and-retired-claims: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-02-shell-content-and-retired-claims",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-homepage-experience: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-03-homepage-experience",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-film-flagship-and-handoff: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-04-film-flagship-and-handoff",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-05-seo-accessibility-and-proof: partial; commit_hash=missing",
+        "line": null,
+        "section": "section-05-seo-accessibility-and-proof",
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/deep_implement_config.json",
+        "source_digest": "1762af726af45f8e267f85ab11ddc4774b6a764c654219f83ad9d534cb6603a3",
+        "value": "partial"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.",
+        "line": 3,
+        "source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
+        "source_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "value": "IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open."
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -662,8 +820,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 437,
-    "unresolved": 437
+    "total": 431,
+    "unresolved": 431
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.697750Z",

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1346,28 +1347,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L776"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L776",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "24b311e998b097801825ea0583a7abfe874c8e8960ddeac7a993256c110528cf",
-      "requirement_id": "REQ-73CE7F8A549E",
-      "requirement_text": "typ (expected JOSE when present/as required)",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L783"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L783",
@@ -2042,50 +2021,6 @@
       "requirement_digest": "98d18d9423f0fce2de0af70b78f3ab2eaf90cbced89d5b2ea70b418b267fbdbe",
       "requirement_id": "REQ-25E481CE6D93",
       "requirement_text": "Spec 206 SHALL implement:",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1216"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1216",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a36e66ec926e741815199916180f6a2aa25bc8618e9e167bea599e0d6b560232",
-      "requirement_id": "REQ-682B68824B77",
-      "requirement_text": "→ validate required extensions",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1218"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1218",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d7d102ee3c46ced4e4ca97a15c74a35aa1580d6dd1bb5e0c31ca6a722fdca2e1",
-      "requirement_id": "REQ-3DD96732704F",
-      "requirement_text": "→ send A2A-Extensions declaration as required by binding",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3261,28 +3196,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1982"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1982",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a4ff027e8151f83b0d22e426f0aa6143779fb80e589813fa8228a20ac0510e8d",
-      "requirement_id": "REQ-FAC49D54F629",
-      "requirement_text": "content policy hooks where required",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1987"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L1987",
@@ -3833,50 +3746,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2488"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2488",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "09411bce8a0bc90b57d9a038825d052784eeaa83e7eef7f0ad44edbf90c0f1a5",
-      "requirement_id": "REQ-E60FF8761BC0",
-      "requirement_text": "→ approval.required or input.required",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2491"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2491",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d8f5682eed3c5b73717bbaecf55042ec3c3f489b3a201a79411a35f84f652f2e",
-      "requirement_id": "REQ-C98E276ADB38",
-      "requirement_text": "→ auth.required",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2503"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2503",
@@ -4155,50 +4024,6 @@
       "requirement_digest": "995f14cb7b818a5665b0505a3a896d2164f3ef6e3f6878801c170a2a3d486fed",
       "requirement_id": "REQ-896D8DCE9349",
       "requirement_text": "must never be the only record of an execution attempt.",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2616"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2616",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ee3faf35ff02a8e6e971937ed0a6cd23d2698ec1c6f3e57ee449677f44228b9a",
-      "requirement_id": "REQ-7A5AF177D706",
-      "requirement_text": "tenant_id                  // required unless external_agent_id is globally immutable and FK-scoped",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2679"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2679",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d0a3630555bbec7fc05a98d311c23b00fd1ab4d8296ac4a4125976d80b6a6959",
-      "requirement_id": "REQ-CCBD3BD064BD",
-      "requirement_text": "required",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4581,52 +4406,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2961",
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3560"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2961",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "89d29a590aad497c8dc955abc3bcf7fd7088816e783ac32484beece2ced90594",
-      "requirement_id": "REQ-657B06183818",
-      "requirement_text": "Input required",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2962",
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3561"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2962",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0005d85116dc47ccae66cbbc7e55e4c72742ce598aca888d3b36c34ed7131318",
-      "requirement_id": "REQ-7C4D5EE382D5",
-      "requirement_text": "Auth required",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2980"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L2980",
@@ -4641,28 +4420,6 @@
       "requirement_digest": "8499e97c587e6a6c69dda785dc532c3f056df6f255064ebbbe0009e079f372f9",
       "requirement_id": "REQ-BACE7B479020",
       "requirement_text": "Job card SHALL remain protocol-independent.",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3027"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3027",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "47e796b69e13b227cc2c70f207d4d1e7d01af535487fbb7204db8d72dbbe3ccd",
-      "requirement_id": "REQ-35030D8E3A91",
-      "requirement_text": "Authorization required",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4949,50 +4706,6 @@
       "requirement_digest": "68f6794423ace65b0351d2186f938d9b259ee5c85a879fc3761efb35c01ae91c",
       "requirement_id": "REQ-049ACC164103",
       "requirement_text": "SmartAIHub A2A Server SHALL pass applicable protocol conformance tests before production enablement.",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3575"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3575",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bc722f2e67213caf0db007881dcd35963e5d54a3cdd5ae5b0f3f6b0929b7f33f",
-      "requirement_id": "REQ-A857A8B6B233",
-      "requirement_text": "unsupported required extension",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3614"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L3614",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1c673c931ce05c061b080cb9c963dec383b4e724efe95062164cd5b4bf4e49d0",
-      "requirement_id": "REQ-819389DCE481",
-      "requirement_text": "6. Required modalities/features are satisfied.",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -6629,28 +6342,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4180"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4180",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "45b6986416d445dfad010383e25e2c6bef0b54e10113939f756ced5e57e481bc",
-      "requirement_id": "REQ-5C7F2AC1C9A0",
-      "requirement_text": "version or provider expansion must be added to the compatibility matrix before",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4193"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4193",
@@ -6775,28 +6466,6 @@
       "requirement_digest": "a1d1237b908ef9c989fdeaf73edd91d7268db27a721ae53d418a6bdaf53af73a",
       "requirement_id": "REQ-E62C07011FF8",
       "requirement_text": "Spec 206 SHALL use A2A 1.0 `SendMessageConfiguration` deliberately rather than relying on defaults.",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4416"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4416",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3bb50af13220b76a7f39a3dcc1b6858fdb186b86aaecd8b4b9916c2448e01e26",
-      "requirement_id": "REQ-8F28A85128CE",
-      "requirement_text": "input-required continuation",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7047,28 +6716,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4528"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4528",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "52848eb85edba2281a4496128f7c584df89873b3d00cbde1cd833151d3be6d58",
-      "requirement_id": "REQ-197FCE1099E1",
-      "requirement_text": "required extension changed",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4559"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4559",
@@ -7215,28 +6862,6 @@
       "requirement_digest": "6fc093502dbba748513a12a21376028faf3279b1e9c90998276889ca0480a7e6",
       "requirement_id": "REQ-240D7153D0D4",
       "requirement_text": "A route decision cache MUST be invalidated when any relevant input changes:",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4621"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L4621",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b73bd8cf0447eb59b729155307f3babe650f94aa7277890b6541dc2baaeeb0bf",
-      "requirement_id": "REQ-06E0442801A1",
-      "requirement_text": "required extension support",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -9490,28 +9115,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5425"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5425",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9e73e783903117a3025fd39a317fc54f8482c8f0d17ed20f2658a29b68cc6f33",
-      "requirement_id": "REQ-D990E5C3C82E",
-      "requirement_text": "all scopes/roles required by that requirement",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5428"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5428",
@@ -9534,50 +9137,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5430"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5430",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5f0c4f219e024aae83eebd5a2f0a62a098ce3ded517d8c0d7f76fdb0fce0b2b8",
-      "requirement_id": "REQ-F3B279388869",
-      "requirement_text": "1. evaluate each alternative requirement independently;",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5431"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5431",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "16aa7dffdfd20aa5cfb7c7bda1830db927a6085aea3f2667559413e812784538",
-      "requirement_id": "REQ-99FA86D3747D",
-      "requirement_text": "2. select one complete satisfiable alternative allowed by platform policy;",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5432"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5432",
@@ -9592,94 +9151,6 @@
       "requirement_digest": "81ff6b9b74c5d0b3a4ae0952d26ffddee6c26b228de18cdaa9f4f22320cf39da",
       "requirement_id": "REQ-9F998396FBB4",
       "requirement_text": "3. satisfy every scheme and required scope within the selected alternative;",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5433"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5433",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "897fc4e871f0db762d3f8273eef59f40ef2126feb0cd4a397591c45f64138119",
-      "requirement_id": "REQ-FC8B1AADBD1E",
-      "requirement_text": "4. never combine a partial subset from several alternatives to fabricate a satisfiable requirement;",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5434"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5434",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4df9fa235924e3fe33c23c232660e82cbe5f8eb40e27f8aa4e08ef991d407acf",
-      "requirement_id": "REQ-472A7344C25C",
-      "requirement_text": "5. apply AgentSkill-level `securityRequirements` as the effective override when the skill explicitly declares them;",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5435"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5435",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d5459f5553a0dc986e6e98883280820058352b47807499289717aaa847fea1f5",
-      "requirement_id": "REQ-C9EE57742950",
-      "requirement_text": "6. validate that every referenced scheme name exists in the effective Agent Card `securitySchemes` map;",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5436"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5436",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e3c478287d50022f07d108a4181cd6850d3b82f6b75bbbfe0843477e25270e64",
-      "requirement_id": "REQ-C067801AC03E",
-      "requirement_text": "7. treat an explicitly anonymous/empty alternative only as permitted when platform policy also allows anonymous access.",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -10208,182 +9679,6 @@
       "requirement_digest": "5db5cadae21ee1554551d94b3ba54c6a9603a8342faea3207f29022ed47ba061",
       "requirement_id": "REQ-4A5C3DAB5092",
       "requirement_text": "The compatibility suite SHALL contain regression tests for known classes of SDK/protocol implementation defects, including:",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5541"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5541",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "aa23b550979190126e4a3d9d6b0bde6bddc7879012511585f9d999de3b7560e5",
-      "requirement_id": "REQ-77BE4F480C59",
-      "requirement_text": "ListTasks with TASK_STATE_UNSPECIFIED must not incorrectly filter all-state queries",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5543"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5543",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b285121bfceb0938b2fed32bec2149c71dc67b093d79fcc8ea9126f73cccf730",
-      "requirement_id": "REQ-A64EF55E4261",
-      "requirement_text": "push-notification configuration objects must not be mutated through shared references",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5544"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5544",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "aeb664f71c4b69740d3749cc58d251c229562aeb7b360abc50bd9abb7f8555a4",
-      "requirement_id": "REQ-9E142AA3329D",
-      "requirement_text": "append=true for an unknown artifactId must fail safely",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5545"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5545",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5ae62b81de377e55bad3e25f612babb981f291b9f48c8596d81d96b088545a5d",
-      "requirement_id": "REQ-C92469D0AB0A",
-      "requirement_text": "non-terminal stream/subscription teardown must release local references/resources",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5546"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5546",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0b0dfe0e2a4a85de4e70c4a8783457479aa6ef1548e67d13577786c7fd4ce30e",
-      "requirement_id": "REQ-D540188D143D",
-      "requirement_text": "SSE event size must remain bounded",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5547"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5547",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3a371075fe1e2b88986c4c521cad047ae7e23105ee784b9743945184fe4c7f50",
-      "requirement_id": "REQ-D766C88ED8B9",
-      "requirement_text": "SSE/gRPC teardown must not leak active connections",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5548"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5548",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e8596e9a4430aa3f9f8f34aa92fea6f647f8928b49d260b93a0d7b986727b2fb",
-      "requirement_id": "REQ-5A42F07F2352",
-      "requirement_text": "request metadata must survive transport conversion without type corruption",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5549"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5549",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "46ebe036dbfc66827a92fcadd01d1f5d9d08328b8b64955f240f43c9a2709de6",
-      "requirement_id": "REQ-40C45E266F65",
-      "requirement_text": "JSON-RPC error.data / binding-specific error details must retain valid shape",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -11206,28 +10501,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5725"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5725",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "db850713dfdd3fbb96a14fb95e287938273afdc401fbf2b2442db4ef213fb5be",
-      "requirement_id": "REQ-7492EC4909FE",
-      "requirement_text": "∩ task-required/allowed modes",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5737"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5737",
@@ -12020,28 +11293,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5910"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5910",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "197046d4fcc74b0405298631b60529ee92258f84ad869b812fa6e014ef8efdba",
-      "requirement_id": "REQ-531699BD7A75",
-      "requirement_text": "∩ extensions required/used by this operation/object",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5916"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5916",
@@ -12196,28 +11447,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5942"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5942",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "40f06cd281635036c5cba1886ad9dac56e44984540219ea01c120b722580df39",
-      "requirement_id": "REQ-A005F5D61394",
-      "requirement_text": "auth-required/input-required",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5962"
       ],
       "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L5962",
@@ -12320,28 +11549,6 @@
       "requirement_digest": "15fdac2f4774f6af300c844d0a5f1be46a47d6df1734a444e7945b8bfa25b527",
       "requirement_id": "REQ-2F8C56DF3686",
       "requirement_text": "The automated regression suite SHALL include explicit tests for the Revision 5 audit gaps:",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L6003"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L6003",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1e1c107348bb2a205468def792e1a0d552a24a1191e08830958039c5181e7872",
-      "requirement_id": "REQ-91486FBAC03B",
-      "requirement_text": "acceptedOutputModes intersection rejects an empty required output set",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -13288,28 +12495,6 @@
       "requirement_digest": "7357350f08e04f6f6156b67abbdcaa757f50197a018cfebae45f6fd8d3878c4a",
       "requirement_id": "REQ-F2AC4EFEA8AC",
       "requirement_text": "`no-store` SHALL prevent persistent raw-card caching where feasible, while minimum security/audit fingerprints MAY still be retained according to legal/security policy.",
-      "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L6364"
-      ],
-      "authority_source": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md#L6364",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "76b8b85cf32af01305b39592e842160d756187ae49dd296bf0eeb18ebb439f73",
-      "requirement_id": "REQ-4573D646581A",
-      "requirement_text": "required extension status is unknown",
       "source_spec_digest": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38",
       "successor_mapping": [],
       "verification_evidence": [],

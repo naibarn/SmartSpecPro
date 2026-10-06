@@ -78,7 +78,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/015-WorkflowAddition/spec.md",
     "digest": "17274f3d6ce0e88e7e9ab5e1b9b20a1e0061b75295ab87cfd3135b68c1ef7742",
@@ -158,6 +158,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -177,8 +178,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 19,
-    "unresolved": 19
+    "total": 13,
+    "unresolved": 13
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:42:59.431653Z",

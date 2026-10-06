@@ -127,7 +127,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
     "digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
@@ -183,6 +183,17 @@
         "kind": "TEST",
         "line": 56,
         "path": "apps/web/server/services/__tests__/workflowStudioCanonicalAdapter.test.ts"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Implementation Upgrade Specification",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "value": "Proposed / Implementation Upgrade Specification"
       }
     ],
     "stale_fields": [],
@@ -207,6 +218,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Proposed / Implementation Upgrade Specification",
+        "line": 4,
+        "source": "specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md",
+        "source_digest": "14632ba50850b2b145ebc48b0a45e0e7b07e472f1eed6da24c3590986dc4d3eb",
+        "value": "Proposed / Implementation Upgrade Specification"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
@@ -226,8 +249,8 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 147,
-    "unresolved": 147
+    "total": 146,
+    "unresolved": 146
   },
   "schema_version": 1,
   "updated_at": "2026-10-06T00:43:01.103280Z",

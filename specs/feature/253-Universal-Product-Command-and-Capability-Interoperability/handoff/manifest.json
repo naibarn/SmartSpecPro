@@ -132,7 +132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
     "digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
@@ -181,6 +181,17 @@
         "digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
+        "source_digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
+        "value": "DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED"
       }
     ],
     "stale_fields": [],
@@ -197,6 +208,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED",
+        "line": 6,
+        "source": "specs/feature/253-Universal-Product-Command-and-Capability-Interoperability/spec.md",
+        "source_digest": "81d69c4736aa34b278f7a002e8a6f7edc6c5eee48d6f819fe736f64aab394288",
+        "value": "DOCUMENT_AUDITED_R1_2_IMPLEMENTATION_UNVERIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

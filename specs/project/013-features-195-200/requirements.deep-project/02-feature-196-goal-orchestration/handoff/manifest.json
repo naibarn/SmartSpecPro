@@ -79,7 +79,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 3,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/project/013-features-195-200/requirements.deep-project/02-feature-196-goal-orchestration/spec.md",
     "digest": "95f08698842e02f0c2fef68dfab07d1dcf879b23a8ca0b5f9e9a82df84256c9d",
@@ -144,6 +144,7 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

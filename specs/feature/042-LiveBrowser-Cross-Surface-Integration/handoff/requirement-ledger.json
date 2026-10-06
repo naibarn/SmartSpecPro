@@ -1,6 +1,139 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "14953bcb4226d401262aa6ba48210f4938a45c7fc78b746d16c8bf80c0610f38",
+      "requirement_id": "REQ-A2DB51396FD9",
+      "requirement_text": "1. Make live browser startable and resumable directly from Chat.",
+      "source_spec_digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ba4d4f864dd1987b2c4b95e5576468a76b1362a6685d5b355ff694cc0ee82bc5",
+      "requirement_id": "REQ-0955EE4D7F8E",
+      "requirement_text": "2. Make Agency Swarm capable of creating, surfacing, and resuming browser sessions with human control handoff.",
+      "source_spec_digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L67"
+      ],
+      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L67",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7f4dfc5bc2b71a7b8966787d6676ae24875371a8f6df6ef21e996210b0fe9e07",
+      "requirement_id": "REQ-E23647CC3EC7",
+      "requirement_text": "3. Extend Virtual Workflow so browser collaboration is modeled as explicit node semantics, not inferred from one-shot automation output.",
+      "source_spec_digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L68"
+      ],
+      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L68",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d43ade690bce8a731c961e9254137e3df583fa9eb03455ffe6f33ff1d3675192",
+      "requirement_id": "REQ-4237A7FA1AAD",
+      "requirement_text": "4. Standardize user-facing labels, commands, statuses, and call-to-action text across all surfaces.",
+      "source_spec_digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L69"
+      ],
+      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L69",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6765fe80ce8dbdc8d9a846145c942288e4906832ec43705acac9c209c230b3b6",
+      "requirement_id": "REQ-BE38494DACD0",
+      "requirement_text": "5. Preserve Feature 036 runtime, security, readiness, and policy controls without duplicating the live-browser stack.",
+      "source_spec_digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L70"
+      ],
+      "authority_source": "specs/feature/042-LiveBrowser-Cross-Surface-Integration/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "98bade1703cdf78e7cb72c525fdb4eeb5572687fc9d2f842160584af7da62c62",
+      "requirement_id": "REQ-1FA618E7254D",
+      "requirement_text": "6. Keep all integrations route-safe and context-safe so users return to the screen they came from.",
+      "source_spec_digest": "9699ec7dfed292c7f14358137e48cd40086b03c55a600ed3fe4a56e1b570a10c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

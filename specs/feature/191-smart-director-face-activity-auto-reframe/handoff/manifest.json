@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
     "digest": "93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
@@ -400,6 +400,17 @@
         "digest": "63337a157f12fa975ef41c40b07e8f4da24b8284132f0c03342a4502c8180960",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/191-smart-director-face-activity-auto-reframe/sections/section-07-verification-rollout.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — shared Face + Activity planner,",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
+        "source_digest": "93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
+        "value": "IMPLEMENTATION IN PROGRESS — shared Face + Activity planner,"
       }
     ],
     "stale_fields": [],
@@ -416,6 +427,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — shared Face + Activity planner,",
+        "line": 3,
+        "source": "specs/feature/191-smart-director-face-activity-auto-reframe/spec.md",
+        "source_digest": "93010422c2c1a8ac7f1893422adc4e5a297f3fea3dd6d2bbee1508d874b3ea17",
+        "value": "IMPLEMENTATION IN PROGRESS — shared Face + Activity planner,"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

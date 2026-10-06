@@ -1,6 +1,161 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L67"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L67",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0d3e4e43583142f3466ab8a66abff76144b09ff94b99850eaf6a2ce2ed346d72",
+      "requirement_id": "REQ-CE0250DF6F13",
+      "requirement_text": "1. Make business work first-class through durable `request`, `case`, `task`, and `outcome` objects.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L68"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L68",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "16ffe44ab2f0fce54459139aa6b43c7071d6b274b3120ecdf7e62a9abc772947",
+      "requirement_id": "REQ-B58F76A19DDA",
+      "requirement_text": "2. Provide one queue model for human-owned, agent-assisted, and agent-operated work.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L69"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L69",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "547f226df4a7fa728750d73e5c80e59cf1220563b761d78fec14ca4bfdc0f578",
+      "requirement_id": "REQ-D105BFA403C9",
+      "requirement_text": "3. Bind approvals, exceptions, workpack runs, and role routines back to the same work item.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L70"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "087ab97f11d1a4f2e338c27ff18fbcb73434680282ec5aba4cfbc47b7b19ef5f",
+      "requirement_id": "REQ-BA0CCA0D4505",
+      "requirement_text": "4. Support intake from chat, forms, APIs, webhooks, documents, and scheduled triggers.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L71"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L71",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "3fbcbc59e8246ad72697082129d5ae1dca8e299abdfe68af02c639fb02dfb75f",
+      "requirement_id": "REQ-C830272DBAEA",
+      "requirement_text": "5. Expose SLA, aging, priority, risk, and assignment as explicit fields instead of inferred metadata.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L72"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L72",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f0d058fb5d3e9288a4a6e699064f68219ec4aaea38fac5305472376a5a55c0ab",
+      "requirement_id": "REQ-5C8FFBDB619A",
+      "requirement_text": "6. Give tenant admins, operators, and regular users the right operating surfaces for work, approvals, and exceptions without relying on chat transcripts.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L73"
+      ],
+      "authority_source": "specs/feature/082-work-os-case-ledger-and-operating-queues/spec.md#L73",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "996ebc7b838a447a4ede9f8cfccb35ce69bb51abf4c10fd5101c514223e58798",
+      "requirement_id": "REQ-BB3D4D947479",
+      "requirement_text": "7. Preserve multi-tenant auditability and fail-closed assignment behavior.",
+      "source_spec_digest": "8ba068604113cf16abbb28583586b44a4d9ff22376c769076c2f03c7b92bc00e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -356,28 +357,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L222"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L222",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7b08ce048756477fb8cf7faf9d56dcc3aa54ff8de1ea97dd125f9cc0499d1b4f",
-      "requirement_id": "REQ-8A464CEBD943",
-      "requirement_text": "required-refactors.yaml",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L233"
       ],
       "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L233",
@@ -466,28 +445,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L289"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L289",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "550c8c2b73058d6754acc4d2fa41e167912ac59a5ed816aed556b99354f69bff",
-      "requirement_id": "REQ-B48DECCC1D7E",
-      "requirement_text": "CF-NODE-002 required API methods execute successfully",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L316"
       ],
       "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L316",
@@ -546,28 +503,6 @@
       "requirement_digest": "7411a17ed638b6c7621f083db3c86606ecad5ba82f108c2405cde8ce4ae1a304",
       "requirement_id": "REQ-0CF4158EAB76",
       "requirement_text": "Hyperdrive currently does not support some PostgreSQL session features such as advisory locks and `LISTEN/NOTIFY`. Any dependency on these features MUST be discovered before cutover.",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L434"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L434",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f4dfe38091b7507a629bd9f64052f5baa3cf503b850884f87870f8d36753c410",
-      "requirement_id": "REQ-6F50B8B2AC80",
-      "requirement_text": "unsupported session feature but still required",
       "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1272,51 +1207,6 @@
       "requirement_digest": "e65a19062c4e76d8346dce43f1e03a7eba0d46fd49d0ad44d03e8b0508f93f94",
       "requirement_id": "REQ-E4B04A715D72",
       "requirement_text": "Do not treat each match as an error. Each finding must be classified by AST/runtime context.",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1527",
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2009"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1527",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "76b82bddc87a3cbd8540694fcec4a8c6966a756af99d4f412c28b569d26a40f6",
-      "requirement_id": "REQ-4BA931A6ED00",
-      "requirement_text": "Required Refactors",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1547"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L1547",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "086a219689f2f0e63087ee01798e267265a3296852ace3aa1971e626f27ebfab",
-      "requirement_id": "REQ-26B198D9CB7A",
-      "requirement_text": "Required Refactor",
       "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2065,28 +1955,6 @@
       "requirement_digest": "774c7d283da0cfeec1dbb0352c19f71620f090aaa3c3efc295aa8ff132f87ad8",
       "requirement_id": "REQ-C043D2F92029",
       "requirement_text": "Expected: SCC detected and explicit bridge/co-migration strategy required.",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2682"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L2682",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4485b3fc605800f12f739196a3a54b2e7e22602c1da49e5e325dd8d51924c078",
-      "requirement_id": "REQ-62D4B59065B4",
-      "requirement_text": "P245.0G required-refactor generator",
       "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -3693,28 +3561,6 @@
       "requirement_digest": "48ab9bd814ce9e549040ff74298cdee181040a13fb28807aab7e141f34493f54",
       "requirement_id": "REQ-CA4CE5C46128",
       "requirement_text": "Required `scanner-execution-policy.yaml`:",
-      "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3977"
-      ],
-      "authority_source": "specs/feature/245-Full-System Cloudflare Migration Master Plan/spec.md#L3977",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4b657a81032dff4a76085f3b696f92245f07571dd49b418609899ea90409a3cf",
-      "requirement_id": "REQ-433A8BD73F14",
-      "requirement_text": "operator_approval_for_host_probe: required",
       "source_spec_digest": "df9d4f45f60058eaf6582c054bf25a349507a8c032c4574bc1023cfe27af72e9",
       "successor_mapping": [],
       "verification_evidence": [],

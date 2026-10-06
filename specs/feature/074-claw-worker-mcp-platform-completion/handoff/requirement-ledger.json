@@ -1,6 +1,183 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L107"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L107",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6b3c47b224225a665c1ec95d35d43dac468ac78ed0dba7d21517971f28515ddc",
+      "requirement_id": "REQ-E8E8F86830E6",
+      "requirement_text": "1. Make `/v1/mcp` the canonical MCP surface for delegated workers and external runtimes.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L108"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L108",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "343f16e6523a70fd4bce7713f13885faa070e01b46921c4e1c23e1f84d0c90d3",
+      "requirement_id": "REQ-41EB0F148EA2",
+      "requirement_text": "2. Allow delegated personal workers to use MCP safely within the same owner and same tenant only.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L109"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L109",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d35657a5df3f4c8d5150fdaae111476dbf0cae5a0e5dd14935aa567e764bc4de",
+      "requirement_id": "REQ-8C14367E1395",
+      "requirement_text": "3. Ensure `tools/list` only advertises tools that are actually executable for the current session.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L110"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L110",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "23032e952151bcc2bba9ef4fe9a63e79e58967401a6695e4f1ce12c6e780783b",
+      "requirement_id": "REQ-E69ADE543B6C",
+      "requirement_text": "4. Implement real execution for the highest-value tool families that already have backend services or durable public routes.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L111"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L111",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5709f0889529986be8a4502d53e0516c8a45e3adfaef9a792d12078d970a0095",
+      "requirement_id": "REQ-91E31E10E968",
+      "requirement_text": "5. Unify or absorb the useful parts of legacy `/api/mcp/*` into the canonical MCP execution model.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L112"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L112",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bd594337ce590140a5485ed5d083335ec16a6b39d65f0a8d94463704e24abc05",
+      "requirement_id": "REQ-6F1D025FBD3F",
+      "requirement_text": "6. Preserve correct billing, budgets, idempotency, concurrency, audit, and callback behavior for MCP calls.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L113"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L113",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "ded464607ddc7cb76081724516f2d1a3acfeff816e8ec3f3a8913d015057924b",
+      "requirement_id": "REQ-386FC858A6B8",
+      "requirement_text": "7. Keep HTTP-first where HTTP remains the stronger surface, while making MCP broad enough to be genuinely useful in production.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L114"
+      ],
+      "authority_source": "specs/feature/074-claw-worker-mcp-platform-completion/spec.md#L114",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1af73a412daeae5ab4368b5507c74bc59c4843ac3177e714454bc0fd0eff7fca",
+      "requirement_id": "REQ-DFCCE704B7A8",
+      "requirement_text": "8. Provide a phase plan toward the most complete feasible MCP surface without overpromising parity that the codebase does not yet support.",
+      "source_spec_digest": "5b40933b6b907d31662cc829ce4dc99d90eb8bc6a756a7b67ab1d72ce4132b8b",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
     {
       "applicability": "UNASSESSED",
       "authority_refs": [

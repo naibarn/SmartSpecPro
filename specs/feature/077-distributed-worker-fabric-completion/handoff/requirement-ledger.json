@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -26,6 +27,50 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/077-distributed-worker-fabric-completion/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/077-distributed-worker-fabric-completion/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fcea074b16b3530ad8a5e8d9b8a63201bdc6463e1c2a2a705017cd0001b3a5fa",
+      "requirement_id": "REQ-B345682968D2",
+      "requirement_text": "1. Complete the runtime-generalized worker fabric on top of the OpenClaw control-plane baseline from Features 071-074.",
+      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/077-distributed-worker-fabric-completion/spec.md#L76"
+      ],
+      "authority_source": "specs/feature/077-distributed-worker-fabric-completion/spec.md#L76",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e6eaa68be7f54ed24f7b74d8a71739688363671e230b4cd1f3f264797d3b93ec",
+      "requirement_id": "REQ-21D626C7E56E",
+      "requirement_text": "2. Reposition ZeroClaw from “thin sidecar” to “managed local runtime profile” inside SmartSpec Desktop.",
+      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/077-distributed-worker-fabric-completion/spec.md#L77"
       ],
       "authority_source": "specs/feature/077-distributed-worker-fabric-completion/spec.md#L77",
@@ -40,6 +85,50 @@
       "requirement_digest": "f57e0b931f043e6fc3c69dd40b8c75396a0f749ee22bf7e6b4f72e8f67841486",
       "requirement_id": "REQ-09593C3E063F",
       "requirement_text": "3. Add the first real local execution job classes required by the revised spec, especially `video_assembly`.",
+      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/077-distributed-worker-fabric-completion/spec.md#L78"
+      ],
+      "authority_source": "specs/feature/077-distributed-worker-fabric-completion/spec.md#L78",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "340a31e98e803d657f8f84e3aeda90dc3d5e2965b1a02fecb3fc9676dac23ec5",
+      "requirement_id": "REQ-22CB6F6C4628",
+      "requirement_text": "4. Keep OpenClaw as the primary external general-purpose runtime while making the platform extensible to other runtime families.",
+      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/077-distributed-worker-fabric-completion/spec.md#L79"
+      ],
+      "authority_source": "specs/feature/077-distributed-worker-fabric-completion/spec.md#L79",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d6b39f5604a704535f570f1aa4bcd53bf93f0726454dc921345f7c8b965ea993",
+      "requirement_id": "REQ-6BCFC862D3FA",
+      "requirement_text": "5. Introduce runtime-specific rollout, policy, and scheduling rules instead of one OpenClaw-shaped contract for every worker.",
       "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
       "successor_mapping": [],
       "verification_evidence": [],

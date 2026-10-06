@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -18,6 +19,160 @@
       "requirement_digest": "f7e43c04a5b76285dd63877faf0f268b583ec1a9138105748dd1080cb8a41922",
       "requirement_id": "R2",
       "requirement_text": "The integration must follow the existing media-provider architecture: provider template and seed data in the web app, model seed data in `media_models`, per-request Python provider clients, gateway routing by provider/model, Celery polling for async tasks, R2/S3 re-hosting for final assets, credit reservation/refund, and security validation for all user-supplied media URLs.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L65"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L65",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2a269665125f719edf0b6065e47cd796255ff662b141fe167f9384e24fcac325",
+      "requirement_id": "REQ-CF27FE93344D",
+      "requirement_text": "1. Add a `magnific` Media Provider with encrypted API-key storage and admin connection testing.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L66"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L66",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a939049c76adc37feffd2f2b314436bc298b8c038a8c893cc18465123453e246",
+      "requirement_id": "REQ-2FA4D2E3BEDA",
+      "requirement_text": "2. Seed all requested Magnific image, image-editing, video, and video-upscaler models.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L67"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L67",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "64a6f6a76a0d3f3a17c59968926da5aa2b791bf10e43a0c9709667522142cccd",
+      "requirement_id": "REQ-D9DEEE5DDB55",
+      "requirement_text": "3. Expose model-specific input fields in Media Studio without requiring users to hand-write JSON.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L68"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L68",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "808e53830dc2c7d96cfba3fd5fca17386a2ea581357ab9c67bb0beeebbbbc16b",
+      "requirement_id": "REQ-C7C82A29F64E",
+      "requirement_text": "4. Submit Magnific tasks through the Python backend with normalized async responses.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L69"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L69",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "258e360a26813b80887e1fe4efb6561dc7e5e206f6b01b101e746f4e9a8b2c86",
+      "requirement_id": "REQ-1AA8D004A71E",
+      "requirement_text": "5. Poll Magnific task status and persist final assets through the existing media task pipeline.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L70"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L70",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7c0de4f153f8d4d17c564f3db8b17eaa6848cd385b0a45389577b6d61f932845",
+      "requirement_id": "REQ-6BAEE1041FEE",
+      "requirement_text": "6. Preserve existing provider governance: tenant policy, provider enablement, billing, audit logging, and model allowlists.",
+      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/110-magnific-media-provider-models/spec.md#L71"
+      ],
+      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L71",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "93b2458452b40ef5fb45af117094f1e1c9e947e5f91f58d95d80d0b30a67995e",
+      "requirement_id": "REQ-0D2053B044FD",
+      "requirement_text": "7. Keep this integration additive and isolated from fal.ai, Kie.ai, BytePlus, WaveSpeed, ElevenLabs, and UVoice paths.",
       "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -62,28 +217,6 @@
       "requirement_digest": "d948bea9cd7749b5d1138e7d4f81e8800abcafceaed48a2ef0ab886563f253cd",
       "requirement_id": "REQ-4A2A3A54D615",
       "requirement_text": "- change the generic media task table schema unless strictly required for provider task metadata",
-      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L92"
-      ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L92",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1824849c9b30da5cac9f463382b2c0bdc0b6c6f9f15fc8e34fb2cd53cc6de0b5",
-      "requirement_id": "REQ-6B738DD257BB",
-      "requirement_text": "| Field | Value |",
       "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -1896,28 +2029,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L507"
-      ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L507",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "431c2295891a9d8ad39335a4493d8202c7828c971cad4550e1164e33fc78852b",
-      "requirement_id": "REQ-69AE1D725FB6",
-      "requirement_text": "| Model Group | Default Credits | Pricing Mode |",
-      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/110-magnific-media-provider-models/spec.md#L509"
       ],
       "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L509",
@@ -2116,28 +2227,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L521"
-      ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L521",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f2d33fc519249014e483bc3f757740890d60e8ca2e18aa703712e31b28fd6117",
-      "requirement_id": "REQ-545AFEC3ADB8",
-      "requirement_text": "| Resolution | Standard Credits/Sec | Pro/Premium Credits/Sec |",
-      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/110-magnific-media-provider-models/spec.md#L523"
       ],
       "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L523",
@@ -2196,28 +2285,6 @@
       "requirement_digest": "e0884e1bc61847414cbd00bf47769b12f3fe4498f8074fa5cfed86b71378ab5e",
       "requirement_id": "REQ-5806ED38778F",
       "requirement_text": "| 4K | 320 | 520 |",
-      "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/110-magnific-media-provider-models/spec.md#L529"
-      ],
-      "authority_source": "specs/feature/110-magnific-media-provider-models/spec.md#L529",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "260e1068f5e889bf482374db78e220736b493d573ee96683bc8d0a0bacdb06a2",
-      "requirement_id": "REQ-2E9440D54BC7",
-      "requirement_text": "| Resolution | Credits/Sec Estimate | Notes |",
       "source_spec_digest": "cf0396ac4c52c8c9919d7c833fa3916554545f5472571c1488f0c1f9581407ca",
       "successor_mapping": [],
       "verification_evidence": [],

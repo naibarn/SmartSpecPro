@@ -156,7 +156,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md",
     "digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
@@ -205,6 +205,17 @@
         "digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 8,
+        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md",
+        "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
+        "value": "PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
       }
     ],
     "stale_fields": [],
@@ -221,6 +232,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED",
+        "line": 8,
+        "source": "specs/feature/242-Cloudflare Native Agent & Sandbox Runtime Integration/spec.md",
+        "source_digest": "e5f1ed091b4504f0476d5c5abbc120451913b8ba594729f0407f42426e05bff9",
+        "value": "PROPOSED / IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

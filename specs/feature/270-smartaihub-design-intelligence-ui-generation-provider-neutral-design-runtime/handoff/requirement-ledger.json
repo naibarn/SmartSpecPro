@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -2204,28 +2205,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1023"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1023",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "16e6b85a3601f849bf92f95bd7980b42ba284cbc8c783d0c70816db6759491c5",
-      "requirement_id": "REQ-95977E213789",
-      "requirement_text": "clarification-required",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1027"
       ],
       "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1027",
@@ -2790,50 +2769,6 @@
       "requirement_digest": "9c1f780fa8fa8dac0dc9dc91de9ecdedafa7a268bd9f94f872d6a4724155343c",
       "requirement_id": "REQ-8A366FF485BB",
       "requirement_text": "Design tasks SHALL execute through existing Spec 224 / worker-job mechanisms.",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1563"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1563",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2020c9d84a0dc81fb7c8ef835c7eed1b90140de13f64e0461b48bac6e19f2a59",
-      "requirement_id": "REQ-914AC8427289",
-      "requirement_text": "Is a new design actually required?",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1566"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L1566",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a807b7ca65774bdc94570840eb300882681ad6433ef2d9f55edc8976e97658be",
-      "requirement_id": "REQ-4CF2C6079647",
-      "requirement_text": "What device classes are required?",
       "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -4008,28 +3943,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2418"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2418",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f5e68efcf321bd5f9d7005d0c88912697a2793c200555df7b21e6a332c622dd8",
-      "requirement_id": "REQ-605A6FB703DB",
-      "requirement_text": "RTL required?",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2428"
       ],
       "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2428",
@@ -4756,28 +4669,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2824"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2824",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0309241467c90b2b174ec61484fa3cb30b7e07122cd742b79664b3d5146a7f09",
-      "requirement_id": "R2",
-      "requirement_text": "required R2/binary assets",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2841"
       ],
       "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L2841",
@@ -5086,28 +4977,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L3045"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L3045",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "056568752e5f0fa72f8514c2f5af379dfa17af430611bccb6c81ce1741f3d745",
-      "requirement_id": "REQ-DAE6C1584968",
-      "requirement_text": "provenance-summary.json           redacted as required",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L3050"
       ],
       "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L3050",
@@ -5276,28 +5145,6 @@
       "requirement_digest": "1d4775fa75d0043ecfee740e1b44a083b950d0a0ba907f95247cab84bb95156a",
       "requirement_id": "REQ-0C448A68F337",
       "requirement_text": "Redaction MUST preserve integrity of the visible lineage; it MUST NOT fabricate false provenance.",
-      "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L3096"
-      ],
-      "authority_source": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md#L3096",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5bbff7f5dd535006835292bed9866025547de672a11edd191538e4ad810d4d35",
-      "requirement_id": "REQ-E49FAB5A1229",
-      "requirement_text": "required migration path/version",
       "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -7518,7 +7365,7 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "56afe820d5617f27b7f35104a6638b92fd2810b731fb8b149354e607ef8bbf03",
-      "requirement_id": "R2-4022",
+      "requirement_id": "R2",
       "requirement_text": "| Restore DB while required R2 asset missing | ✓ | optional | restore closure fails |",
       "source_spec_digest": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41",
       "successor_mapping": [],

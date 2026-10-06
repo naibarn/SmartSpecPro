@@ -311,7 +311,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
     "digest": "d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
@@ -440,6 +440,45 @@
         "digest": "91b6d64c3e118cbd1f3da2f0daf3038e285b46dd23d3290cb5c0076bd8efe896",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/169-vertical-drama-footage-intelligence-worker/sections/section-02-worker-preparation-render-runtime.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-worker-analysis-transcription: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-worker-analysis-transcription",
+        "source": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json",
+        "source_digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-worker-preparation-render-runtime: completed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-worker-preparation-render-runtime",
+        "source": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json",
+        "source_digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready specification",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 3,
+        "source": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
+        "source_digest": "d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
+        "value": "Implementation-ready specification"
       }
     ],
     "stale_fields": [],
@@ -456,6 +495,44 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-worker-analysis-transcription: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-01-worker-analysis-transcription",
+        "source": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json",
+        "source_digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-worker-preparation-render-runtime: completed; commit_hash=missing",
+        "line": null,
+        "section": "section-02-worker-preparation-render-runtime",
+        "source": "specs/feature/169-vertical-drama-footage-intelligence-worker/implementation/deep_implement_config.json",
+        "source_digest": "5aebffe9575bd8c8f11ffb919cbe03764270b7a1604aca7883713bf5a6eab479",
+        "value": "completed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Implementation-ready specification",
+        "line": 3,
+        "source": "specs/feature/169-vertical-drama-footage-intelligence-worker/spec.md",
+        "source_digest": "d156402a8758c6aa89ebc040982ce500b6c9301d10d1e23fb1ddc7369dbbaca4",
+        "value": "Implementation-ready specification"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

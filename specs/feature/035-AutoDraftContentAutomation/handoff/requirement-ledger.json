@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -26,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L307"
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L105"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L307",
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L105",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -37,9 +38,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "62c8d6b23c62282b44b765eb0ed05e365876d60e6a0af981b457de6f89e817f5",
-      "requirement_id": "REQ-272A70A7291A",
-      "requirement_text": "# Frontend MUST HTML-escape before rendering (React JSX auto-escapes, but",
+      "requirement_digest": "b517645e22f142294a96028c40a14936272c6f0b0d54f7ee33c45e22b4800739",
+      "requirement_id": "REQ-5545AC6A221C",
+      "requirement_text": "1. สร้าง **Auto Draft Agent** ที่รับ brief เดียว → เลือก skill/model/style/params ทั้งหมดอัตโนมัติ → เรียก generateAIDraft() pipeline เดิม",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -48,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L308"
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L106"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L308",
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L106",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -59,9 +60,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "052dc3dbd155b1468d9464ef7d3f0c7076a2b1e18cdaa1afd6f26ae4b53e6fc9",
-      "requirement_id": "REQ-08F5108A683B",
-      "requirement_text": "# dangerouslySetInnerHTML MUST NOT be used). If passed to downstream LLM calls,",
+      "requirement_digest": "90cf5971a4113a60caf0c22cc745456e8f925b4d421bc2987282fbddbfda0d12",
+      "requirement_id": "REQ-D5AB660896F2",
+      "requirement_text": "2. รองรับ **Multi-Source Input**: text, file upload (CSV/Excel/Text), chat command, scheduled trigger",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -70,9 +71,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L483"
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L107"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L483",
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L107",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -81,9 +82,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "190847900760bde1b9dc87d39a798360c2affb270f18cb3636ec270c4e73d9c7",
-      "requirement_id": "REQ-6D5877EE7448",
-      "requirement_text": "- Output envelope MUST be wrapped in <sse:envelope>...</sse:envelope> tags",
+      "requirement_digest": "594bee6f82a2a78004a565ea26be09ecdf48cc40f46aa2907dbcdd84da1792ef",
+      "requirement_id": "REQ-C1D6AEC086CA",
+      "requirement_text": "3. สร้าง **Content Automation Engine** ที่ user เขียน Content Spec → ระบบสร้าง slides/videos แบบ batch ตามกำหนดเวลา",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -92,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L715"
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L108"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L715",
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L108",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -103,9 +104,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9f80fa02d758f4f76565f4536936eba5a07c7d18ab7a48bc74ae7f597fb11c51",
-      "requirement_id": "REQ-6B69EC2A6ECD",
-      "requirement_text": "notify_webhook_url: str | None = None  # MUST pass SSRF validation (see §12.5)",
+      "requirement_digest": "bf2955d60a871383fc92f60dc070298af789d0bf285b25b9b3699494f6c133d3",
+      "requirement_id": "REQ-0D4A5AA2B8CE",
+      "requirement_text": "4. **Notification** เมื่อ batch เสร็จ (email, in-app, webhook)",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -114,9 +115,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L725"
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L109"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L725",
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L109",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -125,9 +126,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "52bb0878fd5f0c445709ff8ea5d747d17ceb2ae4466935d900e25cd5cde38f58",
-      "requirement_id": "REQ-45551B1DEB53",
-      "requirement_text": "After substitution, resolved topic must be 3-1000 chars (AutoDraftRequest.topic constraint).\"\"\"",
+      "requirement_digest": "78868c56adec9411b10e7c42c4d461c4ea147b14a402fdb9e929f08c1e36803f",
+      "requirement_id": "REQ-425A5D915102",
+      "requirement_text": "5. รองรับ **output หลายรูปแบบ**: presentation deck (editable), PNG slide images, MP4 video",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -136,9 +137,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L914"
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L110"
       ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L914",
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L110",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -147,9 +148,9 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7cad1c71cd047f56017343745a759548d18c5fa7f45a40ea7dace4ba9ff61031",
-      "requirement_id": "REQ-6FE1CC7EF8AB",
-      "requirement_text": "# FastAPI endpoints MUST NOT create Content Specs directly — creation goes through tRPC only.",
+      "requirement_digest": "961f3b555324c0a566c845830da62875b210780bf63143e128777cb862f8bd02",
+      "requirement_id": "REQ-E2BDE6269B68",
+      "requirement_text": "6. ออกแบบ architecture ที่ **future-proof** สำหรับ auto-post to social media",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -172,182 +173,6 @@
       "requirement_digest": "969583f29e48fd7513c86ca4ea4529b6df0f426ff13850a688da5b1082a8fa2d",
       "requirement_id": "R2",
       "requirement_text": "> **IMPORTANT**: When the BullMQ job processes a due `auto_draft_schedules` record, it MUST re-parse `draft_params` through the `AutoDraftRequest` Zod schema before calling the handler — do NOT trust raw JSON from the database (schema may have evolved, or record may have been manually edited). Also validate that the resolved `topic_template` (after placeholder substitution) satisfies `AutoDraftRequest.topic` constraints (3-1000 chars). `reference_image_urls` in `draft_params` MUST store stable R2/S3 object keys — NOT pre-signed URLs (pre-signed tokens expire and would persist in the JSON column indefinitely). After re-parsing, OVERRIDE `draft_params.source = f\"schedule:{schedule.id}\"` regardless of stored value — for accurate audit trail attribution.",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1066"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1066",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "999fe83e97cff821515c5f9c18bb6d22c5e54d563c75e80b75a1942351f4c697",
-      "requirement_id": "REQ-6AA9EF98498D",
-      "requirement_text": "# IMPORTANT: advance_next_run MUST happen in the same DB transaction",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1198"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1198",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ce98050d69d1e38de6153ad1c61f0a271f50d37e94301d4eb3a6682941bfdd90",
-      "requirement_id": "REQ-81537E008348",
-      "requirement_text": "MUST reset consecutive_failures atomically alongside status change.",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1211"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1211",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b4a59c347d181bdbeeaa0657379e4a5b33adc28fe68592e7706d096364e07bed",
-      "requirement_id": "REQ-898EF7CA07ED",
-      "requirement_text": "# NOTE: load_content_spec MUST use a fresh DB session (or call session.expire_all())",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1293"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1293",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8ae3bf83c1087ff4354d5ea968eda0b73f33329184d307f16e78503050fb0d16",
-      "requirement_id": "REQ-35011063E329",
-      "requirement_text": "# Phase 1b: Create run record (MUST exist before processing loop",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1356"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1356",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5baff8dea716e0a2ca5e7915713f108a6cbc7786b9111d2fc4139b2e7ecd3f2c",
-      "requirement_id": "REQ-41AAACEC26AB",
-      "requirement_text": "# reservation must also be rolled back (no -1).",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1523"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1523",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2536d9486e0eeb4148aa26b6935987e6a705344ce2665599cdc6d957f1589005",
-      "requirement_id": "REQ-0F9F215A3EE4",
-      "requirement_text": "# Notification is best-effort — failure MUST NOT downgrade a completed",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1541"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1541",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "68cec45e1e508081aeaa2b9bebf955c7ec8df2e01727c8ca7ef0f404e04aa219",
-      "requirement_id": "REQ-258E5F167AD9",
-      "requirement_text": "# in Celery 5.x (via billiard). Must be caught explicitly.",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1564"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1564",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "159c7a8fa3a0d7bfd4a0717d01c842b190a0ed660a59a3c814babf35d5930ec5",
-      "requirement_id": "REQ-F14B90C5E5F5",
-      "requirement_text": "# or Phase 5 (upload). Phase 4 (caption) is a content/LLM failure and MUST increment",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -576,160 +401,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1686"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1686",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ed4ae448ffbfdc7573c5ac1b9ad9f1d51c10c385de4d4919227031a61a1cb784",
-      "requirement_id": "REQ-1427151BC4F5",
-      "requirement_text": "raise ValueError(f\"Run status must be 'export_failed', got: {run.status!r}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1777"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1777",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "bb0f14032991b8bf37e5cb63628932d21cbc42c74e5c9267923511a42cc93e55",
-      "requirement_id": "REQ-69E408BF43AE",
-      "requirement_text": "Caller MUST validate result for path traversal (§9.4 Phase 5).",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1827"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1827",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "9fa6219d5c9356f4f12d2518d08c48b62af0f97f28b3c194ec5f350ef978eb7b",
-      "requirement_id": "REQ-B1539B8AAF69",
-      "requirement_text": "# SECURITY: query MUST filter on tenant_id = spec.tenant_id (§12.8)",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1841"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1841",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a7ccf1f9b4a88b2b99e3864cf5a6681fd786d5cf7e5c77a3b7adfb4cb3129d0f",
-      "requirement_id": "REQ-5A82764F67C1",
-      "requirement_text": "# constraints comes from user-supplied spec_data — must not be interpolated",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1854"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1854",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "60f4bf4b43195393da01a82075c799f16c203cea434ad0c1063f6ede1d43eba2",
-      "requirement_id": "REQ-7E03BCE56D3F",
-      "requirement_text": "raise ValueError(\"min_slides must be int\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1856"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1856",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "920568fa3a3e54aec7a8a3d82a5aae6e995effc9c6e801cd9fc7b202dfba7d68",
-      "requirement_id": "REQ-02F2ABCC40C6",
-      "requirement_text": "raise ValueError(\"max_slides must be int\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L1893"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1893",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c347847b4f448f4dfd7037ad473e20612fc471cda85246c95ac6a93efa1dd1bb",
-      "requirement_id": "REQ-A41DF373AA1C",
-      "requirement_text": "SECURITY: topic is user-supplied content — MUST be in user role, never system prompt.",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/035-AutoDraftContentAutomation/spec.md#L1942"
       ],
       "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L1942",
@@ -950,28 +621,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2182"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2182",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e6c90cb82d9fcf3e8096ed74a452fa35ed5903f0727b57c5dd044914368c61eb",
-      "requirement_id": "REQ-1812D6609594",
-      "requirement_text": "raise ValueError(f\"estimated_cost must be positive, got: {estimated_cost}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/035-AutoDraftContentAutomation/spec.md#L2230"
       ],
       "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2230",
@@ -1060,336 +709,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2251"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2251",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "de9a02192caef93ed6f8ff2997adef8e225eede45ce0f6cdca3d6ac1db60794d",
-      "requirement_id": "REQ-ACF2D3356EBB",
-      "requirement_text": "CHANNEL_NAME_PATTERN = r\"^[\\w][\\w \\-\\.]{0,99}$\"  # must start with \\w (letter/digit/_), no path separators",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2254"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2254",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "458ae8ca07f67523e5f4c009c8b8bbdb4d95c7ff97c6f203dc7aa3d11027e732",
-      "requirement_id": "REQ-C22B9A23BEA4",
-      "requirement_text": "# render_folder_pattern() MUST percent-encode or transliterate the channel.name",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2263"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2263",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cc194aad13c129bc52a81f8502882eb6f9338bab0c5dfe689c015821f5a68b1a",
-      "requirement_id": "REQ-A2F2B4C37C71",
-      "requirement_text": "errors.append(f\"Key '{key}' is system-reserved — user spec_data keys must not start with '_'\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2267"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2267",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "05b428063435f9b8d6366d537429ef27908e040f449bdad219558391abd8e6e3",
-      "requirement_id": "REQ-8B0D2B7701AE",
-      "requirement_text": "errors.append(\"spec name must not contain control characters (\\\\r, \\\\n, \\\\t)\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2271"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2271",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dbe8959afef6a52c758a800aaf5e299887710c3663c2bc019ef9653d99735770",
-      "requirement_id": "REQ-C225E5DDB057",
-      "requirement_text": "errors.append(\"schedule.items must contain at least one item\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2281"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2281",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d911dd216e8dd364d9d04dbb5c0591b747378cb052c7db60d1c16b5763502208",
-      "requirement_id": "REQ-5CA7A484A95F",
-      "requirement_text": "errors.append(f\"items[{i}].output_type must be one of {self.ALLOWED_OUTPUT_TYPES}, got: {ot!r}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2285"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2285",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e9fe7530f61ad1ef79fc2e476c593f60257e159efed9e52f23120d099e8f79c6",
-      "requirement_id": "REQ-12059173BC17",
-      "requirement_text": "errors.append(f\"items[{i}].count must be 1-{self.MAX_ITEMS_PER_TRIGGER}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2295"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2295",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dd7e0402b47736e2637dcdeeefe02eec9fec5ee65336eb7d066d322dd341f349",
-      "requirement_id": "REQ-13F172698EB3",
-      "requirement_text": "errors.append(f\"items[{i}].topic_source.rotation must be one of {self.ALLOWED_ROTATIONS}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2303"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2303",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2e5f77aa7f8bfe6b2b5bf1d3d544ade0879d9c15b96ee4b90ee3bba7cc0cbe0a",
-      "requirement_id": "REQ-5AD2698A5942",
-      "requirement_text": "errors.append(f\"items[{i}].constraints.max_slides must be <= {self.MAX_SLIDES_PER_ITEM}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2309"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2309",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dea857d1ec64e69c7698a21a49610884bbf7d3df75a1f7b415a7ec4920e9344a",
-      "requirement_id": "REQ-FC51FF980F01",
-      "requirement_text": "errors.append(f\"output.metadata.{bool_field} must be boolean, got {type(val).__name__}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2326"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2326",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c75f05b4234f89f52d8d4c98f743161d60ea16b95b46a0db96c653f183a5c791",
-      "requirement_id": "REQ-723AD78A10D1",
-      "requirement_text": "errors.append(f\"channel.language must be one of {ALLOWED_LANGUAGES}, got: {ch_lang!r}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2329"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2329",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "788b3c222442e2e5dc7bc95491762790c84f0db7e8fa7eee3ec000bcda6cca6e",
-      "requirement_id": "REQ-77C221A86EC2",
-      "requirement_text": "errors.append(f\"channel.platform must be one of {ALLOWED_PLATFORMS}, got: {ch_platform!r}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2340"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2340",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "36295e4c55a90b258bab63236ea49d3d8dfaf304347c112bd8c2c19c285a12c2",
-      "requirement_id": "REQ-FD6352BCD299",
-      "requirement_text": "errors.append(\"subject_template must not contain newline characters (email header injection)\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2353"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2353",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "78df1b4b80fb5e79cb622b31772967efcca1d138293c8c39c5168fa82f9b97fe",
-      "requirement_id": "REQ-13C34052D6C7",
-      "requirement_text": "errors.append(\"rotating_list.topics must contain at least one topic\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2357"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2357",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b516e7e66fee44dc88bb8e2834aea665d98bd2a67ae9f89f42a47d3cac304d25",
-      "requirement_id": "REQ-9C95E8B8BA38",
-      "requirement_text": "errors.append(f\"fixed topic_source.topic must be 3-1000 chars (matches AutoDraftRequest.topic constraint), got {len(topic)}\")",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/035-AutoDraftContentAutomation/spec.md#L2379"
       ],
       "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2379",
@@ -1404,72 +723,6 @@
       "requirement_digest": "a6274d37f6811f657b870591ebbb3c4ba8f1427de52517b0aea7de9eaae00148",
       "requirement_id": "REQ-C89404850ACC",
       "requirement_text": "All outbound URLs (`notify_webhook_url`, `file_url`, Content Spec `notification.on_complete[].url`) MUST pass a shared SSRF validation function before use:",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2387"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2387",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "332d1f61e664965bba5f681f4c92bcd23630748babba148a34d662e2e6f5e3a1",
-      "requirement_id": "REQ-2C5C07EAB2A7",
-      "requirement_text": "ALLOWED_SCHEMES = {\"https\"}  # http blocked — webhooks must use TLS",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2394"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2394",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "09fd38140a6fa4c5f497d68931ca5f3bf29f9f93cba10d630003ed6907614f82",
-      "requirement_id": "REQ-34EC7BA45066",
-      "requirement_text": "CRITICAL: Callers MUST use the returned resolved IPs for their HTTP connection",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2412"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2412",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "469f8deccfbeef317547e220d20a22e3781c2d83a087ac7113d2a9b2cb5d405a",
-      "requirement_id": "REQ-EC199F817A1B",
-      "requirement_text": "# Redirect following MUST be disabled (followRedirects=false) to prevent",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],
@@ -2292,28 +1545,6 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2655"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2655",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6824d0e5ea486c527611fdf323dfd71d29ac82acfd79173f42901ca801167b63",
-      "requirement_id": "REQ-E3EDB634392B",
-      "requirement_text": "| # | Scenario | Setup | Assert |",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
         "specs/feature/035-AutoDraftContentAutomation/spec.md#L2657"
       ],
       "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2657",
@@ -2622,6 +1853,270 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2677"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2677",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e869ee3b609a1ac95cd2304a3b429de23a38c3d73adc4c8ba0202e9e8671a82b",
+      "requirement_id": "REQ-FC475469D42E",
+      "requirement_text": "1. Webhook URL resolving to private IP range (169.254.x.x, 10.x.x.x, 127.x.x.x) → returns validation error (§12.5)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2678"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2678",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "5dfb8b37f3e4d7f8ac5e554f4e667b1167827192494bdefc59dc9288eec3cebd",
+      "requirement_id": "REQ-05F0B74AEA93",
+      "requirement_text": "2. All 4 `/api/internal/tools/*` endpoints return 401 without X-Service-Token header (§12.7)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2679"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2679",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f2a5d0aa0f34a20e042e3269514094127b401eed1cb5502b59eca383f3908ada",
+      "requirement_id": "REQ-979A8A13C246",
+      "requirement_text": "3. File-derived topic text placed in `user` role when sent to LLM — integration test against LLM mock (§12.6)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2680"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2680",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "104b46477b962ab6f71fb5824546b5002edb9fc29cda6583c0636f996579b4d3",
+      "requirement_id": "REQ-3BE05F8E9D9A",
+      "requirement_text": "4. `file_url` with `file://`, `gopher://`, or private IP → rejected (§12.5)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2681"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2681",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "c8a31c053958662d20044ce57332ba71266962bbdfe747d0c16b2a386f02f9ac",
+      "requirement_id": "REQ-CBB08E48E107",
+      "requirement_text": "5. Cron expression `\"* * * * *\"` → rejected with 422 (§12.1)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2682"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2682",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d2dd0b66f7970e0d2d46ff73cc5ce197d53b7ebc79cd81d14985c0736e8d5c3b",
+      "requirement_id": "REQ-D8CBB1F4E416",
+      "requirement_text": "6. `ContentSpecValidator` rejects `spec_data` fields named `*token`, `*key`, `*secret` (§12.4)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2683"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2683",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6cc72786bc2ddc2cf4443300de41d98389274dfee5f649161c2801861cdf3fc8",
+      "requirement_id": "REQ-2718F85C92E6",
+      "requirement_text": "7. `content_automation_batch_task` raises `ValueError` (NOT `AssertionError`) when `spec.tenant_id != tenant_id` — verified under `python -O` (§9.4)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2684"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2684",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "03f265cf934110506ca95b066aa039a62e9220ef185e27017285659d9c0177d9",
+      "requirement_id": "REQ-B74F3376ECB2",
+      "requirement_text": "8. Error messages in `ContentAutomationRun.error_message` contain no connection strings or key fragments (§12.9)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2685"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2685",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "fbc81e5fae8730d60c82972a93f53d51ad24c25921716cc1d273fc71c9c6b28a",
+      "requirement_id": "REQ-D8EE49AC2245",
+      "requirement_text": "9. All tRPC procedures and FastAPI endpoints enforce `WHERE tenant_id = ctx.tenantId` — no resource accessible cross-tenant (§12.8)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2686"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2686",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "d8d7ae41dae1f4a916ce67a9d60a7537e24ba2388ff69899e8b01506a1227211",
+      "requirement_id": "REQ-94FDCACDD002",
+      "requirement_text": "10. `generate_social_caption(platform=\"<script>\")` raises `ValueError` even when run under `python -O` — allowlist uses `raise`, not `assert` (§9.6)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2687"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2687",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "643c7ca071f9a17ff758f6e558a348c74490df64260a66f17bc0411ea0dc1066",
+      "requirement_id": "REQ-7B128A8E5B48",
+      "requirement_text": "11. Webhook payloads include `X-SmartSpec-Signature` HMAC header verifiable by receiving system (§10.3)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2688"
+      ],
+      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2688",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "0c82bcf57296dc22b721a6a1f85ad88eecda65b0049bce226d4213c065206820",
+      "requirement_id": "REQ-52B2F9F1A53D",
+      "requirement_text": "12. `topic_template` with `{{custom_payload}}` → rejected by `ScheduleDraftRequest` validator (§8.2)",
+      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
         "specs/feature/035-AutoDraftContentAutomation/spec.md#L2763"
       ],
       "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2763",
@@ -2658,28 +2153,6 @@
       "requirement_digest": "6b85c156be4e47aa1ababf25396aa7cc7b42b2f23dae82af96c0cd6c1db938e8",
       "requirement_id": "REQ-340F948B913A",
       "requirement_text": "Required imports for `content_automation_tasks.py`:",
-      "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/035-AutoDraftContentAutomation/spec.md#L2972"
-      ],
-      "authority_source": "specs/feature/035-AutoDraftContentAutomation/spec.md#L2972",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a8fb6bb94e2258fc1ad4abfee1d03e29ef16e92ab27c042d5945dfd2b5fee662",
-      "requirement_id": "REQ-7256E687D1C8",
-      "requirement_text": "SECURITY: tenant_id MUST be passed to the query (not inferred from spec_id alone)",
       "source_spec_digest": "1d07369162ecbe39c451552be8f6b830e1d4506ce0598c3f85281f35c6cdd08d",
       "successor_mapping": [],
       "verification_evidence": [],

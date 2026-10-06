@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
     "digest": "821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
@@ -380,6 +380,17 @@
         "digest": "157211414a0b4d4851211bffa129e6e8ed0b6e6deafbabf7c9725ae553ac332a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections/section-07-storyboard-source-trim-and-disabled-ranges.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
+        "source_digest": "821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
+        "value": "Draft"
       }
     ],
     "stale_fields": [],
@@ -396,6 +407,18 @@
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** Draft",
+        "line": 5,
+        "source": "specs/feature/122-video-segment-planner-multi-shot-storyboard-review/spec.md",
+        "source_digest": "821591b7ca6da8658222e85f98f4d8f1648725d4b4a60cb7938a9412f0f86f07",
+        "value": "Draft"
+      }
+    ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

@@ -1,5 +1,6 @@
 {
-  "generation": 0,
+  "generation": 1,
+  "reconciliation_version": 2,
   "requirements": [
     {
       "applicability": "UNASSESSED",
@@ -1030,6 +1031,160 @@
       "requirement_digest": "c3e8b258782438c21a226d71b2e55b5b6189424d583bee48ad1b5f47077e4431",
       "requirement_id": "REQ-24F7404598F0",
       "requirement_text": "Any context item that cannot be explained, scoped, or justified must not be silently injected.",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L307"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L307",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7d8f48bf0f12a65a557b885c8689efca4099167271f3919c7f9e6bf8ea770eca",
+      "requirement_id": "REQ-4C86962B2B88",
+      "requirement_text": "- Chat and Team share one context-engine contract",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L308"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L308",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "67d457381928c61704f8ac6fc5806f90d278168ac9701ed2a1a55395a452024f",
+      "requirement_id": "REQ-802C70735C11",
+      "requirement_text": "- context packs are explainable and budgeted",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L309"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L309",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4f9274d1952b255fe90674bf156268bf4303255d70fedd9df6c825345f6a2c94",
+      "requirement_id": "REQ-435120F0362C",
+      "requirement_text": "- retrieval is hybrid, deterministic, and debuggable",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L310"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L310",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "69d7a2a521bb9d238eaf07149e0461815c936b8f9a28559c8b8e06b27271292b",
+      "requirement_id": "REQ-8692A4B14A9D",
+      "requirement_text": "- compaction keeps prompts small without losing important work state",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L311"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L311",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9048bfcc8e5482c89e8fa91707018091cf405a1831f686088c57d5fc9c1c2874",
+      "requirement_id": "REQ-679A5789EB9B",
+      "requirement_text": "- tool outputs do not linger as raw prompt noise",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L312"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L312",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "13606e282512ead951ad2e6fc49bbf38c2bcddcc6fe8361cc374294de2d2cfdb",
+      "requirement_id": "REQ-D9DEFEFCCC6D",
+      "requirement_text": "- stale or duplicate context is measurably reduced",
+      "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L313"
+      ],
+      "authority_source": "specs/feature/099-context-engineering-ready-chat-and-team/spec.md#L313",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "056976f4d2036f894d98ae28f830fb90a61d23493bcf401989b2b2956ec00cb4",
+      "requirement_id": "REQ-38E88E15DBF2",
+      "requirement_text": "- evals can prove whether the new context layer improved grounding, latency, and task success",
       "source_spec_digest": "10b0a24d94a2d137622b0ac2a7fb85cef63b674d262776f700cd111af498db77",
       "successor_mapping": [],
       "verification_evidence": [],
