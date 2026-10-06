@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "5dbfe3e2d121fd4519540cfe69abe38c25c58904",
+    "expected_canonical_sha": "2b38f6c6b77c1e58d4b9f388e2c1ce1f4970b808",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Execute and bind each remaining LOCAL_EXECUTABLE scenario to a named test; retain contract simulations as explicitly unproven until cross-host authority, Mission Control actions, external receipt authentication, and SPEC-295 runtime convergence are implemented without duplicating worker_jobs/evidence authority.",
+    "next_action": "Close cross-host authority and full project Mission Control workspace/status/actions; add authenticated runtime-produced receipts and SPEC-295 deployment/migration/Cloudflare/container convergence projections without duplicating worker_jobs/evidence authority. Keep seven simulation cases open until their real runtime adapters and acceptance evidence exist.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5dbfe3e2d121fd4519540cfe69abe38c25c58904",
+    "canonical_sha": "2b38f6c6b77c1e58d4b9f388e2c1ce1f4970b808",
     "integrated": true,
-    "integrated_at": "2026-10-06T18:43:27Z"
+    "integrated_at": "2026-10-06T18:49:39Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -222,10 +222,18 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T18:45:13.739718Z",
+  "updated_at": "2026-10-06T18:50:59.930287Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "FOCUSED_LOCAL_REGRESSION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4-matrix-integrated-20261007.md",
+        "scope": "workspace authority resolver and 23 local executable matrix rows",
+        "source_sha": "2b38f6c6b77c1e58d4b9f388e2c1ce1f4970b808",
+        "status": "PASS"
+      }
+    ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
     "sha": null,
