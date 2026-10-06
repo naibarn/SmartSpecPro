@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 165 unresolved of 165
-- Next action: Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.
-- Manifest generation: 6
+- Next action: Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

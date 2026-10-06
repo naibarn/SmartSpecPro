@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
+    "expected_canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+    "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -41,7 +41,7 @@
         "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
       }
     ],
-    "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+    "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
     "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
     "residual_requirements": []
   },
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -91,7 +91,10 @@
     "checkpoint_shas": [
       "392b41dbaadcee6bfb4497735d451db8b553aef7",
       "a6c67a6cd888b64d7822a22e736e9ca3cd845527",
-      "1b93981fdde901e30ca6f681af02315de68d65cb"
+      "1b93981fdde901e30ca6f681af02315de68d65cb",
+      "064f07851a0fe27f531cb2139ad0644a94dbf3f8",
+      "52fe0fead65f8d3542d73f21e0abbf24ce70fb2f",
+      "6b68c02dc9cfe51ac50bf6c34207fad7fea22225"
     ],
     "mapping": [],
     "source_paths": [],
@@ -100,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
+    "canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
     "integrated": true,
-    "integrated_at": "2026-10-06T18:13:55Z"
+    "integrated_at": "2026-10-06T18:35:20Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -124,7 +127,7 @@
           "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
         }
       ],
-      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
       "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
       "residual_requirements": []
     },
@@ -219,7 +222,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T18:18:36.692926Z",
+  "updated_at": "2026-10-06T18:36:30.273245Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

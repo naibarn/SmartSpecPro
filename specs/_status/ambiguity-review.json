@@ -113416,7 +113416,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
+      "canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -113700,7 +113700,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -113764,7 +113764,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
+      "canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114305,7 +114305,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -114369,7 +114369,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "1b93981fdde901e30ca6f681af02315de68d65cb",
+      "canonical_sha": "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114583,7 +114583,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.246992Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Execute the unrun race and 30-scenario behavioral matrix; then complete cross-host authority and production/Mission Control runtime adapters before claiming P0 completion.",
+      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
