@@ -99,6 +99,10 @@ vi.mock("../../_core/tokens", () => ({
   signBearerToken: vi.fn(() => "token"),
 }));
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -555,6 +559,87 @@ describe("verticalDramaEpisodes scene visual state mutations", () => {
       occupant: "ภูมิ",
       placement: "ข้างโต๊ะเล็ก",
     });
+  });
+
+  it("does not report success when shot identity keys are outside the frame cast", async () => {
+    const plan = {
+      mode: "single_frame_per_shot",
+      frames: [
+        {
+          shotNumber: 1,
+          requiredCharacterRefs: ["child"],
+          imagePrompt: "hall",
+        },
+      ],
+    };
+    const episode = makeEpisode(plan);
+    mockDb.select.mockReturnValueOnce(selectChain([episode]));
+    const tx = {
+      select: vi.fn(() => selectChain([{ startFramePlan: plan }])),
+      update: vi.fn(() => updateChain([])),
+    };
+    mockDb.transaction.mockImplementationOnce(
+      async (callback: (value: any) => Promise<any>) => callback(tx)
+    );
+
+    await expect(
+      router.setShotCharacterDescriptionOverrides({
+        ctx,
+        input: {
+          seriesId: "3",
+          episodeId: "11",
+          shotNumber: 1,
+          overrides: { woman: "ผู้หญิงผมยาว" },
+        },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it("confirms saved shot identity details from the updated database row", async () => {
+    const plan = {
+      mode: "single_frame_per_shot",
+      frames: [
+        {
+          shotNumber: 1,
+          requiredCharacterRefs: ["child"],
+          imagePrompt: "hall",
+        },
+      ],
+    };
+    const episode = makeEpisode(plan);
+    const savedPlan = {
+      ...plan,
+      frames: [
+        {
+          ...plan.frames[0],
+          characterDescriptionOverrides: { child: "เด็กใส่เสื้อสีเทา" },
+        },
+      ],
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([episode]));
+    const update = updateChain([{ startFramePlan: savedPlan }]);
+    const tx = {
+      select: vi.fn(() => selectChain([{ startFramePlan: plan }])),
+      update: vi.fn(() => update),
+    };
+    mockDb.transaction.mockImplementationOnce(
+      async (callback: (value: any) => Promise<any>) => callback(tx)
+    );
+
+    const result = await router.setShotCharacterDescriptionOverrides({
+      ctx,
+      input: {
+        seriesId: "3",
+        episodeId: "11",
+        shotNumber: 1,
+        overrides: { child: "เด็กใส่เสื้อสีเทา" },
+      },
+    });
+
+    expect(update.setPayload).toMatchObject({ startFramePlan: savedPlan });
+    expect(result.startFramePlan).toEqual(savedPlan);
+    expect(result.overrides).toEqual({ child: "เด็กใส่เสื้อสีเทา" });
   });
 
   it("rejects stale expectedRevision before authoring or writing", async () => {
