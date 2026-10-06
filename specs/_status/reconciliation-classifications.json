@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "baseline_sha": "c72b38df94391656b913f2d1635b97e6ac0c1440",
+  "baseline_sha": "4433949a6416a056478b65598a7f16a51e8654ca",
   "inventory_record_count": 463,
-  "reconciliation_review_count": 331,
+  "reconciliation_review_count": 329,
   "relationship_edge_count": 302,
   "renumber_alias_count": 6,
-  "canonical_spec_count": 305,
+  "canonical_spec_count": 306,
   "duplicate_canonical_authority_count": 0,
   "classification_counts": {
-    "CANONICAL_ACTIVE": 304,
+    "CANONICAL_ACTIVE": 305,
     "DUPLICATE_REVISION": 1,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -17,11 +17,11 @@
     "RENUMBER_ALIAS": 0,
     "STALE_REFERENCE": 0,
     "SUPERSEDED": 1,
-    "UNRESOLVED_AUTHORITY": 1,
+    "UNRESOLVED_AUTHORITY": 0,
     "VALID_NON_CANONICAL": 155
   },
   "review_classification_counts": {
-    "CANONICAL_ACTIVE": 302,
+    "CANONICAL_ACTIVE": 301,
     "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -30,7 +30,7 @@
     "RENUMBER_ALIAS": 0,
     "STALE_REFERENCE": 0,
     "SUPERSEDED": 1,
-    "UNRESOLVED_AUTHORITY": 1,
+    "UNRESOLVED_AUTHORITY": 0,
     "VALID_NON_CANONICAL": 26
   },
   "records": [
@@ -3522,71 +3522,21 @@
     {
       "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
       "path": "specs/feature/161-vertical-drama-async-skill-jobs",
-      "record_kind": "MALFORMED_CANDIDATE",
+      "record_kind": "CANONICAL_SPEC",
       "spec_id": "161",
-      "classification": "UNRESOLVED_AUTHORITY",
+      "classification": "CANONICAL_ACTIVE",
       "canonical_target": null,
-      "provenance_relationship": "MISSING_SPEC_MD",
-      "reason": "Configured canonical-root candidate has no normative spec.md; intent/approval source has not been established.",
-      "action_taken": "Recover the approved normative source or record an authoritative non-Spec disposition; do not promote companion drafts by inference.",
-      "validation_state": "BLOCKED_MISSING_NORMATIVE_SOURCE",
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
       "evidence": [
         {
-          "path": "specs/feature/161-vertical-drama-async-skill-jobs",
-          "sha256": "dfdbdd2a854e005e0c7f3a9e62a278e129c0bf4ec678f7be9740118457b7819f"
-        },
-        {
-          "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md",
-          "sha256": "11334444419c7a0ebb419dc62d44f9224b9ff9e1a0497cc1b6fb99fd56aaff43"
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+          "sha256": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
         }
       ],
-      "related_evidence": [
-        {
-          "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
-          "lines": [
-            13
-          ],
-          "sha256": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505"
-        },
-        {
-          "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
-          "lines": [
-            6
-          ],
-          "sha256": "108fb71422cc80635c9b5a0a45b800329a3d25e1149b58fee99eda629ab3874e"
-        },
-        {
-          "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
-          "lines": [
-            13
-          ],
-          "sha256": "cfd5a138c657998688fab684b9c04ab156eacc3373190fb9bf3986c40992ac1c"
-        },
-        {
-          "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
-          "lines": [
-            11
-          ],
-          "sha256": "817df958a54a976414218043dd8cdf4ca72c451228a3842c3f32dd21f473ba58"
-        },
-        {
-          "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md",
-          "lines": [
-            105,
-            130,
-            215
-          ],
-          "sha256": "5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0"
-        },
-        {
-          "path": "specs/feature/185-skill-framework-storyboard-project/spec.md",
-          "lines": [
-            70
-          ],
-          "sha256": "a30e4ed1e5db7bf7036f1dd65b130ccdae936bffbf83653949c8724f2fff1cb4"
-        }
-      ],
-      "in_reconciliation_review": true
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/feature/162-vertical-drama-broll-media-intelligence-worker",
@@ -6687,7 +6637,7 @@
           "sha256": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
         }
       ],
-      "in_reconciliation_review": true
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/quick/001-auto-team-capability-routing",

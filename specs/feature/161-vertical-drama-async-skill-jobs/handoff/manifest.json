@@ -1,0 +1,366 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [
+      "RECONSTRUCT_CANONICAL_FROM_EVIDENCE"
+    ],
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+      "docs/portable-skill-pack/specs/2026-08-25-vertical-drama-async-skill-jobs-design.md#sha256:3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce",
+      "13a313d474df163d6741ccf10e50df8aac2e30f0",
+      "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md#L1-L7"
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
+  },
+  "continuation": {
+    "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
+    "next_ready_workunit": "SPEC161_IMPLEMENTATION_EVIDENCE_REVIEW",
+    "reactivation_predicate": null,
+    "resume_point": "Authority is resolved as RECONSTRUCT_CANONICAL_FROM_EVIDENCE; continue separately at implementation-to-requirement evidence review.",
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "VALIDATION_ONLY",
+    "evidence": [
+      "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+      "apps/web/server/services/verticalDramaInteractiveJobs.ts",
+      "apps/web/server/services/verticalDramaStoryJobs.ts",
+      "apps/web/server/__tests__/verticalDramaInteractiveJobsWiring.test.ts"
+    ],
+    "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
+    "rationale": "This workunit resolves document authority only. Runtime implementation completeness, requirement-level verification and product acceptance were not re-evaluated and must remain separate from authority closure.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+      "docs/portable-skill-pack/specs/2026-08-25-vertical-drama-async-skill-jobs-design.md#sha256:3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce",
+      "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#sha256:b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
+    ],
+    "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 8,
+  "identity": {
+    "canonical_path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md",
+    "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T12:01:19.793317Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": null,
+    "slug": "161-vertical-drama-async-skill-jobs",
+    "spec_id": "161",
+    "title": "Vertical Drama Async Skill Jobs and Timeout Resilience"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      {
+        "kind": "AUTHORITY_RESOLUTION",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+        "sha": "3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce"
+      }
+    ],
+    "updated_at": "2026-10-06T12:01:19.793317Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [
+        "RECONSTRUCT_CANONICAL_FROM_EVIDENCE"
+      ],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+        "docs/portable-skill-pack/specs/2026-08-25-vertical-drama-async-skill-jobs-design.md#sha256:3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce",
+        "13a313d474df163d6741ccf10e50df8aac2e30f0",
+        "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md#L1-L7"
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "VALIDATION_ONLY",
+      "evidence": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+        "apps/web/server/services/verticalDramaInteractiveJobs.ts",
+        "apps/web/server/services/verticalDramaStoryJobs.ts",
+        "apps/web/server/__tests__/verticalDramaInteractiveJobsWiring.test.ts"
+      ],
+      "next_action": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
+      "rationale": "This workunit resolves document authority only. Runtime implementation completeness, requirement-level verification and product acceptance were not re-evaluated and must remain separate from authority closure.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+        "docs/portable-skill-pack/specs/2026-08-25-vertical-drama-async-skill-jobs-design.md#sha256:3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce",
+        "specs/feature/161-vertical-drama-async-skill-jobs/spec.md#sha256:b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f"
+      ],
+      "rationale": "Independent active Spec authority is established by the approved, complete portable design, the canonical-root identity and six downstream consumers. This is a documented reconstruction, not a claim that historical normative spec.md existed.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        {
+          "kind": "AUTHORITY_RESOLUTION",
+          "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md",
+          "sha": "3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce"
+        }
+      ],
+      "updated_at": "2026-10-06T12:01:19.793317Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+      "value": "HIGH"
+    }
+  },
+  "reconciliation": {
+    "confidence": "HIGH",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value"
+    ],
+    "mode": "EVIDENCE_LED_RECONSTRUCTION",
+    "reconciled_at": "2026-10-06T12:01:19.793317Z",
+    "sources": [
+      {
+        "commit": "13a313d474df163d6741ccf10e50df8aac2e30f0",
+        "digest": "3ab5930dc85d84d02b8de32f3e17d69ce09993241c99d5474fb25754a07532ce",
+        "kind": "APPROVED_DESIGN",
+        "path": "docs/portable-skill-pack/specs/2026-08-25-vertical-drama-async-skill-jobs-design.md"
+      },
+      {
+        "digest": "11334444419c7a0ebb419dc62d44f9224b9ff9e1a0497cc1b6fb99fd56aaff43",
+        "kind": "DERIVED_SUMMARY",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md"
+      },
+      {
+        "kind": "DOWNSTREAM_CONSUMERS",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/handoff/evidence/authority-resolution-2026-10-06.md"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [
+      {
+        "lines": [
+          13,
+          14
+        ],
+        "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
+        "relationship": "RELATED_ARCHITECTURE_BILLING_CONTEXT",
+        "spec_id": "166"
+      },
+      {
+        "lines": [
+          6
+        ],
+        "path": "specs/feature/168-vertical-drama-special-tie-in-footage-web/spec.md",
+        "relationship": "NORMATIVE_DEPENDENCY",
+        "spec_id": "168"
+      },
+      {
+        "lines": [
+          11,
+          13
+        ],
+        "path": "specs/feature/173-vertical-drama-enhanced-video-prompt-variants/spec.md",
+        "relationship": "NORMATIVE_DEPENDENCY",
+        "spec_id": "173"
+      },
+      {
+        "lines": [
+          11
+        ],
+        "path": "specs/feature/175-vertical-drama-native-cinematic-audio/spec.md",
+        "relationship": "NORMATIVE_DEPENDENCY",
+        "spec_id": "175"
+      },
+      {
+        "lines": [
+          7,
+          105,
+          130,
+          215
+        ],
+        "path": "specs/feature/176-drama-series-emotion-timeline-web/spec.md",
+        "relationship": "DURABLE_JOB_PATTERN_REUSE",
+        "spec_id": "176"
+      },
+      {
+        "lines": [
+          70
+        ],
+        "path": "specs/feature/185-skill-framework-storyboard-project/spec.md",
+        "relationship": "DURABLE_JOB_BILLING_PATTERN_REUSE",
+        "spec_id": "185"
+      }
+    ],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "b3a3049809ebb3970a608e1e3b543f62cc687896c2c16825f0cb5ead25766c5f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/spec.md"
+      },
+      {
+        "digest": "e494d0ec1612d4573b5cf3091697507647ea4a85ed9e4f0b6bcaf0b9c6670424",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-plan.md"
+      },
+      {
+        "digest": "11334444419c7a0ebb419dc62d44f9224b9ff9e1a0497cc1b6fb99fd56aaff43",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/claude-spec.md"
+      },
+      {
+        "digest": "c754df44c584bc69ba320a72ac56828c9377a3e78f780556176a7630100cf9e3",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "836b7f5f102134b33e029f9179739b6332f166f8cb733404f41c0e5196b9d6c7",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "2d96e8a60e67d2a18bf0f11253dba1300ae19fbe18fa219f6306a7ca6bf4d767",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/index.md"
+      },
+      {
+        "digest": "cca4cd537a0552e9c0b6f373a558ddd32cb8690f902d7c667526bce55f941737",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-01-runtime.md"
+      },
+      {
+        "digest": "37da2e848c1c0c908bde35d54048cb505734187c0f82e8b0b2e86a6e60290aa1",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-02-story-prompt.md"
+      },
+      {
+        "digest": "c7e8a8894ca62a210bc4b8be458e337ec401ece75f7c60002fd8e16662ecb907",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-03-lineage-preset.md"
+      },
+      {
+        "digest": "150d81e3d3f51b8a13ab2afb65f08e461a1702969250809640f2c3503c8eb3ad",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-04-analysis.md"
+      },
+      {
+        "digest": "11ae908538eb4f048e0ac01999ac88523bcbb334bb0b7fc57c9e9d4ad9665bbe",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-05-shot-prompt.md"
+      },
+      {
+        "digest": "8ec195127def266ce1df96422add1e3f9d67d19ec1e73f42fba3320073aa8c53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-06-billing-security.md"
+      },
+      {
+        "digest": "7cb84e5dbbac40663d430f3d3b875f0bd85bb1ca91d7bdd57258decadfa676d0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-07-client-completion.md"
+      },
+      {
+        "digest": "5803ee7107ac19335a1649defd4a039be6089e64c22ba6e75bf5fb525601c213",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/161-vertical-drama-async-skill-jobs/sections/section-08-verification.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 11,
+    "unresolved": 11
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T12:16:25.028664Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

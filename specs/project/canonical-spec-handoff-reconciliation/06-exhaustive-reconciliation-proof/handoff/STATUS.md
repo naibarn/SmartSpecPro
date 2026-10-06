@@ -2,8 +2,8 @@
 # 06 — Exhaustive Reconciliation Proof
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `WORKING`
-- Continuation: `RECONCILIATION_REQUIRED` (HIGH)
+- Lifecycle: `VALIDATION_PENDING`
+- Continuation: `VALIDATION_ONLY` (HIGH)
 - Requirements: 0 pass / 1 unresolved of 1
-- Next action: Resolve Feature 161 normative authority from an approved source or an authoritative non-Spec disposition. Do not mark repository-wide reconciliation complete while this record remains unresolved.
-- Manifest generation: 34
+- Next action: Run FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on the integrated canonical SHA; do not declare CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE before it passes.
+- Manifest generation: 37
