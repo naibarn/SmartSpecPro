@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from pathlib import Path
 
@@ -184,6 +185,112 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), integrated)
         self.assertEqual(git(main_checkout, "branch", "--show-current"), "main")
         self.assertEqual(git(main_checkout, "rev-parse", "HEAD"), main_checkout_sha)
+
+    def test_unique_local_commit_blocks_convergence_without_moving_head(self) -> None:
+        (self.canonical / "tracked.txt").write_text("local intended work\n", encoding="utf-8")
+        git(self.canonical, "add", "tracked.txt")
+        git(self.canonical, "commit", "-m", "local intended work")
+        local_head = git(self.canonical, "rev-parse", "HEAD")
+        (self.seed / "tracked.txt").write_text("remote v2\n", encoding="utf-8")
+        git(self.seed, "add", "tracked.txt")
+        git(self.seed, "commit", "-m", "integrated v2")
+        git(self.seed, "push", "origin", "main")
+
+        result = authority.converge_canonical_workspace(self.canonical, self.policy)
+
+        self.assertEqual(result["status"], "BLOCKED_UNPUSHED_INTENDED_WORK")
+        self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), local_head)
+        self.assertTrue(Path(result["recovery_bundle"]).is_file())
+
+    def test_concurrent_external_workspace_registration_is_serialized(self) -> None:
+        clones = [self.root / "external-a", self.root / "external-b"]
+        for clone in clones:
+            subprocess.run(["git", "clone", str(self.remote), str(clone)], check=True, capture_output=True)
+
+        def register(clone: Path) -> dict[str, object]:
+            return authority.register_workspace(
+                self.canonical, self.policy, clone, role="EXTERNAL_WORKSPACE", task_id=clone.name
+            )
+
+        results = []
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for _ in range(5):
+                results = list(pool.map(register, clones))
+
+        self.assertEqual(len({result["workspace_id"] for result in results}), 2)
+        self.assertEqual({result["task_id"] for result in results}, {"external-a", "external-b"})
+
+    def test_registry_indexes_one_hundred_twenty_temporary_worktrees(self) -> None:
+        for index in range(120):
+            workspace = self.root / "temporary-worktrees" / f"task-{index:03d}"
+            git(self.canonical, "worktree", "add", "--detach", str(workspace), "HEAD")
+            authority.register_workspace(
+                self.canonical,
+                self.policy,
+                workspace,
+                role="TASK_WORKTREE",
+                task_id=f"task-{index:03d}",
+            )
+
+        resolved = authority.resolve_project_authority(self.canonical, self.policy)
+        task_workspaces = [
+            workspace for workspace in resolved["workspaces"]
+            if workspace["role"] == "TASK_WORKTREE"
+        ]
+        self.assertEqual(len(task_workspaces), 120)
+        self.assertEqual(len({workspace["workspace_id"] for workspace in task_workspaces}), 120)
+
+    def test_convergence_retries_when_canonical_advances_mid_operation(self) -> None:
+        original_fetch = authority._fetch_canonical
+        for repetition in range(5):
+            next_version = repetition * 2 + 2
+            (self.seed / "tracked.txt").write_text(f"v{next_version}\n", encoding="utf-8")
+            git(self.seed, "add", "tracked.txt")
+            git(self.seed, "commit", "-m", f"integrated v{next_version}")
+            integrated = git(self.seed, "rev-parse", "HEAD")
+            git(self.seed, "push", "origin", "main")
+            calls = 0
+
+            def advancing_fetch(repo: Path, policy: dict[str, object]) -> str:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    newer_version = next_version + 1
+                    (self.seed / "tracked.txt").write_text(f"v{newer_version}\n", encoding="utf-8")
+                    git(self.seed, "add", "tracked.txt")
+                    git(self.seed, "commit", "-m", f"integrated v{newer_version}")
+                    git(self.seed, "push", "origin", "main")
+                return original_fetch(repo, policy)
+
+            authority._fetch_canonical = advancing_fetch
+            try:
+                result = authority.converge_canonical_workspace(
+                    self.canonical, self.policy, integrated_sha=integrated
+                )
+            finally:
+                authority._fetch_canonical = original_fetch
+
+            canonical_sha = git(self.seed, "rev-parse", "HEAD")
+            self.assertEqual(result["status"], "USER_WORKSPACE_CONVERGED")
+            self.assertGreaterEqual(calls, 3)
+            self.assertEqual(result["receipt"]["canonical_sha"], canonical_sha)
+            self.assertEqual(git(self.canonical, "rev-parse", "HEAD"), canonical_sha)
+
+    def test_repeated_convergence_to_same_integration_is_idempotent_for_workspace_state(self) -> None:
+        (self.seed / "tracked.txt").write_text("v2\n", encoding="utf-8")
+        git(self.seed, "add", "tracked.txt")
+        git(self.seed, "commit", "-m", "integrated v2")
+        integrated = git(self.seed, "rev-parse", "HEAD")
+        git(self.seed, "push", "origin", "main")
+
+        results = [
+            authority.converge_canonical_workspace(self.canonical, self.policy, integrated_sha=integrated)
+            for _ in range(5)
+        ]
+
+        self.assertTrue(all(result["status"] == "USER_WORKSPACE_CONVERGED" for result in results))
+        self.assertEqual(len({result["receipt"]["canonical_user_workspace_sha"] for result in results}), 1)
+        self.assertEqual(git(self.canonical, "status", "--porcelain=v1"), "")
 
     def test_dirty_canonical_workspace_is_snapshotted_and_never_overwritten(self) -> None:
         original = (self.canonical / "tracked.txt").read_text(encoding="utf-8")
