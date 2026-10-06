@@ -6,7 +6,9 @@ import os
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 import unittest
 from pathlib import Path
 
@@ -622,6 +624,79 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         retired = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
         self.assertEqual(retired["status"], "WORKTREE_RETIRED")
         self.assertEqual(retired["receipt"]["result"], "WORKTREE_RETIRED")
+        self.assertFalse(task.exists())
+
+    def test_registration_racing_retirement_cannot_resurrect_removed_worktree(self) -> None:
+        task = self.root / "retirement-registration-race"
+        git(self.canonical, "worktree", "add", "-b", "task/retirement-race", str(task), "HEAD")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        preview = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"]
+        )
+        self.assertEqual(preview["status"], "RETIREMENT_DRY_RUN")
+
+        original_git = authority._git
+        original_db = authority._db
+        removal_started = Event()
+        registration_started = Event()
+        registration_db_opened = Event()
+        allow_removal = Event()
+
+        def pause_removal(repo: Path, *args: str, **kwargs: object) -> str | bytes:
+            if args[:2] == ("worktree", "remove"):
+                removal_started.set()
+                if not allow_removal.wait(timeout=5):
+                    raise AssertionError("retirement race fixture timed out")
+            return original_git(repo, *args, **kwargs)
+
+        @contextmanager
+        def track_db(repo: Path):
+            with original_db(repo) as db:
+                if removal_started.is_set() and registration_started.is_set():
+                    registration_db_opened.set()
+                yield db
+
+        authority._git = pause_removal
+        authority._db = track_db
+
+        def register_live_owner() -> dict[str, object]:
+            registration_started.set()
+            return authority.register_workspace(
+                self.canonical,
+                self.policy,
+                task,
+                role="TASK_WORKTREE",
+                owner_session_id="late-session",
+                owner_pid=os.getpid(),
+                owner_lease_seconds=300,
+            )
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                retire_future = pool.submit(
+                    authority.retire_completed_worktree,
+                    self.canonical,
+                    self.policy,
+                    workspace["workspace_id"],
+                    apply=True,
+                )
+                self.assertTrue(removal_started.wait(timeout=5))
+                register_future = pool.submit(register_live_owner)
+                self.assertTrue(registration_started.wait(timeout=5))
+                self.assertTrue(registration_db_opened.wait(timeout=5))
+                self.assertFalse(register_future.done())
+                allow_removal.set()
+                retired = retire_future.result(timeout=5)
+                self.assertEqual(retired["status"], "WORKTREE_RETIRED")
+                with self.assertRaisesRegex(
+                    authority.WorkspaceAuthorityError,
+                    "WORKSPACE_DISAPPEARED_DURING_REGISTRATION",
+                ):
+                    register_future.result(timeout=5)
+        finally:
+            allow_removal.set()
+            authority._git = original_git
+            authority._db = original_db
         self.assertFalse(task.exists())
 
     def test_scenario_matrix_has_all_thirty_incident_cases_and_repeats_race_cases(self) -> None:

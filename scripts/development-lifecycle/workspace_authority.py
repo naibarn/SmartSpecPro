@@ -339,6 +339,15 @@ def _upsert_workspace(
     with _db(repo) as db:
         db.execute("BEGIN IMMEDIATE")
         try:
+            if not workspace.is_dir():
+                raise WorkspaceAuthorityError("WORKSPACE_DISAPPEARED_DURING_REGISTRATION")
+            if (
+                _common_dir(workspace) != workspace_common_dir
+                or _git_dir(workspace) != git_dir
+                or _workspace_identity(workspace)[0] != workspace_id
+                or _git_facts(workspace) != facts
+            ):
+                raise WorkspaceAuthorityError("WORKSPACE_CHANGED_DURING_REGISTRATION")
             _ensure_project(db, policy)
             old = _workspace_by_id(db, workspace_id)
             if role is None:
@@ -982,30 +991,65 @@ def retire_completed_worktree(
         return candidate
     if workspace["lifecycle_state"] != "RETIREABLE":
         return {"status": "RETIREMENT_DRY_RUN_REQUIRED", "workspace_id": workspace_id}
-    _git(repo, "worktree", "remove", str(path))
-    retired_at = _now()
-    receipt = {
-        "schema_version": 1,
-        "receipt_id": f"worktree-retirement:{uuid.uuid4()}",
-        "project_id": policy["project_id"],
-        "repository_id": policy["repository_id"],
-        "workspace_id": workspace_id,
-        "workspace_role": workspace["role"],
-        "task_id": workspace.get("task_id"),
-        "workspace_sha": facts["head_sha"],
-        "canonical_sha": canonical_sha,
-        "integration_verified": not bool(classification["unique_commits"]),
-        "recovery_linkage": workspace.get("recovery_linkage"),
-        "owner_state": workspace["session_state"],
-        "result": "WORKTREE_RETIRED",
-        "actor": os.environ.get("CODEX_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID") or f"pid:{os.getpid()}",
-        "retired_at": retired_at,
-    }
     with _db(repo) as db:
         db.execute("BEGIN IMMEDIATE")
         try:
+            latest = _workspace_by_id(db, workspace_id)
+            if not latest or latest["lifecycle_state"] != "RETIREABLE":
+                db.rollback()
+                return {"status": "RETIREMENT_STATE_CHANGED_RETRY_DRY_RUN", "workspace_id": workspace_id}
+            if latest["session_state"] == "ACTIVE_SESSION":
+                db.rollback()
+                return {"status": "RETIREMENT_BLOCKED_LIVE_OWNER", "workspace_id": workspace_id}
+            if latest["generation"] != workspace["generation"] or latest["role"] != workspace["role"]:
+                db.rollback()
+                return {"status": "RETIREMENT_STATE_CHANGED_RETRY_DRY_RUN", "workspace_id": workspace_id}
+            path = Path(latest["location"])
+            if not path.is_dir():
+                db.rollback()
+                return {"status": "RETIREMENT_BLOCKED_MISSING_WITHOUT_RECOVERY_PROOF", "workspace_id": workspace_id, "recovery_linkage": latest.get("recovery_linkage")}
+            final_facts = _git_facts(path)
+            if final_facts != facts:
+                db.rollback()
+                if final_facts["dirty"]:
+                    preserved = preserve_dirty_workspace(repo, policy_path, path)
+                    return {"status": "RETIREMENT_BLOCKED_DIRTY", "workspace_id": workspace_id, "recovery_receipt": preserved}
+                return {"status": "RETIREMENT_STATE_CHANGED_RETRY_DRY_RUN", "workspace_id": workspace_id}
+            ignored = bytes(_git(path, "ls-files", "--others", "--ignored", "--exclude-standard", "-z", binary=True))
+            if ignored:
+                db.rollback()
+                return {"status": "RETIREMENT_BLOCKED_IGNORED_CONTENT", "workspace_id": workspace_id, "ignored_path_count": len([item for item in ignored.split(b"\0") if item])}
+            stash_classification = _classify_stashes(path, canonical_sha)
+            if stash_classification:
+                db.rollback()
+                return {"status": "RETIREMENT_BLOCKED_STASH_PRESENT", "workspace_id": workspace_id, "stash_classification": stash_classification}
+            final_classification = _local_commit_classification(path, final_facts["head_sha"], canonical_sha)
+            if final_classification["unique_commits"]:
+                bundle = _preserve_local_commits(path, policy, {**latest, **final_facts}, canonical_sha)
+                db.rollback()
+                return {"status": "RETIREMENT_BLOCKED_UNPUSHED_INTENDED_WORK", "workspace_id": workspace_id, "commit_classification": final_classification, "recovery_bundle": bundle}
+
+            retired_at = _now()
+            receipt = {
+                "schema_version": 1,
+                "receipt_id": f"worktree-retirement:{uuid.uuid4()}",
+                "project_id": policy["project_id"],
+                "repository_id": policy["repository_id"],
+                "workspace_id": workspace_id,
+                "workspace_role": latest["role"],
+                "task_id": latest.get("task_id"),
+                "workspace_sha": final_facts["head_sha"],
+                "canonical_sha": canonical_sha,
+                "integration_verified": not bool(final_classification["unique_commits"]),
+                "recovery_linkage": latest.get("recovery_linkage"),
+                "owner_state": latest["session_state"],
+                "result": "WORKTREE_RETIRED",
+                "actor": os.environ.get("CODEX_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID") or f"pid:{os.getpid()}",
+                "retired_at": retired_at,
+            }
+            _git(repo, "worktree", "remove", str(path))
             db.execute("UPDATE workspaces SET lifecycle_state='RETIRED',last_verified_state='WORKTREE_RETIRED',last_verified_at=?,convergence_state='RETIRED',owner_session_id=NULL,owner_pid=NULL,owner_host=NULL,owner_process_start=NULL,owner_lease_expires_at=NULL,owner_state='NONE' WHERE workspace_id=?", (retired_at, workspace_id))
-            db.execute("INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (receipt["receipt_id"], policy["project_id"], policy["repository_id"], workspace_id, "WORKTREE_RETIREMENT", facts["head_sha"], canonical_sha, json.dumps(receipt, sort_keys=True), retired_at))
+            db.execute("INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (receipt["receipt_id"], policy["project_id"], policy["repository_id"], workspace_id, "WORKTREE_RETIREMENT", final_facts["head_sha"], canonical_sha, json.dumps(receipt, sort_keys=True), retired_at))
             db.commit()
         except Exception:
             db.rollback()
