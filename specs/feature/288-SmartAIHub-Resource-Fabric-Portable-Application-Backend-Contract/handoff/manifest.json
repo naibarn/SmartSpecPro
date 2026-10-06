@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "expected_canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
     "expected_spec_digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
     "digest": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b",
@@ -96,9 +96,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "canonical_sha": "5a389545896d9152f23749d3fc1710d6c80f3a43",
     "integrated": true,
-    "integrated_at": "2026-10-06T04:36:24Z"
+    "integrated_at": "2026-10-06T09:36:21Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -187,7 +187,7 @@
     "unresolved": 341
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T09:28:58.148063Z",
+  "updated_at": "2026-10-06T09:37:09.835461Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
