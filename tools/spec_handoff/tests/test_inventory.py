@@ -54,6 +54,22 @@ class InventoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 inventory(repo)
 
+    def test_nested_deep_project_requirements_are_not_malformed_specs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "specs/_config").mkdir(parents=True)
+            (repo / "specs/_config/handoff-roots.toml").write_text(
+                '[spec_handoff]\nschema_version=1\ncanonical_roots=["specs/project"]\nalternate_roots=[]\n',
+                encoding="utf-8",
+            )
+            requirements = repo / "specs/project/013-scope/requirements.deep-project/requirements.md"
+            requirements.parent.mkdir(parents=True)
+            requirements.write_text("# Project requirements\n", encoding="utf-8")
+            result = inventory(repo)
+            parent = next(row for row in result["records"] if row["path"] == "specs/project/013-scope")
+            self.assertEqual(parent["record_kind"], "PROJECT_REQUIREMENTS")
+            self.assertIsNone(parent["problem"])
+
 
 if __name__ == "__main__":
     unittest.main()

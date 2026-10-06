@@ -23,17 +23,6 @@
       "spec_id": "161"
     },
     {
-      "authority": "UNRESOLVED",
-      "confidence": "UNRESOLVED",
-      "declared_claim_count": 0,
-      "next_action": "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff.",
-      "path": "specs/project/013-features-195-200",
-      "priority": "R0_DATA_INTEGRITY",
-      "record_key": "canonical:specs/project/013-features-195-200",
-      "reference_counts": {},
-      "spec_id": "013"
-    },
-    {
       "authority": "AUTHORITY_CONFLICT",
       "confidence": "LOW",
       "declared_claim_count": 10,

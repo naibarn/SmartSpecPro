@@ -14,14 +14,14 @@
     "counts": {
       "CANONICAL_SPEC": 294,
       "HISTORICAL_CANDIDATE": 25,
-      "MALFORMED_CANDIDATE": 2,
+      "MALFORMED_CANDIDATE": 1,
       "PLANNING_ARTIFACT": 112,
-      "PROJECT_REQUIREMENTS": 3
+      "PROJECT_REQUIREMENTS": 4
     },
     "diagnostics": [],
     "invariants": {
       "canonical_spec_count": 294,
-      "invalid_candidate_count": 2,
+      "invalid_candidate_count": 1,
       "record_count": 436,
       "walk_complete": true
     },
@@ -5574,9 +5574,9 @@
         "configured_root": "specs/project",
         "digest": null,
         "path": "specs/project/013-features-195-200",
-        "problem": "MISSING_SPEC_MD",
+        "problem": null,
         "record_key": "canonical:specs/project/013-features-195-200",
-        "record_kind": "MALFORMED_CANDIDATE",
+        "record_kind": "PROJECT_REQUIREMENTS",
         "relationships": {
           "duplicate_ids": [],
           "duplicate_revisions": []
@@ -7975,8 +7975,8 @@
   "reconciliation_confidence_counts": {
     "confidence.LOW": 292,
     "confidence.MEDIUM": 2,
-    "confidence.NOT_APPLICABLE": 115,
-    "confidence.UNRESOLVED": 27
+    "confidence.NOT_APPLICABLE": 116,
+    "confidence.UNRESOLVED": 26
   },
   "records": [
     {
@@ -131051,22 +131051,22 @@
     },
     {
       "acceptance": "UNKNOWN",
-      "authority": "UNRESOLVED",
-      "confidence": "UNRESOLVED",
+      "authority": "NOT_APPLICABLE",
+      "confidence": "NOT_APPLICABLE",
       "configured_root": "specs/project",
-      "continuation": "RECONCILIATION_REQUIRED",
+      "continuation": "NOT_APPLICABLE",
       "deployment": "UNKNOWN",
       "digest": null,
-      "disposition": "DORMANT_UNRESOLVED",
+      "disposition": "INVALID_OR_UNKNOWN",
       "evidence_freshness": "UNKNOWN",
       "last_reconciled": null,
       "lifecycle": "NOT_A_CANONICAL_SPEC",
-      "next_action": "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff.",
+      "next_action": "This record is an inventory item, not a canonical Spec handoff.",
       "path": "specs/project/013-features-195-200",
-      "primary_blocker": "MISSING_SPEC_MD",
-      "problem": "MISSING_SPEC_MD",
+      "primary_blocker": null,
+      "problem": null,
       "record_key": "canonical:specs/project/013-features-195-200",
-      "record_kind": "MALFORMED_CANDIDATE",
+      "record_kind": "PROJECT_REQUIREMENTS",
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []

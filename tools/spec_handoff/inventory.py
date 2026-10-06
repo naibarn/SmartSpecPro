@@ -107,7 +107,7 @@ def inventory(repo: Path) -> dict[str, Any]:
                 kind = "CANONICAL_SPEC" if problem is None else "INVALID_SPEC"
             elif root_name in config["planning_roots"]:
                 kind = "PLANNING_ARTIFACT"
-            elif root_name in config["canonical_roots"] and (path / "requirements.md").is_file():
+            elif root_name in config["canonical_roots"] and any((path / relative).is_file() for relative in ("requirements.md", "requirements.deep-project/requirements.md")):
                 kind = "PROJECT_REQUIREMENTS"
             elif root_kind == "CANONICAL" and path.parent == root and _id_for(path):
                 kind = "MALFORMED_CANDIDATE"

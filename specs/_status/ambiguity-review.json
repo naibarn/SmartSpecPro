@@ -1,5 +1,5 @@
 {
-  "record_count": 319,
+  "record_count": 318,
   "records": [
     {
       "acceptance": "UNKNOWN",
@@ -36,43 +36,6 @@
       "spec_path": null,
       "successors": [],
       "title": "161-vertical-drama-async-skill-jobs",
-      "verification": "UNKNOWN"
-    },
-    {
-      "acceptance": "UNKNOWN",
-      "authority": "UNRESOLVED",
-      "confidence": "UNRESOLVED",
-      "configured_root": "specs/project",
-      "continuation": "RECONCILIATION_REQUIRED",
-      "deployment": "UNKNOWN",
-      "digest": null,
-      "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
-      "last_reconciled": null,
-      "lifecycle": "NOT_A_CANONICAL_SPEC",
-      "next_action": "Keep this configured-root candidate visible as malformed; locate its normative spec.md or record why it is intentionally absent before initializing a handoff.",
-      "path": "specs/project/013-features-195-200",
-      "primary_blocker": "MISSING_SPEC_MD",
-      "problem": "MISSING_SPEC_MD",
-      "record_key": "canonical:specs/project/013-features-195-200",
-      "record_kind": "MALFORMED_CANDIDATE",
-      "relationships": {
-        "duplicate_ids": [],
-        "duplicate_revisions": []
-      },
-      "requirements": {
-        "open": 0,
-        "pass": 0,
-        "total": 0
-      },
-      "review_priority": "R0_DATA_INTEGRITY",
-      "revision": null,
-      "root_kind": "CANONICAL",
-      "slug": "013-features-195-200",
-      "spec_id": "013",
-      "spec_path": null,
-      "successors": [],
-      "title": "013-features-195-200",
       "verification": "UNKNOWN"
     },
     {
