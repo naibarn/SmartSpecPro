@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "42f11c9cfae472ba2ed6c477c68cfa242720edac7ab3211401f8ed41c0a4a92f",
       "requirement_id": "REQ-FDF6FCD06AA5",
       "requirement_text": "- Keep Agency Builder as the primary visual authoring UI.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "37060a6efb01c3a754f280a380c3883f170e2935885fff5f7c9d17c590e58839",
       "requirement_id": "REQ-8590F3A4F56C",
       "requirement_text": "- Preserve existing Agency Swarm agency behavior by default.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "c4fbc4422281d60765fcde905e9a4c876f294afa3225ba4a97430b1d2468df52",
       "requirement_id": "REQ-46B81B980489",
       "requirement_text": "- Allow a new agency version to opt into ADK 2.0 at workflow or subgraph level.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "bb4160c1f38153d2d1d2e956f285aabf3437455818de9e0661d42a709b172894",
       "requirement_id": "REQ-364EAA74C4B5",
       "requirement_text": "- Support explicit subgraph partitioning between `agency_swarm` and `adk2`.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "cf4f0610020eb9364c241551fbdc264f09cdcab548b0404da44f42d9661917bf",
       "requirement_id": "REQ-A9C34DB86E27",
       "requirement_text": "- Add compile-time validation, capability checks, and lowering diagnostics.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "8b2cae34754af8cbcbadcaa3ccf6de95581d47a57d6eb6bf8385a88227c7d0cf",
       "requirement_id": "REQ-30300C8DA0CD",
       "requirement_text": "- Support bridge contracts for cross-engine execution.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "d8538c20d7ff368fe7f197b58f2d5dd3b2cff0128ff2b04990773f62ccd9f7b2",
       "requirement_id": "REQ-0A55E26C25CE",
       "requirement_text": "- Preserve current tool assignment semantics on nodes.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "6d055e5c38a03a0ec280b2c153822602f80ecc83313429dc45e56a55dd2b8d58",
       "requirement_id": "REQ-CF633A61CD3D",
       "requirement_text": "- Support trace visibility down to subgraph and bridge level.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "c58c663cc5ba630df973a7b63a2c02f9878bc0436a0baea52e4ed224405f7089",
       "requirement_id": "REQ-2E3773E3E414",
       "requirement_text": "- Backward compatibility first.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "4574977e15977ed7a69ec1e560a73d2123dbcf8a056a4485fc411be1879e5848",
       "requirement_id": "REQ-34B32E8EB95A",
       "requirement_text": "- Deterministic compile behavior with explicit errors.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "14ac3efe2c4df0fb93ad6d2a9fc1be33d8fa7b05d0034eb1ed11d91fc006e7de",
       "requirement_id": "REQ-28E5C0C01A43",
       "requirement_text": "- Incremental rollout through feature flags.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "7c4f9d93233176d3a995fd69cec0a8ed35506a73e86371e2d1178180cbed064e",
       "requirement_id": "REQ-81ED9B440831",
       "requirement_text": "- Minimal disruption to current agency storage and UI.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "b8fb778ba859ff1398e3a704b9f1f25f3625e6a5da5fea12ee571d0ea051814f",
       "requirement_id": "REQ-135733F0A031",
       "requirement_text": "- Strong golden testing for legacy agencies.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "fc80727c5b28395e06c3c01e17fbae723fd72233fd0bb75ce33be0841217e0bb",
       "requirement_id": "REQ-D7EBF66DB764",
       "requirement_text": "This feature keeps that model. A standalone tool node may be considered later, but is not required for hybrid runtime phase 1.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "3834a5a97577e3d477aeb487a2d113c840fef28a055f40e18e551fe1fc055739",
       "requirement_id": "REQ-B911FC9D44A7",
       "requirement_text": "- `engine_boundary` is the only new phase-1 structural node that must persist explicitly when a user bridges engines.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "f8ead4ce766083d88666e825b2d850d9bc6d48bc4d0135f18b06511569121a59",
       "requirement_id": "REQ-9405C585624B",
       "requirement_text": "| `supervisor` | Native | Lower to coordinator/collaborative agent | ADK lowering required |",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "510189bf53dd6b5c82bb1df78ad0c07654707225611ad0f3f9c4dcd67e4ae4ae",
       "requirement_id": "REQ-A8380F296766",
       "requirement_text": "- Entry and exit nodes must be explicit.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "853780695ae973159913f36cce9309b14f1ec1feb09ec32b41fe6a03ca948b2e",
       "requirement_id": "REQ-B220D364971C",
       "requirement_text": "Each bridge must define:",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "458bedc311c00ee5a60ac69afeabad1a9a372bb61ced567dd75d33059051209c",
       "requirement_id": "REQ-1B88FC4E09DE",
       "requirement_text": "- payload schema",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "f2689d9149eb51c03fa8e738c39484182ce6505e2065044e782a8a66d205b504",
       "requirement_id": "REQ-892632DE81CC",
       "requirement_text": "- artifact references",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "be27410ed46ac51dae538b89dda61eb1369c36429c4f9d93938d79fb65dbf91e",
       "requirement_id": "REQ-3AA1F4D50CBB",
       "requirement_text": "- serialization format",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "c423df82671a99df43ce857afb228f090da0da8cda1536eb1c517ee24e4c9bf5",
       "requirement_id": "REQ-FF9CF779F883",
       "requirement_text": "- trace propagation",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "8268ab555150087ce5dea81bc1aade3fa850d59553dc2eb840a3080054b9cb4f",
       "requirement_id": "REQ-73A06E0025D8",
       "requirement_text": "- retry policy",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "16ba235335ad13369e3108b4cbd6195b0b994c304d85e320b8bb72361c9bafc1",
       "requirement_id": "REQ-2138610C486B",
       "requirement_text": "- timeout policy",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "c69da07698cca9d45371fef492d13495ce6161b78210a1a92b73855888450f09",
       "requirement_id": "REQ-A06662A7602C",
       "requirement_text": "- compensation policy if relevant",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "61f895e9e4a064675667bfe5dfee5197d6bd57aa1651de6c2ba58794cd443b76",
       "requirement_id": "REQ-177FF8E11564",
       "requirement_text": "- approval ownership if human review is required",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "9cc3522a16f4e444502614cbfe6e33891326ba69d8bf91f5bcb70a42a046dcaf",
       "requirement_id": "REQ-1704F5A996AA",
       "requirement_text": "Legacy agencies must preserve:",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "685f6c442b510666e5eaa8c98f5fa594aef7c58541a39addcf91880327ead0b9",
       "requirement_id": "REQ-2ECF67501476",
       "requirement_text": "ADK 2.0 is currently documented as an Alpha release. SmartSpecPro must therefore treat this runtime as opt-in and experimental until later rollout phases.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "c6ec017cc0ea0ddb1dcc8f57793dae27ccf0d0bc6742fe23c6df3700801a7857",
       "requirement_id": "REQ-ED12E3E8BAD5",
       "requirement_text": "SmartSpecPro must expose ADK through a stable internal wrapper, not raw ADK internals:",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "31118dc0840306106d711f2e4e615476e47518c7e8caaf4c989a1264ee4c27f2",
       "requirement_id": "REQ-AF5F0943F7E0",
       "requirement_text": "- Every subgraph and bridge attempt must emit normalized trace and usage events with stable idempotency keys.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "a6807bf52d6b52a2e252cb4aa5e21bcd82a68cf3d8e1aa4c98c5e2b48f069090",
       "requirement_id": "REQ-50E1D42E2284",
       "requirement_text": "- If ADK is workerized later, it must preserve the same IR, bridge, trace, and billing contracts rather than inventing a second hybrid protocol.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "a7c582300f4c7523044614ebebac36373f6fc98b11d8efcd9032d7e1aeb8c382",
       "requirement_id": "REQ-5F2A7DEA486C",
       "requirement_text": "- SmartSpecPro must normalize Agency Swarm, ADK, and bridge usage into the existing user-facing run contracts already exposed by `agencyBridge.ts`, including `creditsUsed`, `stepAttemptSnapshots`, structured outputs, preview artifacts, and trace `totalCost`.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "6d28464293e6d80c7e94d69103ba17d47904ba5e08a4754072d9a0edcc4967ed",
       "requirement_id": "REQ-191C531F3943",
       "requirement_text": "- Boundary-only schema validation and payload transformation are zero-credit by default. If a boundary invokes an existing billed tool, media service, or storage workflow, that cost must flow through the existing SmartSpecPro billing path for that service rather than a second hybrid-only ledger.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "726d9b09c5bc7ca8e4e096c54b9fb1b4effcbd7a8aed93c13fb8537f7bc38011",
       "requirement_id": "REQ-9F031608B759",
       "requirement_text": "- Boundary payloads must use `payload + artifactRefs + metadata`; large blobs are passed by reference, not inlined into trace or bridge payloads.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "966fbdc6e6bfb7490dec57366cac0de04bd4b9d39ff05550123e937d31b1a791",
       "requirement_id": "REQ-BB3E3D96181C",
       "requirement_text": "- If an artifact is publishable beyond the run, SmartSpecPro must create or link the corresponding `library_items` and `library_links` records through the existing publication/indexing pipeline aligned with spec 071.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "7313bfcdb2948809879da1ff0ab0948d0337a02d51f59deb537a7b9789a82299",
       "requirement_id": "REQ-4D995B2871F3",
       "requirement_text": "- Upload initialization and completion must use SmartSpecPro-issued signed upload targets or equivalent managed storage helpers. ADK subgraphs must not publish directly to uncontrolled third-party storage and then hand back raw URLs as the source of truth.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "43273c94ec57dbdfa08ccbd06223274e97d42230e92a6ac28c83400aea4584dc",
       "requirement_id": "REQ-A78AC561BF1D",
       "requirement_text": "- Artifact completion must be idempotent on `(runId, subgraphId, logicalArtifactKey, checksum)`.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "57173c30d7c3ac0e2246c8ae3dc6aa34ede1c46ae516cc7084a0a461dd4ab9ca",
       "requirement_id": "REQ-8394A636ADD0",
       "requirement_text": "- existing Agency Builder canvas",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "ed5cbcb34a9853025ad43e38ff3bc4ff2a248b65576b462420869a836a671987",
       "requirement_id": "REQ-15C89C57D866",
       "requirement_text": "- existing drag-connect authoring",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "086f9fc98d69b82056fa8fd7b893fbf24d93974d97d19fd14a2987c15baf2c15",
       "requirement_id": "REQ-F061F7FB25E4",
       "requirement_text": "- current node palette and property panels",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "029b8a739acd7d8815432108de6514e5fde90688629f87242bc95873ce66c729",
       "requirement_id": "REQ-E3D8E253D4D3",
       "requirement_text": "- current version history pattern",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "42ad629195fba3806bf5144b996d7858cc4091f0518a397a1a9ac2d511e84986",
       "requirement_id": "REQ-DC378592C70E",
       "requirement_text": "- engine badges on nodes and subgraphs",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "a6f141797b695b55c9396e5f02a56309c64b8e8a8a5e876c6c06d35269731fcf",
       "requirement_id": "REQ-64D928E4C460",
       "requirement_text": "- subgraph containers on canvas",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "4235e1957a933e5ecdb85e4c05f7f08b6e1f30117784144e4d8968f1d0224739",
       "requirement_id": "REQ-5A824FBBF966",
       "requirement_text": "- `engine_boundary` visual node",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "b7412b73bbfdf4ebc1390302b9dd39963c5ade2e9ffdd25fe121fbb4106e4426",
       "requirement_id": "REQ-39C07F9D6D71",
       "requirement_text": "- compile diagnostics drawer",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "a80fa5a36e1c72754f0210ea8a07be9f844a7e3e66e5254f02e21805254c3d00",
       "requirement_id": "REQ-72058C4F1870",
       "requirement_text": "- compile preview panel",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "9090a77ff41e1055d9b23e5d94402b82bbf03009222ee56d90a98cbb8d93b008",
       "requirement_id": "REQ-3C8AE9CC418B",
       "requirement_text": "- legacy compatibility banner",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "56b3047bb342ad1a805af7272a2846b6101781c4f43d0ba80c1f88f22d721f81",
       "requirement_id": "REQ-E57A0B7C9820",
       "requirement_text": "- capability warnings panel",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "ca8e8c77769e0950c673abf828b6679cff0c3937a241fac438034f7bf07b032b",
       "requirement_id": "REQ-7B6DC28E8E2A",
       "requirement_text": "- legacy agencies hide hybrid controls by default",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "52e9d7e0f55b775a3238028bc5d08369b2de2a5c94d25d214d0b580a3db219ec",
       "requirement_id": "REQ-63A6E12278AA",
       "requirement_text": "- dragging edges across subgraphs with different engines should suggest a boundary node",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "371d7277589f5457f9ef6b37b7cfe122854ad2a2661b97559385f459f3362e5b",
       "requirement_id": "REQ-8E3ABBB3B6A2",
       "requirement_text": "- unsupported engine-node combinations must show lint warnings immediately",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "9ae73aff5409bc6fcefbbd01b9762696947bf249896e983817674383b40d0dba",
       "requirement_id": "REQ-A46BF35A6D58",
       "requirement_text": "- compile-invalid graphs may save as draft but cannot run",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "f04f95d08d9d7c2710313ffb32d458ae00deb78fec08a7228897930c693513ab",
       "requirement_id": "REQ-28E682C845C8",
       "requirement_text": "- upgrade to hybrid requires explicit user action that creates a new agency version",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "b3c7bc2b37c9cdb1afaed9851f26245fa0cc7cb55a7d8fee2f455b7c0d5c817e",
       "requirement_id": "REQ-AD0CF7197F7B",
       "requirement_text": "- do not reorder existing Agency Swarm communication flows",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "b83b12d0feac49e6980ef19a9cd66944535c99fbe83987dc42ced99241e32629",
       "requirement_id": "REQ-3C586CBB70BA",
       "requirement_text": "- do not change prompt assembly for legacy agencies without explicit migration",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "1f2fe9346ae7b66d45c826e89ca798679eee1088de67618726f891bcd705871a",
       "requirement_id": "REQ-BB2F492EC072",
       "requirement_text": "- do not change tool schemas or attached tool semantics for legacy agencies",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "56ee066131f457b0b2160a02d431e580775e93853f024bb9eb2541ef76756483",
       "requirement_id": "REQ-59B009F77B38",
       "requirement_text": "- do not surface ADK-only authoring prompts inside legacy agency mode",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "73735b24df50a188c91d2aec35c83fbb88c4087604008e8c716769e459bbff32",
       "requirement_id": "REQ-130568B37731",
       "requirement_text": "The user must explicitly choose an upgrade action such as:",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "4905b76f77a8a1481e771b874d043856afdc9ede6afc46dbea527309a907f494",
       "requirement_id": "REQ-BDEFBCA5DDFD",
       "requirement_text": "- All outbound tool, OpenAPI, and MCP targets used through hybrid agencies remain subject to SmartSpecPro SSRF protection, DNS re-validation, and egress-policy enforcement already required by the agency platform.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "93bd7cd9b9bd237e58ece1f83ab8937ba8fa78060565a03b608958f939195e1f",
       "requirement_id": "REQ-6AF6176936F7",
       "requirement_text": "- MCP, OpenAPI, and ADK-related secrets must be encrypted at rest and never written in plaintext into compile artifacts, snapshots, checkpoints, or traces.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "b854db5aca09d95a9536ee769f5487c2cc26a483f5b2a5affc1be2a9bf6c5b5c",
       "requirement_id": "REQ-72B87FB0B58D",
       "requirement_text": "- Trace payloads, boundary inspectors, and error logs must scrub bearer tokens, API keys, internal URLs, email addresses, and oversized tool outputs before persistence.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "5a133b28c62bb39cc7bdd8babc6f3679e990f368dd0450fc0136a3704ed3d199",
       "requirement_id": "REQ-058935B7A7BF",
       "requirement_text": "- Artifact publication must use SmartSpecPro-issued signed uploads or managed storage helpers and remain fully auditable.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "8ba8d3b220773d8252abb7454b912bbdcf0d774176c8cabccfc1290a4b5e427a",
       "requirement_id": "REQ-89E144BBF081",
       "requirement_text": "- The `agencyHybridAdk` feature flag plus an operational kill switch must gate compile, save-as-hybrid, and run paths.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "b52de85f78f3c5d73f4e8d44c0d115b7d4734685c5ac5917d722b0736453518a",
       "requirement_id": "REQ-E7B90EF089BC",
       "requirement_text": "- ADK package/runtime versions must be pinned to an allowlisted deployment environment because ADK 2.0 is Alpha.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "00831d5322684d4d714eebc85fe37b83894bb6d9fd2edf2339706cf2b2696de5",
       "requirement_id": "REQ-E14399949848",
       "requirement_text": "- Unified audit logs must record engine selection, compile artifact version, boundary transitions, artifact publication, and any policy-denied external target attempts.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "c690b8b1aa1e96efd03ca5e934828e126e2917c895724e51d47e885d3014c551",
       "requirement_id": "REQ-0DF931221052",
       "requirement_text": "This feature must also explicitly prove that:",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "c6e92ab2edd2bc8e4c28039d9ef2636e9238f03ed0072c901925827c79901ccc",
       "requirement_id": "REQ-E5FBCE5445E8",
       "requirement_text": "Hybrid internals must still resolve to the existing agency run-result contract exposed by Node services, rather than returning a second ADK-specific public run shape.",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "9fc9a7c0085602509c9e04ff69332d68d5af6d51f8bab448f296f410dc79fe1a",
       "requirement_id": "REQ-B588A6BAF8DF",
       "requirement_text": "- existing agencies still load and run through Agency Swarm",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "62005b5e950f9c46042eb5aca382a3e5252de8c7d0e2087ece785335cb612d02",
       "requirement_id": "REQ-35CB163C4914",
       "requirement_text": "- hybrid-aware compiler can auto-wrap legacy agencies into one Agency Swarm subgraph",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "1ad1f2c162f082b11a3b533902c218f1e7de1fade4ee3a03962ad6a6a047b148",
       "requirement_id": "REQ-F1E9ADF45A28",
       "requirement_text": "- a new agency version can contain two subgraphs with different engines",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "a508406c72ddf3c94f93ede2ba3e6f1f8a2337777a5f7593b75c4632e9d53b59",
       "requirement_id": "REQ-51FFF492DE10",
       "requirement_text": "- cross-engine execution requires explicit boundary contracts",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "0ade935158b019779185c20b32d749bc843d1f66056b9c4360a749014bbb3178",
       "requirement_id": "REQ-3BE4A6177E68",
       "requirement_text": "- compile diagnostics explain unsupported patterns clearly",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,7 +1603,7 @@
       "requirement_digest": "0781143c352af160a1762aff63e15dd223898e3b32e3eeb2bce0fb178c32c4c0",
       "requirement_id": "REQ-A99D18642358",
       "requirement_text": "- traces expose engine and subgraph boundaries",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1625,7 +1625,7 @@
       "requirement_digest": "b23fefe10f9a060153aed8797ddeb84511ce6ad6626715066d0d5be6371cec43",
       "requirement_id": "REQ-41FD38D2B0B8",
       "requirement_text": "- hybrid cost events reconcile into existing `creditsUsed`, `stepAttemptSnapshots`, and trace `totalCost` surfaces without double-charging retries",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1647,7 +1647,7 @@
       "requirement_digest": "3dd260564d69ef926c38ee90afc87216c0693bdcd716e76994a8ba65ceb4bca3",
       "requirement_id": "REQ-98D99417DB15",
       "requirement_text": "- hybrid artifacts publish through SmartSpecPro-owned artifact and library pipelines",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1669,7 +1669,7 @@
       "requirement_digest": "964c726df681bd9e260c9c905f76d93f34adb172117fcfdcc167571263335726",
       "requirement_id": "REQ-0C92BDEDECAE",
       "requirement_text": "- ADK compile/save/run paths are gated by feature flag and kill switch",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1691,7 +1691,7 @@
       "requirement_digest": "8dbcdf071bbd5755612081cdd3d13a9d36758fbd021943777d1f124605ae34cc",
       "requirement_id": "REQ-778AACDD507B",
       "requirement_text": "- security controls cover secret scrubbing plus SSRF/egress enforcement for tool-backed hybrid flows",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1713,7 +1713,7 @@
       "requirement_digest": "a715eebba421aa337647fe28847e1274a35769d8de304471b9e48a4b6f889947",
       "requirement_id": "REQ-A8F93EF1DE88",
       "requirement_text": "- compile preview",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1735,7 +1735,7 @@
       "requirement_digest": "7dc5bb6c266082573f0a4c4c6bdd6d5160a7b013c89ab73e2019271360df5ca0",
       "requirement_id": "REQ-88B94F94DF96",
       "requirement_text": "- migration wizard",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1757,7 +1757,7 @@
       "requirement_digest": "de9e889b794c9560f2078ddd8ee1e23d23367542df94f5dd5e0ba6e507995115",
       "requirement_id": "REQ-D489641BF7ED",
       "requirement_text": "- capability lint while editing",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1779,7 +1779,7 @@
       "requirement_digest": "b6e0a756e5a10c79d217d3c8dacc33303445d978697003bebf07fe34396f7642",
       "requirement_id": "REQ-7715945F4DDA",
       "requirement_text": "- auto-suggested subgraph grouping",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1801,7 +1801,7 @@
       "requirement_digest": "b26355cee852701cc7f7452e11d761691509f332d56a11caf23e9f8f78aeb583",
       "requirement_id": "REQ-2333C2F2F6B9",
       "requirement_text": "- assist-mode preview of implied boundaries",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1823,13 +1823,13 @@
       "requirement_digest": "8987f1e9fcefd8ef5ed9a91e85de17272ae9ee2737882fac235a24df47fbfffa",
       "requirement_id": "REQ-3B9B87A27B4F",
       "requirement_text": "- compile diff between legacy and hybrid plans",
-      "source_spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+      "source_spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "95fb7a2710537f6f1e3f5e3ecc22e23010e0572a0199372d9cf79510b425db98",
+  "spec_digest": "a68d977ee01188a69fee93fe54dd5b61a8d5cd1b900953651540f3b53eacc6cb",
   "spec_id": "076"
 }

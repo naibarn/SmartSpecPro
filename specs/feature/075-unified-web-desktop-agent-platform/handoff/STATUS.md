@@ -2,15 +2,15 @@
 # 075 — 075 - Unified Web + Desktop Agent Platform
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 148 unresolved of 148
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 8
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
 - Status claim: `Proposed` — `specs/feature/075-unified-web-desktop-agent-platform/spec.md#5`
-- Relationship candidate: `SUPERSEDES` conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 059-external-worker-provider-f — unresolved target; target ambiguous (`specs/feature/075-unified-web-desktop-agent-platform/spec.md#7`)
+- Relationship candidate: `SUPERSEDES` conflicting desktop-local runtime positioning inside 004-desktop-app and partial local-runtime assumptions in 301-external-worker-provider-f — unresolved target (`specs/feature/075-unified-web-desktop-agent-platform/spec.md#7`)

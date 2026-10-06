@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "registry_version": 1,
+  "reserved_spec_ids": [],
+  "historical_spec_ids": [],
+  "aliases": [
+    {
+      "old_spec_id": "000",
+      "new_spec_id": "296",
+      "logical_title": "Silence Detection (Dead Air Removal) — Full-Screen Dialog",
+      "old_path": "specs/feature/000-selence-dectection/spec.md",
+      "canonical_path": "specs/feature/296-silence-detection/spec.md",
+      "source_digest": "e4d6df0eb7c8fc15aa9ccc997f14af4aa41196cdf81ea430e20748dffda58f94",
+      "canonical_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
+      "disposition_reason": "Earlier preserved canonical owner is explicitly Spec 000; Silence Detection is distinct and referenced by Feature 193 by path/name.",
+      "authority_evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#000",
+        "owner Spec first-introduction commit 6add6c180f3014e77ca4ab245f5279ef459c5be3"
+      ],
+      "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
+      "integrated_sha": null,
+      "effective_state": "ACTIVE_CANONICAL_IDENTITY",
+      "semantic_reference_repair_status": "COMPLETE"
+    },
+    {
+      "old_spec_id": "031",
+      "new_spec_id": "297",
+      "logical_title": "Social Ads Management — Facebook Ads Management + Social Suite Completion",
+      "old_path": "specs/feature/031-SocialAdsManagement/spec.md",
+      "canonical_path": "specs/feature/297-social-ads-management/spec.md",
+      "source_digest": "b39665ff9ef17959e231c9c9469c51e071a8341986fccfcb1032bc6d2d996d56",
+      "canonical_digest": "72631e967c1d89563f5fa3f44b32c2e15063e6a0acb64ad00b1f42ec27e5b24a",
+      "disposition_reason": "PlaywrightVision explicitly owns Spec 031 and has canonical downstream specs 032/033; Social Ads is a distinct capability without competing dependency authority.",
+      "authority_evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#031",
+        "owner Spec first-introduction commit 812a5eb8db048d5422c3db9f7c6c5669fa8f7046"
+      ],
+      "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
+      "integrated_sha": null,
+      "effective_state": "ACTIVE_CANONICAL_IDENTITY",
+      "semantic_reference_repair_status": "COMPLETE"
+    },
+    {
+      "old_spec_id": "164",
+      "new_spec_id": "298",
+      "logical_title": "Vertical Drama Prompt Expansion Quality Gap Closure",
+      "old_path": "specs/quick/164-vertical-drama-prompt-expansion-quality-gap-closure/spec.md",
+      "canonical_path": "specs/quick/298-vertical-drama-prompt-expansion-quality-gap-closure/spec.md",
+      "source_digest": "f4c7c1ee6648960007463926262e7a6b864ba9a1286e99e22805ac11fd3962e3",
+      "canonical_digest": "c2fcd07f5fba52dec52e8bb0ad187133b2b650bf46a0664bc9a87b03d77de36a",
+      "disposition_reason": "Worker App UX explicitly claims Feature 164; the quick Spec has an independent capability and only acquired its colliding ID from its directory prefix.",
+      "authority_evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#164",
+        "owner Spec first-introduction commit 13a313d474df163d6741ccf10e50df8aac2e30f0"
+      ],
+      "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
+      "integrated_sha": null,
+      "effective_state": "ACTIVE_CANONICAL_IDENTITY",
+      "semantic_reference_repair_status": "COMPLETE"
+    },
+    {
+      "old_spec_id": "014",
+      "new_spec_id": "299",
+      "logical_title": "Presentation AI Layout Intelligence",
+      "old_path": "specs/quick/014-presentation-ai-layout-intelligence/spec.md",
+      "canonical_path": "specs/quick/299-presentation-ai-layout-intelligence/spec.md",
+      "source_digest": "e9ec857685227abc47be7bde28ddc793751c9e9f92ca0a582c69a9c7a248d110",
+      "canonical_digest": "736c386fa6d4faea98445c8c6a5c4ba75fb717e47f2d04bfab583f1497b139b1",
+      "disposition_reason": "Core Funnel is the earliest explicit Feature 014 and has active funnel implementation; Presentation is later, has no ID claim in its normative heading, and its own implementation labels are repaired to Spec 299.",
+      "authority_evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#014",
+        "owner Spec first-introduction commit 0729e3bc8bc9ed1f640086641044dec57a1b29d5"
+      ],
+      "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
+      "integrated_sha": null,
+      "effective_state": "ACTIVE_CANONICAL_IDENTITY",
+      "semantic_reference_repair_status": "COMPLETE"
+    },
+    {
+      "old_spec_id": "045",
+      "new_spec_id": "300",
+      "logical_title": "Remove JWT from Celery Task Arguments",
+      "old_path": "specs/feature/045-CeleryJWTRefactor/spec.md",
+      "canonical_path": "specs/feature/300-celery-jwt-refactor/spec.md",
+      "source_digest": "b6595e76a8f078a8223d3791e4b2fc160a08e5ddf4521f1cfbebf35684a9283e",
+      "canonical_digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8",
+      "disposition_reason": "Hybrid Skill Orchestrator is the earlier ID 045 and remains represented in active runtime code; Celery JWT is later planning-only material without a dependency superseding that ownership.",
+      "authority_evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#045",
+        "owner Spec first-introduction commit 3901a2682d271a0385e5d3614525d98c900c146d"
+      ],
+      "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
+      "integrated_sha": null,
+      "effective_state": "ACTIVE_CANONICAL_IDENTITY",
+      "semantic_reference_repair_status": "COMPLETE"
+    },
+    {
+      "old_spec_id": "059",
+      "new_spec_id": "301",
+      "logical_title": "SmartSpecPro Distributed Worker Runtime",
+      "old_path": "specs/feature/059-external-worker-provider-framework/spec.md",
+      "canonical_path": "specs/feature/301-external-worker-provider-framework/spec.md",
+      "source_digest": "5b0a8b29d67a781a0060a55ef9267f6a9cfc874a621e5294de826fff6b0079fa",
+      "canonical_digest": "fec94cf0cb5d732ee702cf96cf69f520803eeb5bec023b195466e9e739de02cb",
+      "disposition_reason": "KNPLabs is the earlier explicit Spec 059 and has retained provider implementation. External Worker was created later; its umbrella role and downstream dependencies are preserved under 301, and only narrow ZeroClaw wording is superseded by later Specs.",
+      "authority_evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#059",
+        "owner Spec first-introduction commit 6074d9bdf154f34791cbbea0474280d795eb123d"
+      ],
+      "baseline_sha": "8779e6ef697212f22836f2020a4ec6ec0c590d4d",
+      "integrated_sha": null,
+      "effective_state": "ACTIVE_CANONICAL_IDENTITY",
+      "semantic_reference_repair_status": "COMPLETE"
+    }
+  ],
+  "historical_dispositions": [
+    {
+      "old_spec_id": "058",
+      "logical_title": "Feature 058: AI Agency Creator — Intelligence Upgrade",
+      "original_path": "specs/feature/058-agency-creator-intelligence-upgrade/spec.md",
+      "preserved_path": "specs/_history/spec-id-conflicts/058-agency-creator-intelligence-upgrade/spec.md",
+      "source_digest": "144efa2089eb7f1d75b15e36b8971cb655e48f9cf3ddaff6339f59f8a0bdd367",
+      "canonical_owner_path": "specs/feature/058-meta-channels/spec.md",
+      "classification": "HISTORICAL_NON_CANONICAL",
+      "disposition_reason": "Retired Agency system; no active code/runtime references were found. Source tree is retained unchanged outside canonical roots.",
+      "authority_evidence": [
+        "duplicate-spec-id-authority-review-20261006.md#058",
+        "AGENTS.md retired-systems boundary"
+      ]
+    },
+    {
+      "old_spec_id": "162",
+      "logical_title": "Feature 162/163 Gap Closure Implementation Spec",
+      "original_path": "specs/feature/162-163-gap-closure/spec.md",
+      "preserved_path": "specs/_history/spec-id-conflicts/162-163-gap-closure/spec.md",
+      "source_digest": "2ed8abffe582e178650ff2ebce21c2883591682d9415b5e668eed597b277bded",
+      "canonical_owner_path": "specs/feature/162-vertical-drama-broll-media-intelligence-worker/spec.md",
+      "classification": "HISTORICAL_IMPLEMENTATION_EVIDENCE",
+      "disposition_reason": "Combined 162/163 gap-closure artifact, not a second normative independent Spec; preserved outside canonical roots without content edits.",
+      "authority_evidence": [
+        "duplicate-spec-id-authority-review-20261006.md#162",
+        "later Spec 179 and 191 path references"
+      ]
+    }
+  ]
+}

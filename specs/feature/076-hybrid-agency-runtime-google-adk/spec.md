@@ -3,7 +3,7 @@
 Version: 1.1
 Date: 2026-04-08
 Status: Proposed
-Depends-on: 027-AgencySwarm, 052-agency-swarm-full-capability, 059-external-worker-provider-framework, 071-openclaw-external-runtime-integration
+Depends-on: 027-AgencySwarm, 052-agency-swarm-full-capability, 301-external-worker-provider-framework, 071-openclaw-external-runtime-integration
 Audience: Agency Builder, Web Control Plane, Python Runtime, QA, Platform
 References:
 - https://adk.dev/2.0/

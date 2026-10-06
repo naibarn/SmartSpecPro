@@ -18,8 +18,8 @@ Reason:
    - Those features remain valid for OpenClaw control plane, delegated platform access, and delegated MCP.
    - The missing work is broader runtime-fabric completion, not a reversal of the OpenClaw work already done.
 
-2. Treat Feature 059 as historical baseline, but supersede its conflicting ZeroClaw sidecar wording.
-   - Feature 059 still supplies useful vocabulary and acceptance ideas.
+2. Treat Feature 301 as historical baseline, but supersede its conflicting ZeroClaw sidecar wording.
+   - Feature 301 still supplies useful vocabulary and acceptance ideas.
    - Feature 077 becomes the new source of truth where ZeroClaw must be modeled as a managed local runtime profile.
 
 3. Preserve OpenClaw as the first production runtime while generalizing the platform around it.
@@ -61,7 +61,7 @@ Reason:
 
 [AUTO-FIX]
 
-- Added a clear supersession rule for Feature 059’s ZeroClaw sidecar language.
+- Added a clear supersession rule for Feature 301’s ZeroClaw sidecar language.
 
 ### Round 4
 

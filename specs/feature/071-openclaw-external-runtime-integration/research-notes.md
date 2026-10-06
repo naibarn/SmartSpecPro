@@ -2,11 +2,11 @@
 
 ## Existing spec baseline
 
-### `specs/feature/059-external-worker-provider-framework/spec.md`
+### `specs/feature/301-external-worker-provider-framework/spec.md`
 
 Key findings:
 
-- Feature 059 already introduces worker-runtime ideas and names `openclaw_gateway` as a future runtime type
+- Feature 301 already introduces worker-runtime ideas and names `openclaw_gateway` as a future runtime type
 - the document still frames ZeroClaw as a bundled sidecar and does not fully reflect the newer "managed local runtime" positioning
 - OpenClaw is covered only as one subsection inside a broader worker-runtime program, so there is room for a follow-on feature that isolates OpenClaw implementation scope
 

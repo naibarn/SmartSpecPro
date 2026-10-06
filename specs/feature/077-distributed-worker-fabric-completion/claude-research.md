@@ -5,9 +5,9 @@ Scope: current SmartSpecPro worker-fabric implementation truth versus the revise
 
 ## 1. Existing feature chain
 
-### Feature 059
+### Feature 301
 
-`specs/feature/059-external-worker-provider-framework/spec.md` is the original worker-fabric baseline. It still contains useful job-model and worker-model ideas, but it frames ZeroClaw as a bundled sidecar and does not reflect the later OpenClaw-focused implementation work.
+`specs/feature/301-external-worker-provider-framework/spec.md` is the original worker-fabric baseline. It still contains useful job-model and worker-model ideas, but it frames ZeroClaw as a bundled sidecar and does not reflect the later OpenClaw-focused implementation work.
 
 ### Feature 071
 

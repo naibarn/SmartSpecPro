@@ -47,7 +47,7 @@ Framework scenarios below are checked by focused unit, lifecycle, and skill-cont
 
 ## Result
 
-- All 40 cases pass. Cases 8, 9, 10, 11, 19, and 20 were rechecked against the refreshed 303-Spec / 459-record inventory and current repository evidence. The duplicate-revision scenario has no live duplicate pair; its behavior remains covered by the framework test without inventing a repository Spec.
-- Refreshed inventory at canonical baseline `0a840d75a75e61f32dacb12e0b292dfb81cc3864`: 303 canonical Specs and 459 total discovered/indexed records; the relationship candidate graph contains 300 edges and the ambiguity-review projection contains 327 open records.
+- All 40 cases pass. Cases 8, 9, 10, 11, 19, and 20 were rechecked against the refreshed 305-Spec / 463-record inventory after duplicate-ID reconciliation and current repository evidence. The duplicate-revision scenario has no live duplicate pair; its behavior remains covered by the framework test without inventing a repository Spec.
+- Refreshed inventory at canonical baseline `0a840d75a75e61f32dacb12e0b292dfb81cc3864`: 305 canonical Specs and 463 total discovered/indexed records; the relationship candidate graph contains 302 edges and the ambiguity-review projection contains 331 open records. Eight requested duplicate-ID groups now have one canonical authority each, with six source-digest aliases and two preserved historical dispositions.
 - The 12 SpecV9 candidate sources are already present in canonical at their archive paths with byte-identical normative members (Spec 288's DOCX is preserved alongside its inventory transcription). `index --check`, `validate --all`, the Handoff framework suite, and skill audit pass on this baseline.
 - Resume predicate remains satisfied: `Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref`. Repository-wide reconciliation remains active; the next workunit is `REVIEW_DUPLICATE_SPEC_ID_GROUPS`.

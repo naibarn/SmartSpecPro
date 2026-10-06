@@ -10,17 +10,17 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/077-distributed-worker-fabric-completion/spec.md"
       },
       {
-        "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
+        "digest": "2c1d91306d7e722d048c4dc9712bed35e742807c85264c66c18ca4eaaa8f5969",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
@@ -50,7 +50,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
-        "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
+        "digest": "76af3c952f8aeb4e2af90cec5029b32a038cbe7bf1ea53092447bce0b8cf4cbf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
@@ -65,7 +65,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
-        "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
+        "digest": "4fecba5a87f51659dd9888052dc61697a26249a7375ea4689a9ac80d908fc474",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
@@ -77,7 +77,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635"
+    "expected_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270"
   },
   "continuation": {
     "next_action": null,
@@ -91,17 +91,17 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/077-distributed-worker-fabric-completion/spec.md"
       },
       {
-        "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
+        "digest": "2c1d91306d7e722d048c4dc9712bed35e742807c85264c66c18ca4eaaa8f5969",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
@@ -131,7 +131,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
-        "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
+        "digest": "76af3c952f8aeb4e2af90cec5029b32a038cbe7bf1ea53092447bce0b8cf4cbf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
@@ -146,7 +146,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
-        "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
+        "digest": "4fecba5a87f51659dd9888052dc61697a26249a7375ea4689a9ac80d908fc474",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
@@ -173,17 +173,17 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/077-distributed-worker-fabric-completion/spec.md"
       },
       {
-        "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
+        "digest": "2c1d91306d7e722d048c4dc9712bed35e742807c85264c66c18ca4eaaa8f5969",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
@@ -213,7 +213,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
-        "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
+        "digest": "76af3c952f8aeb4e2af90cec5029b32a038cbe7bf1ea53092447bce0b8cf4cbf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
@@ -228,7 +228,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
-        "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
+        "digest": "4fecba5a87f51659dd9888052dc61697a26249a7375ea4689a9ac80d908fc474",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
@@ -236,13 +236,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
-    "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+    "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.275583Z",
+      "last_evidence_at": "2026-10-06T09:56:58.893148Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-09T12:41:19+07:00",
       "spec_last_changed_at": "2026-04-09T12:41:19+07:00"
@@ -266,10 +266,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.275583Z"
+    "updated_at": "2026-10-06T09:56:58.893148Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -279,20 +279,20 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.275583Z",
+    "reconciled_at": "2026-10-06T09:56:58.893148Z",
     "sources": [
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/077-distributed-worker-fabric-completion/spec.md"
       },
       {
-        "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
+        "digest": "2c1d91306d7e722d048c4dc9712bed35e742807c85264c66c18ca4eaaa8f5969",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
@@ -322,7 +322,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
-        "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
+        "digest": "76af3c952f8aeb4e2af90cec5029b32a038cbe7bf1ea53092447bce0b8cf4cbf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
@@ -337,7 +337,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
-        "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
+        "digest": "4fecba5a87f51659dd9888052dc61697a26249a7375ea4689a9ac80d908fc474",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       },
@@ -349,42 +349,31 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
-        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "source_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "value": "Proposed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_RELATIONSHIP",
         "confidence": "LOW",
-        "excerpt": "Supersedes: Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature",
+        "excerpt": "Supersedes: Feature 301 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "relation": "SUPERSEDES",
-        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
         "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
-        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
-        "target_ambiguous": true,
-        "target_candidates": [
-          {
-            "path": "specs/feature/059-external-worker-provider-framework",
-            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
-            "spec_id": "059",
-            "title": "059 - SmartSpecPro Distributed Worker Runtime"
-          },
-          {
-            "path": "specs/feature/059-knplabai-multi-provider-expansion",
-            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
-            "spec_id": "059",
-            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
-          }
-        ],
+        "source_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "target_spec_ids": [
-          "059"
+          "301"
         ],
-        "value": "Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature"
+        "value": "Feature 301 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -406,54 +395,38 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
-        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "source_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "value": "Proposed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_RELATIONSHIP",
         "confidence": "LOW",
-        "excerpt": "Supersedes: Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature",
+        "excerpt": "Supersedes: Feature 301 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature",
         "line": 7,
         "relation": "SUPERSEDES",
-        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
         "source": "specs/feature/077-distributed-worker-fabric-completion/spec.md",
-        "source_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
-        "target_ambiguous": true,
-        "target_candidates": [
-          {
-            "path": "specs/feature/059-external-worker-provider-framework",
-            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
-            "spec_id": "059",
-            "title": "059 - SmartSpecPro Distributed Worker Runtime"
-          },
-          {
-            "path": "specs/feature/059-knplabai-multi-provider-expansion",
-            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
-            "spec_id": "059",
-            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
-          }
-        ],
+        "source_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "target_spec_ids": [
-          "059"
+          "301"
         ],
-        "value": "Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature"
+        "value": "Feature 301 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/077-distributed-worker-fabric-completion/spec.md"
       },
       {
-        "digest": "2e3be42446749aa392e7ec585fa9eec458bc4c6c4264a932fc1b40c923d8a579",
+        "digest": "2c1d91306d7e722d048c4dc9712bed35e742807c85264c66c18ca4eaaa8f5969",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-plan.md"
       },
       {
-        "digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+        "digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/claude-spec.md"
       },
@@ -483,7 +456,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-01-runtime-generalization-and-rollout-foundation.md"
       },
       {
-        "digest": "92e45eddadd10a269518dfbe3980a17dc886b38c47ab6f3bbe67b26512133cd4",
+        "digest": "76af3c952f8aeb4e2af90cec5029b32a038cbe7bf1ea53092447bce0b8cf4cbf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-02-desktop-zeroclaw-managed-runtime-foundation.md"
       },
@@ -498,7 +471,7 @@
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-04-nemoclaw-and-hiclaw-runtime-profiles.md"
       },
       {
-        "digest": "7060d1e037aa942eb08503e53ee0d8c86e19c621e3e1bb1d8bb6b9461c290d1e",
+        "digest": "4fecba5a87f51659dd9888052dc61697a26249a7375ea4689a9ac80d908fc474",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/077-distributed-worker-fabric-completion/sections/section-05-admin-docs-and-migration-truthfulness.md"
       }
@@ -518,7 +491,7 @@
     "unresolved": 67
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.275583Z",
+  "updated_at": "2026-10-06T09:56:58.893148Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

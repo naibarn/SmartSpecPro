@@ -6,115 +6,15 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "LOW",
-    "conflicts": [
-      {
-        "kind": "DUPLICATE_SPEC_ID",
-        "paths": [
-          "specs/feature/014-Core-Funnel-Dashboard",
-          "specs/quick/014-presentation-ai-layout-intelligence"
-        ]
-      }
-    ],
+    "confidence": "HIGH",
+    "conflicts": [],
     "evidence": [
-      {
-        "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/spec.md"
-      },
-      {
-        "digest": "2a64c2c998f5944b50b17b70c3143ae56e65c4b2837990a8f32385cfe82f22cb",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/implementation/deep_implement_config.json"
-      },
-      {
-        "digest": "65cb449c0969fed453d7883aea2f6e87c911b592146cf11d7cb9956c3d0bf2ab",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/implementation/usage.md"
-      },
-      {
-        "digest": "6aafc857177309456bad5d9b815f42e525343ed8cbb10580fe10326cf5336a8e",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/iteration-1-self-review.md"
-      },
-      {
-        "digest": "d52c5710ab1ccb9e643e110b7bb189d666a88f738c226ae893b87ceab418e224",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/iteration-1-summary.md"
-      },
-      {
-        "digest": "f9de1b849cdf8591e04cd9b6f97a8ec3570c4e68b1cd5f60aaa233112ccfee0d",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-01-diff.md"
-      },
-      {
-        "digest": "ac909c9f16f5d82a25b606fea3b1a6b61aec20195e521ffac5283c06433cbcfb",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-01-review.md"
-      },
-      {
-        "digest": "4c1f1db462c63c2672d0781a5e4abd325bbc759accc6b2b828a34f4c25d3f479",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-02-diff.md"
-      },
-      {
-        "digest": "56b5c45bc7d8f416322a40d86cbb648742c29b9ac774eb53819fa4f5127b66db",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-02-review.md"
-      },
-      {
-        "digest": "1f73022a3630abee099e7795ce859a90bfae8b8db4850e0fc556e12a2a737ac2",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/index.md"
-      },
-      {
-        "digest": "7ed753e334027a70d28741c570ca5291f6892c3b5d06343e7924d90f4846a1a6",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-01-data-schema-migration-and-index-foundation.md"
-      },
-      {
-        "digest": "6e0d1c71fcd261f47faa1fcf8cdebd88f1d1e41190d6a19c0ac63d008e5bc34b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-02-tracker-service-dedup-and-analytics-sidechannels.md"
-      },
-      {
-        "digest": "8055b688d6259e87388b16e79b5acd4c3f2c7b59f9cf36f24d6a2bfe0cd8211e",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-03-milestone-event-instrumentation-and-idempotency.md"
-      },
-      {
-        "digest": "76000777cc837e59a78384282ccae50c62b8a4ab802f61e23b9938b23ff65a81",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-04-funnel-analytics-router-aggregation-and-caching.md"
-      },
-      {
-        "digest": "a08bc149dd512cc5c0b428ebe319e2538bdbd3a728ade3c4ee102ae04f58f6dd",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-05-admin-dashboard-route-tabs-and-export-ux.md"
-      },
-      {
-        "digest": "8bdc5e96a86833a9ab0ef53f113661ad5dae66caedab1b312d1ba70f3bb41fe5",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-06-backfill-checkpointing-reconciliation-and-consistency-gates.md"
-      },
-      {
-        "digest": "0679596ab1d90f77b2ce0c58145978b933827be1bc5934178d7a75f9197f5371",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-07-security-rbac-tenant-scope-and-privacy-controls.md"
-      },
-      {
-        "digest": "3023078018b741111ae51915414fb0ae2f7eb19b94d8fcfcdb03182a8c0c2e36",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-08-rollout-slo-gates-rollback-and-operational-runbooks.md"
-      },
-      {
-        "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
-      }
+      "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#014",
+      "specs/feature/014-Core-Funnel-Dashboard/spec.md",
+      "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21"
     ],
     "predecessors": [],
-    "status": "AUTHORITY_CONFLICT",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
   "blockers": [],
@@ -227,31 +127,10 @@
         "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
-      },
-      {
-        "excerpt": "* Deck-Level Consistency Evaluator (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/deckConsistency.ts"
-      },
-      {
-        "excerpt": "* Layout Routing Telemetry (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/layoutTelemetry.ts"
-      },
-      {
-        "excerpt": "* Quality Gate Service (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/qualityGate.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -370,13 +249,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
     "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:14.678661Z",
+      "last_evidence_at": "2026-10-06T09:57:07.923596Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-02-16T01:15:49+07:00",
       "spec_last_changed_at": "2026-02-16T01:15:49+07:00"
@@ -403,7 +282,22 @@
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:14.678661Z"
+    "updated_at": "2026-10-06T09:57:07.923596Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#014",
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md",
+        "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21"
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -413,7 +307,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:14.678661Z",
+    "reconciled_at": "2026-10-06T09:57:07.923596Z",
     "sources": [
       {
         "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
@@ -509,27 +403,6 @@
         "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
-      },
-      {
-        "excerpt": "* Deck-Level Consistency Evaluator (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/deckConsistency.ts"
-      },
-      {
-        "excerpt": "* Layout Routing Telemetry (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/layoutTelemetry.ts"
-      },
-      {
-        "excerpt": "* Quality Gate Service (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/qualityGate.ts"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -667,33 +540,11 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "* Deck-Level Consistency Evaluator (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/deckConsistency.ts"
-      },
-      {
-        "excerpt": "* Layout Routing Telemetry (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/layoutTelemetry.ts"
-      },
-      {
-        "excerpt": "* Quality Gate Service (Spec 014 — Section 07)",
-        "identity_ambiguous": true,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/shared/presentation/qualityGate.ts"
-      }
-    ],
+    "active_references": [],
     "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
     "declared_claims": [
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -926,7 +777,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:14.678661Z",
+  "updated_at": "2026-10-06T09:57:07.923596Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

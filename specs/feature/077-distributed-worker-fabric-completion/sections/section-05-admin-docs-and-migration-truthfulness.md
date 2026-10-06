@@ -21,7 +21,7 @@ Without this section, the product risks overclaiming runtime parity.
    - Desktop + ZeroClaw managed workers
    - NemoClaw secure pools
    - HiClaw collaborative clusters
-2. Add migration notes that Feature 059 wording is partially superseded.
+2. Add migration notes that Feature 301 wording is partially superseded.
 3. Ensure rollout docs explain runtime-family feature flags and kill switches.
 4. Define workflow/persona-facing worker-node contracts and failure semantics at the docs/spec layer so UI and help copy do not overclaim orchestration behavior.
 5. Keep monitoring truth aligned with what is actually implemented.
@@ -50,7 +50,7 @@ Without this section, the product risks overclaiming runtime parity.
 
 - Do not let docs imply that all declared runtimes are already production-ready.
 - Keep OpenClaw docs accurate and keep desktop/runtime docs separate when behavior differs.
-- Make migration from old Feature 059 language explicit instead of silently changing terminology.
+- Make migration from old Feature 301 language explicit instead of silently changing terminology.
 - Workflow/persona docs should explain the difference between dispatch success, worker execution success, artifact publish success, and indexing success.
 - Workflow editor and node-registry surfaces must hide or disable worker-runtime node affordances until the corresponding runtime-family rollout flag and backend support are both enabled.
 

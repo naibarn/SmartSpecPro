@@ -4,7 +4,7 @@ Version: 1.4
 Date: 2026-07-16
 Status: Proposed
 Depends-on: 077-distributed-worker-fabric-completion, 081-hermes-agent-runtime-gateway-and-channel-interop, 093-hermes-capability-expansion, 121-mcp-connect-media-provider-sharing, 124-smart-ai-hub-worker-app
-Related: 131-vertical-drama-series-storyboard-video-flow, 059-external-worker-provider-framework, 094-personal-worker-access-keys-permissions-quotas
+Related: 131-vertical-drama-series-storyboard-video-flow, 301-external-worker-provider-framework, 094-personal-worker-access-keys-permissions-quotas
 Audience: Product, Runtime, Media, Web Control Plane, Worker App, Security, Admin, QA
 Source reference: "SmartSpecPro – Hermes Grok Media Worker Development Specification v1.1" (external document, adapted — see `request.md`)
 

@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "8b0525919dcee3991889cbaa0d20172a09bafaaa2a8baf8fa0af9d920239f041",
       "requirement_id": "REQ-CA0BA78DDED7",
       "requirement_text": "| 1.3 | 2026-07-16 | Adversarial consistency pass: fixed queued-per-user cap (3) contradicting portrait batch size (4); reference URLs no longer embedded at enqueue (claim-time minting + refresh endpoint — fixes signed-URL expiry in serial queues and keeps URLs out of the DB); shared-pool connection selection timing defined (enqueue-time least-depth in V1); consolidated error-code table added (13.7); claim gating specified via the existing required-claim-capability precedent (`remotion_render_video` pattern in `workerRegistryService.claimWorkerJob`); xAI data-transfer consent added to connect flow + security; flags-only rollback note |",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "3c00a7d8364397210529ba79f8aa1763ce1eeff89ed22e89cca865f60bde7854",
       "requirement_id": "REQ-7D215B64DA4D",
       "requirement_text": "all users. Because it runs on shared infrastructure, it must enforce",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "4a409fb01a382f621023b57e490b3e023f16c3ff3069ce80e343dfb581a718fd",
       "requirement_id": "REQ-5B3648158D8C",
       "requirement_text": "server worker must be a **separate process/unit** with its own resource",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "ad0f18b6990213202b0fbfc3d8277bc32d72dd8e88aeb831255df1df4165160f",
       "requirement_id": "REQ-36FD36C2F438",
       "requirement_text": "budget, and its throughput must be explicitly bounded.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "c9da7d3a47d8d8ed85ab198d1e50fe63d1c15e49cecaae4040fe9d6466700dae",
       "requirement_id": "REQ-02A0CC30CC42",
       "requirement_text": "- **Picker naming must be unambiguous**: Hermes rows carry a distinct",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "5940b5fa679f557c71e4fcf355d647dc72f326ae04f80d9a39491d12102ba8d8",
       "requirement_id": "REQ-1DCE34F04B7A",
       "requirement_text": "None of these may be hard-coded as permanently true. The worker must run a",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "6a935ae214a5f6b8551eadf23677997434c7ed0cd87673f992f6d1bded26d9d6",
       "requirement_id": "REQ-3A65ED9C336A",
       "requirement_text": "- Grok image/video generation selectable from the standard media model",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "50ae779ca0637f5f9349b18d192eed19269061ffd24feca906e464a2e842b1dd",
       "requirement_id": "REQ-46EF56468162",
       "requirement_text": "- Both deployment modes working end-to-end: shared server worker and",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "658653a1e79a118972a4422eb7d705958402114a3dbb2e0b6ce74ba52dc368ae",
       "requirement_id": "REQ-D3EE95322313",
       "requirement_text": "- Supported operations at launch: text-to-image, single/multi-image edit",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "193c983900783a30db1b25d24470561585ab92708209a3fc964dde2134ea392d",
       "requirement_id": "REQ-F5BDB0580D84",
       "requirement_text": "- Generated outputs land in SmartSpecPro storage and are registered as",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "c21e08a692079071de5933d8f5871cb6c571189410e859ac9337ad5ff23c8c12",
       "requirement_id": "REQ-BE5BC939A398",
       "requirement_text": "- Shared server worker cannot harm platform stability: bounded concurrency,",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "96cfafd9fd87ba7a2a23d577e546852b16aaa89895773f2e7fda6feb3f39589c",
       "requirement_id": "REQ-F59F1D53D836",
       "requirement_text": "- Private worker credentials never leave the user's machine; private",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "4cc030dd9f0d54bb1252b0f085a2eaf854f07e3aee98fb40f00cef488d0bff80",
       "requirement_id": "REQ-E498109C9BF4",
       "requirement_text": "- Retries, cancellation, stage progress, and failure diagnostics with",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "aacbce578f4e74788d607f438223e6e5a0b7afb2d727a1eb7be3252c81b461c0",
       "requirement_id": "REQ-62D52F1BCFBA",
       "requirement_text": "- Connection model generic enough to add an xAI API-key adapter or other",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "ecd029b3388a17e220b9b2e72ee33e8aea816189c3d2d67c0cc2dd349de8f643",
       "requirement_id": "REQ-EFD36ECB9D41",
       "requirement_text": "- Extension point for future Hermes functions (research, TTS,",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "a1957d9c6bc6808c15080ae8216fa33c64964a5d3e4d0df8121074c729335bb8",
       "requirement_id": "REQ-8751D8B4A820",
       "requirement_text": "1. The selected model's transport must be `hermes_worker`.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "704444100b9c33713acad1eceb48cb76c035a0602f3517d033d197f91a30d59c",
       "requirement_id": "REQ-741DC997D4E1",
       "requirement_text": "the shared pool — the user must see which account pays. **Resolution",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "503804a4d5050ea15c8fe061b036c9588ed9d40b53ef2a981642c2afc432e109",
       "requirement_id": "REQ-4941D2207A82",
       "requirement_text": "3. The connection's assigned worker must be `online` per heartbeat.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "dcd576be63aac7f3db116ffac5e74daf1d8accee32e35889ca70258aec5abe93",
       "requirement_id": "REQ-6A424C7CD3F7",
       "requirement_text": "4. Admission control (section 9) must pass.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "3d4cf0048280f44ea7d98d50d8c84eb4d93e3f06cd59b21b37cf8ff876eff1cf",
       "requirement_id": "REQ-C60F833BD70D",
       "requirement_text": "- A job workspace must never live inside any profile directory; a job must",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "74b08cd85f16b68e5bd041b77e217ec1ef8f11365ab63d86d16a56ed8fdb0f3e",
       "requirement_id": "REQ-E72ADA64B0D6",
       "requirement_text": "- Limit-coherence rule: the queued-per-user cap must always be ≥ the",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "fa6e095f4f5587dd48189cbb1ecede03151d7d31c8cf944259c1a587826f61a7",
       "requirement_id": "REQ-A9ED425CDAC6",
       "requirement_text": "against the queued cap and must be admittable in one submit. Admin",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "cbecdc9c351a434821e792fe51fa2d659a46120f2025545358185f7f3ae89d92",
       "requirement_id": "REQ-BEF12F379762",
       "requirement_text": "Forbidden columns (must never exist): password, access token, refresh",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "6c1d20ea00d17b1273b673a9086088ed1b7dbef0bf47941788a30a8acddb5e6b",
       "requirement_id": "REQ-402034B5F094",
       "requirement_text": "\"this is a Hermes job\" is expressed by `jobType` + the required claim",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "44a39388f2f89c976540d4c42bcb3f5c67bc5e969706babbf72db45c6609eae6",
       "requirement_id": "REQ-1E17F7BB2242",
       "requirement_text": "- Claim gating follows the **existing required-claim-capability",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "7fb65163d315710fbad930d7d8a2a16343d1866601a41b24822a451145010417",
       "requirement_id": "REQ-942324F0FF1F",
       "requirement_text": "`hermes_worker` arm must be added **at the helper level, not per resolver**,",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "f2ed569f870aa85f72fe6f29dac2fcc3d68499bb44c69f87bd27d2ca043c773a",
       "requirement_id": "REQ-7D47A70EBE7D",
       "requirement_text": "mechanical and must keep the two copies equivalent.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "7ee64ff745625ee6a75037d062df2dc500c2801e3ed7b01696520c62fa53abe5",
       "requirement_id": "REQ-17ECE2697EFB",
       "requirement_text": "Hermes-Grok must be usable from **every existing image/video generation",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "f32aa03f54827074c8e8d1b95d94d79aee51b0b7ec3a45d80cc49eb42660f8df",
       "requirement_id": "REQ-BFED472E942B",
       "requirement_text": "must be verified individually.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "8ed4e4b600bd323ff65fd163a02e471757c331a1e643e71ca0316e20584c7cdb",
       "requirement_id": "REQ-EE131406DF8F",
       "requirement_text": "| 1 | `generateCharacterImage` (~L2497) | `verticalDramaCharacters.ts` | character portrait (identity-locked) | `selectedImageModelId` (required) |",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "e1170d46822c98e0c3be755f95c98506b165d2d2942d010c1c04e94272ab48d2",
       "requirement_id": "REQ-36FCA37FBF02",
       "requirement_text": "| 2 | `generateCharacterSheet` (~L2873) | `verticalDramaCharacters.ts` | DNA / Design-Bible sheets (14 `sheetType`s: turnaround, expression_12, color_palette, …) | `selectedImageModelId` (required) |",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "13f983b52609e4e2a00b312198527cfd4fb9dd8c30f95a82fdef6b008ee90441",
       "requirement_id": "REQ-7344FCE036BC",
       "requirement_text": "| 4 | `generateLocationImage` (~L509) | `verticalDramaLocations.ts` | location stock image (+ location visual bible) | `selectedImageModelId` (required) |",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "696c16a46a477689cae000bb2f4fa7ef332c569dc9434a21946821f50aa6f4c7",
       "requirement_id": "REQ-7B61C19AFCAE",
       "requirement_text": "any call site relying on the fallback must surface model-selection UI",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "183e1d38a39e5ff434b0321e419a2a347c732c678b98a4132bfcaf68c342283b",
       "requirement_id": "REQ-693632179CB1",
       "requirement_text": "`DEFAULT_MODELS.image` fallback. As part of phase 2 this feature must:",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "c826ae2297ead42ea2fa2d72c4b90678d7c68153f7879611c7b4a01cb80adb1e",
       "requirement_id": "REQ-8A1AA6A25185",
       "requirement_text": "- **`VerticalDramaEpisodePage.tsx`** — three-layer model selection must",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "d5a2effb9ad3b834365079f15378aa07e14b7ebaf1559a1e2aafe63652a19cfd",
       "requirement_id": "REQ-ED4C2F766840",
       "requirement_text": "(`detectProviderFamily`, ~L117/275) — Hermes-Grok model ids must be",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "7930784f14cf173ceded845a58d3a46026bbfd7a2592fe3ca75c6b88aad5aeed",
       "requirement_id": "REQ-2FC9A263AB74",
       "requirement_text": "required-character portraits, location last — with the existing",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "e8f13d5d85d96b0bc8570696425116d04bb444c780da1d8d7474cdc178af1d8f",
       "requirement_id": "REQ-826F77DF1866",
       "requirement_text": "~L11124–11131); Hermes-Grok video rows must declare",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "37d874f68bdef501c78665f7e08767224a23e84a23335411f06b02f7fcbd62fb",
       "requirement_id": "REQ-545DA0DDFDB1",
       "requirement_text": "**execute serially**. The batch UI must show queued-vs-running per",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "19ff5d9a724b1fe0a41ed2ccee7c2bddb57b6b61d060ed0776a4901306b61f84",
       "requirement_id": "REQ-2346068280F8",
       "requirement_text": "must match `worker_jobs.requestedByUserId` (tenant-scoped).",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "216156a3f20b2a0883ffec1f65e26897e0c96b444346ebaae5f24db0dd8163d9",
       "requirement_id": "REQ-073E7265BAF9",
       "requirement_text": "`reconcileTaskCredits` call must handle `hermes_` tasks: terminal",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "952011d9f2e5fe482431a867040d0fda4629b05a3c1b0f5511f7a8954f122cb3",
       "requirement_id": "REQ-7AF6D69E9DF6",
       "requirement_text": "the manifest has no opinion. A model row must never widen what the",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "46c2cbde2f6d3bb5d08aec2ae70049363d4f3618cf03d309c8ecb762e6c444da",
       "requirement_id": "REQ-E8D628E23C35",
       "requirement_text": "(lease-token authenticated, active lease required) lets the worker",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "cb8b1e1490693d44b7143e07d0fdb45b5971707acfcef9144483d4d03823f129",
       "requirement_id": "REQ-F9E653ED096F",
       "requirement_text": "- no two labels claim the same index; role labels required for multi-ref;",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "edc5f0e332d74e76bba01470d38194959a177eb9aff107db6b2a00c369acb986",
       "requirement_id": "REQ-42157366D135",
       "requirement_text": "user prompt, and a required machine-readable result block:",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "8f3f3a450f8baaf546931c4be68ac8dc174365a61fa343d249c5fd6221375a36",
       "requirement_id": "REQ-25BE0BAAB932",
       "requirement_text": "- `reconcileTaskCredits` (used by VD candidate settlement) must recognize",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "04deaaecddffbaa3b7a04d9cce98f405abb26f85467ad2c111524b0dd487a344",
       "requirement_id": "REQ-181AB21CC0B1",
       "requirement_text": "11.6. It must never attempt gateway-style per-generation credit math on",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "62aaf2c95caa56120d53507f3c342d77d58a96c88a7db1aab5c8b5c4a3df59e8",
       "requirement_id": "REQ-7F2490E1A973",
       "requirement_text": "shows an \"update required\" state.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "8bcfa5f93137700fd58d8081351c3af2a51ed9d1c8a7fccfbb1e30a0fc7d1508",
       "requirement_id": "REQ-3ADE4E86B79A",
       "requirement_text": "- No Grok password anywhere; OAuth device-code only, on official xAI pages.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "f05b795cb2d2eb639efae823095d9c5cc77ac2c8c33e9f3c94d25e97dc6b4adc",
       "requirement_id": "REQ-A98698AA0F50",
       "requirement_text": "- Tokens: worker-host only, profile-scoped, never in DB/API",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "2f891e18980ba66d3dbc6990102df021a60af0b76df22954d8852664b037f013",
       "requirement_id": "REQ-0AB749629101",
       "requirement_text": "- Frontend never submits profile paths, worker ids (except picker of own",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "e09080e66317d8bcaa3f5593decfa87713db2bb0483c4cb363886022db0e8da9",
       "requirement_id": "REQ-3B6C4633D814",
       "requirement_text": "- Job workspace confinement, path-traversal rejection, malicious-filename",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "95144b9e5c2b548b6a6a667f972e2e798a7a41c8d48c7627fcda42f38de114d1",
       "requirement_id": "REQ-03E400F23790",
       "requirement_text": "- Worker control-plane auth unchanged (bearer + device proof); the shared",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "aed282fec4106cc0aa5e5954735798de163496dc96f62a57714b28913aa3e91c",
       "requirement_id": "REQ-26479F14627D",
       "requirement_text": "- Tool allowlist locked to media toolsets; a compromise of the prompt",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "a520ff93bd4df4d0ece75e4adf5f790ed154142e4e55f8be2848bda7a6e78eaa",
       "requirement_id": "REQ-90D38E1FCD8B",
       "requirement_text": "- Prohibited designs (acceptance-blocking): global shared `auth.json`;",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "6853c62666000709eb3d38f49a3baed8ec1962a0e6e29bcbcd647d76660ac6b0",
       "requirement_id": "REQ-4F4FBD8D2A07",
       "requirement_text": "- Audit events: connect/authorize/disconnect/revoke, job submit/claim/",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "89899c5c181af68e9a54acafe09b127d01e6803869c80626331b7cadafa38871",
       "requirement_id": "REQ-BB2134A9AA4A",
       "requirement_text": "- Data egress transparency: prompts and reference images leave the",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "f3d414bd30053cc36d997aedeb068b81ceb9389a0f8d777d294e1ddee1ad82e3",
       "requirement_id": "REQ-524AB93364C4",
       "requirement_text": "UI must state this plainly when creating a shared connection.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "14ed5fd231a005a2f508b13cb4b0c6ffd868917e724f548d6d21adaf91b5c8ad",
       "requirement_id": "REQ-0B07963378C1",
       "requirement_text": "reauth-required, entitlement 403s, jobs by type/status, job duration,",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "7f885754556ff03d3634e6b1bf3317f769360663b80e4db8e7a064078caa5572",
       "requirement_id": "REQ-478230D62221",
       "requirement_text": "paths are untouched by the transport-helper generalization, which must be",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "ca416188c3b156b965aceb7c84a3401b2f1d05eb79c15e0b0efaa7ca2ac060f3",
       "requirement_id": "REQ-C8F7ABBBBF60",
       "requirement_text": "but its timeline must not block enabling the shared mode.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "a92f1fe514e09e0d11f1a483db8b058a04567d6582840bf52ef5366d55b201a6",
       "requirement_id": "REQ-B3F67FD00658",
       "requirement_text": "- A user can connect a Grok account entirely through SmartSpecPro UI (or",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "aff104a542e7db934854cb31793e7a4dfd6b2196cc2881a2ca7ca286d972a8fb",
       "requirement_id": "REQ-DD3F9512C7D7",
       "requirement_text": "- \"Grok via Hermes\" models appear in the normal media model picker",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "126be7f1312ac8c4506c2507bb83f63f19887c28f3f2ffbdc2590592feeeaa2a",
       "requirement_id": "REQ-57B9189D3B7C",
       "requirement_text": "- Image generation and 3-reference image edit complete and appear in",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "13e7b520d50ead04a839219f3eaa4c8a519fffb4c33b6288b454a9041804ca68",
       "requirement_id": "REQ-11A143B27AAE",
       "requirement_text": "- Video generation and image-to-video complete via both a shared server",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "41fd472e8dcbfae8620e48785bb9c9b937d8d9eac3c194fa9096f1970ed5abe0",
       "requirement_id": "REQ-9999478D8A5F",
       "requirement_text": "- **Every Drama Series generation surface in the section 11.5 table works",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "496da581632f7ded742708c9a0941b0ec1b06d7f4f04bd3c4e97c1cbbb0e3051",
       "requirement_id": "REQ-FF62DFF00557",
       "requirement_text": "- Both silent-fallback paths are removed — ad-banner",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "ce51ebc9a4f5f6c868e106ee1a73ecb65c9865b34c9ebb4fbc43eeb20c73ce61",
       "requirement_id": "REQ-73391C707263",
       "requirement_text": "- \"Grok Imagine\" (kie.ai, platform credits) and \"Grok via Hermes\" (user",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "82447e094ac45f80b0ccb53b91ca9d09e5c466f3cbcd0db5ac3d1abc74e75758",
       "requirement_id": "REQ-AC41AE46C342",
       "requirement_text": "- Shared-pool limits demonstrably reject excess load with typed errors;",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "e5e7be3148a55c971aa8de506c9f544450d649619dafad7e41e0d9ed901a9091",
       "requirement_id": "REQ-1812A3472522",
       "requirement_text": "- Private jobs are only ever claimed by the owner's worker.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "8bdb49d22d363e4fdd9633c3bf9b9172a283eae20bd109245e01a1b65641fee7",
       "requirement_id": "REQ-64192A557D48",
       "requirement_text": "- Unsupported reference-to-video is visibly blocked, never silently",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "53bc2b2161ffaa462c65b76a198e27ad687d7a749318bdc252d54e6fe6786739",
       "requirement_id": "REQ-2117E2C29689",
       "requirement_text": "- 403 entitlement is explained in Thai + English; permanent 403 is not",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,13 +1603,13 @@
       "requirement_digest": "1c528764e09aebb3e08ada66f743dca99f629f2e47251363cca53ba3c2184050",
       "requirement_id": "REQ-DF363917D893",
       "requirement_text": "- No OAuth token appears in DB, logs, API responses, or frontend storage.",
-      "source_spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+      "source_spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "56e3af8ceeb8473b0f8fefdead8ba19810f6f92e3cb851c2058d37ddc9dd7528",
+  "spec_digest": "910468c23644e4a103b83da18e7028ad385e66d2862ece3e0d2f09d74379ff7b",
   "spec_id": "135"
 }

@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
       },
@@ -102,7 +102,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628"
+    "expected_spec_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52"
   },
   "continuation": {
     "next_action": null,
@@ -116,7 +116,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
       },
@@ -223,7 +223,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
       },
@@ -311,13 +311,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
-    "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+    "digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.206408Z",
+      "last_evidence_at": "2026-10-06T09:56:58.828242Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:28:50+07:00",
       "spec_last_changed_at": "2026-04-08T19:28:50+07:00"
@@ -341,10 +341,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.206408Z"
+    "updated_at": "2026-10-06T09:56:58.828242Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -354,10 +354,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.206408Z",
+    "reconciled_at": "2026-10-06T09:56:58.828242Z",
     "sources": [
       {
-        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
       },
@@ -449,42 +449,31 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
-        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "source_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "value": "Proposed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_RELATIONSHIP",
         "confidence": "LOW",
-        "excerpt": "Supersedes: OpenClaw-specific positioning inside Feature 059 where the documents conflict",
+        "excerpt": "Supersedes: OpenClaw-specific positioning inside Feature 301 where the documents conflict",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "relation": "SUPERSEDES",
-        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
         "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
-        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-        "target_ambiguous": true,
-        "target_candidates": [
-          {
-            "path": "specs/feature/059-external-worker-provider-framework",
-            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
-            "spec_id": "059",
-            "title": "059 - SmartSpecPro Distributed Worker Runtime"
-          },
-          {
-            "path": "specs/feature/059-knplabai-multi-provider-expansion",
-            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
-            "spec_id": "059",
-            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
-          }
-        ],
+        "source_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "target_spec_ids": [
-          "059"
+          "301"
         ],
-        "value": "OpenClaw-specific positioning inside Feature 059 where the documents conflict"
+        "value": "OpenClaw-specific positioning inside Feature 301 where the documents conflict"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -506,44 +495,28 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
-        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "source_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "value": "Proposed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_RELATIONSHIP",
         "confidence": "LOW",
-        "excerpt": "Supersedes: OpenClaw-specific positioning inside Feature 059 where the documents conflict",
+        "excerpt": "Supersedes: OpenClaw-specific positioning inside Feature 301 where the documents conflict",
         "line": 7,
         "relation": "SUPERSEDES",
-        "scope_signal": "PARTIAL_SCOPE_EXPLICIT",
         "source": "specs/feature/071-openclaw-external-runtime-integration/spec.md",
-        "source_digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
-        "target_ambiguous": true,
-        "target_candidates": [
-          {
-            "path": "specs/feature/059-external-worker-provider-framework",
-            "record_key": "canonical:specs/feature/059-external-worker-provider-framework",
-            "spec_id": "059",
-            "title": "059 - SmartSpecPro Distributed Worker Runtime"
-          },
-          {
-            "path": "specs/feature/059-knplabai-multi-provider-expansion",
-            "record_key": "canonical:specs/feature/059-knplabai-multi-provider-expansion",
-            "spec_id": "059",
-            "title": "059 — KNPLabs AI Multi-Provider Expansion (LLM + Media + Embeddings + TTS)"
-          }
-        ],
+        "source_digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "target_spec_ids": [
-          "059"
+          "301"
         ],
-        "value": "OpenClaw-specific positioning inside Feature 059 where the documents conflict"
+        "value": "OpenClaw-specific positioning inside Feature 301 where the documents conflict"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "6fcf7d8ef1b3f87eed69f8bfe0834d8e2ea3b1c152dad81a41a53d8806974628",
+        "digest": "d117d83720d1b55913bc0c101c4b2120ac12f980bae90143617bd11724fb8d52",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/071-openclaw-external-runtime-integration/spec.md"
       },
@@ -643,7 +616,7 @@
     "unresolved": 75
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.206408Z",
+  "updated_at": "2026-10-06T09:56:58.828242Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

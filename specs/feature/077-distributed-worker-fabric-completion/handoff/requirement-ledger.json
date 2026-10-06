@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "cdc5073fad27e9c9fbfe0e11e8cdfa3cd5a24d91e16dfe083985220ce95a67ae",
       "requirement_id": "REQ-11C17805BC3F",
       "requirement_text": "The current repository still lacks the broader runtime-fabric pieces required by the revised architecture:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "fcea074b16b3530ad8a5e8d9b8a63201bdc6463e1c2a2a705017cd0001b3a5fa",
       "requirement_id": "REQ-B345682968D2",
       "requirement_text": "1. Complete the runtime-generalized worker fabric on top of the OpenClaw control-plane baseline from Features 071-074.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "e6eaa68be7f54ed24f7b74d8a71739688363671e230b4cd1f3f264797d3b93ec",
       "requirement_id": "REQ-21D626C7E56E",
       "requirement_text": "2. Reposition ZeroClaw from “thin sidecar” to “managed local runtime profile” inside SmartSpec Desktop.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "f57e0b931f043e6fc3c69dd40b8c75396a0f749ee22bf7e6b4f72e8f67841486",
       "requirement_id": "REQ-09593C3E063F",
       "requirement_text": "3. Add the first real local execution job classes required by the revised spec, especially `video_assembly`.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "340a31e98e803d657f8f84e3aeda90dc3d5e2965b1a02fecb3fc9676dac23ec5",
       "requirement_id": "REQ-22CB6F6C4628",
       "requirement_text": "4. Keep OpenClaw as the primary external general-purpose runtime while making the platform extensible to other runtime families.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "d6b39f5604a704535f570f1aa4bcd53bf93f0726454dc921345f7c8b965ea993",
       "requirement_id": "REQ-6BCFC862D3FA",
       "requirement_text": "5. Introduce runtime-specific rollout, policy, and scheduling rules instead of one OpenClaw-shaped contract for every worker.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "f379171285425e5dd3eb1336bbbec4cb38fc11d335383e3776a2d3c24e27cb06",
       "requirement_id": "REQ-5FB707D772A6",
       "requirement_text": "6. Reuse existing desktop/media execution assets from `apps/tauri-shell` and `python-backend` where they already match the required adapters.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "fef777afc6ff8e5f41cffca6535cb8cba4a3bef2de0161ae4d210fec95c8bf62",
       "requirement_id": "REQ-74463404CEF8",
       "requirement_text": "Therefore SmartSpecPro should keep OpenClaw as the first production external runtime, but it must not stretch OpenClaw into desktop-local media-worker semantics it was never meant to own.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "387242a14cefc35d73b4b498c51c3d4cbf35b0999a54f193bb3cd8f82f0c34a0",
       "requirement_id": "REQ-E27DE090D601",
       "requirement_text": "Therefore Feature 077 must be read as:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "a059d8b6ffde0f431a44c14a5cb334d73aa1483c387973a8ee70777e21a20483",
       "requirement_id": "REQ-2804C3B1E15C",
       "requirement_text": "The platform must still fail closed for unsupported runtimes.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "b1faec3c2e5e722f35c582d10c8c42ce78d088efd67160a14d2fb645d59b7053",
       "requirement_id": "REQ-4FE422A2D35E",
       "requirement_text": "Feature 077 must preserve that rule for the current external-worker path:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "2512e6af80e0d810da3c9f55934c498bb744490fd20ed216263c7abe5ec78ac3",
       "requirement_id": "REQ-32CB9FA2A81A",
       "requirement_text": "- a personal worker must not silently become a shared tenant worker",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "6bfca05ede6c5eecdb4cabba1bd2cd31cb2a09050f3e5fb5d035c3c6a14f4d5c",
       "requirement_id": "REQ-0B1FDF6B48E5",
       "requirement_text": "- delegated platform sessions must remain explicit, scoped, short-lived, and job-bound",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "c7d6408e63b321a6cc8a9d4174d65fae8550fd861f65f1c57f19357f5a6b6287",
       "requirement_id": "REQ-2D9219EB970D",
       "requirement_text": "Required distinction:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "3cba729234aa79fa86aefe7859ba1a49f8782a8270d79c08ad730aab7beda0c2",
       "requirement_id": "REQ-A56AE7A3BFAF",
       "requirement_text": "- shared or dedicated workers must not implicitly inherit the `Bound Worker` personal-delegation semantics from Feature 072",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "ccdcfd15a8a2d649a40253b8969652125a411a46435e62d91084c32381b637cb",
       "requirement_id": "REQ-D38836F81AEC",
       "requirement_text": "Required rules:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "a146250948a8bb2ede0861b05966bc34c2d4e31dddbacb0e80f1c104fe42f762",
       "requirement_id": "REQ-9C98E984AFD7",
       "requirement_text": "- the worker registration record must keep both:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "dc3f383d276145e3ca286d73b077fff75dcb91cd48f7347fbe0aeb277cb4319c",
       "requirement_id": "REQ-2A14BE5B46B5",
       "requirement_text": "- the admin who registers or maintains the machine must not automatically become the execution identity for every queued job",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "4edde6b0074f627febc181b4bf68a6bf32c76b1b7fff1397e3581c099ae784cf",
       "requirement_id": "REQ-9EACCE4E4193",
       "requirement_text": "- approval mode must be explicit per worker or policy profile, recommended values:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "e45ec0557d86dfeaa9914f86b749a1812b992c1f20506e5a96b890b68d81b408",
       "requirement_id": "REQ-41A7E0649E08",
       "requirement_text": "- worker registration, execution, and upload tokens for shared workers must rotate on:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "81c29273552d905fa32b8a52d1c22916295ee97dd2d218076086d145b8c79b65",
       "requirement_id": "REQ-1EEB07C49878",
       "requirement_text": "- token revocation must invalidate future claims and uploads without requiring ambiguous reuse of delegated user-session tokens",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "a90513d039e7154781bd8f76ab726fe1dd397d21c3dd6d2c80ef7f9372fc2759",
       "requirement_id": "REQ-4B1BFE985D4A",
       "requirement_text": "This feature must define explicit security posture for the new desktop-local and multi-runtime paths.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "c1b6af01d0aae8845875eb74b7070ce94fdf48a877a610338ff1071a89bb512e",
       "requirement_id": "REQ-6ECC7065E4AA",
       "requirement_text": "Required token classes:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "b04330e511c854acaf9b50014c71acc7eecb3d992da9b0c64c00fc3ce6031185",
       "requirement_id": "REQ-C34A146AC160",
       "requirement_text": "All token classes must be:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "42729c3e3564d0f9651c6797c61680909236b5ef3e61178e99cb0a775f08f001",
       "requirement_id": "REQ-81275DB345D2",
       "requirement_text": "Required adapter boundary rules when reusing existing Tauri and Python media code:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "30e68f024f0016c248a3e8fe38bc919210bfeef0384e4d3f8689920fed3d29da",
       "requirement_id": "REQ-72F88B138905",
       "requirement_text": "- untrusted FFmpeg argument fragments, shell fragments, or filtergraph fragments must not pass through directly",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "e1e685f04cb98aec1cc678503025f8ca5b34da28bee2669adf09c507156b90f5",
       "requirement_id": "REQ-FEF861E8B6E2",
       "requirement_text": "- source paths must be normalized and staged into the controlled workspace before execution",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "35523be3eb849ed67436d8537e0bf4767b2160d7a58aa9c3edd4708577ad7beb",
       "requirement_id": "REQ-3F1A4B85B2F7",
       "requirement_text": "- loopback-only or outbound-only defaults must remain the baseline for desktop and runtime communication",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "0a982a6704439f5b4e000f01778ad70362d180235a58eaf1af520b6866c96baf",
       "requirement_id": "REQ-3389676C1628",
       "requirement_text": "- Docker and WSL2 profiles must use least-privileged mounts and must not open inbound public control ports by default",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "8e7aedff1884b4fc665d7f01ee25dc0d9ead1996f259c19757cdc66e00aa7bc8",
       "requirement_id": "REQ-7D9EDEEF3DE1",
       "requirement_text": "- diagnostics, job events, and centralized logs must redact secrets, provider credentials, and non-essential local path details before leaving the desktop trust boundary",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "6531cbc5ef30d983f6470a29bb3b219e0614ba5ac58365283b7b87fa23221a1b",
       "requirement_id": "REQ-DFF3456D0B05",
       "requirement_text": "Required compatibility model:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "75142868d926eee98bffa819d826e10fd94d338b4a0abe73033b04f6686a46e8",
       "requirement_id": "REQ-85F5CA541AC2",
       "requirement_text": "- compatibility checks must evaluate:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "46ed7b32a842a4b53421674408325cb622a44b7322232bd045637129ca5a213a",
       "requirement_id": "REQ-BD05BBB37948",
       "requirement_text": "- minimum required desktop/runtime version where applicable",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "1745229861112de7dade82cd2a8cee4ec1e8bd193421a70d328993a22b5413dc",
       "requirement_id": "REQ-4C160B3694A8",
       "requirement_text": "- the control plane must keep a compatibility matrix by runtime family and runtime mode instead of guessing from ad-hoc JSON fields",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "e1a3f56b66ef4caeb3d4d1d0ef9918802f8a0ae56b0b7d14d31a7a5d9aebc3e4",
       "requirement_id": "REQ-7F160CB34C65",
       "requirement_text": "- `outputTargets` declaring which rendered outputs, subtitles, thumbnails, and metadata manifests must be uploaded and published",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "d0881bced8561b87c43136e24ac29677b7df5c3a2a66d631d71f92b480c9e365",
       "requirement_id": "REQ-9617BFE38AA0",
       "requirement_text": "Required progress-stage vocabulary:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "bf8c7fc926024999aacbd250f65ca942c89de12fb07499d68af79962a7561d06",
       "requirement_id": "REQ-58A919B95A93",
       "requirement_text": "Required failure taxonomy:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "5b3ab8c1a1972dfaadf762b4e79d95a614cdffd90d964b7e9d9899c8269c9253",
       "requirement_id": "REQ-496DE09F212B",
       "requirement_text": "Workflow and persona integration must be more concrete than “route by capability” prose.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "4caf9269ed2c7e44566f98e7f4b84ef3f8a29da0c0b1dce571cf1f80bcfe46d1",
       "requirement_id": "REQ-A5D510F23A70",
       "requirement_text": "Required failure semantics:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "b19a10cd71dc74a4c05e6ce75c695aabb65397d3eb6f9a6432858276b2cf17b6",
       "requirement_id": "REQ-D1B1C0BDC8DE",
       "requirement_text": "- terminal worker-job states such as `failed`, `canceled`, and `expired` must return structured failure payloads to workflow/persona callers",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "59622e0e301cf098ef6b42d1f4c395534c4fa8bfc6f9c6930d77d8d76213ad57",
       "requirement_id": "REQ-C320DE8158F3",
       "requirement_text": "- artifact publication and indexing failures must remain separately observable so a render success is not misreported as a full publish success",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "f312c20a6487ede7d69b69b3cbf38d3994aa3f850bb1a78975d37a6f0b848c19",
       "requirement_id": "REQ-DEC647846084",
       "requirement_text": "Desktop-local and future runtime-family artifacts must reuse the existing worker artifact publication safety path rather than inventing runtime-specific bypasses.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "23783a662b2669bf310125807e4e600d9e0eecf1021daa3eff4cebb2fb5f1f4d",
       "requirement_id": "REQ-4146A25D7A57",
       "requirement_text": "Required rule set:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "0ded0043950bc6d1d3c263b5247c57f43cea18c78087ae86c3c6a96eb24dfe56",
       "requirement_id": "REQ-03DC8161968F",
       "requirement_text": "- desktop-local outputs must publish through `workerArtifactService`",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "51a1db9efbb1538fcd67e49738f6f2e68f400f367f370616425131e46c9e40e6",
       "requirement_id": "REQ-CE353DA9DD32",
       "requirement_text": "- safe-serving behavior such as `inline` versus `download_only` must stay authoritative in that service",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "364dfce0bab65a67d141b2fa157be88d38561995df192195e5374e2d3ab20a6b",
       "requirement_id": "REQ-C08F0B607C11",
       "requirement_text": "- artifact publication must continue to reuse the current Library creation and `safeEnqueueLibraryIndexJob` path",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "efcd754b1cd42f1ccb69229ce458c143b61e9892e994fa31f3d234b8056c194a",
       "requirement_id": "REQ-33D7962269AC",
       "requirement_text": "- new desktop adapters must not write directly into Library or invent parallel content-type rules",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "530e2a21754e568fe314289857b61a0b3ffeab1d3f22710af24226fd7e708d00",
       "requirement_id": "REQ-187AE59CD3FF",
       "requirement_text": "Must include:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "23e1bd62566be5d331e719ce9d9c91bbb10f22277cf08fbcb46fc00d835f0092",
       "requirement_id": "REQ-67268F6215DC",
       "requirement_text": "This must preserve the non-substitution rule:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "ec38ed014cb693563fd40c419a936801b18744fb5ace1b461180c604ad52c0c2",
       "requirement_id": "REQ-F07B3012C3F4",
       "requirement_text": "1. Current OpenClaw worker registration, delegation, MCP, and admin flows still work without behavioral regression.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "70b02cf8a3cb7bbb7abb79aa6dc80e375428be1270d4184cb0b644048f257973",
       "requirement_id": "REQ-92B9CEB6EBDC",
       "requirement_text": "2. SmartSpec Desktop can register a worker as `desktop_zeroclaw_managed` when the runtime family flag is enabled and compatibility checks pass.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "93e2cf5df3ea4c95041dd7f711927f1d0f84390a8eaa9d2eb78e028840a19689",
       "requirement_id": "REQ-EC9E50F319B2",
       "requirement_text": "3. The control plane can queue and claim at least one local runtime job type, `video_assembly`, without routing it through the OpenClaw scheduler path.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "f6e101dd04d3c20a575ab4699e33d17a3e21202ca0c93eaeee20f44b6c534ff0",
       "requirement_id": "REQ-A35352964E19",
       "requirement_text": "4. Scheduler selection considers runtime type, declared capabilities, file scope, and resource profile instead of only OpenClaw job-type filters.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "18b703fd9066a10f95094c142e59298ea000a963f7b8f1aa4afeef7e9629d331",
       "requirement_id": "REQ-BA4EA39AE4F3",
       "requirement_text": "5. Workspace-scoped file access and artifact publication rules are explicit for desktop-local jobs.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "de55d7d84e41cee438d9295ded084cf4e8f0007580fb68df342ca23b91a100c9",
       "requirement_id": "REQ-2B243D2500C1",
       "requirement_text": "6. NemoClaw and HiClaw can be represented in the worker registry with truthful runtime-specific metadata, even if their rollout remains admin-gated.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "781d16fc7b34a01d9fc1798c3e680d05c3887e331bb572ca551ee6750b50d3d3",
       "requirement_id": "REQ-A42C4B66A16B",
       "requirement_text": "7. Public and help docs clearly distinguish:",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "66af6678733c4ea9583e13d69626bf99203595c45fb2008587e5e0c50c7418fe",
       "requirement_id": "REQ-08269BFE2B84",
       "requirement_text": "- OpenClaw external gateway workers",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "2214e1ef76f5b3af57f8b2bc8ad197b5b664bf95ebd9840515af9a4bb00342c6",
       "requirement_id": "REQ-BB9AA9BE1716",
       "requirement_text": "- Desktop + ZeroClaw local workers",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "ae88e59911d113d9806e0d73e5fae9c8fc56f0216d7d359acb8418ac62abc0de",
       "requirement_id": "REQ-42FEB4D42103",
       "requirement_text": "- NemoClaw secure pools",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "68e6e4f4ab6d2f059b41e973f069d0c5e9d0b1e018e094edfe2fdd66fbd397ce",
       "requirement_id": "REQ-92B6894D92C5",
       "requirement_text": "- HiClaw collaborative clusters",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "80ad6e8a7061d2e0ee9d88e2f32ace728836ca106cf88d5aee7b792c72f959a2",
       "requirement_id": "REQ-D2758A7EA275",
       "requirement_text": "8. Workflow and persona routing can target worker capabilities without hardcoding every runtime choice into one OpenClaw-only path, and the dispatch / wait / publish / index contracts expose stable terminal and failure semantics.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "fa15c926241e74206d1939e5c3c226153f9104169dc3b587348da33233945416",
       "requirement_id": "REQ-0870A4FB8C72",
       "requirement_text": "9. Shared department and dedicated GPU workers preserve separate execution identity, explicit approval mode, and budget attribution rules instead of inheriting owner-bound personal-worker behavior.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "0a6e34c1d708a366fc351fb7d36119dec622355bd1bcf0418e90e358316d75b4",
       "requirement_id": "REQ-21C6B93390BF",
       "requirement_text": "10. Runtime registration and policy payloads expose runtime-family schema versions and compatibility state in addition to the global transport protocol version.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "d070005628fd4a897eacc6f330966881afa6b761c9da901d049d2df6be70bbbe",
       "requirement_id": "REQ-2FE418DC6DEE",
       "requirement_text": "11. `video_assembly` has a canonical minimum input/output/progress/failure contract that desktop-local workers must implement consistently.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "a1ec713dccc3abd4558f8c9bc8638179fc1f977107b4849852be2b7a9d404773",
       "requirement_id": "REQ-D5E9D3576749",
       "requirement_text": "12. Desktop-local worker execution preserves explicit security controls for token scoping, workspace-bound paths, and adapter command boundaries.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "184826e062e874ea6c409a446aa4d17df0b813df2a5ce3167d5dae8fa2ec5c33",
       "requirement_id": "REQ-616341A7DE46",
       "requirement_text": "13. Desktop-originated diagnostics and job-event streams preserve redaction rules for secrets and sensitive local-path details.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,13 +1471,13 @@
       "requirement_digest": "a73e82fa4eaa04ac560aafdc40fc27f4fc3dcaa1a0aa55bc7647f6625c049385",
       "requirement_id": "REQ-2C99C177EFB5",
       "requirement_text": "14. Desktop-local artifact publication reuses `workerArtifactService` validation, content-type restrictions, safe-serving behavior, and indexing hooks rather than a parallel publish path.",
-      "source_spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+      "source_spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "e86fed05d42cf37898cfdad985341009c6cf73c95248f8795e6da34f65309635",
+  "spec_digest": "b0df2d2749cd8abd1c2c4eb29692531fa85b8cef74e9c30e0d8ea37fdd209270",
   "spec_id": "077"
 }

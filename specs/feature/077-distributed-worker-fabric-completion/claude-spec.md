@@ -3,8 +3,8 @@
 Version: 1.1
 Date: 2026-04-08
 Status: Proposed
-Depends-on: 059-external-worker-provider-framework, 071-openclaw-external-runtime-integration, 072-claw-worker-platform-access, 074-claw-worker-mcp-platform-completion, 075-unified-web-desktop-agent-platform, 004-desktop-app, 007-python-backend
-Supersedes: Feature 059 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature
+Depends-on: 301-external-worker-provider-framework, 071-openclaw-external-runtime-integration, 072-claw-worker-platform-access, 074-claw-worker-mcp-platform-completion, 075-unified-web-desktop-agent-platform, 004-desktop-app, 007-python-backend
+Supersedes: Feature 301 language that still frames ZeroClaw as a thin bundled sidecar where it conflicts with this feature
 Audience: Web Control Plane, Desktop, Runtime, Media, Admin Ops, Security, QA
 
 ---
@@ -134,9 +134,9 @@ The runtime labels also live at different layers:
 
 `desktop_zeroclaw_managed` is therefore the initial worker-fabric local execution profile. It does **not** replace Pi or Agency Swarm as the canonical desktop-interactive runtimes defined by Feature 075.
 
-### 5.3 Feature 059 sidecar wording is superseded
+### 5.3 Feature 301 sidecar wording is superseded
 
-Where Feature 059 still says “bundled ZeroClaw sidecar,” Feature 077 supersedes that with:
+Where Feature 301 still says “bundled ZeroClaw sidecar,” Feature 077 supersedes that with:
 
 - SmartSpec Desktop is the machine host
 - ZeroClaw is a managed local runtime profile
@@ -438,7 +438,7 @@ Update the operator and product truth:
 - docs explain what is ready now versus future-gated
 - workflow and persona surfaces gain runtime-aware dispatch / wait / publish / index building blocks with explicit failure semantics
 - rollout sequencing preserves current OpenClaw flows
-- migration path is explicit from Feature 059 wording to Feature 077 wording
+- migration path is explicit from Feature 301 wording to Feature 077 wording
 - docs explicitly distinguish Feature 075 product runtime labels from Feature 077 worker runtime types
 
 ---

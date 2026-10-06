@@ -18,7 +18,7 @@
 
 ## Locked decisions
 
-1. Feature 071 extends Feature 059 rather than replacing it.
+1. Feature 071 extends Feature 301 rather than replacing it.
    - When Feature 071 conflicts with OpenClaw-specific wording in 059, Feature 071 wins.
 
 2. OpenClaw is modeled as `runtimeType = "openclaw_gateway"`.
@@ -70,7 +70,7 @@
 ### Round 1
 
 - Check: scope completeness
-- Fix: added explicit supersession rule versus Feature 059 so implementers know which OpenClaw wording is authoritative
+- Fix: added explicit supersession rule versus Feature 301 so implementers know which OpenClaw wording is authoritative
 
 ### Round 2
 

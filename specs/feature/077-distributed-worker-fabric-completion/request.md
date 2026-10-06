@@ -13,7 +13,7 @@ Assess the current SmartSpecPro repository against the revised distributed worke
 
 ## Likely affected areas
 
-- `specs/feature/059-external-worker-provider-framework`
+- `specs/feature/301-external-worker-provider-framework`
 - `specs/feature/071-openclaw-external-runtime-integration`
 - `specs/feature/072-claw-worker-platform-access`
 - `specs/feature/074-claw-worker-mcp-platform-completion`
@@ -38,7 +38,7 @@ Assess the current SmartSpecPro repository against the revised distributed worke
 
 - The user wants spec and planning updates, not immediate runtime implementation work.
 - Features 071-074 remain valid for the OpenClaw control-plane, delegated-platform, and MCP slices already defined.
-- Feature 059 still provides useful baseline vocabulary, but its ZeroClaw sidecar framing is outdated where it conflicts with the revised architecture.
+- Feature 301 still provides useful baseline vocabulary, but its ZeroClaw sidecar framing is outdated where it conflicts with the revised architecture.
 - Official OpenClaw docs checked on 2026-04-08 are sufficient for current product-positioning verification.
 
 ## Explicit non-goals for this task

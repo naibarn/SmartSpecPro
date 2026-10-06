@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/072-claw-worker-platform-access/spec.md"
       },
@@ -92,7 +92,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44"
+    "expected_spec_digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b"
   },
   "continuation": {
     "next_action": null,
@@ -106,7 +106,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/072-claw-worker-platform-access/spec.md"
       },
@@ -203,7 +203,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/072-claw-worker-platform-access/spec.md"
       },
@@ -281,13 +281,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/072-claw-worker-platform-access/spec.md",
-    "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+    "digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.216961Z",
+      "last_evidence_at": "2026-10-06T09:56:58.838369Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-08T19:28:50+07:00",
       "spec_last_changed_at": "2026-04-08T19:28:50+07:00"
@@ -311,10 +311,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.216961Z"
+    "updated_at": "2026-10-06T09:56:58.838369Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,10 +324,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.216961Z",
+    "reconciled_at": "2026-10-06T09:56:58.838369Z",
     "sources": [
       {
-        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/072-claw-worker-platform-access/spec.md"
       },
@@ -409,11 +409,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/072-claw-worker-platform-access/spec.md",
-        "source_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "source_digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "value": "Proposed"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -435,14 +440,14 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/072-claw-worker-platform-access/spec.md",
-        "source_digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "source_digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "value": "Proposed"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "881404810c604c47ecd50892728cbec8c0e73c783be017408f8f43d9efd30b44",
+        "digest": "df5c2ba2ebdbe871b6af94dca247e9b5a05cd54b6555917248f93d24d17af67b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/072-claw-worker-platform-access/spec.md"
       },
@@ -532,7 +537,7 @@
     "unresolved": 171
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.216961Z",
+  "updated_at": "2026-10-06T09:56:58.838369Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

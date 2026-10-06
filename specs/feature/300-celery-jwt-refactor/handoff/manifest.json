@@ -1,0 +1,460 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#045",
+      "specs/feature/300-celery-jwt-refactor/spec.md",
+      "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8"
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/300-celery-jwt-refactor/spec.md"
+      },
+      {
+        "digest": "7901ba9bcc1226ecf21410c8eff7f18d6cd99c0f8f612e4e096f996f31f1756c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-plan.md"
+      },
+      {
+        "digest": "f7ee110226733328757bd9c8fa953c7fc4fe3e53740e3db68e594066da0c77a2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-spec.md"
+      },
+      {
+        "digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "9d71b7bedf73d02ea499494636c65186a1997283c521bd90c097e5c73f55ffe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/index.md"
+      },
+      {
+        "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-01-automation-copilot-cleanup.md"
+      },
+      {
+        "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-02-agency-creator-llm-client.md"
+      },
+      {
+        "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-03-agency-creator-internal-api.md"
+      },
+      {
+        "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-04-verification-tests.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/300-celery-jwt-refactor/spec.md"
+      },
+      {
+        "digest": "7901ba9bcc1226ecf21410c8eff7f18d6cd99c0f8f612e4e096f996f31f1756c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-plan.md"
+      },
+      {
+        "digest": "f7ee110226733328757bd9c8fa953c7fc4fe3e53740e3db68e594066da0c77a2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-spec.md"
+      },
+      {
+        "digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "9d71b7bedf73d02ea499494636c65186a1997283c521bd90c097e5c73f55ffe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/index.md"
+      },
+      {
+        "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-01-automation-copilot-cleanup.md"
+      },
+      {
+        "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-02-agency-creator-llm-client.md"
+      },
+      {
+        "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-03-agency-creator-internal-api.md"
+      },
+      {
+        "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-04-verification-tests.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 11,
+  "identity": {
+    "canonical_path": "specs/feature/300-celery-jwt-refactor/spec.md",
+    "digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-06T09:57:07.992609Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-03-18T14:18:02+07:00",
+      "spec_last_changed_at": "2026-03-18T14:18:02+07:00"
+    },
+    "revision": null,
+    "slug": "300-celery-jwt-refactor",
+    "spec_id": "300",
+    "title": "Feature 300: Remove JWT from Celery Task Arguments"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [],
+    "updated_at": "2026-10-06T09:57:07.992609Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/duplicate-authority-resolution-20261006.md#045",
+        "specs/feature/300-celery-jwt-refactor/spec.md",
+        "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8"
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-06T09:57:07.992609Z",
+    "sources": [
+      {
+        "digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/300-celery-jwt-refactor/spec.md"
+      },
+      {
+        "digest": "7901ba9bcc1226ecf21410c8eff7f18d6cd99c0f8f612e4e096f996f31f1756c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-plan.md"
+      },
+      {
+        "digest": "f7ee110226733328757bd9c8fa953c7fc4fe3e53740e3db68e594066da0c77a2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-spec.md"
+      },
+      {
+        "digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "9d71b7bedf73d02ea499494636c65186a1997283c521bd90c097e5c73f55ffe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/index.md"
+      },
+      {
+        "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-01-automation-copilot-cleanup.md"
+      },
+      {
+        "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-02-agency-creator-llm-client.md"
+      },
+      {
+        "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-03-agency-creator-internal-api.md"
+      },
+      {
+        "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-04-verification-tests.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "273b5a86",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-automation-copilot-cleanup: complete; commit_hash=273b5a86",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-01-automation-copilot-cleanup",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "02d2c013",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-agency-creator-llm-client: complete; commit_hash=02d2c013",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-02-agency-creator-llm-client",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d0980833",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-agency-creator-internal-api: complete; commit_hash=d0980833",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-agency-creator-internal-api",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "3529c531",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-verification-tests: complete; commit_hash=3529c531",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-04-verification-tests",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "273b5a86",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-01-automation-copilot-cleanup: complete; commit_hash=273b5a86",
+        "line": null,
+        "section": "section-01-automation-copilot-cleanup",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "02d2c013",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-02-agency-creator-llm-client: complete; commit_hash=02d2c013",
+        "line": null,
+        "section": "section-02-agency-creator-llm-client",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "d0980833",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-agency-creator-internal-api: complete; commit_hash=d0980833",
+        "line": null,
+        "section": "section-03-agency-creator-internal-api",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": "3529c531",
+        "commit_hash_length": 8,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-04-verification-tests: complete; commit_hash=3529c531",
+        "line": null,
+        "section": "section-04-verification-tests",
+        "source": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json",
+        "source_digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "value": "complete"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "656d56954fc6cfa4c304a0bd0502d6551e95496b996e07aa0471a9245d1bd7c8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/300-celery-jwt-refactor/spec.md"
+      },
+      {
+        "digest": "7901ba9bcc1226ecf21410c8eff7f18d6cd99c0f8f612e4e096f996f31f1756c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-plan.md"
+      },
+      {
+        "digest": "f7ee110226733328757bd9c8fa953c7fc4fe3e53740e3db68e594066da0c77a2",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/claude-spec.md"
+      },
+      {
+        "digest": "83d847af38634c128f257e36ae494c8395975db287a548a8cf3908bd5ed781f9",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/implementation/deep_implement_config.json"
+      },
+      {
+        "digest": "9d71b7bedf73d02ea499494636c65186a1997283c521bd90c097e5c73f55ffe5",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/index.md"
+      },
+      {
+        "digest": "ff262c2d33b762afc97e1f30467cceedec4359d1121cd551c1074dc93a592288",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-01-automation-copilot-cleanup.md"
+      },
+      {
+        "digest": "cf8353518d38bba2f0559a01157056c7f80de7b5e2cc7980bff4f5af18a8528a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-02-agency-creator-llm-client.md"
+      },
+      {
+        "digest": "ed289c63873d6e578fecdeb21812077a8caedb8272800e5c4b50e6a3570dd727",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-03-agency-creator-internal-api.md"
+      },
+      {
+        "digest": "8da00eff16c8bf61926b941e808e02de6543c04df68063ffe1a46d2a5d062c95",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/300-celery-jwt-refactor/sections/section-04-verification-tests.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1,
+    "unresolved": 1
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-06T09:57:07.992609Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}
