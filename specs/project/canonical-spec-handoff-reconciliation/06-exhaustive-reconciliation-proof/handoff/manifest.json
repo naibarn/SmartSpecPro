@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ade174b306e6e4fcc9b078a616fa1a5634686722",
+    "expected_canonical_sha": "1b608c5b42b2ab86c7e3164d81d728df5f04d811",
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
+    "next_action": "Continue repository-wide reconciliation: review the eight remaining duplicate-ID groups, then the remaining 315 evidence-based review records. Preserve unresolved classifications where repository evidence is insufficient.",
     "next_ready_workunit": "REVIEW_DUPLICATE_SPEC_ID_GROUPS",
     "reactivation_predicate": null,
-    "resume_point": "Upload predicate satisfied at ade174b306e6e4fcc9b078a616fa1a5634686722. Inventory and global projections are regenerated and validated. Continue with evidence-based review of the eight duplicate-ID groups, then remaining 315 open review records.",
+    "resume_point": "Post-recovery reconciliation checkpoint 1b608c5b42b2ab86c7e3164d81d728df5f04d811 is integrated and validated. 291 canonical Specs / 447 indexed records / 286 relationship edges. Next ready workunit REVIEW_DUPLICATE_SPEC_ID_GROUPS; migration remains open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -78,7 +78,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ade174b306e6e4fcc9b078a616fa1a5634686722",
+    "canonical_sha": "1b608c5b42b2ab86c7e3164d81d728df5f04d811",
     "integrated": true,
-    "integrated_at": "2026-10-06T03:12:48Z"
+    "integrated_at": "2026-10-06T03:38:28Z"
   },
   "lifecycle": {
     "current_state": "WORKING",
@@ -135,6 +135,11 @@
         "kind": "POST_RECOVERY_SPEC_UPLOAD_INTEGRATED",
         "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-resumed-ade174b.md",
         "sha": "ade174b306e6e4fcc9b078a616fa1a5634686722"
+      },
+      {
+        "kind": "POST_RECOVERY_RECONCILIATION_CHECKPOINT_INTEGRATED",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-integrated-1b608c5.md",
+        "sha": "986dc5761d541ecf3c464ca1996f37bd7166c1dc0f5c051aed58fa62d2474d79"
       }
     ],
     "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -189,6 +194,11 @@
           "kind": "POST_RECOVERY_SPEC_UPLOAD_INTEGRATED",
           "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-resumed-ade174b.md",
           "sha": "ade174b306e6e4fcc9b078a616fa1a5634686722"
+        },
+        {
+          "kind": "POST_RECOVERY_RECONCILIATION_CHECKPOINT_INTEGRATED",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/post-recovery-reconciliation-integrated-1b608c5.md",
+          "sha": "986dc5761d541ecf3c464ca1996f37bd7166c1dc0f5c051aed58fa62d2474d79"
         }
       ],
       "updated_at": "2026-10-06T00:43:01.838078Z"
@@ -263,7 +273,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:30:14.711206Z",
+  "updated_at": "2026-10-06T03:40:09.826438Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

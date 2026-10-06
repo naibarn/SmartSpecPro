@@ -30879,7 +30879,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "ade174b306e6e4fcc9b078a616fa1a5634686722",
+      "canonical_sha": "1b608c5b42b2ab86c7e3164d81d728df5f04d811",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
