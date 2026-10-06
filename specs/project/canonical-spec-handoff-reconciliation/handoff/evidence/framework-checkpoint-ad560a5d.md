@@ -31,7 +31,7 @@ The PR preview workflow's `build-preview` check was `SKIPPED`; no repository-wid
 
 ## Provisional inventory state and invalidations
 
-The current reconciliation review queue is `317` records, classified `PRE_RECOVERY_PROVISIONAL`; this is not a final per-Spec classification. Current generated outputs must be regenerated after the recovered/new canonical Spec set is uploaded, validated, and integrated:
+Inventory-derived review data remains `PRE_RECOVERY_PROVISIONAL`; it is not final per-Spec classification. The prior review-passes note groups `317` reconciliation-review records (R0 1, R1 identity 34, R1 runtime 35, R2 test 11, R3 relationship 7, R4 status 167, R5 no direct evidence 62). The current canonical `ambiguity-review.json` projection contains `318` rows (R0 1, R1 identity 36, R1 runtime 35, R2 test 11, R3 relationship 7, R4 status 166, R5 no direct evidence 62). These source counts differ and both are provisional; do not close either queue against the pre-recovery inventory. Current generated outputs must be regenerated after the recovered/new canonical Spec set is uploaded, validated, and integrated:
 
 - Per-Spec `handoff/manifest.json`, `handoff/requirement-ledger.json`, `handoff/STATUS.md`, and reconciliation/history snapshots for affected Specs.
 - `specs/_status/spec-index.json`, `SPEC-STATUS.md`, `reconciliation-report.json`, `continuation-queue.json`, and `ambiguity-review.json`.
