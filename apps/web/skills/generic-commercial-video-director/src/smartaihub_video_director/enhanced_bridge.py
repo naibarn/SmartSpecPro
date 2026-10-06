@@ -761,7 +761,7 @@ def _build_motion_timeline(
                 compact_anchor = (
                     f"{speaker_id} identified by {speaker_identity}"
                     if speaker_identity
-                    else f"{speaker_id} @ {pos}"
+                    else speaker_id
                 )
                 events.append((f'Line {idx + 1} ONLY ({compact_anchor}): "{txt}"{emotion_hint}', "speech"))
                 continue
@@ -1005,7 +1005,7 @@ def _validate_dialogue_timeline(
             compact_anchor = (
                 f"{speaker_id} identified by {identity}"
                 if identity
-                else f"{speaker_id} @ {position}"
+                else speaker_id
             )
             expected_compact = f'Line {index + 1} ONLY ({compact_anchor}): "{text}"'
             if not speaker_id or (not identity and not position) or not text or timeline.count(expected_compact) != 1:
