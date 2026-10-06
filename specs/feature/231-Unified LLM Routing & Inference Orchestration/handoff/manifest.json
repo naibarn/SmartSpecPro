@@ -466,25 +466,11 @@
         "path": "apps/web/server/_core/index.ts"
       },
       {
-        "excerpt": "const SCHEDULE_ID = \"spec231-inference-settlement-recovery\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 7,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.ts"
-      },
-      {
         "excerpt": "/** Versioned authority configuration for Spec 231 automatic route selection. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 608,
         "path": "apps/web/server/routers/llmProviders.ts"
-      },
-      {
-        "excerpt": "\"SAH-SPEC231-CHAT-MESSAGE-1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 469,
-        "path": "apps/web/server/services/chatService.ts"
       },
       {
         "excerpt": "* Routes non-explicit chat through Spec 231 only under a verified platform",
@@ -494,18 +480,32 @@
         "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
       },
       {
-        "excerpt": "idempotencyKey: `spec231:chat:${intent.request.idempotencyKey}`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 260,
-        "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
-      },
-      {
         "excerpt": "* Maps server-resolved chat selections into strict Spec 231 intents. Tenant,",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 135,
         "path": "apps/web/server/services/inference/chatInferenceIntent.ts"
+      },
+      {
+        "excerpt": "* Converts the existing creditService reservation snapshot into Spec 231's",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 30,
+        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
+      },
+      {
+        "excerpt": "\"Spec 231 inference attempt settlement\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 183,
+        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
+      },
+      {
+        "excerpt": "* immutable owner identity before any Spec 231 plan/provider dispatch may use it.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 226,
+        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -628,7 +628,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
     "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
@@ -867,13 +867,6 @@
         "path": "apps/web/server/_core/index.ts"
       },
       {
-        "excerpt": "const SCHEDULE_ID = \"spec231-inference-settlement-recovery\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 7,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.ts"
-      },
-      {
         "excerpt": "/** Versioned authority configuration for Spec 231 automatic route selection. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -881,24 +874,10 @@
         "path": "apps/web/server/routers/llmProviders.ts"
       },
       {
-        "excerpt": "\"SAH-SPEC231-CHAT-MESSAGE-1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 469,
-        "path": "apps/web/server/services/chatService.ts"
-      },
-      {
         "excerpt": "* Routes non-explicit chat through Spec 231 only under a verified platform",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 103,
-        "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
-      },
-      {
-        "excerpt": "idempotencyKey: `spec231:chat:${intent.request.idempotencyKey}`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 260,
         "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
       },
       {
@@ -958,27 +937,6 @@
         "path": "apps/web/server/services/inference/legacyLlmCallerInventory.ts"
       },
       {
-        "excerpt": "return `spec231:${kind}:${hash(id).slice(7)}`;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 42,
-        "path": "apps/web/server/services/inference/persistence.ts"
-      },
-      {
-        "excerpt": "return `spec231:settlement:${digest}`;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 14,
-        "path": "apps/web/server/services/inference/settlementRecoveryJob.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"system:spec231-inference-settlement\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 35,
-        "path": "apps/web/server/services/inference/settlementRecoveryJob.ts"
-      },
-      {
         "excerpt": "/** Exact immutable upstream model ID required by a Spec 231 deployment plan. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -993,59 +951,10 @@
         "path": "apps/web/server/services/llmRouter.ts"
       },
       {
-        "excerpt": "scoreCalibrationRevision: \"scores:spec231-default-1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 30,
-        "path": "apps/web/shared/inferenceRouterPolicy.ts"
-      },
-      {
-        "excerpt": "scoreCalibrationRevision: \"scores:spec231-default-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 214,
-        "path": "apps/web/client/src/components/admin/__tests__/AdminInferencePolicyPanel.test.tsx"
-      },
-      {
-        "excerpt": "const idempotencyKey = \"spec231-chat-request-1\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 171,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = \"spec231-chat-request-2\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 204,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
-        "excerpt": "createCreditReservation(1, 10, \"chat\", {}, \"spec231-expired-reservation\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 236,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = \"spec231-chat-request-race\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 242,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 231 primary Chat route rollout handoff\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 53,
-        "path": "apps/web/server/_core/llmChatRolloutHandoff.test.ts"
-      },
-      {
-        "excerpt": "vi.stubEnv(\"JWT_SECRET\", \"spec231-test-jwt-secret-32-characters-minimum\");",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 56,
         "path": "apps/web/server/_core/llmChatRolloutHandoff.test.ts"
       },
       {
@@ -1060,20 +969,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 19,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "scheduleId: \"spec231-inference-settlement-recovery\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 29,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "expect(state.stop).toHaveBeenCalledWith(\"spec231-inference-settlement-recovery\");",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 43,
         "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
       },
       {
@@ -1102,13 +997,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 13,
-        "path": "apps/web/server/services/chatService.spec231.test.ts"
-      },
-      {
-        "excerpt": "traceId: \"trace-spec231\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 28,
         "path": "apps/web/server/services/chatService.spec231.test.ts"
       },
       {
@@ -1210,24 +1098,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "const reservationKey = `spec231:delivery-reservation:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 196,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 response delivery fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 204,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:reservation:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 352,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1238,24 +1112,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "const idempotencyKey = `spec231:reservation-recovery:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 458,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 recovered reservation fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 466,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:reservation-cross-process:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 516,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1266,38 +1126,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "\"scripts/spec231-settle-reservation-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 563,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:reservation-create-cross-process:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 598,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 concurrent reservation creation fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 606,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-create-reservation-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 618,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:active-attempt:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 660,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1308,45 +1140,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "\"scripts/spec231-plan-route-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 1146,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-policy-routed-retry-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 1375,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-persist-plan-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 1531,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const reservationIdempotencyKey = `spec231:job-settlement:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 2305,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 job settlement fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 2312,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-complete-attempt-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 2555,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1424,20 +1221,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 32,
-        "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"system:spec231-inference-settlement\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 64,
-        "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "expect(job.context.idempotencyKey).toMatch(/^spec231:settlement:[a-f0-9]{64}$/);",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 66,
         "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
       },
       {
@@ -1557,13 +1340,6 @@
         "path": "apps/web/server/_core/index.ts"
       },
       {
-        "excerpt": "const SCHEDULE_ID = \"spec231-inference-settlement-recovery\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 7,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.ts"
-      },
-      {
         "excerpt": "/** Versioned authority configuration for Spec 231 automatic route selection. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -1571,24 +1347,10 @@
         "path": "apps/web/server/routers/llmProviders.ts"
       },
       {
-        "excerpt": "\"SAH-SPEC231-CHAT-MESSAGE-1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 469,
-        "path": "apps/web/server/services/chatService.ts"
-      },
-      {
         "excerpt": "* Routes non-explicit chat through Spec 231 only under a verified platform",
         "identity_ambiguous": false,
         "kind": "SOURCE",
         "line": 103,
-        "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
-      },
-      {
-        "excerpt": "idempotencyKey: `spec231:chat:${intent.request.idempotencyKey}`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 260,
         "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
       },
       {
@@ -1648,27 +1410,6 @@
         "path": "apps/web/server/services/inference/legacyLlmCallerInventory.ts"
       },
       {
-        "excerpt": "return `spec231:${kind}:${hash(id).slice(7)}`;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 42,
-        "path": "apps/web/server/services/inference/persistence.ts"
-      },
-      {
-        "excerpt": "return `spec231:settlement:${digest}`;",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 14,
-        "path": "apps/web/server/services/inference/settlementRecoveryJob.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"system:spec231-inference-settlement\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 35,
-        "path": "apps/web/server/services/inference/settlementRecoveryJob.ts"
-      },
-      {
         "excerpt": "/** Exact immutable upstream model ID required by a Spec 231 deployment plan. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -1683,59 +1424,10 @@
         "path": "apps/web/server/services/llmRouter.ts"
       },
       {
-        "excerpt": "scoreCalibrationRevision: \"scores:spec231-default-1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 30,
-        "path": "apps/web/shared/inferenceRouterPolicy.ts"
-      },
-      {
-        "excerpt": "scoreCalibrationRevision: \"scores:spec231-default-1\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 214,
-        "path": "apps/web/client/src/components/admin/__tests__/AdminInferencePolicyPanel.test.tsx"
-      },
-      {
-        "excerpt": "const idempotencyKey = \"spec231-chat-request-1\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 171,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = \"spec231-chat-request-2\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 204,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
-        "excerpt": "createCreditReservation(1, 10, \"chat\", {}, \"spec231-expired-reservation\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 236,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = \"spec231-chat-request-race\";",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 242,
-        "path": "apps/web/server/__tests__/creditReservation.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 231 primary Chat route rollout handoff\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 53,
-        "path": "apps/web/server/_core/llmChatRolloutHandoff.test.ts"
-      },
-      {
-        "excerpt": "vi.stubEnv(\"JWT_SECRET\", \"spec231-test-jwt-secret-32-characters-minimum\");",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 56,
         "path": "apps/web/server/_core/llmChatRolloutHandoff.test.ts"
       },
       {
@@ -1750,20 +1442,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 19,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "scheduleId: \"spec231-inference-settlement-recovery\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 29,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "expect(state.stop).toHaveBeenCalledWith(\"spec231-inference-settlement-recovery\");",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 43,
         "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
       },
       {
@@ -1792,13 +1470,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 13,
-        "path": "apps/web/server/services/chatService.spec231.test.ts"
-      },
-      {
-        "excerpt": "traceId: \"trace-spec231\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 28,
         "path": "apps/web/server/services/chatService.spec231.test.ts"
       },
       {
@@ -1900,24 +1571,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "const reservationKey = `spec231:delivery-reservation:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 196,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 response delivery fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 204,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:reservation:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 352,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1928,24 +1585,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "const idempotencyKey = `spec231:reservation-recovery:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 458,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 recovered reservation fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 466,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:reservation-cross-process:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 516,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1956,38 +1599,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "\"scripts/spec231-settle-reservation-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 563,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:reservation-create-cross-process:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 598,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 concurrent reservation creation fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 606,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-create-reservation-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 618,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const idempotencyKey = `spec231:active-attempt:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 660,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -1998,45 +1613,10 @@
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
-        "excerpt": "\"scripts/spec231-plan-route-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 1146,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-policy-routed-retry-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 1375,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-persist-plan-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 1531,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "const reservationIdempotencyKey = `spec231:job-settlement:${randomUUID()}`;",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 2305,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
         "excerpt": "description: \"Spec 231 job settlement fixture\",",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 2312,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "\"scripts/spec231-complete-attempt-process.ts\"",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 2555,
         "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
       },
       {
@@ -2114,20 +1694,6 @@
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 32,
-        "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "authorizationScope: \"system:spec231-inference-settlement\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 64,
-        "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "expect(job.context.idempotencyKey).toMatch(/^spec231:settlement:[a-f0-9]{64}$/);",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 66,
         "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
       },
       {

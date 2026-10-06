@@ -164,24 +164,10 @@
         "path": "apps/web/server/services/spec230BootstrapContracts.ts"
       },
       {
-        "excerpt": "const root = mkdtempSync(path.join(tmpdir(), \"spec230-\"));",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 14,
-        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 230 repository bootstrap\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 22,
-        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
-      },
-      {
-        "excerpt": "const outside = mkdtempSync(path.join(tmpdir(), \"spec230-outside-\"));",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 37,
         "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
       }
     ],
@@ -215,7 +201,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/230-skill-first-context-retrieval-canonical/spec.md",
     "digest": "c917163730962213e32a271ecb78891d5db68acd6123be3e5e4ff6c9e71fe5ae",
@@ -280,24 +266,10 @@
         "path": "apps/web/server/services/spec230BootstrapContracts.ts"
       },
       {
-        "excerpt": "const root = mkdtempSync(path.join(tmpdir(), \"spec230-\"));",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 14,
-        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 230 repository bootstrap\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 22,
-        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
-      },
-      {
-        "excerpt": "const outside = mkdtempSync(path.join(tmpdir(), \"spec230-outside-\"));",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 37,
         "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
       }
     ],
@@ -326,24 +298,10 @@
         "path": "apps/web/server/services/spec230BootstrapContracts.ts"
       },
       {
-        "excerpt": "const root = mkdtempSync(path.join(tmpdir(), \"spec230-\"));",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 14,
-        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
-      },
-      {
         "excerpt": "describe(\"Spec 230 repository bootstrap\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 22,
-        "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
-      },
-      {
-        "excerpt": "const outside = mkdtempSync(path.join(tmpdir(), \"spec230-outside-\"));",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 37,
         "path": "apps/web/server/services/__tests__/spec230BootstrapContracts.test.ts"
       }
     ],

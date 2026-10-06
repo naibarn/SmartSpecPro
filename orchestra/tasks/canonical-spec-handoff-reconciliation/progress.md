@@ -2,6 +2,7 @@
 
 - Phase: VERIFY / REVIEW; implementation and additive migration complete in this checkpoint.
 - Canonical base: `origin/main` at `26a276dd49f3bc0ecfbd5bf9e3492ea96efc6722` (confirmed by fetch; worktree based on it).
+- Integrated checkpoint: PR [#42](https://github.com/naibarn/SmartSpecPro/pull/42), merge commit `ce1bf4d6f3515a2cff933fd6c25352ebee93666f`; source checkpoint `6e527cbd662dde23e4470665e5a890bca9e8bb01` is reachable from `origin/main`.
 - Worktree: `/home/dev/.codex/worktrees/canonical-spec-handoff-reconciliation` on `codex/canonical-spec-handoff-reconciliation`.
 - Discovery: configured canonical roots contain 436 indexed records: 294 canonical Specs, 112 planning artifacts, 3 project requirement artifacts, 25 historical candidates, and 2 malformed candidates. Walk completed; discovered/indexed invariant holds.
 - Migration: all 294 canonical Specs have generated manifest, requirement ledger, STATUS, and history files. Normative `spec.md` files were not modified. Evidence references and relationships remain candidates unless explicitly resolved.

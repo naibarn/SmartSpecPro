@@ -221,13 +221,6 @@
         "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       },
       {
-        "excerpt": "* is deferred to Spec 034.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 9,
-        "path": "apps/web/server/routers/skillDiscoveryTool.ts"
-      },
-      {
         "excerpt": "it(\"API shape matches expected Spec 034 contract\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -355,7 +348,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/034-ResearchStoryboardBuilder/spec.md",
     "digest": "2adc9ebf67186e744d941f3c2a926a6b9363c058bbcfdc5f5cd992065a27ca09",
@@ -496,13 +489,6 @@
         "path": "specs/feature/034-ResearchStoryboardBuilder/sections/section-07-regression-tests-and-migration-verification.md"
       },
       {
-        "excerpt": "* is deferred to Spec 034.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 9,
-        "path": "apps/web/server/routers/skillDiscoveryTool.ts"
-      },
-      {
         "excerpt": "it(\"API shape matches expected Spec 034 contract\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -521,13 +507,6 @@
   "relevance_assessment": {
     "active_references": [
       {
-        "excerpt": "* is deferred to Spec 034.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 9,
-        "path": "apps/web/server/routers/skillDiscoveryTool.ts"
-      },
-      {
         "excerpt": "it(\"API shape matches expected Spec 034 contract\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
@@ -538,7 +517,7 @@
     "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {

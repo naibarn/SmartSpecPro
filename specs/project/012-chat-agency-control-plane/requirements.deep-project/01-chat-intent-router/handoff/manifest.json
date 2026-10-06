@@ -49,69 +49,6 @@
         "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router/spec.md"
       },
       {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
         "excerpt": "error = SpecNotFoundError(\"spec-001\")",
         "identity_ambiguous": true,
         "kind": "TEST",
@@ -184,7 +121,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router/spec.md",
     "digest": "9fdd3e413df1479635781917eed5c86d8b13db703394fa0ce02806628afcac83",
@@ -233,69 +170,6 @@
         "digest": "9fdd3e413df1479635781917eed5c86d8b13db703394fa0ce02806628afcac83",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router/spec.md"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
       },
       {
         "excerpt": "error = SpecNotFoundError(\"spec-001\")",
@@ -350,69 +224,6 @@
   },
   "relevance_assessment": {
     "active_references": [
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "\"resolved\": \"https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz\",",
-        "identity_ambiguous": true,
-        "kind": "DOCUMENTATION_OR_CONFIG",
-        "line": 8742,
-        "path": "apps/web/package-lock.json"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "spec1 = NodeTypeSpec(type=\"node1\", display_name=\"N1\", description=\"\", icon=\"\", color=\"\", category=\"\", inputs=[], outputs=[], executor=\"\")",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 77,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
-      {
-        "excerpt": "registry.register_node_type(spec1)",
-        "identity_ambiguous": true,
-        "kind": "TEST",
-        "line": 79,
-        "path": "python-backend/tests/test_node_registry.py"
-      },
       {
         "excerpt": "error = SpecNotFoundError(\"spec-001\")",
         "identity_ambiguous": true,
