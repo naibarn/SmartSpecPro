@@ -1,6 +1,6 @@
 # Canonical Handoff 40-Case Scenario Matrix
 
-Framework scenarios below are checked by focused unit, lifecycle, and skill-contract tests. Repository facts that depend on the post-recovery Spec set remain explicitly waiting; passing an isolated unit fixture does not certify the current or recovered repository inventory.
+Framework scenarios below map requirements to focused unit, lifecycle, and skill-contract evidence; this document is a coverage matrix, not a single executable 40-case suite. Repository facts must be checked against the current inventory, and passing an isolated unit fixture does not certify repository state.
 
 | # | Expected behavior | Framework evidence | State |
 |---:|---|---|---|
@@ -22,8 +22,8 @@ Framework scenarios below are checked by focused unit, lifecycle, and skill-cont
 | 16 | Multiple successor candidates are represented without authority inference | `test_explicit_multi_successor_and_requirement_edges_are_candidates` | FRAMEWORK_PASS |
 | 17 | Reconciliation rerun is idempotent | `test_rerun_is_idempotent` | FRAMEWORK_PASS |
 | 18 | Manual authority/disposition survives reconciliation | `test_manual_disposition_is_preserved`; `test_manifest_writer_persists_explicit_disposition_across_reconciliation` | FRAMEWORK_PASS |
-| 19 | Discovered record count equals global index count | `test_every_discovered_record_appears_once_in_global_index`; refreshed inventory and global index each contain 459 records | FRAMEWORK_PASS |
-| 20 | Every canonical Spec appears exactly once | `test_every_discovered_record_appears_once_in_global_index`; refreshed inventory has 303 canonical Specs, including one each for 278, 281, 282, 287, 288, 290, 291, and 292 | FRAMEWORK_PASS |
+| 19 | Discovered record count equals global index count | `test_every_discovered_record_appears_once_in_global_index`; refreshed inventory and global index each contain 463 records | FRAMEWORK_PASS |
+| 20 | Every canonical Spec appears exactly once | `test_every_discovered_record_appears_once_in_global_index`; refreshed inventory has 305 canonical Specs, including one each for 278, 281, 282, 287, 288, 290, 291, and 292 | FRAMEWORK_PASS |
 | 21 | Open applicable requirement blocks completion | `test_open_requirement_prevents_complete` | FRAMEWORK_PASS |
 | 22 | Incomplete status alone does not require continuation | `test_incomplete_does_not_imply_continue_required` | FRAMEWORK_PASS |
 | 23 | Do-not-continue needs rationale and evidence | `test_retirement_requires_rationale_and_evidence` | FRAMEWORK_PASS |
@@ -47,7 +47,7 @@ Framework scenarios below are checked by focused unit, lifecycle, and skill-cont
 
 ## Result
 
-- All 40 cases pass. Cases 8, 9, 10, 11, 19, and 20 were rechecked against the refreshed 305-Spec / 463-record inventory after duplicate-ID reconciliation and current repository evidence. The duplicate-revision scenario has no live duplicate pair; its behavior remains covered by the framework test without inventing a repository Spec.
-- Refreshed inventory at canonical baseline `0a840d75a75e61f32dacb12e0b292dfb81cc3864`: 305 canonical Specs and 463 total discovered/indexed records; the relationship candidate graph contains 302 edges and the ambiguity-review projection contains 331 open records. Eight requested duplicate-ID groups now have one canonical authority each, with six source-digest aliases and two preserved historical dispositions.
-- The 12 SpecV9 candidate sources are already present in canonical at their archive paths with byte-identical normative members (Spec 288's DOCX is preserved alongside its inventory transcription). `index --check`, `validate --all`, the Handoff framework suite, and skill audit pass on this baseline.
-- Resume predicate remains satisfied: `Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref`. Repository-wide reconciliation remains active; the next workunit is `REVIEW_DUPLICATE_SPEC_ID_GROUPS`.
+- The 40 scenarios are mapped to framework evidence. In this post-integration continuation, cases 8, 9, 10, 11, 19, and 20 were rechecked against the refreshed 305-Spec / 463-record inventory; the Handoff suite passed 77 tests. The duplicate-revision scenario has no live duplicate pair, so its behavior is covered by a framework fixture rather than an invented repository Spec.
+- Refreshed inventory at integrated canonical SHA `ba706ada52550427c8d9efdde206aacac7b38e3a`: 305 canonical Specs and 463 total discovered/indexed records; the relationship candidate graph contains 302 edges and the ambiguity-review projection contains 331 open records. Eight requested duplicate-ID groups now have one canonical authority each, with six source-digest aliases and two preserved historical dispositions.
+- The 12 SpecV9 candidate sources are already present in canonical at their archive paths with byte-identical normative members (Spec 288's DOCX is preserved alongside its inventory transcription). Post-integration `index --check`, `validate --all`, and the Handoff framework suite pass at `ba706ada52550427c8d9efdde206aacac7b38e3a`. The skill audit tests passed, but its repository hygiene gate exited 1 because pre-existing `.venv`, `.pytest_cache`, and `__pycache__` runtime artifacts remain in skill directories; these were preserved.
+- The duplicate-group resume predicate is satisfied: `Recovered/canonical Spec set has been uploaded, validated, and integrated into canonical ref`. The eight requested duplicate-ID groups are resolved. Repository-wide reconciliation and Canonical Spec Handoff migration remain active; continue with the remaining evidence-based ambiguity review.

@@ -3,7 +3,7 @@
 ## Scope and baseline
 
 - Workunit: `REVIEW_DUPLICATE_SPEC_ID_GROUPS`.
-- Baseline: `origin/main` `8779e6ef697212f22836f2020a4ec6ec0c590d4d`.
+- Baseline: `origin/main` `8779e6ef697212f22836f2020a4ec6ec0c590d4d`; resolved implementation integrated as `ba706ada52550427c8d9efdde206aacac7b38e3a`.
 - Source was refreshed in an isolated, clean canonical worktree; the user's dirty primary checkout was preserved.
 - The earlier `duplicate-spec-id-authority-review-20261006.md` remains historical evidence. Its proposed 293–295 allocation and unresolved recommendations predate SpecR10 and are superseded by this review.
 - No SpecR10 content was re-imported or changed.
@@ -85,12 +85,12 @@ Agency Creator and 162/163 Gap Closure are retained under `specs/_history/spec-i
 
 ## Validation and remaining state
 
-- Canonical baseline: `8779e6ef697212f22836f2020a4ec6ec0c590d4d`; integration SHA is recorded after promotion.
-- Inventory after mutation: 305 canonical Specs, 463 total inventory records, 302 relationship-graph candidate edges, and 331 open ambiguity-review records. The remaining ambiguity records cover other confidence/relevance and source-reference review; they do not represent duplicate authority in these eight groups.
+- Canonical implementation integration: `ba706ada52550427c8d9efdde206aacac7b38e3a` (PR #78 merged to `main`). Post-integration verification was rerun on this exact SHA: `index --check` PASS (305 canonical Specs / 463 records, no drift); `validate --all` PASS (463 discovered and indexed, no missing/invalid Handoffs, complete walk); `python3 -m unittest discover -s tools/spec_handoff/tests -v` PASS (77 tests); the skill audit test phase PASS; overall `bash skills/audit-skills.sh` exits 1 because its repository hygiene gate detects pre-existing `.venv`, `.pytest_cache`, and `__pycache__` artifacts, preserved to avoid deleting shared/runtime data. The 40-case matrix facts and updated counts are separately recorded.
+- Inventory after mutation: 305 canonical Specs, 463 total inventory records, 302 relationship-graph candidate edges, and 331 open ambiguity-review records. The remaining 331 ambiguity records cover other confidence/relevance and source-reference review; they do not represent duplicate authority in these eight groups.
 - All 8 target groups now have deterministic dispositions. IDs 000, 014, 031, 045, 058, 059, 162, and 164 each have exactly one canonical authority. IDs 296–301 each have exactly one new canonical Spec; no duplicate canonical ID group remains in inventory.
 - Six versioned alias records were created; two historical dispositions preserve 058 Agency Creator and 162/163 Gap Closure outside canonical roots. All six old source digests match the baseline bytes; all current target digests match canonical inventory.
 - Semantic path references and dependencies were repaired, including the 071/072/074/075/076/077/135 worker-runtime references to Spec 301 and Presentation Section 07 implementation labels to Spec 299.
 - `index --check`: PASS; `validate --all`: PASS; 21 impacted Handoffs were reconciled; authority decisions were written through the shared optimistic Handoff writer.
-- Alias/provenance tests, Handoff framework tests, skill audit, and the 40-case scenario matrix are run and reported in the integration evidence update.
-- Repository-wide Spec reconciliation, the remaining 331-record evidence review, and the overall Canonical Spec Handoff migration remain open. Next workunit: continue evidence-led review beyond these eight duplicate-ID groups.
+- Alias/provenance and Handoff framework tests pass. The skill audit hygiene failure is separately reported in `duplicate-spec-postintegration-20261006.md`; its runtime-artifact findings are not treated as a code failure or cleaned destructively.
+- Repository-wide Spec reconciliation, the remaining 331-record evidence review, and the overall Canonical Spec Handoff migration remain open. Next workunit: continue evidence-led review of the remaining ambiguity records beyond these eight duplicate-ID groups.
 - Spec 288 trailing whitespace remains unchanged as preserved archive/provenance debt and does not block this workunit.
