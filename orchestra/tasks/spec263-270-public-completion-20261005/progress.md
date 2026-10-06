@@ -196,3 +196,8 @@
 - Fresh raw Googlebot source check at this same deployed SHA still fails: two descriptions and two canonicals on both `/` and `/features`; report: `evidence/raw-googlebot-after-4b536d8.json`. Static UI rollout cannot change server prerender behavior.
 - Scoped image criterion §16.7 is marked complete with bounded lab evidence. Aggregate stays `PARTIAL_INTEGRATED — STATIC FRONTEND DEPLOYED — ACCEPTANCE OPEN`.
 - PR #39 merged the final evidence/handoff-only update as `5bcb00a19b0b4de5aa465251f65a17b48b58915b`; static production continues to serve app SHA `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63` because PR #39 did not alter application code.
+
+
+## 2026-10-06 handoff state
+- PR #40 merged normally as `25883550a64f6a93fd8fc75f1dfbd2cbccf9c382`; GitHub API and fetched `origin/main` confirm this is latest main. PR #40 is docs-only; deployed static application SHA remains `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63` (index SHA-256 `c1879fffe401d4b5ef6e1fa6a88326796d6298667a60ebd6baf54b6480986723`).
+- Current disposition: static responsive-image criterion complete for 15/15 observed production cases; Spec 263/270 aggregate remains partial/open. See `acceptance-status.md` for the raw SEO failure, backend/migration blocker, native Spec 270 authority, consent/rights, accessibility, RUM/indexation, tenant fixture, and full-typecheck next actions.
