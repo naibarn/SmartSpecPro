@@ -806,7 +806,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
+      "next_action": "Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",

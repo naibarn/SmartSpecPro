@@ -25,10 +25,10 @@
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "Resume repository-wide reconciliation against the validated SpecV9 inventory: review the eight remaining duplicate-ID groups, then continue evidence-based review of the remaining 327 records. Preserve unresolved classifications where evidence is insufficient.",
+    "next_action": "Begin REVIEW_DUPLICATE_SPEC_ID_GROUPS for IDs 000, 014, 031, 045, 058, 059, 162, and 164. Keep each unresolved until source evidence determines authority; then resume the remaining evidence-based reconciliation queue. Do not mark repository-wide Spec reconciliation or Canonical Spec Handoff migration complete.",
     "next_ready_workunit": "REVIEW_DUPLICATE_SPEC_ID_GROUPS",
     "reactivation_predicate": null,
-    "resume_point": "SpecV9 upload predicate satisfied at 6ab8fc6d290a7e42dd7df195aa433f5d092edc74. Refreshed inventory: 303 canonical Specs / 459 indexed records / 327 reconciliation review records. Next ready workunit REVIEW_DUPLICATE_SPEC_ID_GROUPS; migration remains open.",
+    "resume_point": "SpecV9 recovered/canonical Spec upload predicate is satisfied at 6ab8fc6d290a7e42dd7df195aa433f5d092edc74. Revalidated against origin/main 0a840d75a75e61f32dacb12e0b292dfb81cc3864: 303 canonical Specs, 459 indexed records, 300 relationship candidate edges, and 327 open ambiguity-review records. Candidate import disposition evidence: specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/canonical-candidate-import-reconciled-20261006.md. Next ready workunit REVIEW_DUPLICATE_SPEC_ID_GROUPS; overall migration remains open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -48,8 +48,8 @@
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
       }
     ],
-    "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
-    "rationale": "The recovered canonical Spec set is uploaded, validated, and integrated. Repository-wide evidence reconciliation remains open with 315 current review records; no overall completion claim is made.",
+    "next_action": "Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.",
+    "rationale": "The recovered SpecV9 set is uploaded, validated, and integrated. Current inventory, relationship graph, and open review count were refreshed on the latest canonical baseline. Repository-wide evidence reconciliation remains open; no overall completion claim is made.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -78,7 +78,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -167,8 +167,8 @@
           "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
         }
       ],
-      "next_action": "RESUME_REPOSITORY_WIDE_RECONCILIATION: post-recovery inventory is refreshed at ade174b306e6e4fcc9b078a616fa1a5634686722 with 291 canonical Specs, 447/447 indexed records, 286 relationship edges, and 315 open review records. Review the eight remaining duplicate-ID groups first; do not close unsupported classifications.",
-      "rationale": "The recovered canonical Spec set is uploaded, validated, and integrated. Repository-wide evidence reconciliation remains open with 315 current review records; no overall completion claim is made.",
+      "next_action": "Review the eight unresolved duplicate Spec ID groups first, then resume evidence-based review of the remaining current ambiguity records. Preserve unsupported classifications.",
+      "rationale": "The recovered SpecV9 set is uploaded, validated, and integrated. Current inventory, relationship graph, and open review count were refreshed on the latest canonical baseline. Repository-wide evidence reconciliation remains open; no overall completion claim is made.",
       "residual_requirements": []
     },
     "lifecycle": {
@@ -283,7 +283,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:37:58.793499Z",
+  "updated_at": "2026-10-06T04:48:48.860982Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
