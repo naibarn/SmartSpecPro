@@ -43,7 +43,7 @@ describe("Research Notes portable package", () => {
       transport: { authentication: string; callerMaySetTenantOrUserId: boolean };
       actions: Array<{ id: string; input: string[]; inputSchema: { additionalProperties: boolean; properties: Record<string, unknown> } }>;
     };
-    expect(actions.transport.authentication).toBe("authenticated-platform-session");
+    expect(actions.transport.authentication).toBe("authenticated-platform-session-or-user-bearer");
     expect(actions.transport.callerMaySetTenantOrUserId).toBe(false);
     expect(actions.actions.map(({ id }) => id)).toContain("notes.summary.request");
     expect(actions.actions.flatMap(({ input }) => input)).not.toContain("tenantId");

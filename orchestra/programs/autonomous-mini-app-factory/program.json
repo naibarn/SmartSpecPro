@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "c0a9eef1a2d230b200b9f791b328b90d300fe9e3",
+    "sha": "d9d72f48867cff6fecac8ec8b73a0521e25522d0",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": "workspace-convergence:48084354-a2f2-4617-b602-3684ed70aacf"
@@ -41,7 +41,7 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_PORTABLE_ACTION_SCHEMA",
+    "id": "RESEARCH_NOTES_NONPROD_SMOKE_RUNNER",
     "state": "IMPLEMENTED_PENDING_INTEGRATION",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
@@ -57,13 +57,15 @@
       "PR #240 merged normally: source 48e8dd1fad5789dcd3c63a615f9776a121e005cd is reachable from origin/main at de9498f0ae73b9c3f6d0d2abb6dba637f616463a. Registered canonical workspace /home/dev/projects/SmartSpecPro converged cleanly to de9498f0ae73b9c3f6d0d2abb6dba637f616463a.",
       "Research Notes SPAAS package descriptor and machine-callable tRPC action catalog validated with the existing Spec 261 package validator; package digest spaas-package-v1:sha256:9090b2e9ec01b2490341e39d4140059d7d5aa34447d321b5e90a9ceb9b23a0fd. Validation is needs_context: V1/V2/V3/V4 passed; V5 runtime placement and V6 migration rollback remain not_evaluated.",
       "PR #242 merged normally at origin/main SHA 88db09239234c1ce2444bca10f44903f26ff5e8d. Research Notes package/action contract is integrated; the current package digest including deployment descriptor and smoke plan is a85fd5afedcd3378f89663f07d8587cddf09cdea523c57fba78519c579344c03. Local focused suite: 9 files, 32 tests passed; package status needs_context due missing trusted V5/V6 evidence.",
-      "The machine action catalog now has strict JSON Schema inputs and typed summary-job output/status enums. Latest local focused suite: 9 files, 32 tests passed; deterministic package digest is spaas-package-v1:sha256:1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b."
+      "The machine action catalog now has strict JSON Schema inputs and typed summary-job output/status enums. Latest local focused suite: 9 files, 32 tests passed; deterministic package digest is spaas-package-v1:sha256:1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b.",
+      "A guarded non-production tRPC smoke runner now covers authenticated CRUD and optionally the canonical summary job; --with-summary requires explicit RESEARCH_NOTES_ALLOW_PROVIDER_COST=true. CLI --help works; local package focused suite 9 files/32 tests passed; current SPAAS digest 44231a81e31bb677fad3c476f52c094eb1ac2108d0c750349e552db5fabde308.",
+      "Local web runtime at source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3 returned /healthz HTTP 200 {status:ok} and /readyz HTTP 200 {status:ready, db:ok, feature186:ok:postgres-pull}; this is service readiness only, not Research Notes UAT or migration evidence."
     ],
     "pending": [
-      "Action-schema refinement is ready for integration.",
-      "PostgreSQL migration application, runtime placement, deployment and UAT remain NOT_RUN: DATABASE_URL and registered test/deployment environment are absent; no base URL or Cloudflare credential is configured."
+      "The smoke runner has not been executed against authenticated app/project data: no RESEARCH_NOTES_BASE_URL, app identity, project identity, or credential is configured in this session.",
+      "Migration 0393 has static SQL/Drizzle schema/journal validation but no application/rollback run; shell DATABASE_URL is absent. Deployment environment remains unselected; no deploy or UAT PASS is claimed."
     ],
-    "nextAction": "Integrate the stricter action schema; continue checking for a safe registered non-production DB/runtime target and run only through existing SPEC-295 migration/deployment authority."
+    "nextAction": "Integrate the smoke runner and current action schemas; then execute only against a registered non-production database/runtime with an authenticated tenant and App/project binding. If those facts remain unavailable, continue independent test-hardening work."
   },
   "checkpoints": [
     {
@@ -129,6 +131,12 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "c0a9eef1a2d230b200b9f791b328b90d300fe9e3",
       "evidence": "9 focused Vitest files, 32 tests passed; SPAAS package digest 1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b; validation status needs_context for V5/V6."
+    },
+    {
+      "id": "RESEARCH_NOTES_NONPROD_SMOKE_RUNNER",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "d9d72f48867cff6fecac8ec8b73a0521e25522d0",
+      "evidence": "9 focused Vitest files, 32 tests passed; smoke runner --help parsed successfully; package digest 44231a81e31bb677fad3c476f52c094eb1ac2108d0c750349e552db5fabde308; github retry suite 4 passed; runtime liveness/readiness probes passed at service source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3."
     }
   ],
   "completedWorkunits": [],
@@ -263,7 +271,7 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_SAFE_DATABASE_AND_RUNTIME_TARGET",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_AUTHENTICATED_NONPROD_MIGRATION_AND_UAT",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE applies only to integration workunits; independent implementation continues.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -277,5 +285,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T16:26:20Z"
+  "updatedAt": "2026-10-07T16:34:19Z"
 }

@@ -10,4 +10,4 @@ pnpm --filter @smartspec/web exec tsx scripts/build-research-notes-package.ts
 
 The build validates the offline manifest/package stages with the existing `@smartspec/spaas-standard` implementation, then writes a digest and validation report under `apps/web/.artifacts/research-notes/`. Runtime placement and migration rollback checks remain `needs_context` until trusted environment evidence exists. The package build does not apply migrations, execute actions, contact providers, or deploy the app.
 
-Machine callers should use the platform tRPC client with an authenticated platform session. They must send only action inputs from `actions.json`; tenant and user IDs are never caller-controlled inputs. Long-running summary requests return a canonical worker job ID for status polling.
+Machine callers should use the platform tRPC client with an authenticated platform session or platform-issued user Bearer credential. They must send only action inputs from `actions.json`; tenant and user IDs are never caller-controlled inputs. Long-running summary requests return a canonical worker job ID for status polling.
