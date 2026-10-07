@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "452a2073b64a7a610b504b5175196a95a5e58d81",
+    "expected_canonical_sha": "f1bf44911d8176db9414ddc4eee934b0f304dec7",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 59,
+  "generation": 60,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -206,7 +206,8 @@
       "9536f33358331ac12a77fa54bbbb663d86fa1d48",
       "0b19f95cbc8648358e082ae1e946e00247d9498b",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
-      "452a2073b64a7a610b504b5175196a95a5e58d81"
+      "452a2073b64a7a610b504b5175196a95a5e58d81",
+      "f1bf44911d8176db9414ddc4eee934b0f304dec7"
     ],
     "mapping": [],
     "source_paths": [
@@ -246,9 +247,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "452a2073b64a7a610b504b5175196a95a5e58d81",
+    "canonical_sha": "f1bf44911d8176db9414ddc4eee934b0f304dec7",
     "integrated": true,
-    "integrated_at": "2026-10-07T07:45:00Z"
+    "integrated_at": "2026-10-07T07:55:59Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -573,7 +574,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:48:18.906927Z",
+  "updated_at": "2026-10-07T07:56:40.784884Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -827,6 +828,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-unknown-owner-evidence-classification-20261007.md",
         "scope": "AUDIT_ONLY gives per-row evidence-backed recovery, stale metadata, active external, or unresolved owner provenance classifications without enabling destructive actions.",
         "source_sha": "452a2073b64a7a610b504b5175196a95a5e58d81",
+        "status": "PASS"
+      },
+      {
+        "kind": "MISSION_CONTROL_HOST_OWNER_PROVIDER_RECONCILIATION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-host-owner-provider-reconciliation-20261007.md",
+        "scope": "Host provider projection uses reconciled live owner-session and Runner evidence, surfacing conflicts as UNKNOWN.",
+        "source_sha": "f1bf44911d8176db9414ddc4eee934b0f304dec7",
         "status": "PASS"
       }
     ],
