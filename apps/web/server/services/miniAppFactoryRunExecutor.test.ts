@@ -96,6 +96,64 @@ describe("Mini App Factory DevelopmentRun executor", () => {
     expect(run.workUnit?.artifacts).toEqual(["artifact:spec", "artifact:implement"]);
   });
 
+  it("resumes from the persisted checkpoint in a new executor invocation", async () => {
+    let durableRun = makeRun();
+    let revision = 0;
+    const makeService = () => ({
+      get: async () => ({ run: durableRun, revision, events: [] }),
+      recordCanonicalCheckpoint: async (input: any) => {
+        durableRun = {
+          ...durableRun,
+          workUnit: recordCanonicalCheckpoint(durableRun.workUnit!, input.checkpoint),
+        };
+        revision += 1;
+        return { accepted: true, run: durableRun, revision, event: null };
+      },
+      recordImplementationCompletion: async (input: any) => {
+        durableRun = {
+          ...durableRun,
+          workUnit: completeDevelopmentWorkUnit(durableRun.workUnit!, input.completion),
+        };
+        revision += 1;
+        return { accepted: true, run: durableRun, revision, event: null };
+      },
+    });
+    const runScope = { runId: durableRun.runId, tenantId: durableRun.tenantId, actorId: durableRun.actorId };
+    const firstInvocation = await executeMiniAppFactoryStages({
+      pipeline,
+      service: makeService() as any,
+      run: runScope,
+      maxStages: 1,
+      executeStage: async stageId => ({ artifacts: [`artifact:${stageId}`] }),
+    });
+
+    expect(firstInvocation).toEqual({
+      executedStages: ["spec"],
+      nextEligibleStages: ["implement"],
+      state: "READY",
+    });
+    expect(durableRun.workUnit?.progress.completedScope).toEqual(["spec"]);
+    expect(durableRun.workUnit?.progress.remainingScope).toEqual(["implement"]);
+
+    // A new service/executor instance reloads the last persisted DevelopmentRun checkpoint.
+    const resumedStages: string[] = [];
+    const resumedInvocation = await executeMiniAppFactoryStages({
+      pipeline,
+      service: makeService() as any,
+      run: runScope,
+      executeStage: async (stageId, context) => {
+        resumedStages.push(stageId);
+        expect(context.completedScope).toEqual(["spec"]);
+        expect(context.artifacts).toEqual(["artifact:spec"]);
+        return { artifacts: [`artifact:${stageId}`] };
+      },
+    });
+
+    expect(resumedStages).toEqual(["implement"]);
+    expect(resumedInvocation.state).toBe("IMPLEMENTATION_SCOPE_COMPLETE");
+    expect(durableRun.workUnit?.progress.completedScope).toEqual(["spec", "implement"]);
+  });
+
   it("continues an independent stage while a dependency-blocked stage waits", async () => {
     const baseRun = makeRun();
     const baseUnit = baseRun.workUnit!;
