@@ -49,7 +49,7 @@ import { registerInternalSocialToolRoute } from "../routes/internalSocialTool";
 import { registerInternalSocialActionsRoute } from "../routes/internalSocialActions";
 import { registerInternalMetricsRoute } from "../routes/internalMetrics";
 import { renderAgentRegistryMetrics } from "../services/agentRegistryMetrics";
-import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
+import { evaluateApplicationReadiness } from "../services/applicationReadiness";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -553,54 +553,11 @@ app.get("/metrics", async (_req, res) => {
  * Returns 200 if ready to serve traffic, 503 if not ready
  */
 app.get("/readyz", async (_req, res) => {
-  const checks: Record<string, string> = {};
-  let allHealthy = true;
-
-  if (applicationDraining) {
-    res.status(503).json({
-      status: "draining",
-      checks: { lifecycle: "draining" },
-    });
-    return;
-  }
-
-  // Check database connection (2 second timeout)
-  try {
-    const db = await getDb();
-    if (!db) {
-      checks.db = "unavailable";
-      allHealthy = false;
-    } else {
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 2000)
-      );
-      const queryPromise = db.execute(sql`SELECT 1`);
-      await Promise.race([queryPromise, timeoutPromise]);
-      checks.db = "ok";
-    }
-  } catch (error: any) {
-    checks.db = error?.message === "timeout" ? "timeout" : "error";
-    allHealthy = false;
-  }
-
-  // Redis is not a readiness dependency. PostgreSQL is the canonical job and
-  // application-state store; optional legacy integrations must not take down
-  // the whole web service when Redis is unavailable.
-  checks.redis = "not_required";
-
-  const feature186 = cloudflareRuntimeStatus();
-  checks.feature186 = feature186.hardCutover
-    ? feature186.runtimeReady
-      ? `ok:${feature186.runtimeMode}`
-      : `error:${feature186.runtimeReason ?? "runtime_not_ready"}`
-    : "disabled";
-  if (feature186.hardCutover && !feature186.runtimeReady) allHealthy = false;
-
-  if (allHealthy) {
-    res.json({ status: "ready", checks });
-  } else {
-    res.status(503).json({ status: "not_ready", checks });
-  }
+  const readiness = await evaluateApplicationReadiness({ db: await getDb(), draining: applicationDraining });
+  res.status(readiness.status === "ready" ? 200 : 503).json({
+    status: readiness.status,
+    checks: readiness.checks,
+  });
 });
 
 // Audit trace context — generates traceId for every request
