@@ -46,7 +46,6 @@ import { CONTENT_PROTECTION_RUNTIME_TYPE } from "../../shared/contentProtectionW
 import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContracts";
 import { runJobSettlementHooks } from "./jobSettlementHooks";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
-import "./workflowStudioSettlement";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
   short: 90_000,
