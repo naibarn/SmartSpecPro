@@ -11,10 +11,12 @@ const mocks = vi.hoisted(() => ({
   createNote: vi.fn(),
   updateNote: vi.fn(),
   archiveNote: vi.fn(),
+  requestSummary: vi.fn(),
   invalidate: vi.fn(),
   appQuery: { data: { appId: "app-research" }, isLoading: false, isError: false, refetch: vi.fn() },
   projectsQuery: { data: [{ projectId: "project-one", title: "Research project" }], isLoading: false, isError: false, refetch: vi.fn() },
   notesQuery: { data: [], isLoading: false, isError: false },
+  summaryJobQuery: { data: undefined, isLoading: false },
 }));
 
 vi.mock("wouter", () => ({ useRoute: () => [true, { publicAppId: "public-research" }] }));
@@ -32,6 +34,8 @@ vi.mock("@/lib/trpc", () => ({
       createNote: { useMutation: () => ({ mutate: mocks.createNote, isPending: false }) },
       updateNote: { useMutation: () => ({ mutate: mocks.updateNote, isPending: false }) },
       archiveNote: { useMutation: () => ({ mutate: mocks.archiveNote, isPending: false }) },
+      requestSummary: { useMutation: () => ({ mutate: mocks.requestSummary, isPending: false }) },
+      summaryJob: { useQuery: () => mocks.summaryJobQuery },
     },
   },
 }));
@@ -42,6 +46,7 @@ describe("ResearchNotesPage", () => {
     mocks.appQuery = { data: { appId: "app-research" }, isLoading: false, isError: false, refetch: vi.fn() };
     mocks.projectsQuery = { data: [{ projectId: "project-one", title: "Research project" }], isLoading: false, isError: false, refetch: vi.fn() };
     mocks.notesQuery = { data: [], isLoading: false, isError: false };
+    mocks.summaryJobQuery = { data: undefined, isLoading: false };
   });
 
   it("creates a project-scoped note through the authenticated Mini App API", async () => {
@@ -65,5 +70,21 @@ describe("ResearchNotesPage", () => {
     expect(screen.getByText("This App is unavailable")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(mocks.appQuery.refetch).toHaveBeenCalledOnce();
+  });
+
+  it("requests an AI summary through the project-scoped background action", async () => {
+    mocks.notesQuery = {
+      data: [{ noteId: "note-one", title: "Interview", content: "Three customers requested exports.", aiSummary: null }],
+      isLoading: false,
+      isError: false,
+    };
+    render(<ResearchNotesPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Interview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Summarize with AI" }));
+    await waitFor(() => expect(mocks.requestSummary).toHaveBeenCalledWith({
+      appId: "app-research",
+      projectId: "project-one",
+      noteId: "note-one",
+    }));
   });
 });

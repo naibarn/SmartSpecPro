@@ -10,6 +10,7 @@ import type { ChatIngressEvent } from "@shared/channelTypes";
 import { executeExternalAgentTask } from "./externalAgentTaskExecutor";
 import { executeWorkflowNodeTask } from "./workflowNodeTaskExecutor";
 import { executeComputerUseBrowserJob } from "./computerUseRunnerJobExecutor";
+import { createResearchNotesSummaryExecutor } from "./researchNotesSummaryExecutor";
 import { isFeature186HardCutoverEnabled } from "./cloudflareRuntimeTarget";
 import { omitUndefinedJobPayloadProperties } from "./feature186VerticalDramaJobAdapter";
 import {
@@ -393,6 +394,13 @@ defaultJobExecutorRegistry.register({
   executionClass: "long",
   contractVersions: new Set([INTELLIGENCE_RESEARCH_CONTRACT_VERSION]),
   executor: createIntelligenceResearchJobExecutor(),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "research_notes.summarize",
+  executionClass: "long",
+  contractVersions: new Set(["mini-app-research-v1"]),
+  executor: createResearchNotesSummaryExecutor(),
 });
 
 // Full verification is durably routable through the canonical worker only.

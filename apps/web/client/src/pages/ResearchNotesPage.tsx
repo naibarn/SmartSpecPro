@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRoute } from "wouter";
 import { AppPage } from "@/components/AppPage";
 import { trpc } from "@/lib/trpc";
@@ -13,7 +13,7 @@ import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
 
 type ResearchProject = { projectId: string; title: string };
-type ResearchNote = { noteId: string; title: string; content: string; updatedAt: Date | string };
+type ResearchNote = { noteId: string; title: string; content: string; aiSummary?: string | null; updatedAt: Date | string };
 
 export default function ResearchNotesPage() {
   const [, params] = useRoute("/apps/:publicAppId");
@@ -40,8 +40,10 @@ export default function ResearchNotesPage() {
   const notes = (notesQuery.data ?? []) as ResearchNote[];
   const [selectedNoteId, setSelectedNoteId] = useState("");
   const selectedNote = notes.find(note => note.noteId === selectedNoteId) ?? null;
+  const [summaryJobId, setSummaryJobId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const hasUnsavedNoteChanges = Boolean(selectedNote && (selectedNote.title !== title || selectedNote.content !== content));
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -75,6 +77,7 @@ export default function ResearchNotesPage() {
   const updateNote = trpc.researchNotes.updateNote.useMutation({
     onSuccess: async note => {
       setSaveError("");
+      setSummaryJobId("");
       await refreshNotes();
       setSelectedNoteId(note.noteId);
     },
@@ -89,9 +92,31 @@ export default function ResearchNotesPage() {
     },
     onError: error => setSaveError(error.message),
   });
+  const requestSummary = trpc.researchNotes.requestSummary.useMutation({
+    onSuccess: result => {
+      setSaveError("");
+      setSummaryJobId(result.jobId);
+    },
+    onError: error => setSaveError(error.message),
+  });
+  const summaryJobQuery = trpc.researchNotes.summaryJob.useQuery(
+    { appId, projectId, noteId: selectedNote?.noteId ?? "pending", jobId: summaryJobId || "pending" },
+    {
+      enabled: Boolean(appId && projectId && selectedNote && summaryJobId),
+      refetchInterval: query => ["succeeded", "failed", "cancelled", "expired"].includes(String(query.state.data?.status)) ? false : 2_000,
+    },
+  );
+
+  useEffect(() => {
+    if (summaryJobQuery.data?.status === "succeeded" && summaryJobQuery.data.summary) {
+      void utils.researchNotes.listNotes.invalidate({ appId, projectId });
+      setSummaryJobId("");
+    }
+  }, [summaryJobQuery.data?.jobId, summaryJobQuery.data?.status, summaryJobQuery.data?.summary, utils, appId, projectId]);
 
   function selectNote(note: ResearchNote) {
     setSelectedNoteId(note.noteId);
+    setSummaryJobId("");
     setTitle(note.title);
     setContent(note.content);
     setSaveError("");
@@ -99,6 +124,7 @@ export default function ResearchNotesPage() {
 
   function startNewNote() {
     setSelectedNoteId("");
+    setSummaryJobId("");
     setTitle("");
     setContent("");
     setSaveError("");
@@ -139,7 +165,7 @@ export default function ResearchNotesPage() {
               label="Project"
               value={projectId}
               options={projectOptions}
-              onChange={value => { setSelectedProjectId(value); setSelectedNoteId(""); }}
+              onChange={value => { setSelectedProjectId(value); setSelectedNoteId(""); setSummaryJobId(""); }}
               hasSearch={projects.length > 5}
               width="100%"
             />
@@ -221,8 +247,32 @@ export default function ResearchNotesPage() {
                   rows={12}
                   maxLength={262_144}
                 />
+                {selectedNote?.aiSummary || summaryJobQuery.data?.summary ? (
+                  <Card padding={3}>
+                    <VStack gap={2}>
+                      <Text weight="semibold">AI summary</Text>
+                      <Text>{summaryJobQuery.data?.summary ?? selectedNote?.aiSummary}</Text>
+                    </VStack>
+                  </Card>
+                ) : null}
+                {summaryJobId && !["succeeded", "failed", "cancelled", "expired"].includes(String(summaryJobQuery.data?.status)) ? (
+                  <Text type="supporting">Summarizing this note in the background…</Text>
+                ) : null}
+                {summaryJobQuery.data?.status === "failed" ? (
+                  <Text color="accent">Summary failed. You can retry the action.</Text>
+                ) : null}
+                {hasUnsavedNoteChanges ? <Text type="supporting">Save your note changes before requesting an AI summary.</Text> : null}
                 {saveError ? <Text color="accent">{saveError}</Text> : null}
                 <HStack gap={2} wrap="wrap">
+                  {selectedNote ? (
+                    <Button
+                      label={summaryJobQuery.data?.status === "running" ? "Summarizing…" : selectedNote.aiSummary ? "Summarize again" : "Summarize with AI"}
+                      variant="secondary"
+                      isLoading={requestSummary.isPending || Boolean(summaryJobId && !["succeeded", "failed", "cancelled", "expired"].includes(String(summaryJobQuery.data?.status)))}
+                      isDisabled={hasUnsavedNoteChanges || requestSummary.isPending || Boolean(summaryJobId && !["succeeded", "failed", "cancelled", "expired"].includes(String(summaryJobQuery.data?.status)))}
+                      onClick={() => requestSummary.mutate({ appId, projectId, noteId: selectedNote.noteId })}
+                    />
+                  ) : null}
                   <Button
                     label={selectedNote ? "Save changes" : "Save note"}
                     variant="primary"

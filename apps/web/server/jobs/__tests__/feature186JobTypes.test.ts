@@ -4,6 +4,7 @@ import {
   isPostgresNodeJobType,
   POSTGRES_NODE_JOB_TYPES,
 } from "../feature186JobTypes";
+import { defaultJobExecutorRegistry } from "../../services/jobExecutorRegistry";
 
 describe("Feature 195 PostgreSQL node worker admission", () => {
   it("admits external_agent_task through the canonical worker path", () => {
@@ -14,6 +15,11 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
   it("admits the registered Google Drive cleanup job through the canonical worker path", () => {
     expect(POSTGRES_NODE_JOB_TYPES.has("gdrive.edit_session_cleanup")).toBe(true);
     expect(isPostgresNodeJobType("gdrive.edit_session_cleanup")).toBe(true);
+  });
+
+  it("routes Research Notes summaries to the server-owned canonical worker executor", () => {
+    expect(isPostgresNodeJobType("research_notes.summarize")).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve("research_notes.summarize", "mini-app-research-v1")).toBeDefined();
   });
 
   it("does not broaden admission to arbitrary external job types", () => {
