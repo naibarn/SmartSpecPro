@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import crypto from "node:crypto";
 
-const { revokedJtis, ephemeralValues, claimedKeys } = vi.hoisted(() => ({
+const { revokedJtis, ephemeralValues, claimedKeys, enqueueWorkspaceAuthorityAuditEvent } = vi.hoisted(() => ({
   revokedJtis: new Set<string>(),
   ephemeralValues: new Map<string, unknown>(),
   claimedKeys: new Set<string>(),
+  enqueueWorkspaceAuthorityAuditEvent: vi.fn(async () => undefined),
 }));
 
 // RunnerGateway is a unit suite. Keep revocation semantics real while isolating
@@ -29,6 +30,9 @@ vi.mock("../postgresRateLimitStore", () => ({
     claimedKeys.add(storageKey);
     return true;
   },
+}));
+vi.mock("../../jobs/workspaceAuthorityAuditJob", () => ({
+  enqueueWorkspaceAuthorityAuditEvent,
 }));
 
 import {
@@ -78,6 +82,7 @@ describe("RunnerGateway", () => {
     revokedJtis.clear();
     ephemeralValues.clear();
     claimedKeys.clear();
+    enqueueWorkspaceAuthorityAuditEvent.mockClear();
     __clearRunnerRefreshGraceForTests();
   });
 
@@ -506,6 +511,12 @@ describe("RunnerGateway", () => {
       displayName: "Owned Runner",
       ownerUserId: 7,
     });
+    await gateway.bindSession({
+      runnerId: "runner-revoke",
+      tenantId: "tenant-a",
+      ownerUserId: 7,
+      runnerSessionId: "session-revoke",
+    });
     await expect(
       gateway.revoke({
         runnerId: "runner-revoke",
@@ -520,6 +531,11 @@ describe("RunnerGateway", () => {
         ownerUserId: 7,
       })
     ).resolves.toMatchObject({ status: "revoked", trustState: "revoked" });
+    expect(enqueueWorkspaceAuthorityAuditEvent).toHaveBeenCalledExactlyOnceWith({
+      tenantId: "tenant-a",
+      eventType: "SESSION_FINISH",
+      eventId: "runner-revoke:session-revoke",
+    });
   });
 
   it("does not let a different owner re-enroll an existing Runner", async () => {
