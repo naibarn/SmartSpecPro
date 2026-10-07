@@ -382,6 +382,26 @@ describe("RunnerGateway", () => {
     });
   });
 
+  it("rejects conflicting facts submitted under an already accepted Runner revision", async () => {
+    const repository = new InMemoryRunnerRepository();
+    const gateway = new RunnerGateway(repository);
+    const auth = await verifyRunnerControlToken(createRunnerControlToken({
+      runnerId: "runner-revision-conflict", tenantId: "tenant-a", profile: "local_device",
+      nodeKind: "local_device", deviceBinding: localDeviceBinding,
+    }));
+    await gateway.enroll({ auth, deviceId: "device-1", displayName: "Revision conflict runner" });
+    await gateway.publishCapabilities({ auth, snapshot: snapshot("7", auth.runnerId), idempotencyKey: "revision-7-a" });
+
+    await expect(gateway.publishCapabilities({
+      auth,
+      snapshot: { ...snapshot("7", auth.runnerId), workspaceIds: ["different-workspace"] },
+      idempotencyKey: "revision-7-b",
+    })).rejects.toMatchObject({ code: "RUNNER_SNAPSHOT_REVISION_CONFLICT" });
+    await expect(repository.getNode(auth.runnerId, auth.tenantId)).resolves.toMatchObject({
+      currentSnapshotRevision: "7", currentSnapshot: { workspaceIds: ["workspace-1"] },
+    });
+  });
+
   it("does not allow a shared Container to become a device", async () => {
     const gateway = new RunnerGateway(new InMemoryRunnerRepository());
     const auth = await verifyRunnerControlToken(

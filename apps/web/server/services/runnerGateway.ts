@@ -81,6 +81,17 @@ export class RunnerGatewayError extends Error {
   }
 }
 
+function stableSnapshotJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableSnapshotJson).join(",")}]`;
+  if (!value || typeof value !== "object") return JSON.stringify(value);
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${stableSnapshotJson(record[key])}`).join(",")}}`;
+}
+
+function sameSnapshot(left: RunnerCapabilitySnapshot | null, right: RunnerCapabilitySnapshot): boolean {
+  return left !== null && stableSnapshotJson(left) === stableSnapshotJson(right);
+}
+
 export class InMemoryRunnerRepository implements RunnerRepository {
   readonly nodes = new Map<string, RunnerGatewayNode>();
   readonly snapshots = new Map<
@@ -261,6 +272,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
       const [current] = await tx
         .select({
           currentSnapshotRevision: runnerNodes.currentSnapshotRevision,
+          currentSnapshotJson: runnerNodes.currentSnapshotJson,
         })
         .from(runnerNodes)
         .where(
@@ -286,6 +298,9 @@ export class DrizzleRunnerRepository implements RunnerRepository {
           "Capability snapshot revision is older than the current revision"
         );
       }
+      if (current.currentSnapshotRevision === snapshot.revision &&
+          !sameSnapshot(current.currentSnapshotJson as RunnerCapabilitySnapshot | null, snapshot))
+        throw new RunnerGatewayError("RUNNER_SNAPSHOT_REVISION_CONFLICT", "Snapshot facts conflict at the current revision");
       await tx
         .insert(runnerCapabilitySnapshots)
         .values({
@@ -451,6 +466,17 @@ export class RunnerGateway {
         "RUNNER_SNAPSHOT_OLD",
         "Capability snapshot revision is older than the current revision"
       );
+    if (node.currentSnapshotRevision === snapshot.revision) {
+      if (!sameSnapshot(node.currentSnapshot, snapshot))
+        throw new RunnerGatewayError("RUNNER_SNAPSHOT_REVISION_CONFLICT", "Snapshot facts conflict at the current revision");
+      return {
+        status: "duplicate",
+        runnerId: snapshot.runnerId,
+        acceptedRevision: snapshot.revision,
+        expiresAt: snapshot.expiresAt,
+        staleEntriesMarkedUnavailable: 0,
+      };
+    }
     const previous = node.currentSnapshot;
     const previousToolIds = new Set(
       (previous?.toolInventory ?? []).map(tool => tool.toolId)
