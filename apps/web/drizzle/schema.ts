@@ -22486,6 +22486,32 @@ export const providerDeploymentTargets = pgTable(
 export type ProviderDeploymentTarget = typeof providerDeploymentTargets.$inferSelect;
 export type InsertProviderDeploymentTarget = typeof providerDeploymentTargets.$inferInsert;
 
+/** Tenant/project/environment-bound Cloudflare secrets referenced by deployment targets. */
+export const providerDeploymentCredentials = pgTable(
+  "provider_deployment_credentials",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    projectId: varchar("projectId", { length: 100 }).notNull(),
+    environment: varchar("environment", { length: 32 }).notNull(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    credentialRef: varchar("credentialRef", { length: 255 }).notNull().unique(),
+    encryptedSecret: text("encryptedSecret").notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("CONFIGURED"),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+    updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  t => [
+    uniqueIndex("provider_deployment_credentials_scope_unique").on(t.tenantId, t.projectId, t.environment, t.provider),
+    check("provider_deployment_credentials_status_check", sql`${t.status} IN ('CONFIGURED', 'REVOKED', 'UNAVAILABLE')`),
+  ],
+);
+
+export type ProviderDeploymentCredential = typeof providerDeploymentCredentials.$inferSelect;
+
 // ==========================================
 // Virtual AI Office Orchestrator — Automation Handoffs & External Intake (Section 16)
 // ==========================================

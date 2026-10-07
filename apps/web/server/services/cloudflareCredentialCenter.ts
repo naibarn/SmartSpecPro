@@ -1,7 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { systemSettings } from "../../drizzle/schema";
+import { providerDeploymentCredentials, systemSettings } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
 import { decrypt, encrypt } from "./crypto";
+import { deploymentCredentialRef, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import {
   CLOUDFLARE_PROBE_SERVICES,
   CLOUDFLARE_ZONE_PROBE_SERVICES,
@@ -131,6 +132,89 @@ export async function withCloudflareCredential<T>(
   const token = await readProfileToken(db, profileId);
   if (!token) return { configured: false };
   return { configured: true, value: await operation(token) };
+}
+
+export type DeploymentCredentialState = "CONFIGURED" | "NOT_CONFIGURED" | "PERMISSION_DENIED" | "REVOKED" | "UNAVAILABLE";
+
+/** Metadata-only credential state; never returns ciphertext or plaintext. */
+export async function getCloudflareDeploymentCredentialState(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; credentialRef: string;
+}): Promise<{ status: DeploymentCredentialState; credentialRef: string }> {
+  if (input.identity.provider !== "cloudflare" || input.credentialRef !== deploymentCredentialRef(input.identity))
+    return { status: "PERMISSION_DENIED", credentialRef: input.credentialRef };
+  try {
+    const [row] = await db.select({ status: providerDeploymentCredentials.status, encryptedSecret: providerDeploymentCredentials.encryptedSecret })
+      .from(providerDeploymentCredentials).where(and(
+        eq(providerDeploymentCredentials.tenantId, input.identity.tenantId),
+        eq(providerDeploymentCredentials.projectId, input.identity.projectId),
+        eq(providerDeploymentCredentials.environment, input.identity.environment),
+        eq(providerDeploymentCredentials.provider, input.identity.provider),
+        eq(providerDeploymentCredentials.credentialRef, input.credentialRef),
+      )).limit(1);
+    if (!row) return { status: "NOT_CONFIGURED", credentialRef: input.credentialRef };
+    if (row.status === "REVOKED") return { status: "REVOKED", credentialRef: input.credentialRef };
+    if (row.status !== "CONFIGURED" || !row.encryptedSecret) return { status: "UNAVAILABLE", credentialRef: input.credentialRef };
+    try { if (!decrypt(row.encryptedSecret)) return { status: "UNAVAILABLE", credentialRef: input.credentialRef }; }
+    catch { return { status: "UNAVAILABLE", credentialRef: input.credentialRef }; }
+    return { status: "CONFIGURED", credentialRef: input.credentialRef };
+  } catch {
+    return { status: "UNAVAILABLE", credentialRef: input.credentialRef };
+  }
+}
+
+/** Resolves a scoped secret only for an exact target binding and keeps it inside the provider callback. */
+export async function withCloudflareDeploymentCredential<T>(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; credentialRef: string;
+}, operation: (token: string) => Promise<T>): Promise<{ status: DeploymentCredentialState; value?: T }> {
+  if (input.identity.provider !== "cloudflare" || input.credentialRef !== deploymentCredentialRef(input.identity))
+    return { status: "PERMISSION_DENIED" };
+  try {
+    const [row] = await db.select({ status: providerDeploymentCredentials.status, encryptedSecret: providerDeploymentCredentials.encryptedSecret })
+      .from(providerDeploymentCredentials).where(and(
+        eq(providerDeploymentCredentials.tenantId, input.identity.tenantId),
+        eq(providerDeploymentCredentials.projectId, input.identity.projectId),
+        eq(providerDeploymentCredentials.environment, input.identity.environment),
+        eq(providerDeploymentCredentials.provider, input.identity.provider),
+        eq(providerDeploymentCredentials.credentialRef, input.credentialRef),
+      )).limit(1);
+    if (!row) return { status: "NOT_CONFIGURED" };
+    if (row.status === "REVOKED") return { status: "REVOKED" };
+    if (row.status !== "CONFIGURED" || !row.encryptedSecret) return { status: "UNAVAILABLE" };
+    let token: string;
+    try { token = decrypt(row.encryptedSecret); } catch { return { status: "UNAVAILABLE" }; }
+    if (!token) return { status: "UNAVAILABLE" };
+    return { status: "CONFIGURED", value: await operation(token) };
+  } catch {
+    return { status: "UNAVAILABLE" };
+  }
+}
+
+export async function saveCloudflareDeploymentCredential(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; token: string; actorUserId?: number;
+}) {
+  if (input.identity.provider !== "cloudflare") throw new Error("UNSUPPORTED_DEPLOYMENT_TARGET_PROVIDER");
+  const credentialRef = deploymentCredentialRef(input.identity);
+  await db.insert(providerDeploymentCredentials).values({
+    ...input.identity, credentialRef, encryptedSecret: encrypt(input.token), status: "CONFIGURED", revokedAt: null,
+    createdBy: input.actorUserId ?? null, updatedBy: input.actorUserId ?? null,
+  }).onConflictDoUpdate({ target: providerDeploymentCredentials.credentialRef,
+    set: { encryptedSecret: encrypt(input.token), status: "CONFIGURED", revokedAt: null, updatedBy: input.actorUserId ?? null, updatedAt: new Date() } });
+  return { status: "CONFIGURED" as const, credentialRef };
+}
+
+export async function revokeCloudflareDeploymentCredential(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; credentialRef: string; actorUserId?: number;
+}) {
+  if (input.identity.provider !== "cloudflare" || input.credentialRef !== deploymentCredentialRef(input.identity))
+    return { status: "PERMISSION_DENIED" as const };
+  const rows = await db.update(providerDeploymentCredentials).set({ status: "REVOKED", revokedAt: new Date(), updatedBy: input.actorUserId ?? null, updatedAt: new Date() })
+    .where(and(eq(providerDeploymentCredentials.tenantId, input.identity.tenantId),
+      eq(providerDeploymentCredentials.projectId, input.identity.projectId),
+      eq(providerDeploymentCredentials.environment, input.identity.environment),
+      eq(providerDeploymentCredentials.provider, input.identity.provider),
+      eq(providerDeploymentCredentials.credentialRef, input.credentialRef)))
+    .returning({ id: providerDeploymentCredentials.id });
+  return { status: rows.length ? "REVOKED" as const : "NOT_CONFIGURED" as const };
 }
 
 type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null };

@@ -2640,6 +2640,13 @@
       "when": 1791400000000,
       "tag": "0390_migration_receipt_attempt_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 377,
+      "version": "7",
+      "when": 1791400000001,
+      "tag": "0391_tenant_deployment_credentials",
+      "breakpoints": true
     }
   ]
 }

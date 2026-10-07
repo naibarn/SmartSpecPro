@@ -42,16 +42,19 @@ import { refreshSearchResultCacheProvider } from "../services/cloudflareSearchRe
 import { clearVectorProviderConfigCache } from "../services/vectorProvider";
 import {
   getCloudflareCredentialCenterState,
+  getCloudflareDeploymentCredentialState,
   probeCloudflarePermissionCatalog,
   probeCloudflareCredential,
   removeCloudflareCredentialProfile,
+  revokeCloudflareDeploymentCredential,
+  saveCloudflareDeploymentCredential,
   saveCloudflareCredentialProfile,
 } from "../services/cloudflareCredentialCenter";
 import { auditLogger } from "../services/auditLogger";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
-import { createProviderDeploymentTarget, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
+import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -368,6 +371,41 @@ export const infrastructureRouter = router({
       if (result.status === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Deployment target not found in the requested scope" });
       auditLogger.log({ eventType: "provider_deployment_target_disabled", userId: ctx.user?.id ?? null,
         requestType: "deployment_target_disable", responsePayload: { targetRowId: input.targetRowId, tenantId: input.tenantId, projectId: input.projectId, environment: input.environment, provider: input.provider }, statusCode: 200 });
+      return result;
+    }),
+
+  getDeploymentCredentialState: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const identity = input;
+      return getCloudflareDeploymentCredentialState(db, { identity, credentialRef: deploymentCredentialRef(identity) });
+    }),
+
+  saveDeploymentCredential: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+      provider: z.literal("cloudflare"), token: z.string().trim().min(20).max(512) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { token, ...identity } = input;
+      const result = await saveCloudflareDeploymentCredential(db, { identity, token, actorUserId: ctx.user?.id });
+      auditLogger.log({ eventType: "provider_deployment_credential_configured", userId: ctx.user?.id ?? null,
+        requestType: "deployment_credential_save", responsePayload: { credentialRef: result.credentialRef, tenantId: identity.tenantId,
+          projectId: identity.projectId, environment: identity.environment, provider: identity.provider }, statusCode: 200 });
+      return result;
+    }),
+
+  revokeDeploymentCredential: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const result = await revokeCloudflareDeploymentCredential(db, { identity: input, credentialRef: deploymentCredentialRef(input), actorUserId: ctx.user?.id });
+      auditLogger.log({ eventType: "provider_deployment_credential_revoked", userId: ctx.user?.id ?? null,
+        requestType: "deployment_credential_revoke", responsePayload: { status: result.status, tenantId: input.tenantId,
+          projectId: input.projectId, environment: input.environment, provider: input.provider }, statusCode: 200 });
       return result;
     }),
 
