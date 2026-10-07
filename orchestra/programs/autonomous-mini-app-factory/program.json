@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
+    "sha": "89d0a27abad6aa5967f88e90b2fd4801d0c136a6",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
@@ -18,7 +18,7 @@
       "receipt_id": "workspace-convergence:4c3f6743-4ea0-4039-8653-805c6668c316",
       "verified_at": "2026-10-07T18:47:00.132+00:00"
     },
-    "observedAt": "2026-10-08T01:47:03+07:00",
+    "observedAt": "2026-10-08T02:15:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
       "integrated_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
@@ -59,54 +59,24 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FACTORY_DEPENDENCY_READY_SELECTOR_AND_SECOND_APP_PACKAGE",
-    "state": "CHECKPOINT_PROMOTED_PARTIAL",
-    "objective": "Make the existing Factory contract dependency-executable through DevelopmentWorkUnit and prove app-neutral package generation with a second app descriptor.",
+    "id": "PROJECT_WIKI_PAGES_REFERENCE_MINI_APP",
+    "state": "CHECKPOINT_READY",
+    "objective": "Complete the second Mini App Factory reference app through scoped implementation, authorization/UI tests, disposable migration validation, and package build; deployment/UAT remain gated on a supported isolated runtime.",
     "implementation": [
-      "apps/web/server/services/miniAppFactoryPipeline.ts",
-      "apps/web/scripts/build-mini-app-package.ts",
-      "apps/web/mini-apps/project-wiki-pages/package/",
-      "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json"
+      "apps/web/drizzle/0394_project_wiki_pages_mini_app.sql",
+      "apps/web/server/services/projectWikiPagesService.ts",
+      "apps/web/server/routers/projectWikiPages.ts",
+      "apps/web/client/src/pages/ProjectWikiPagesPage.tsx",
+      "apps/web/client/src/pages/MiniAppRoute.tsx",
+      "apps/web/mini-apps/project-wiki-pages/package/"
     ],
     "evidence": [
-      "PR #238 integrated the Research Notes UI and tenant-bound public App resolution at origin/main SHA 1f898eb5f4e00b7befd026e8cbf551bc524a5ae8; 12 focused UI/router/service tests passed on source 1b008107.",
-      "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE integrated at 3ad161e36132db51d7a9260a20d07e362ac8b2cd; 21 focused tests passed on that exact SHA.",
-      "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence.",
-      "AI summary is enqueued atomically through canonical worker_jobs/outbox, uses tenant/project/note scope and source-version idempotency, and is registered with the PostgreSQL node worker. Focused suite: 8 files, 29 tests passed on source 4880ef58; git diff --check passed.",
-      "PR #240 merged normally: source 48e8dd1fad5789dcd3c63a615f9776a121e005cd is reachable from origin/main at de9498f0ae73b9c3f6d0d2abb6dba637f616463a. Registered canonical workspace /home/dev/projects/SmartSpecPro converged cleanly to de9498f0ae73b9c3f6d0d2abb6dba637f616463a.",
-      "Research Notes SPAAS package descriptor and machine-callable tRPC action catalog validated with the existing Spec 261 package validator; package digest spaas-package-v1:sha256:9090b2e9ec01b2490341e39d4140059d7d5aa34447d321b5e90a9ceb9b23a0fd. Validation is needs_context: V1/V2/V3/V4 passed; V5 runtime placement and V6 migration rollback remain not_evaluated.",
-      "PR #242 merged normally at origin/main SHA 88db09239234c1ce2444bca10f44903f26ff5e8d. Research Notes package/action contract is integrated; the current package digest including deployment descriptor and smoke plan is a85fd5afedcd3378f89663f07d8587cddf09cdea523c57fba78519c579344c03. Local focused suite: 9 files, 32 tests passed; package status needs_context due missing trusted V5/V6 evidence.",
-      "The machine action catalog now has strict JSON Schema inputs and typed summary-job output/status enums. Latest local focused suite: 9 files, 32 tests passed; deterministic package digest is spaas-package-v1:sha256:1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b.",
-      "A guarded non-production tRPC smoke runner now covers authenticated CRUD and optionally the canonical summary job; --with-summary requires explicit RESEARCH_NOTES_ALLOW_PROVIDER_COST=true. CLI --help works; local package focused suite 9 files/32 tests passed; current SPAAS digest 44231a81e31bb677fad3c476f52c094eb1ac2108d0c750349e552db5fabde308.",
-      "Local web runtime at source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3 returned /healthz HTTP 200 {status:ok} and /readyz HTTP 200 {status:ready, db:ok, feature186:ok:postgres-pull}; this is service readiness only, not Research Notes UAT or migration evidence.",
-      "Smoke runner now optionally checks cross-tenant note and summary-job isolation with a second authenticated principal; summary polling requires an explicit provider-cost gate. Focused suite remains 9 files/32 tests passed; package digest is 13d8cd6e72e0140654c331d968b5015a5554d8f5455feddb8c2cd8e02bb2a2c0.",
-      "Runtime source discovery corrected earlier provisional probe attribution: system smartspec-web.service started 2026-10-07 08:39:30 +07, before the Research Notes router was integrated. On the stale process, /healthz and /readyz returned 200 (DB and feature186 checks reported ok), but unauthenticated POST /trpc/researchNotes.listNotes returned 404 No procedure found. This is evidence of a stale loaded service, not a Research Notes runtime pass; its source SHA is not bound to the live process.",
-      "Package scope is now separated from deployment/UAT operations docs. Builder emits a deterministic tar.gz containing only the SPAAS manifest, UI binding, action schemas and README. Two consecutive builds matched package digest 714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; archive entries were inspected.",
-      "Correction: the system smartspec-web.service started at 2026-10-07 08:39:30 +07 before the Research Notes router integration. Current live process health/readiness probes returned 200, but its tRPC router returned 404 No procedure found for researchNotes.listNotes. This is stale-service evidence, not feature runtime PASS; no restart/deploy was made.",
-      "On source SHA 763e9392afb147ed8574edc0d3e637ec2adad630, `pnpm --filter @smartspec/web run test:research-notes-migration` initialized a disposable local PostgreSQL 17 cluster, applied migration 0393, inserted/read one synthetic tenant/project/App/note fixture, and confirmed cross-tenant project FK, >262144-byte note content, and invalid membership role are rejected. The cluster was stopped and removed; no shared/staging/production DB was touched.",
-      "The same source passed 9 focused Vitest files/33 tests plus 4 GitHub outage retry tests. Portable tar.gz digest/archive are stable across two builds; SPAAS V5/V6 remain needs_context.",
-      "On checkpoint cce47ae20bce00795f00995d4d7e821537db233a, disposable PostgreSQL 17 applied migration 0393 then actual researchNotesService authorization checks passed: owner CRUD, viewer read/editor-write denial, cross-tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation, and archive lifecycle. No production database touched. Focused Vitest: 9 files/33 tests passed; GitHub retry regression: 4 passed; Python syntax and git diff --check passed. Deterministic package rebuilt with digest spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; validator remains needs_context for runtime/migration rollback evidence.",
-      "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at origin/main SHA 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248; the registered user workspace /home/dev/projects/SmartSpecPro converged cleanly to that SHA. Disposable migration and service-authorization evidence is recorded in SPEC-302 handoff generation 17; live non-production deployment/UAT remains pending.",
-      "PR #250 source 2f623d9b2826d60dccbfd35d1d74e3aa59c31cdb merged normally at origin/main SHA 315e98c9efbb35699f97652d54e131974c66b862. SPEC-302 handoff and requirement-ledger updates validated; completion remains false with deployment/UAT and other normative requirements still open.",
-      "PR #251 merged at 6a7c6d7b64c66fd77d69b5cbfec50069486ebb68; canonical workspace convergence verified. GitHub integration returned to IDLE_AFTER_SUCCESS; only registered non-production runtime/deployment/UAT remains WAITING_ENVIRONMENT.",
-      "Read-only runtime scout found no configured non-production deployment; existing app listener on port 3000 is production mode and was not changed. Started an isolated PostgreSQL 17 cluster bound to 127.0.0.1 as a candidate local target.",
-      "First normal db:migrate attempt on the empty disposable database failed before invoking Drizzle because readAppliedHead did not see PostgreSQL 42P01 wrapped by DrizzleQueryError.cause. No migration ran and no receipt was emitted. Focused regression test now passes after cause-chain helper fix; retry full migrations after integration.",
-      "Migration 0393 was applied by the normal db:migrate receipt wrapper on source SHA a3ef6c8a8f68011bb8dbdb04d802eaa5d5864d03 to isolated loopback PostgreSQL target local-disposable-research-notes-uat. Receipt STARTED then SUCCEEDED; before head 0392, after head 0393; five canonical project/note constraints verified. The DB used a minimal synthetic 0392 prerequisite baseline, not a full historical schema.",
-      "Focused Research Notes + migration-helper Vitest: 7 files / 23 tests passed on source SHA 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. Package rebuilt: SPAAS digest 714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413; archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; status needs_context.",
-      "Nonproduction runtime was not deployed: whole-schema Drizzle push stopped because PostgreSQL lacks the vector type/extension; app process could not start because cookie-parser is declared but absent from the task workspace node_modules links. Existing production service was not contacted or changed.",
-      "Generic pipeline contract persisted at factory-pipeline.v1.json. It is a contract only; no generic executable pipeline or second Mini App reuse run has yet passed.",
-      "A temporary app process bound only to 127.0.0.1:43301 on source SHA 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. /healthz and /readyz returned HTTP 200. Research Notes API/UI probes returned HTTP 500 because the disposable database lacks current tenant columns and the full schema could not be provisioned without PostgreSQL vector extension. Process stopped; production untouched.",
-      "The disposable PostgreSQL and loopback app processes were stopped after capturing receipts and HTTP evidence. Temporary data and receipts remain under /tmp/research-notes-nonprod-v7e5fmbp for safe retry/recovery.",
-      "Source SHA 03166177e5ce094940b7ff2265837e1083954436: the DevelopmentWorkUnit-backed DAG selector passes 3 focused tests, including missing dependency/cycle rejection and continuing independent scopes while runtime stages wait. The shared deterministic SPAAS builder produced Research Notes digest spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17 and Project Wiki Pages digest spaas-package-v1:sha256:c59f0fd8053b058869092e01ad4e442006bc4e0c429b645ebabc51d9fe0fca1a; both validation states are needs_context. Project Wiki Pages is a Spec 281-derived package descriptor only; backend/UI implementation, app-specific tests, deployment, and UAT remain open.",
-      "PR #257 merged normally; source ec70d3cb7b31a6f82746eda1a5b720bac89405e2 is integrated at origin/main 1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74. Workspace authority convergence receipt b07726d8-a098-47dd-8447-716fe3fd7387 reached that SHA. Subsequent verify found a staged unrelated Spec 307 file on branch codex/import-spec-307-20261008, so the workspace is preserved and reported dirty; no checkout/reset/stash was performed.",
-      "The registered canonical workspace was subsequently refreshed and verified clean at latest origin/main 9d7027fd11bb9e6cc612e13477f027ab2be5aabc (PR #258, independent Spec 307 import, also integrated). The earlier temporary dirty state is resolved because that staged Spec 307 change was committed by its owner and the primary checkout returned to clean main; no work was discarded."
+      "Focused Vitest suite passed: 4 files, 10 tests, including service authorization/isolation, tRPC router, UI, and migration helper.",
+      "Migration 0394 applied to disposable PostgreSQL 17 with a synthetic prerequisite baseline; active path uniqueness, archive/reuse, FK isolation, and content-size constraints passed. Full historical migration chain was not exercised.",
+      "Shared package builder built app_project_wiki_pages: digest spaas-package-v1:sha256:0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a; archive SHA-256 ca4328932e7664bfabb3b7ebfa13fb169dc6db6aefc71a7f68ac2f00f05d4723; validator needs_context.",
+      "git diff --check and JSON validation passed. Runtime deployment and authenticated UAT are not claimed."
     ],
-    "pending": [
-      "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
-      "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed.",
-      "Migration runner clean-database recovery is under repair; the target database remains empty, disposable, loopback-only, and no migration receipt exists yet."
-    ],
-    "nextAction": "Open/integrate the factual program-state handoff update, then continue Project Wiki Pages backend/actions/UI and persistable stage continuation from the latest canonical source."
+    "nextAction": "Promote this safe checkpoint through a normal PR, converge the registered canonical workspace, then continue Factory execution/resume wiring and the non-production runtime lane."
   },
   "checkpoints": [
     {
@@ -232,7 +202,15 @@
       "evidence": "GitHub retryable Internal Server Error did not stop the program. Retry resumed without a user message, pushed via normal non-force path, merged PR #251, and verified canonical user workspace convergence. Regression test suite exercises retryable status, persisted checkpoint, bounded backoff, PR merge, and no user prompt (4 tests passed)."
     }
   ],
-  "completedWorkunits": [],
+  "completedWorkunits": [
+    {
+      "id": "PROJECT_WIKI_PAGES_REFERENCE_MINI_APP_IMPLEMENTATION",
+      "state": "IMPLEMENTED_TESTED_PACKAGE_BUILT",
+      "sourceBranch": "codex/project-wiki-pages-miniapp-20261008",
+      "sourceSha": "PENDING_COMMIT",
+      "evidence": "10 focused tests passed; disposable migration constraints passed; package built needs_context; deployment/UAT pending."
+    }
+  ],
   "blockedWorkunits": [
     {
       "id": "RESEARCH_NOTES_NONPROD_RUNTIME",
@@ -394,11 +372,11 @@
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
     "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "WAITING_ENVIRONMENT",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
-    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_PACKAGE_ONLY",
+    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
     "M6_FACTORY_EXECUTABLE": "PARTIAL_DEPENDENCY_READY_SELECTOR_INTEGRATED",
     "M7_FACTORY_AUTO_RESUME_PASS": "NOT_RUN",
-    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_PACKAGE_ONLY_INTEGRATED"
+    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
@@ -409,55 +387,48 @@
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
     "state": "DEPENDENCY_READY_SELECTOR_INTEGRATED_EXECUTOR_WIRING_PENDING",
-    "secondMiniApp": "SPEC281_SCOPED_PACKAGE_BUILT_IMPLEMENTATION_PENDING"
+    "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_BUILT_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-factory-reset",
-    "sourceBranch": "codex/mini-app-factory-handoff-20261008",
-    "localCommits": [
-      "03166177e5ce094940b7ff2265837e1083954436",
-      "ec70d3cb7b31a6f82746eda1a5b720bac89405e2",
-      "ccb74766e3f2cec148dde146544d38335acb8bd8",
-      "dca206450b68c56f8c0e5854bf4d0e925e053126"
-    ],
-    "intendedRemoteBranch": "codex/mini-app-factory-handoff-20261008",
+    "taskWorktree": "/home/dev/worktrees/project-wiki-pages-miniapp-20261008",
+    "sourceBranch": "codex/project-wiki-pages-miniapp-20261008",
+    "localCommits": [],
+    "intendedRemoteBranch": "codex/project-wiki-pages-miniapp-20261008",
     "pendingPullRequest": {
       "state": "PREPARING_NORMAL_PR",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
-        "revision": "03166177e5ce094940b7ff2265837e1083954436",
-        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryPipeline.test.ts",
-        "outcome": "PASS: 3 tests"
+        "revision": "89d0a27abad6aa5967f88e90b2fd4801d0c136a6 + uncommitted task delta",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/projectWikiPagesService.test.ts server/routers/projectWikiPages.test.ts client/src/pages/__tests__/ProjectWikiPagesPage.test.tsx server/__tests__/canonicalProjectIdentity.migration.test.ts",
+        "outcome": "PASS: 4 files, 10 tests"
       },
       {
-        "revision": "03166177e5ce094940b7ff2265837e1083954436",
-        "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts",
-        "outcome": "PASS: Research Notes package built; SPAAS validation needs_context"
+        "revision": "0394 migration in disposable PostgreSQL 17 synthetic prerequisite baseline",
+        "command": "apply migration and assert FK isolation, active path uniqueness/archive reuse, and content-size constraint",
+        "outcome": "PASS; complete historical migration chain not exercised"
       },
       {
-        "revision": "03166177e5ce094940b7ff2265837e1083954436",
-        "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts --package-root apps/web/mini-apps/project-wiki-pages/package --output-dir apps/web/.artifacts/project-wiki-pages",
-        "outcome": "PASS: Project Wiki Pages package built; SPAAS validation needs_context"
+        "revision": "task delta",
+        "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts --package-root apps/web/mini-apps/project-wiki-pages/package --output-dir /tmp/project-wiki-pages-package-check",
+        "outcome": "BUILT; needs_context; digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a; archive SHA-256 ca4328932e7664bfabb3b7ebfa13fb169dc6db6aefc71a7f68ac2f00f05d4723"
       },
       {
-        "revision": "03166177e5ce094940b7ff2265837e1083954436",
-        "command": "git diff --check",
+        "revision": "task delta",
+        "command": "git diff --check; JSON parse actions.json; python3 -m json.tool program.json",
         "outcome": "PASS"
       }
     ],
-    "retrySchedule": {
-      "githubIntegration": "IDLE_AFTER_SUCCESS; retry on normal continuation if a push or PR request transiently fails",
-      "backoff": "bounded exponential backoff per existing GitHub retry contract"
-    },
-    "canonicalAtCheckpoint": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
+    "githubIntegration": "IDLE_AFTER_SUCCESS; next promotion uses normal PR path",
+    "deploymentState": "WAITING_ENVIRONMENT; no deployment or production changes",
+    "canonicalAtCheckpoint": "89d0a27abad6aa5967f88e90b2fd4801d0c136a6",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
+      "sha": "89d0a27abad6aa5967f88e90b2fd4801d0c136a6",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:4c3f6743-4ea0-4039-8653-805c6668c316"
+      "receiptId": "workspace-convergence:06f3d4e0-e8ba-4824-b35a-528a5de95777"
     }
   }
 }

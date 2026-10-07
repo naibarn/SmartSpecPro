@@ -9,11 +9,20 @@
     "callerMaySetTenantOrUserId": false
   },
   "actions": [
-    { "id": "pages.list", "procedure": "listPages", "kind": "query", "input": ["appId", "projectId"], "effects": ["tenant_project_app_scope_check"] },
-    { "id": "pages.get", "procedure": "getPage", "kind": "query", "input": ["appId", "projectId", "pageId"], "effects": ["tenant_project_app_scope_check"] },
-    { "id": "pages.create", "procedure": "createPage", "kind": "mutation", "input": ["appId", "projectId", "title", "content"], "effects": ["tenant_project_app_scope_check", "editor_or_owner_required"] },
-    { "id": "pages.update", "procedure": "updatePage", "kind": "mutation", "input": ["appId", "projectId", "pageId", "title", "content"], "effects": ["tenant_project_app_scope_check", "editor_or_owner_required"] },
-    { "id": "pages.archive", "procedure": "archivePage", "kind": "mutation", "input": ["appId", "projectId", "pageId"], "effects": ["tenant_project_app_scope_check", "editor_or_owner_required"] }
+    { "id": "projects.list", "procedure": "listProjects", "kind": "query", "input": ["appId"], "effects": ["tenant_project_membership_and_app_binding_check"], "inputSchema": { "type": "object", "properties": { "appId": { "$ref": "#/$defs/appId" } }, "required": ["appId"], "additionalProperties": false } },
+    { "id": "pages.list", "procedure": "listPages", "kind": "query", "input": ["appId", "projectId"], "effects": ["tenant_project_membership_and_app_binding_check"], "inputSchema": { "type": "object", "properties": { "appId": { "$ref": "#/$defs/appId" }, "projectId": { "$ref": "#/$defs/projectId" } }, "required": ["appId", "projectId"], "additionalProperties": false } },
+    { "id": "pages.get", "procedure": "getPage", "kind": "query", "input": ["appId", "projectId", "pageId"], "effects": ["tenant_project_membership_and_app_binding_check"], "inputSchema": { "type": "object", "properties": { "appId": { "$ref": "#/$defs/appId" }, "projectId": { "$ref": "#/$defs/projectId" }, "pageId": { "$ref": "#/$defs/pageId" } }, "required": ["appId", "projectId", "pageId"], "additionalProperties": false } },
+    { "id": "pages.create", "procedure": "createPage", "kind": "mutation", "input": ["appId", "projectId", "title", "path", "content"], "effects": ["tenant_project_membership_and_app_binding_check", "editor_or_owner_required"], "inputSchema": { "type": "object", "properties": { "appId": { "$ref": "#/$defs/appId" }, "projectId": { "$ref": "#/$defs/projectId" }, "title": { "$ref": "#/$defs/title" }, "path": { "$ref": "#/$defs/path" }, "content": { "$ref": "#/$defs/content" } }, "required": ["appId", "projectId", "title", "path", "content"], "additionalProperties": false } },
+    { "id": "pages.update", "procedure": "updatePage", "kind": "mutation", "input": ["appId", "projectId", "pageId", "title", "path", "content"], "effects": ["tenant_project_membership_and_app_binding_check", "editor_or_owner_required"], "inputSchema": { "type": "object", "properties": { "appId": { "$ref": "#/$defs/appId" }, "projectId": { "$ref": "#/$defs/projectId" }, "pageId": { "$ref": "#/$defs/pageId" }, "title": { "$ref": "#/$defs/title" }, "path": { "$ref": "#/$defs/path" }, "content": { "$ref": "#/$defs/content" } }, "required": ["appId", "projectId", "pageId", "title", "path", "content"], "additionalProperties": false } },
+    { "id": "pages.archive", "procedure": "archivePage", "kind": "mutation", "input": ["appId", "projectId", "pageId"], "effects": ["tenant_project_membership_and_app_binding_check", "editor_or_owner_required"], "inputSchema": { "type": "object", "properties": { "appId": { "$ref": "#/$defs/appId" }, "projectId": { "$ref": "#/$defs/projectId" }, "pageId": { "$ref": "#/$defs/pageId" } }, "required": ["appId", "projectId", "pageId"], "additionalProperties": false } }
   ],
-  "$schema": "https://json-schema.org/draft/2020-12/schema"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "appId": { "type": "string", "const": "app_project_wiki_pages" },
+    "projectId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "pageId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "path": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[a-z0-9][a-z0-9_-]*(/[a-z0-9][a-z0-9_-]*)*$" },
+    "content": { "type": "string", "maxLength": 262144 }
+  }
 }

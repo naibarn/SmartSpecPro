@@ -53,4 +53,7 @@ runtime:
   host: smartspec-web
   route: /apps/{publicAppId}
 operations:
-  migrations: []
+  migrations:
+    - id: 0394_project_wiki_pages_mini_app
+      platformMigrationId: apps/web/drizzle/0394_project_wiki_pages_mini_app.sql
+      status: required_not_applied_by_package_build
