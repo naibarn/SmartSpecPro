@@ -5,27 +5,27 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+    "sha": "2e1042c6523765915c7970c8958c9951905d07cd",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
-      "canonical_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
-      "canonical_user_workspace_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+      "integrated_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+      "canonical_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+      "canonical_user_workspace_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:849f521e-6a37-4773-afae-565bcd0a1797",
-      "verified_at": "2026-10-07T19:45:56.482+00:00"
+      "receipt_id": "workspace-convergence:e7c7df1f-7794-4623-a917-c18662024772",
+      "verified_at": "2026-10-07T19:53:37.466+00:00"
     },
-    "observedAt": "2026-10-08T02:46:00+07:00",
+    "observedAt": "2026-10-08T02:53:40+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
-      "canonical_user_workspace_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+      "integrated_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+      "canonical_user_workspace_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T19:45:56.482+00:00"
+      "verified_at": "2026-10-07T19:53:37.466+00:00"
     }
   },
   "inventory": {
@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "PR_OPEN_CONFLICT_RECONCILED",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
     "implementation": [
       "apps/web/scripts/research-notes-focused-runtime.ts",
@@ -74,12 +74,14 @@
       "Unauthenticated listProjects was denied. A signed session cookie created by the platform SDK was validated by createContext/authenticateRequest; tenant came from the authenticated user currentTenantId.",
       "Authenticated principal listed its bound project and completed note create, list, update, and archive over HTTP/tRPC against the disposable database.",
       "A second authenticated tenant was denied access to the first tenant project; the first tenant user was denied access to a same-tenant project without membership.",
-      "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched."
+      "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched.",
+      "PR #265 merged normally as 2e1042c6523765915c7970c8958c9951905d07cd; /home/dev/projects/SmartSpecPro converged and verified clean at this SHA. The PR branch had diverged from the squash merge of #264; conflict was reconciled on the single owned program.json path using git_capabilities.py resolve before normal PR merge."
     ],
-    "nextAction": "Integrate this focused API runtime slice, then investigate the smallest safe path to actual UI/runtime acceptance and worker execution. Deployment, provider summary execution, browser UAT, and full service boot remain separate pending evidence.",
+    "nextAction": "Continue the Factory execution wiring lane. Preserve M4 as focused API-runtime evidence only; full product deploy, UI/browser UAT, worker execution and AI provider runtime remain pending.",
     "sourceSha": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
-    "integration": "PENDING_NORMAL_PR",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/265"
+    "integration": "MERGED_NORMAL_PR",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/265",
+    "integratedSha": "2e1042c6523765915c7970c8958c9951905d07cd"
   },
   "checkpoints": [
     {
@@ -355,26 +357,43 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; runtime API path now has focused session-auth evidence",
+    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; authenticated API runtime integrated; select Factory executor wiring next",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_UI_AND_BACKGROUND_RUNTIME_ACCEPTANCE",
+    "nextEligibleWorkunit": "FACTORY_STAGE_EXECUTOR_WORKER_WIRING",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
       "lastScenario": "GitHub recovered and two normal checkpoint PRs merged without user prompt.",
       "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/257",
       "integratedSha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74"
-    }
+    },
+    "waitingWorkunits": [
+      {
+        "id": "RESEARCH_NOTES_UI_FULL_APP_RUNTIME_AND_UAT",
+        "state": "WAITING_RUNTIME_BOOTSTRAP",
+        "predicate": "A supported full app runtime can boot against a safe non-production schema and authenticated fixture; current focused API listener deliberately exposes only Research Notes endpoints."
+      },
+      {
+        "id": "RESEARCH_NOTES_BACKGROUND_EXECUTION",
+        "state": "WAITING_SAFE_CONTROL_PLANE_PATH_REVIEW",
+        "predicate": "Exercise existing worker_jobs/outbox executor without activating retired workflow runtime imports or using a provider with cost; continue after identifying an allowed execution path."
+      },
+      {
+        "id": "RESEARCH_NOTES_AI_PROVIDER_RUNTIME",
+        "state": "WAITING_EXTERNAL_RETRYABLE",
+        "predicate": "A configured provider/runtime is available and provider-cost authorization is present; mocked or contract tests do not count as provider PASS."
+      }
+    ]
   },
   "deferredInfrastructure": [
     "Full reconciliation of unrelated dormant Specs not needed by Mini App Factory MVP",
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:02:00+07:00",
+  "updatedAt": "2026-10-08T02:54:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -390,7 +409,7 @@
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "Focused loopback API runtime with real SDK session-cookie auth and tenant/project/App-scoped CRUD passes on a disposable schema baseline. Full product deployment/UI and worker runtime remain unverified.",
+    "reason": "Focused loopback API runtime with real SDK session-cookie auth, tenant/project/App authorization, and CRUD/archive passed and is integrated. Full product deployment/UI and worker execution remain unverified.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -407,14 +426,17 @@
       "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
       "091a3b7f66fdaebbb5d4fdeec95b06fa3e5dfd17",
       "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
-      "e48bd280bc9ab0877a58f39dc1dace873f31db23"
+      "e48bd280bc9ab0877a58f39dc1dace873f31db23",
+      "290360e194974ee270e652dd811693336d1dad88",
+      "2ecd11664227b82f3d007a7db737f06baf1f93e2"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
       "number": 265,
       "url": "https://github.com/naibarn/SmartSpecPro/pull/265",
-      "state": "OPEN",
-      "integration": "PENDING_NORMAL_PR"
+      "state": "MERGED",
+      "integration": "MERGED_NORMAL_PR",
+      "integratedSha": "2e1042c6523765915c7970c8958c9951905d07cd"
     },
     "testEvidence": [
       {
@@ -443,15 +465,15 @@
         "outcome": "PASS: disposable PostgreSQL 17; real signed session-cookie authentication; unauthenticated denial; cross-tenant and unmembered-project denial; project-scoped create/list/update/archive over loopback HTTP/tRPC"
       }
     ],
-    "githubIntegration": "PR #265 open after normal merge of latest origin/main; retryable integration state only if GitHub becomes unavailable",
+    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #265 merged through normal non-force flow",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
+    "canonicalAtCheckpoint": "2e1042c6523765915c7970c8958c9951905d07cd",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
+      "sha": "2e1042c6523765915c7970c8958c9951905d07cd",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:fc9a9033-7e3f-4cdd-bfc1-21f3a672332b"
+      "receiptId": "workspace-convergence:e7c7df1f-7794-4623-a917-c18662024772"
     }
   }
 }
