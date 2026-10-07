@@ -33,4 +33,22 @@ describe("projectRunnerWorkspaceAuthority", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [row] as never[], now });
     expect(result.workspaces.observed[0]).toMatchObject({ provider: "UNKNOWN", agentIdentity: "UNKNOWN", providerResolutionSource: "no_active_session_provider_fact" });
   });
+
+  it("reports conflicts in project/repository or dirty-state facts instead of selecting a newer host", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner(),
+      runner({ runnerId: "runner-b", currentSnapshotJson: { workspaces: [{ workspaceId: "ws-a", projectId: "project-b", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: true }] } }),
+    ] as never[], now });
+    expect(result.workspaceConflicts).toHaveLength(1);
+    expect(result.workspaceConflicts[0].state).toBe("CONFLICT");
+  });
+
+  it("marks facts without a project/repository binding as unbound", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner({ currentSnapshotJson: { workspaces: [{ workspaceId: "ws-a", gitHead: "a".repeat(40) }] } }),
+    ] as never[], now });
+    expect(result.workspaces.observed[0].projectId).toBeNull();
+    expect(result.workspaceGroups.observed[0].state).toBe("UNBOUND");
+    expect(result.workspaceConflicts).toHaveLength(0);
+  });
 });
