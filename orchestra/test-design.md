@@ -14,3 +14,9 @@
 | Migration/DR/release | Existing rows are classified; rollback and restore preserve logical and physical authority | migration tests + manual/runbook artifacts | Deployed data inventory and DR proof absent | Pending | Requires approved production access and owner evidence |
 
 Focused commands will be recorded per section. Root TypeScript typecheck is prohibited by `AGENTS.md` and is intentionally excluded.
+
+## AUTONOMOUS_MINI_APP_FACTORY_PROGRAM — clean disposable PostgreSQL migration start
+
+| Requirement | Observable behavior | Test level/location | RED evidence | GREEN evidence | Residual boundary |
+|---|---|---|---|---|---|
+| A new non-production database must start the canonical migration path and persist STARTED/SUCCEEDED receipts before the Research Notes HTTP/UAT stages | On an empty disposable PostgreSQL 17 database, `pnpm --filter @smartspec/web run db:migrate` treats a wrapped PostgreSQL 42P01 for absent `drizzle.__drizzle_migrations` as an empty migration head, runs the 380-entry journal, and emits settled receipt | Unit: `apps/web/scripts/__tests__/migration-receipt-helpers.test.ts`; integration/runtime: the same `db:migrate` command with a disposable PG cluster and a receipt file under that cluster's temp directory | Exact RED: command exits before invoking Drizzle because the outer `DrizzleQueryError` has no `code`, while `cause.code` is `42P01` | Pending | A disposable full-schema migration proves only the isolated target; rollback, worker, provider, browser, deployment, and UAT need their own evidence |

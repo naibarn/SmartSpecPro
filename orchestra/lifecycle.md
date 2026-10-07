@@ -159,3 +159,15 @@ Completion invariants:
   no_stale_required_gate: false
   review_converged: false
   final_verify_fresh: false
+
+## Active outcome: AUTONOMOUS_MINI_APP_FACTORY_PROGRAM (2026-10-08)
+
+- Stage: `DEBUG_FIX` → `IMPLEMENT` → `MIGRATE` → `DEPLOY` → `SMOKE` → `UAT`.
+- Resume source: `/home/dev/worktrees/mini-app-factory-reset`, reconciled to `origin/main` `526b40b6df8e8aee730aeb7be13bca2a1120b7f1`; canonical user workspace `/home/dev/projects/SmartSpecPro` is clean at the same SHA.
+- Completed: Research Notes feature slice, AI/background code, portable package, 0393 disposable-schema/service proof, retryable GitHub recovery, and SPEC-302 partial handoff are integrated. No production migration/deploy/UAT claim.
+- New ready work: make the existing local development server usable as an ephemeral loopback-only target backed by a disposable full-schema PostgreSQL DB. The normal `db:migrate` path exposed a wrapped 42P01 failure before Drizzle could bootstrap an empty migration ledger.
+- Open gap: clean-database migration receipt path is not yet verified through the normal runner. Earliest stage `DEBUG_FIX`; a focused unit test now captures PostgreSQL error-code traversal through ORM `cause`.
+- Runtime safety: production `smartspec-web.service` stays untouched; ephemeral DB binds only `127.0.0.1` and is removed after UAT; do not use retired Docker/OpenSandbox or unconfigured Cloudflare bindings.
+- Next action: integrate the focused error-classification fix, retry full normal migrations on the same disposable DB, then seed authenticated synthetic users/projects/App and start the local server only when loopback binding is verified.
+- Waiting predicate: if the existing app/server or shared PostgreSQL-pull worker cannot run without production credentials/data, keep only the affected provider/deploy stage in `WAITING_ENVIRONMENT`, continue independent package/action/UI evidence, and record the exact missing variable/capability by name (never its value).
+- User outcome remains open until M1–M5 and a reusable persisted Factory pipeline pass; M6 follows when environment permits.

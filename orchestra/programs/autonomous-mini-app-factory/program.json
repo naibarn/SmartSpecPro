@@ -5,20 +5,20 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "6a7c6d7b64c66fd77d69b5cbfec50069486ebb68",
+    "sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
-      "canonical_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "canonical_sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "canonical_user_workspace_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
-      "integrated_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "canonical_user_workspace_sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
+      "integrated_sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
       "project_id": "smartspecpro",
       "reasons": [],
       "repository_id": "smartspecpro",
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "verified_at": "2026-10-07T17:06:50.448+00:00"
+      "verified_at": "2026-10-07T17:46:45.621+00:00"
     }
   },
   "inventory": {
@@ -53,7 +53,7 @@
   },
   "currentWorkunit": {
     "id": "SPEC302_MIGRATION_0393_DISPOSABLE_DB_VALIDATION",
-    "state": "VALIDATED_LOCAL_NOT_DEPLOYED",
+    "state": "MIGRATION_RUNNER_REPAIR_IN_PROGRESS",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -80,13 +80,16 @@
       "On checkpoint cce47ae20bce00795f00995d4d7e821537db233a, disposable PostgreSQL 17 applied migration 0393 then actual researchNotesService authorization checks passed: owner CRUD, viewer read/editor-write denial, cross-tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation, and archive lifecycle. No production database touched. Focused Vitest: 9 files/33 tests passed; GitHub retry regression: 4 passed; Python syntax and git diff --check passed. Deterministic package rebuilt with digest spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; validator remains needs_context for runtime/migration rollback evidence.",
       "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at origin/main SHA 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248; the registered user workspace /home/dev/projects/SmartSpecPro converged cleanly to that SHA. Disposable migration and service-authorization evidence is recorded in SPEC-302 handoff generation 17; live non-production deployment/UAT remains pending.",
       "PR #250 source 2f623d9b2826d60dccbfd35d1d74e3aa59c31cdb merged normally at origin/main SHA 315e98c9efbb35699f97652d54e131974c66b862. SPEC-302 handoff and requirement-ledger updates validated; completion remains false with deployment/UAT and other normative requirements still open.",
-      "PR #251 merged at 6a7c6d7b64c66fd77d69b5cbfec50069486ebb68; canonical workspace convergence verified. GitHub integration returned to IDLE_AFTER_SUCCESS; only registered non-production runtime/deployment/UAT remains WAITING_ENVIRONMENT."
+      "PR #251 merged at 6a7c6d7b64c66fd77d69b5cbfec50069486ebb68; canonical workspace convergence verified. GitHub integration returned to IDLE_AFTER_SUCCESS; only registered non-production runtime/deployment/UAT remains WAITING_ENVIRONMENT.",
+      "Read-only runtime scout found no configured non-production deployment; existing app listener on port 3000 is production mode and was not changed. Started an isolated PostgreSQL 17 cluster bound to 127.0.0.1 as a candidate local target.",
+      "First normal db:migrate attempt on the empty disposable database failed before invoking Drizzle because readAppliedHead did not see PostgreSQL 42P01 wrapped by DrizzleQueryError.cause. No migration ran and no receipt was emitted. Focused regression test now passes after cause-chain helper fix; retry full migrations after integration."
     ],
     "pending": [
       "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
-      "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed."
+      "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed.",
+      "Migration runner clean-database recovery is under repair; the target database remains empty, disposable, loopback-only, and no migration receipt exists yet."
     ],
-    "nextAction": "Resume authenticated smoke, migration rollback rehearsal, deployment and UAT when a registered non-production target and authorized fixtures become available; continue independent work and never treat production health as feature evidence."
+    "nextAction": "Integrate the wrapped PostgreSQL error-code fix, retry the full migration journal via the normal receipt path on local-disposable-research-notes-uat, then seed authenticated synthetic principals and verify the dev server is loopback-only."
   },
   "checkpoints": [
     {
@@ -213,15 +216,7 @@
     }
   ],
   "completedWorkunits": [],
-  "blockedWorkunits": [
-    {
-      "id": "RESEARCH_NOTES_RUNTIME_DEPLOYMENT_TARGET",
-      "state": "WAITING_ENVIRONMENT",
-      "predicate": "registered_nonproduction_target_and_authenticated_app_project_fixture_available",
-      "rootCause": "The visible systemd service is production-mode, started before route integration, and returns 404 for the feature procedure. No safe test DATABASE_URL or authenticated fixture is configured.",
-      "nextAction": "Continue independent work. Resume guarded smoke, migration lifecycle, deployment and UAT when a registered non-production target and authorized app/project principals exist."
-    }
-  ],
+  "blockedWorkunits": [],
   "criticalPath": [
     {
       "order": 1,
@@ -357,8 +352,8 @@
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
       "lastScenario": "Retryable GitHub integration completed without a user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/251",
-      "integratedSha": "6a7c6d7b64c66fd77d69b5cbfec50069486ebb68"
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/252",
+      "integratedSha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1"
     }
   },
   "deferredInfrastructure": [
@@ -366,5 +361,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T17:10:55Z"
+  "updatedAt": "2026-10-07T17:47:07Z"
 }

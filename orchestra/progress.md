@@ -86,3 +86,12 @@
 - Resumed the Redis retirement loop from Round 10; completed Round 11 across admin/runtime UI, queue reporting, scale-tier configuration, and auto-draft admission state.
 - Current proof: Python monitoring 31 passed; focused Vitest auto-draft + scaleTier 40 passed; `git diff --check` passed. Admin overview test remains blocked by an unrelated retired Workpack Access expectation; ESLint invocation resolved to global 6.4.0 without project config and is not valid lint evidence.
 - Runtime still has active project Redis/Celery containers and multiple source callers. No Docker services stopped. Continue with source-owned callers, remove retired integration surfaces, then manifests/Compose/runtime.
+
+## Resume checkpoint — AUTONOMOUS_MINI_APP_FACTORY_PROGRAM (2026-10-08)
+- Reconciled to `origin/main` and clean canonical workspace SHA `526b40b6df8e8aee730aeb7be13bca2a1120b7f1`; PRs #249–#252 merged through the retryable GitHub recovery flow.
+- Read-only runtime scout found no configured non-production deployment or Cloudflare target. The local port 3000 service is production-mode/stale and was not touched. Chosen safe experiment: existing development server + loopback binding + disposable PostgreSQL + existing migration receipt and PostgreSQL-pull worker.
+- Started disposable PostgreSQL 17 target `local-disposable-research-notes-uat` on `127.0.0.1` port 35645, database `research_notes_uat`, under `/tmp/research-notes-nonprod-v7e5fmbp`.
+- First normal `pnpm --filter @smartspec/web run db:migrate` exited before running Drizzle: `readAppliedHead()` did not traverse `DrizzleQueryError.cause.code === 42P01` for the absent migration ledger. This is a task-caused runner defect; no migration was applied and no receipt was emitted.
+- Added a failing focused test then fixed the helper. Current focused unit proof: 1 file / 2 tests passed; `git diff --check` and the migration harness Python syntax check passed.
+- Next: fast-gate and integrate this isolated fix, retry normal full migrations on the same temporary DB, and continue authenticated local smoke/worker/UI acceptance without production access.
+- Residual: full migration, migration receipts, test fixture, HTTP auth, background worker, provider success, responsive browser UAT, deployment target, and second-app reuse are still pending.
