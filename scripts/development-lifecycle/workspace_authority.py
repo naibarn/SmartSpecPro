@@ -488,6 +488,23 @@ def resolve_project_authority(repo: Path, policy_path: Path | None = None) -> di
     return project_data
 
 
+def _commit_ahead_behind(repo: Path | None, canonical_sha: str | None, workspace_sha: str | None) -> dict[str, Any]:
+    if not repo or not canonical_sha or not workspace_sha or not Path(repo).is_dir():
+        return {"state": "UNKNOWN", "ahead": None, "behind": None, "reason": "commit_identity_unavailable"}
+    result = subprocess.run(
+        ["git", "-C", str(repo), "rev-list", "--left-right", "--count", f"{canonical_sha}...{workspace_sha}"],
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode:
+        return {"state": "UNKNOWN", "ahead": None, "behind": None, "reason": "commit_graph_unavailable"}
+    try:
+        behind, ahead = (int(value) for value in result.stdout.split())
+    except (TypeError, ValueError):
+        return {"state": "UNKNOWN", "ahead": None, "behind": None, "reason": "commit_graph_invalid"}
+    return {"state": "OBSERVED", "ahead": ahead, "behind": behind}
+
+
 def build_project_mission_control_read_model(
     authority_snapshot: dict[str, Any],
     *,
@@ -511,18 +528,27 @@ def build_project_mission_control_read_model(
         user_workspace = {
             "workspace_id": canonical_id,
             "role": canonical_workspace.get("role"),
+            "host": canonical_workspace.get("owner_host") or socket.gethostname(),
             "sha": canonical_workspace.get("head_sha"),
+            "branch": canonical_workspace.get("branch"),
             "state": workspace_state,
             "dirty": bool(canonical_workspace.get("dirty")),
+            "ahead_behind": _commit_ahead_behind(
+                Path(canonical_workspace["location"]) if canonical_workspace.get("location") else None,
+                canonical_sha,
+                canonical_workspace.get("head_sha"),
+            ),
             "convergence_receipt": authority_snapshot.get("convergence_receipt"),
         }
     else:
-        user_workspace = {"workspace_id": canonical_id, "role": "CANONICAL_USER_WORKSPACE", "sha": None, "state": "UNKNOWN", "dirty": None, "convergence_receipt": authority_snapshot.get("convergence_receipt")}
+        user_workspace = {"workspace_id": canonical_id, "role": "CANONICAL_USER_WORKSPACE", "host": None, "sha": None, "branch": None, "state": "UNKNOWN", "dirty": None, "ahead_behind": {"state": "UNKNOWN", "ahead": None, "behind": None, "reason": "workspace_authority_unavailable"}, "convergence_receipt": authority_snapshot.get("convergence_receipt")}
 
     sessions = [
         {
             "session_id": row.get("owner_session_id"),
             "owner_host": row.get("owner_host"),
+            "owner_lease_expires_at": row.get("owner_lease_expires_at"),
+            "owner_pid": row.get("owner_pid"),
             "agent_identity": None,
             "provider": None,
             "workspace_id": row.get("workspace_id"),
