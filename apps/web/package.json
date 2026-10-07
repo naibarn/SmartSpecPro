@@ -100,7 +100,8 @@
     "promote:feature-188": "tsx server/scripts/promote-feature-188.ts",
     "verify:feature-188": "tsx server/scripts/verify-feature-188.ts",
     "audit:feature-186-call-sites": "tsx scripts/audit-feature-186-call-sites.ts",
-    "release-gate:vertical-drama-assurance": "tsx scripts/verify-vertical-drama-assurance-release-gate.ts"
+    "release-gate:vertical-drama-assurance": "tsx scripts/verify-vertical-drama-assurance-release-gate.ts",
+    "test:mini-app-authenticated-runtime": "bash scripts/test-mini-app-authenticated-runtime.sh"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.6.3",
