@@ -71,7 +71,7 @@ not task completion until the outcome's Definition of Done is met.
 
 - Do not create or retain per-session branches as a substitute for central integration. If concurrency or required GitHub protection needs a temporary branch/PR, merge it within this lifecycle and remove the temporary ref only after verifying its commit is in configured canonical ref.
 - Serialize the short promotion step if needed to avoid races. Do not wait for unrelated sessions or a heavy-check slot.
-- Never force-push or bypass required repository protection.
+- Never force-push or bypass required repository protection. Reject `git push --force`, `git push -f`, `git push --force-with-lease`, and equivalent force refspecs in normal session-finish work. Reconcile with the remote and use the normal non-force PR path. An emergency/recovery exception requires its dedicated explicit authority path and durable before/after-ref recovery evidence; it is not a routine branch repair.
 - A failed fast gate blocks promotion of the failing delta, not all useful progress. First split and promote any independent safe subset when possible. Preserve the remaining exact change durably and report `FAST_GATE_BLOCKED`, the failure, owner, and next action.
 - A heavy-check failure after promotion does not remove or strand the integrated work. Repair on configured canonical ref.
 - Preserve uncommitted work owned by other sessions. Never stage it, overwrite it, or remove its worktree as part of this lifecycle.

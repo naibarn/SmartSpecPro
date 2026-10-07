@@ -14,6 +14,19 @@ This contract is the shared semantic source for lifecycle skills and orchestrati
 - `canonical_ref` is supplied by repository/project policy. `origin/main` is only a repository default when policy selects it; never hard-code it in reusable lifecycle logic.
 - Canonical repository/project state is the shared engineering truth. Task completion is not required to integrate a safe, valuable checkpoint.
 
+## Git push safety
+
+Normal development and integration flows MUST reject `git push --force`,
+`git push -f`, `git push --force-with-lease`, and equivalent force refspec
+options. Use the normal non-force push or the repository's required PR merge
+path. A failed non-force push is a reconciliation signal; fetch and reconcile
+against the remote instead of rewriting it.
+
+Force updates are permitted only through an explicit emergency/recovery
+authority path that records the approving authority, affected refs, backup or
+recovery refs, exact before/after SHAs, and rollback plan. A task instruction to
+finish, integrate, or repair does not by itself authorize a force update.
+
 ## Workspace authority and freshness
 
 `git_capabilities.py` is the shared Git capability and conflict-resolution

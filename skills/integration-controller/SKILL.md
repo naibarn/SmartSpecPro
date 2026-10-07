@@ -57,7 +57,7 @@ When a session is stopping because of quota/context/provider/time boundaries, tr
 ## Branch and worktree discipline
 
 - Do not create or retain per-session branches as the durable progress destination. If required by concurrent isolation or repository protection, use a temporary branch/PR, but canonicalize safe checkpoints to the configured canonical ref throughout the work lifecycle rather than waiting for final completion.
-- Never force-push or bypass repository protection. If protection prevents immediate direct push, complete the required PR path promptly and keep the task visible as promotion-pending until the merge SHA is verified.
+- Never force-push or bypass repository protection. If protection prevents immediate direct push, complete the required PR path promptly and keep the task visible as promotion-pending until the merge SHA is verified. Explicitly reject `git push --force`, `git push -f`, `git push --force-with-lease`, and equivalent force refspec options in normal integration. Fetch and reconcile or use the normal non-force GitHub PR path. Only a dedicated emergency/recovery authority path may authorize a force update, with recorded approver, exact before/after refs and SHAs, preserved recovery refs, and rollback plan.
 - Never use destructive reset/clean/prune/remove operations against another session's worktree. A worktree count is not proof that its contents are disposable.
 - A dirty or stale registered user checkout remains the authority. Preserve it and report convergence pending until the shared resolver safely advances that same location; an internal exact-SHA build checkout is not a user-facing substitute.
 - configured canonical ref promotion is not deployment. Report deployment/runtime evidence separately.
