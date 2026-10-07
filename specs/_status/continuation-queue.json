@@ -4735,6 +4735,28 @@
     },
     {
       "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Initialize and reconcile canonical handoff.",
+      "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric",
+      "reference_counts": {},
+      "spec_id": "305"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Initialize and reconcile canonical handoff.",
+      "path": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/306-omnichannel-growth-messaging-registration-command-ingress",
+      "reference_counts": {},
+      "spec_id": "306"
+    },
+    {
+      "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",

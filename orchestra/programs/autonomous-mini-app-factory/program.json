@@ -5,32 +5,32 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "b1cd01a55d70c5e8f5792c1679081a1e25d598a1",
+    "sha": "c32a222ba51380a6700109be43ab707cc995bda6",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:eb2cdcb2-2d75-4a53-88f5-4c461296cf14"
+    "convergenceReceipt": "workspace-convergence:dc9ede69-aff1-4d3d-860a-ff08e2c31679"
   },
   "inventory": {
-    "canonicalSpecCount": 311,
+    "canonicalSpecCount": 313,
     "canonicalSourcesMissingFromOriginMain": 0,
     "activeCanonicalSpecs": ["038", "161", "268", "269", "302", "303", "304", "specs/security/20260211", "specs/security/20260212"],
     "authorityUnresolved": ["224", "240", "256", "270", "273", "279", "287", "288", "293", "294", "295"],
     "evidenceSource": "specs/_status/spec-index.json reconciled against source paths in origin/main",
-    "outsideMainSources": "not fully audited yet"
+    "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION",
-    "state": "WORKING",
-    "objective": "Resolve active App route aliases from persisted identity using trusted tenant context and fail closed across tenant and lifecycle boundaries.",
-    "implementation": ["apps/web/server/services/appIdentityRepository.ts", "apps/web/server/services/__tests__/appIdentityRepository.test.ts"],
-    "evidence": ["Focused Vitest: appIdentityRepository.test.ts and tenantProductIdentityContracts.test.ts, 12 passed on base b1cd01a55d70c5e8f5792c1679081a1e25d598a1.", "Repository resolver scopes lookup by trusted tenantId, alias kind and normalized value; contract rejects inactive aliases/apps and tenant mismatch."],
-    "pending": ["Database migration 0392 has not been applied; no DATABASE_URL is configured.", "No authenticated route or request-host binding is integrated yet."],
-    "nextAction": "Integrate this repository checkpoint, then bind it to trusted host routing and add authenticated Mini App endpoints; validate PostgreSQL only against a verified non-production database."
+    "id": "SPEC304_TRUSTED_TENANT_ROUTE_API",
+    "state": "CHECKPOINT_READY",
+    "objective": "Expose authenticated App route resolution using account tenant authority and the persisted tenant-bound alias resolver.",
+    "implementation": ["apps/web/server/routers/appIdentity.ts", "apps/web/server/routers/appIdentity.test.ts", "apps/web/server/routers.ts", "apps/web/server/services/appIdentityRepository.ts"],
+    "evidence": ["15 focused router, repository and identity contract tests passed in the candidate based on c32a222ba51380a6700109be43ab707cc995bda6.", "Router derives tenant scope only from authenticated users.currentTenantId; unknown tenant input is rejected by strict schema."],
+    "pending": ["Database migration 0392 has not been applied; no DATABASE_URL is configured.", "No HTTP route consumer or reference Mini App UI/data CRUD exists yet."],
+    "nextAction": "Pass FAST GATE and integrate this read-only route API, then continue with the reference Mini App shell and a DB-backed vertical slice; validate PostgreSQL only on a verified non-production target."
   },
   "checkpoints": [
     { "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS", "state": "PARTIAL_INTEGRATED", "sha": "28d8a2864335b02524b60943498006cb2929d60c", "evidence": "tenantProductIdentityContracts.test.ts: 9 passed" },
     { "id": "SPEC304_PERSISTED_IDENTITY_SCHEMA", "state": "PARTIAL_INTEGRATED", "sha": "5eff1efc0fd53ae6e9818fd97095bae021b175b8", "evidence": "Additive Drizzle schema and migration 0392 integrated; migration application and database integration remain pending." },
-    { "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION", "state": "CHECKPOINT_READY", "sha": "b1cd01a55d70c5e8f5792c1679081a1e25d598a1", "evidence": "12 focused tests passed for persisted route resolver and identity contracts; awaiting FAST GATE and integration." }
+    { "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION", "state": "PARTIAL_INTEGRATED", "sha": "c32a222ba51380a6700109be43ab707cc995bda6", "evidence": "12 focused tests passed on the integrated SHA; SPEC-304 requirement ledger updated through the shared writer." }
   ],
   "completedWorkunits": [],
   "blockedWorkunits": [],
@@ -64,12 +64,12 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "SPEC304_AUTHENTICATED_MINI_APP_RUNTIME_API"
+    "nextEligibleWorkunit": "SPEC304_REFERENCE_APP_SHELL_AND_DATA_SLICE"
   },
   "deferredInfrastructure": [
     "Full reconciliation of unrelated dormant Specs not needed by Mini App Factory MVP",
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T14:25:00Z"
+  "updatedAt": "2026-10-07T14:30:00Z"
 }
