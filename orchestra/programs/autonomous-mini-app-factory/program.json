@@ -5,27 +5,27 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+    "sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
-      "canonical_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
-      "canonical_user_workspace_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+      "integrated_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+      "canonical_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+      "canonical_user_workspace_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:2e9482e9-4e1f-4bc7-ba16-8d285747b4c0",
-      "verified_at": "2026-10-07T19:57:02.708+00:00"
+      "receipt_id": "workspace-convergence:c3d1c60a-d86d-4a61-918f-11b0fdf652bb",
+      "verified_at": "2026-10-07T19:58:13.782+00:00"
     },
-    "observedAt": "2026-10-08T02:57:05+07:00",
+    "observedAt": "2026-10-08T03:00:10+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
-      "canonical_user_workspace_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+      "integrated_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+      "canonical_user_workspace_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T19:57:02.708+00:00"
+      "verified_at": "2026-10-07T19:58:13.782+00:00"
     }
   },
   "inventory": {
@@ -77,13 +77,15 @@
       "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched.",
       "PR #265 merged normally as 2e1042c6523765915c7970c8958c9951905d07cd; /home/dev/projects/SmartSpecPro converged and verified clean at this SHA. The PR branch had diverged from the squash merge of #264; conflict was reconciled on the single owned program.json path using git_capabilities.py resolve before normal PR merge.",
       "Authenticated loopback API suite now also denies revoked project membership and hides projects for an archived App; command passed against a fresh disposable PostgreSQL 17 baseline.",
-      "PR #267 merged normally as e85a66d9340b872872d1333047f687b5ad4fb558; canonical workspace verified clean at this SHA. The focused runtime suite now rejects revoked membership and hides projects after app archive."
+      "PR #267 merged normally as e85a66d9340b872872d1333047f687b5ad4fb558; canonical workspace verified clean at this SHA. The focused runtime suite now rejects revoked membership and hides projects after app archive.",
+      "After PR #268, both authenticated API and fresh schema baseline scripts passed again at canonical work SHA 831e6c04b2f13d4686627cf3abf956607fb8a08f. The second app Project Wiki Pages package rebuilt twice with the shared --package-root builder: digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a and archive SHA-256 7f42b43c66da09c47ac1a86e9ff5d58a1c897c1625ad6286c3eb528b18bc6643; validation remains needs_context.",
+      "At canonical SHA 831e6c04b2f13d4686627cf3abf956607fb8a08f, Project Wiki focused service/router/UI tests passed 3 files/7 tests; Mini App Factory pipeline/executor tests passed 2 files/5 tests."
     ],
-    "nextAction": "Continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING as the next dependency-safe workunit; keep UI/deploy/UAT and summary worker execution as separate pending lanes.",
+    "nextAction": "Continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING: bind the generic DAG executor to an approved durable DevelopmentRun/worker execution composition, without introducing a parallel queue or activating retired workflow surfaces. UI/deployment/UAT and provider summary runtime remain separate pending lanes.",
     "sourceSha": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
     "integration": "MERGED_NORMAL_PR",
     "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/267",
-    "integratedSha": "e85a66d9340b872872d1333047f687b5ad4fb558"
+    "integratedSha": "831e6c04b2f13d4686627cf3abf956607fb8a08f"
   },
   "checkpoints": [
     {
@@ -220,11 +222,11 @@
     },
     {
       "id": "PROJECT_WIKI_PAGES_REFERENCE_MINI_APP",
-      "state": "PARTIAL_INTEGRATED",
+      "state": "PASS_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_RUNTIME_PENDING",
       "sourceSha": "bdc8a90fe3f4e31fb4e23b521b30ea11b72ffd2d",
       "sha": "0afa5436b2fcb6b3b14987265f7671a87d57c670",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/260",
-      "evidence": "PR #260 merged normally. Focused suite 4 files/10 tests passed; migration 0394 synthetic-baseline constraints passed; deterministic package digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a, archive SHA ca4328932e7664bfabb3b7ebfa13fb169dc6db6aefc71a7f68ac2f00f05d4723; validation needs_context, runtime/UAT pending."
+      "evidence": "PR #260 merged normally. Focused suite 4 files/10 tests passed; migration 0394 synthetic-baseline constraints passed; deterministic package digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a, archive SHA-256 7f42b43c66da09c47ac1a86e9ff5d58a1c897c1625ad6286c3eb528b18bc6643, reproduced identically in two consecutive builds at canonical SHA 831e6c04b2f13d4686627cf3abf956607fb8a08f; validation needs_context, runtime/UAT pending."
     },
     {
       "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
@@ -359,7 +361,7 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; authorization runtime integrated; Factory executor wiring is next",
+    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; authenticated runtime and second app package revalidation passed; continue generic Factory worker wiring",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
@@ -395,33 +397,33 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T02:57:10+07:00",
+  "updatedAt": "2026-10-08T03:00:15+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "FOCUSED_API_RUNTIME_AUTHORIZATION_PASS_DEPLOYMENT_NOT_RUN",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "AUTHENTICATED_LOOPBACK_API_PASS_FULL_DEPLOY_NOT_RUN",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
-    "M6_FACTORY_EXECUTABLE": "PARTIAL_DEPENDENCY_READY_SELECTOR_INTEGRATED",
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_TESTED_WORKER_WIRING_PENDING",
     "M7_FACTORY_AUTO_RESUME_PASS": "NOT_RUN",
-    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT"
+    "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_SPEC_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_RUNTIME_PENDING"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "Authenticated loopback API and all tested tenant/project/App authorization behavior pass on disposable PostgreSQL. Full app deployment, UI/UAT, worker execution, and provider summary runtime remain unverified.",
+    "reason": "Authenticated loopback API with tenant/project/App authorization passes. Project Wiki second app package also rebuilds deterministically. No full app deployment, browser UAT, provider summary, or background worker execution has been performed.",
     "productionTouched": false
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "DEPENDENCY_READY_SELECTOR_INTEGRATED_EXECUTOR_WIRING_PENDING",
-    "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_BUILT_DEPLOYMENT_UAT_PENDING"
+    "state": "DEPENDENCY_READY_SELECTOR_AND_CHECKPOINT_EXECUTOR_TESTED_WORKER_COMPOSITION_PENDING",
+    "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-auth-runtime-next-20261008",
-    "sourceBranch": "codex/mini-app-auth-runtime-next-20261008",
+    "taskWorktree": "/home/dev/worktrees/mini-app-factory-post-runtime-20261008",
+    "sourceBranch": "codex/mini-app-factory-post-runtime-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -433,15 +435,16 @@
       "2ecd11664227b82f3d007a7db737f06baf1f93e2",
       "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
       "592aec5c4d732f85e9baed40cf56516e68962a92",
-      "357f55a63b2db85510af80610208a0e9f3a19cbf"
+      "357f55a63b2db85510af80610208a0e9f3a19cbf",
+      "f89c9f549047c9a94a86aed3769fa29b8fc89c42"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
-      "number": 267,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/267",
+      "number": 268,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/268",
       "state": "MERGED",
       "integration": "MERGED_NORMAL_PR",
-      "integratedSha": "e85a66d9340b872872d1333047f687b5ad4fb558"
+      "integratedSha": "831e6c04b2f13d4686627cf3abf956607fb8a08f"
     },
     "testEvidence": [
       {
@@ -473,17 +476,37 @@
         "revision": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368; integrated by PR #267 as e85a66d9340b872872d1333047f687b5ad4fb558",
         "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
         "outcome": "PASS: disposable PostgreSQL 17; real session auth; unauthenticated, cross-tenant, unmembered-project, revoked-membership and archived-App denial/hiding; project-scoped CRUD/archive over loopback HTTP/tRPC"
+      },
+      {
+        "revision": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime && pnpm --filter @smartspec/web run test:mini-app-runtime-baseline",
+        "outcome": "PASS: disposable PostgreSQL 17 schema; real SDK session auth; unauthenticated, cross-tenant, unmembered, revoked-membership and archived-App checks; authenticated note CRUD/archive; fresh schema constraints and worker_jobs/outbox contract"
+      },
+      {
+        "revision": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/projectWikiPagesService.test.ts server/routers/projectWikiPages.test.ts client/src/pages/__tests__/ProjectWikiPagesPage.test.tsx",
+        "outcome": "PASS: 3 files, 7 tests"
+      },
+      {
+        "revision": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryPipeline.test.ts server/services/miniAppFactoryRunExecutor.test.ts",
+        "outcome": "PASS: 2 files, 5 tests"
+      },
+      {
+        "revision": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+        "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts --package-root apps/web/mini-apps/project-wiki-pages/package --output-dir /tmp/project-wiki-pages-package-run-1 (repeat with run-2)",
+        "outcome": "PASS: two identical builds; package digest spaas-package-v1:sha256:0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a; archive SHA-256 7f42b43c66da09c47ac1a86e9ff5d58a1c897c1625ad6286c3eb528b18bc6643; validator needs_context, so no deployment/UAT claim"
       }
     ],
-    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #267 merged normally",
+    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #268 merged normally",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "e85a66d9340b872872d1333047f687b5ad4fb558",
+    "canonicalAtCheckpoint": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+      "sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:2e9482e9-4e1f-4bc7-ba16-8d285747b4c0"
+      "receiptId": "workspace-convergence:c3d1c60a-d86d-4a61-918f-11b0fdf652bb"
     }
   }
 }
