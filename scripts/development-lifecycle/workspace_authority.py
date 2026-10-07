@@ -1148,9 +1148,16 @@ def retire_completed_worktree(
                 "task_id": latest.get("task_id"),
                 "workspace_sha": final_facts["head_sha"],
                 "canonical_sha": canonical_sha,
+                "integration_sha": canonical_sha,
                 "integration_verified": not bool(final_classification["unique_commits"]),
                 "recovery_linkage": latest.get("recovery_linkage"),
+                "recovery_receipt_ref": latest.get("recovery_linkage"),
                 "owner_state": latest["session_state"],
+                "owner_session_id": latest.get("owner_session_id"),
+                "owner_pid": latest.get("owner_pid"),
+                "host_runtime": latest.get("owner_host") or socket.gethostname(),
+                "final_lifecycle_classification": "RETIRED",
+                "retirement_reason": "CLEAN_CANONICAL_EQUIVALENT_NO_UNIQUE_WORK",
                 "result": "WORKTREE_RETIRED",
                 "actor": os.environ.get("CODEX_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID") or f"pid:{os.getpid()}",
                 "retired_at": retired_at,
@@ -1220,7 +1227,15 @@ def collect_worktrees(
                 results.append({"workspace_id": wid, "classification": "RETIREABLE", "result": preview})
         else:
             results.append({"workspace_id": wid, "classification": "BLOCKED", "result": preview})
-    return {"status": "WORKTREE_AUDIT_COMPLETE", "mode": mode, "audited_at": _now(), "workspaces": results}
+    audited_at = _now()
+    report = {"status": "WORKTREE_AUDIT_COMPLETE", "mode": mode, "audited_at": audited_at, "workspaces": results}
+    with _db(repo) as db:
+        db.execute(
+            "INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (f"worktree-audit:{uuid.uuid4()}", policy["project_id"], policy["repository_id"], None,
+             "WORKSPACE_AUDIT", None, None, json.dumps(report, sort_keys=True), audited_at),
+        )
+    return report
 
 
 def _cli() -> int:

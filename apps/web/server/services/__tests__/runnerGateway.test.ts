@@ -1,11 +1,42 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import crypto from "node:crypto";
+
+const { revokedJtis, ephemeralValues, claimedKeys } = vi.hoisted(() => ({
+  revokedJtis: new Set<string>(),
+  ephemeralValues: new Map<string, unknown>(),
+  claimedKeys: new Set<string>(),
+}));
+
+// RunnerGateway is a unit suite. Keep revocation semantics real while isolating
+// its backing store from PostgreSQL and other suites.
+vi.mock("../../_core/revocation", () => ({
+  isJtiRevoked: async (jti: string) => revokedJtis.has(jti),
+  revokeJti: async (jti: string) => { revokedJtis.add(jti); },
+}));
+vi.mock("../postgresEphemeralStore", () => ({
+  readEphemeralValue: async (namespace: string, key: string) => ephemeralValues.get(`${namespace}:${key}`) ?? null,
+  putEphemeralValueIfAbsent: async (namespace: string, key: string, value: unknown) => {
+    const storageKey = `${namespace}:${key}`;
+    if (ephemeralValues.has(storageKey)) return false;
+    ephemeralValues.set(storageKey, value);
+    return true;
+  },
+}));
+vi.mock("../postgresRateLimitStore", () => ({
+  claimTtlDedupeKey: async (namespace: string, key: string) => {
+    const storageKey = `${namespace}:${key}`;
+    if (claimedKeys.has(storageKey)) return false;
+    claimedKeys.add(storageKey);
+    return true;
+  },
+}));
 
 import {
   __clearRunnerRefreshGraceForTests,
   createRunnerControlToken,
   createRunnerRegistrationToken,
   issueRunnerAccessTokens,
+  revokeRunnerToken,
   refreshRunnerAccessTokens,
   runnerDeviceProofPayload,
   rotateRunnerControlToken,
@@ -43,6 +74,29 @@ function snapshot(revision: string, runnerId = "runner-1") {
 }
 
 describe("RunnerGateway", () => {
+  afterEach(() => {
+    revokedJtis.clear();
+    ephemeralValues.clear();
+    claimedKeys.clear();
+    __clearRunnerRefreshGraceForTests();
+  });
+
+  it("isolates token revocation state and still rejects a revoked token", async () => {
+    const token = createRunnerControlToken({
+      runnerId: "runner-revocation-isolation",
+      tenantId: "tenant-a",
+      profile: "local_device",
+      nodeKind: "local_device",
+      deviceBinding: localDeviceBinding,
+    });
+    await expect(verifyRunnerControlToken(token, { requestProof: null }))
+      .rejects.toMatchObject({ code: "runner_device_proof_required" });
+
+    await revokeRunnerToken(token);
+    await expect(verifyRunnerControlToken(token, { requestProof: null }))
+      .rejects.toMatchObject({ code: "runner_auth_invalid" });
+  });
+
   it("rejects malformed device public keys before issuing Runner credentials", () => {
     expect(() =>
       createRunnerControlToken({
@@ -238,6 +292,7 @@ describe("RunnerGateway", () => {
       ])
     ).resolves.toMatchObject({ runnerId: "runner-refresh" });
     __clearRunnerRefreshGraceForTests();
+    ephemeralValues.clear();
     await expect(
       refreshRunnerAccessTokens(tokens.refreshToken)
     ).rejects.toMatchObject({
