@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,8 +7,10 @@ import { validateSpaasPackage } from "../../../packages/spaas-standard/src/index
 import type { ManifestSupportContext, PackageEntry } from "../../../packages/spaas-standard/src/model.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
-const packageRoot = join(repositoryRoot, "apps/web/mini-apps/research-notes");
-const outputPath = join(repositoryRoot, "apps/web/.artifacts/research-notes/package-report.json");
+const packageRoot = join(repositoryRoot, "apps/web/mini-apps/research-notes/package");
+const outputRoot = join(repositoryRoot, "apps/web/.artifacts/research-notes");
+const archivePath = join(outputRoot, "research-notes-1.0.0.tar.gz");
+const reportPath = join(outputRoot, "package-report.json");
 
 function packageFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true })
@@ -40,14 +44,21 @@ if (report.status === "invalid" || !report.digest) {
   process.stderr.write(`${JSON.stringify({ status: report.status, stages: report.stages, diagnostics: report.diagnostics }, null, 2)}\n`);
   process.exitCode = 1;
 } else {
-  mkdirSync(dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, `${JSON.stringify({
+  mkdirSync(outputRoot, { recursive: true });
+  execFileSync("tar", [
+    "--create", "--gzip", "--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner",
+    "--format=posix", "--file", archivePath, "--directory", packageRoot,
+    ...entries.map(({ path }) => path),
+  ], { stdio: "pipe" });
+  const archiveSha256 = createHash("sha256").update(readFileSync(archivePath)).digest("hex");
+  writeFileSync(reportPath, `${JSON.stringify({
     schemaVersion: "research-notes-package-build/v1",
     appId: report.manifestIdentity,
     appVersion: report.manifestVersion,
     digest: report.digest,
+    archive: { path: archivePath, format: "tar.gz", sha256: archiveSha256 },
     validation: { profile: report.profile, status: report.status, stages: report.stages, diagnostics: report.diagnostics },
     files: entries.map(({ path, bytes }) => ({ path, sizeBytes: bytes.byteLength })),
   }, null, 2)}\n`);
-  process.stdout.write(`${JSON.stringify({ packageBuild: "BUILT", validation: report.status, appId: report.manifestIdentity, digest: report.digest.value, outputPath })}\n`);
+  process.stdout.write(`${JSON.stringify({ packageBuild: "BUILT", validation: report.status, appId: report.manifestIdentity, digest: report.digest.value, archiveSha256, archivePath })}\n`);
 }

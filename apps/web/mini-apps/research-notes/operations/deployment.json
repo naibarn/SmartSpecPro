@@ -1,7 +1,7 @@
 {
   "schemaVersion": "smartaihub.mini-app-deployment/v1",
   "appId": "app_research_notes",
-  "packageManifest": "app.manifest.yaml",
+  "packageManifest": "package/app.manifest.yaml",
   "deploymentAuthority": "SPEC-295",
   "target": {
     "kind": "existing-web-service",
@@ -31,5 +31,6 @@
     "a non-production migration target with known credentials and disposable data is registered",
     "a SPEC-295 deployment target and environment are selected through the existing authority",
     "runtime placement and migration rollback evidence are bound to the exact package digest"
-  ]
+  ],
+  "machineActions": "package/actions.json"
 }

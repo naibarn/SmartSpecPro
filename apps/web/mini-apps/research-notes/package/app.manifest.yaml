@@ -19,7 +19,7 @@ application:
 components:
   - id: research-notes-ui
     type: ui
-    source: README.md
+    source: ui.json
     dependsOn: []
     sideEffects: [persistent_read, persistent_write]
     capabilities: [research_notes.read, research_notes.write]
@@ -30,6 +30,9 @@ components:
     sideEffects: [persistent_read, persistent_write, background_job_enqueue]
     capabilities: [research_notes.read, research_notes.write, research_notes.summarize]
 sections:
+  - name: user-interface
+    path: ui.json
+    required: true
   - name: actions
     path: actions.json
     required: true
@@ -47,6 +50,10 @@ security:
 privacy:
   noteContent: tenant_project_scoped
   aiSummary: user_requested_background_job
+runtime:
+  host: smartspec-web
+  entrypoint: apps/web/client/src/pages/ResearchNotesPage.tsx
+  route: /apps/{publicAppId}
 operations:
   migrations:
     - id: 0393_spec302_canonical_project_identity

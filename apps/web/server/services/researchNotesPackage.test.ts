@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { validateSpaasPackage } from "../../../../packages/spaas-standard/src/index";
 import type { ManifestSupportContext, PackageEntry } from "../../../../packages/spaas-standard/src/model";
 
-const packageRoot = join(process.cwd(), "mini-apps/research-notes");
+const packageRoot = join(process.cwd(), "mini-apps/research-notes/package");
+const operationsRoot = join(process.cwd(), "mini-apps/research-notes/operations");
 const support: ManifestSupportContext = {
   supportedApiVersions: ["spaas.smartaihub.app/v1"],
   supportedSchemaVersions: ["1.0"],
@@ -54,17 +55,29 @@ describe("Research Notes portable package", () => {
   });
 
   it("keeps deployment and UAT explicitly pending until an authorized environment exists", () => {
-    const deployment = JSON.parse(readFileSync(join(packageRoot, "deployment.json"), "utf8")) as {
+    const deployment = JSON.parse(readFileSync(join(operationsRoot, "deployment.json"), "utf8")) as {
       state: string;
       target: { environment: string; environmentId: string | null; baseUrl: string | null };
       release: { migration: { status: string } };
     };
-    const smokePlan = readFileSync(join(packageRoot, "SMOKE-TEST-PLAN.md"), "utf8");
+    const smokePlan = readFileSync(join(operationsRoot, "SMOKE-TEST-PLAN.md"), "utf8");
     expect(deployment.state).toBe("PREPARED_NOT_DEPLOYED");
     expect(deployment.target).toMatchObject({ environment: "UNSELECTED", environmentId: null, baseUrl: null });
     expect(deployment.release.migration.status).toBe("NOT_APPLIED");
     expect(smokePlan).toContain("Status: prepared only.");
     expect(smokePlan).toContain("NOT_RUN");
     expect(readFileSync(join(process.cwd(), "scripts/research-notes-smoke.ts"), "utf8")).toContain("Cross-tenant principal could read the smoke note");
+  });
+
+  it("declares the host-owned UI binding and limits portability to compatible hosts", () => {
+    const ui = JSON.parse(readFileSync(join(packageRoot, "ui.json"), "utf8")) as {
+      host: string;
+      hostSourcePath: string;
+      portability: { packageContract: string; externalHostRequires: string[] };
+    };
+    expect(ui.host).toBe("smartspec-web");
+    expect(ui.hostSourcePath).toBe("apps/web/client/src/pages/ResearchNotesPage.tsx");
+    expect(ui.portability.packageContract).toBe("portable-within-compatible-SmartAIHub-hosts");
+    expect(ui.portability.externalHostRequires).toContain("researchNotes tRPC procedures");
   });
 });
