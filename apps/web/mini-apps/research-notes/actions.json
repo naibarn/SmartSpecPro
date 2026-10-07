@@ -9,13 +9,373 @@
     "callerMaySetTenantOrUserId": false
   },
   "actions": [
-    { "id": "projects.list", "procedure": "listProjects", "kind": "query", "input": ["appId"], "effects": ["project_membership_check"] },
-    { "id": "projects.create", "procedure": "createProject", "kind": "mutation", "input": ["appId", "title"], "effects": ["project_create", "editor_or_owner_required"] },
-    { "id": "notes.list", "procedure": "listNotes", "kind": "query", "input": ["appId", "projectId"], "effects": ["tenant_project_app_scope_check"] },
-    { "id": "notes.create", "procedure": "createNote", "kind": "mutation", "input": ["appId", "projectId", "title", "content"], "effects": ["note_create", "editor_or_owner_required"] },
-    { "id": "notes.update", "procedure": "updateNote", "kind": "mutation", "input": ["appId", "projectId", "noteId", "title", "content"], "effects": ["note_update", "summary_invalidation", "editor_or_owner_required"] },
-    { "id": "notes.archive", "procedure": "archiveNote", "kind": "mutation", "input": ["appId", "projectId", "noteId"], "effects": ["note_archive", "editor_or_owner_required"] },
-    { "id": "notes.summary.request", "procedure": "requestSummary", "kind": "mutation", "input": ["appId", "projectId", "noteId"], "effects": ["worker_jobs_outbox_enqueue", "editor_or_owner_required"] },
-    { "id": "notes.summary.status", "procedure": "summaryJob", "kind": "query", "input": ["appId", "projectId", "noteId", "jobId"], "effects": ["tenant_project_app_scope_check"] }
-  ]
+    {
+      "id": "projects.list",
+      "procedure": "listProjects",
+      "kind": "query",
+      "input": [
+        "appId"
+      ],
+      "effects": [
+        "project_membership_check"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          }
+        },
+        "required": [
+          "appId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "projects.create",
+      "procedure": "createProject",
+      "kind": "mutation",
+      "input": [
+        "appId",
+        "title"
+      ],
+      "effects": [
+        "project_create",
+        "editor_or_owner_required"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "title": {
+            "$ref": "#/$defs/title"
+          }
+        },
+        "required": [
+          "appId",
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "notes.list",
+      "procedure": "listNotes",
+      "kind": "query",
+      "input": [
+        "appId",
+        "projectId"
+      ],
+      "effects": [
+        "tenant_project_app_scope_check"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "projectId": {
+            "$ref": "#/$defs/projectId"
+          }
+        },
+        "required": [
+          "appId",
+          "projectId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "notes.create",
+      "procedure": "createNote",
+      "kind": "mutation",
+      "input": [
+        "appId",
+        "projectId",
+        "title",
+        "content"
+      ],
+      "effects": [
+        "note_create",
+        "editor_or_owner_required"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "projectId": {
+            "$ref": "#/$defs/projectId"
+          },
+          "title": {
+            "$ref": "#/$defs/title"
+          },
+          "content": {
+            "$ref": "#/$defs/content"
+          }
+        },
+        "required": [
+          "appId",
+          "projectId",
+          "title",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "notes.update",
+      "procedure": "updateNote",
+      "kind": "mutation",
+      "input": [
+        "appId",
+        "projectId",
+        "noteId",
+        "title",
+        "content"
+      ],
+      "effects": [
+        "note_update",
+        "summary_invalidation",
+        "editor_or_owner_required"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "projectId": {
+            "$ref": "#/$defs/projectId"
+          },
+          "noteId": {
+            "$ref": "#/$defs/noteId"
+          },
+          "title": {
+            "$ref": "#/$defs/title"
+          },
+          "content": {
+            "$ref": "#/$defs/content"
+          }
+        },
+        "required": [
+          "appId",
+          "projectId",
+          "noteId",
+          "title",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "notes.archive",
+      "procedure": "archiveNote",
+      "kind": "mutation",
+      "input": [
+        "appId",
+        "projectId",
+        "noteId"
+      ],
+      "effects": [
+        "note_archive",
+        "editor_or_owner_required"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "projectId": {
+            "$ref": "#/$defs/projectId"
+          },
+          "noteId": {
+            "$ref": "#/$defs/noteId"
+          }
+        },
+        "required": [
+          "appId",
+          "projectId",
+          "noteId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "notes.summary.request",
+      "procedure": "requestSummary",
+      "kind": "mutation",
+      "input": [
+        "appId",
+        "projectId",
+        "noteId"
+      ],
+      "effects": [
+        "worker_jobs_outbox_enqueue",
+        "editor_or_owner_required"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "projectId": {
+            "$ref": "#/$defs/projectId"
+          },
+          "noteId": {
+            "$ref": "#/$defs/noteId"
+          }
+        },
+        "required": [
+          "appId",
+          "projectId",
+          "noteId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "$ref": "#/$defs/jobId"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "jobId",
+          "created"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "notes.summary.status",
+      "procedure": "summaryJob",
+      "kind": "query",
+      "input": [
+        "appId",
+        "projectId",
+        "noteId",
+        "jobId"
+      ],
+      "effects": [
+        "tenant_project_app_scope_check"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "$ref": "#/$defs/appId"
+          },
+          "projectId": {
+            "$ref": "#/$defs/projectId"
+          },
+          "noteId": {
+            "$ref": "#/$defs/noteId"
+          },
+          "jobId": {
+            "$ref": "#/$defs/jobId"
+          }
+        },
+        "required": [
+          "appId",
+          "projectId",
+          "noteId",
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$ref": "#/$defs/summaryJobResult"
+      }
+    }
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "appId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "noteId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "jobId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 262144
+    },
+    "summaryJobResult": {
+      "type": "object",
+      "properties": {
+        "jobId": {
+          "$ref": "#/$defs/jobId"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "queued",
+            "leased",
+            "claimed",
+            "preparing",
+            "running",
+            "waiting_external",
+            "retry_scheduled",
+            "uploading",
+            "publishing",
+            "indexing",
+            "completed",
+            "succeeded",
+            "failed",
+            "canceled",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "errorCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "jobId",
+        "status"
+      ],
+      "additionalProperties": false
+    }
+  }
 }
