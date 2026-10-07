@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a56d221aa17b5986c2175e7b4ad5e59042917a89",
+    "expected_canonical_sha": "8d45273a3f1844bd80629a54a0b990e551a1f98a",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -103,7 +103,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a56d221aa17b5986c2175e7b4ad5e59042917a89",
+    "canonical_sha": "8d45273a3f1844bd80629a54a0b990e551a1f98a",
     "integrated": true,
     "integrated_at": "2026-10-07T00:00:00Z"
   },
@@ -222,7 +222,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T00:11:59.651065Z",
+  "updated_at": "2026-10-07T00:17:10.637397Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -252,6 +252,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4-collector-integrated-20261007.md",
         "scope": "conservative registered worktree collector and 31-case incident matrix",
         "source_sha": "598e10f41",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_LOCAL_REGRESSION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4-collector-integrated-20261007.md",
+        "scope": "collector CLI success regression and 32-case incident matrix",
+        "source_sha": "c48a357b1",
         "status": "PASS"
       }
     ],
