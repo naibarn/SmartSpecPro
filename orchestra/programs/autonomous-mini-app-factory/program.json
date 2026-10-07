@@ -5,27 +5,27 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "2f93bf168c375966f580931b4a969c5fae38e7c4",
+    "sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
-      "canonical_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
-      "canonical_user_workspace_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
+      "integrated_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+      "canonical_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+      "canonical_user_workspace_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:4c3f6743-4ea0-4039-8653-805c6668c316",
-      "verified_at": "2026-10-07T18:47:00.132+00:00"
+      "receipt_id": "workspace-convergence:849f521e-6a37-4773-afae-565bcd0a1797",
+      "verified_at": "2026-10-07T19:45:56.482+00:00"
     },
-    "observedAt": "2026-10-08T02:50:00+07:00",
+    "observedAt": "2026-10-08T02:46:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
-      "canonical_user_workspace_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
+      "integrated_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+      "canonical_user_workspace_sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T18:47:03.573+00:00"
+      "verified_at": "2026-10-07T19:45:56.482+00:00"
     }
   },
   "inventory": {
@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
-    "state": "PR_PENDING",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Provide a deterministic loopback-only fresh schema baseline for the Research Notes and Project Wiki Pages acceptance slice using the existing worker_jobs/outbox authority while excluding retired systems.",
     "implementation": [
       "apps/web/drizzle.mini-app-baseline.config.ts",
@@ -73,11 +73,14 @@
       "`pnpm --filter @smartspec/web run test:mini-app-runtime-baseline` passed end-to-end. It creates a loopback-only temporary cluster, applies the guarded projection migration, validates tenant/project isolation, note/page constraints, path reuse after archive, and inserts worker_jobs plus outbox, then rolls back fixtures and tears down the cluster.",
       "The acceptance database had only plpgsql and no vector extension; the Mini App projection itself does not require pgvector. This does not establish that the full SmartSpecPro schema can run without it.",
       "The existing full-schema migration chain still fails at 0015 due to missing workflow_templates. The Mini App projection avoids that historical legacy assumption without creating compatibility schema.",
-      "No authenticated web session, app process, deployment, or UAT was run."
+      "No authenticated web session, app process, deployment, or UAT was run.",
+      "PR #263 merged normally as a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15; registered canonical user workspace converged and verified clean at the same SHA. Attach-artifact API could not attach because thread identity count exceeds 100."
     ],
-    "nextAction": "Integrate this baseline, then wire an authenticated non-production app process/fixture to it and continue API/UI smoke acceptance.",
-    "sourceSha": "88a7870c963941b71aca348ae860d0d1d97b8ae3",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/263"
+    "nextAction": "Start the loopback-only authenticated Research Notes runtime lane from the integrated Mini App schema projection; discover missing boot prerequisites and complete API smoke where feasible. Keep deployment/UAT pending until an authenticated app process and browser journey pass.",
+    "sourceSha": "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/263",
+    "integratedSha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+    "integration": "MERGED_NORMAL_PR"
   },
   "checkpoints": [
     {
@@ -353,12 +356,12 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; CONTINUATION_EXECUTION_WIRING_PENDING",
+    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; executor integrated; runtime work is the next eligible lane",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "PROJECT_WIKI_PAGES_BACKEND_SCHEMA_ACTIONS_UI",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -372,7 +375,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T01:47:03+07:00",
+  "updatedAt": "2026-10-08T02:46:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -388,7 +391,7 @@
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "The Mini App-only schema baseline and worker_jobs/outbox DB contracts pass. An authenticated app process has not been started on this target, so deployment and runtime remain pending.",
+    "reason": "The Mini App-only schema baseline and worker_jobs/outbox DB contracts pass and are integrated at a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15. An authenticated app process has not been started on this target, so deployment and runtime remain pending.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -401,14 +404,16 @@
     "sourceBranch": "codex/mini-app-runtime-schema-baseline-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
-      "f7bf736adbee6ee3403be1cef0f3851e8223f47f"
+      "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
+      "453811db9a79c6f944590aad0ca0a7f8e91c7cf5"
     ],
     "intendedRemoteBranch": "codex/mini-app-runtime-schema-baseline-20261008",
     "pendingPullRequest": {
       "number": 263,
       "url": "https://github.com/naibarn/SmartSpecPro/pull/263",
-      "state": "OPEN",
-      "integration": "PENDING_NORMAL_PR"
+      "state": "MERGED",
+      "integration": "MERGED_NORMAL_PR",
+      "integratedSha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15"
     },
     "testEvidence": [
       {
@@ -425,17 +430,22 @@
         "revision": "baseline delta",
         "command": "python3 -m json.tool apps/web/drizzle/mini-app-fresh-baseline/migrations/meta/_journal.json; git diff --check",
         "outcome": "PASS"
+      },
+      {
+        "revision": "88a7870c963941b71aca348ae860d0d1d97b8ae3 + PR #263; integration SHA a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-runtime-baseline",
+        "outcome": "PASS (rerun before merge): disposable PostgreSQL 17 loopback schema migration and contract fixture; no vector extension required by Mini App projection"
       }
     ],
-    "githubIntegration": "IDLE_AFTER_SUCCESS; normal PR flow",
+    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #263 merged normally",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "2f93bf168c375966f580931b4a969c5fae38e7c4",
+    "canonicalAtCheckpoint": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "2f93bf168c375966f580931b4a969c5fae38e7c4",
+      "sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:1db00333-ff80-4746-a2b5-82c0ae53a9be"
+      "receiptId": "workspace-convergence:849f521e-6a37-4773-afae-565bcd0a1797"
     }
   }
 }
