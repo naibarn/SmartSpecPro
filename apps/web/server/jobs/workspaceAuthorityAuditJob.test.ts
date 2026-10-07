@@ -88,4 +88,25 @@ describe("workspace authority audit triggers", () => {
       definition: expect.objectContaining({ input: { tenantId: "tenant-a", mode: "AUDIT_ONLY", trigger: "OWNER_LEASE_EXPIRED" } }),
     }));
   });
+
+  it("enqueues canonical convergence lifecycle work from the durable convergence receipt", async () => {
+    mockCreateJob.mockResolvedValue({ jobId: "job-converged" });
+    const { executeWorkspaceAuthorityAudit } = await import("./workspaceAuthorityAuditJob");
+    const result = await executeWorkspaceAuthorityAudit({
+      tenantId: "tenant-a",
+      now: new Date("2026-10-07T12:00:00.000Z"),
+      collectLocal: async () => ({
+        status: "OBSERVED",
+        result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [] },
+        missionControl: { status: "OBSERVED", result: { user_workspace: { convergence_receipt: {
+          receipt_id: "workspace-convergence:receipt-1", result: "USER_WORKSPACE_CONVERGED",
+        } } } },
+      }),
+    });
+    expect(result.canonicalConvergenceSuccessEventCount).toBe(1);
+    expect(mockCreateJob).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({ idempotencyKey: "workspace-authority:CANONICAL_CONVERGENCE_SUCCESS:workspace-convergence:receipt-1" }),
+      definition: expect.objectContaining({ input: { tenantId: "tenant-a", mode: "AUDIT_ONLY", trigger: "CANONICAL_CONVERGENCE_SUCCESS" } }),
+    }));
+  });
 });

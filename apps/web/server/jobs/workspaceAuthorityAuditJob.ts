@@ -69,11 +69,26 @@ export async function executeWorkspaceAuthorityAudit(input: {
       typeof (row as Record<string, unknown>).workspace_id === "string" &&
       typeof (row as Record<string, unknown>).owner_lease_expires_at === "number"))
     : [];
+  const missionControl = localWorkspaceAudit.missionControl?.status === "OBSERVED"
+    ? localWorkspaceAudit.missionControl.result : undefined;
+  const userWorkspace = missionControl?.user_workspace && typeof missionControl.user_workspace === "object"
+    ? missionControl.user_workspace as Record<string, unknown> : undefined;
+  const convergenceReceipt = userWorkspace?.convergence_receipt && typeof userWorkspace.convergence_receipt === "object"
+    ? userWorkspace.convergence_receipt as Record<string, unknown> : undefined;
+  const canonicalConvergenceSucceeded = convergenceReceipt?.result === "USER_WORKSPACE_CONVERGED" &&
+    typeof convergenceReceipt.receipt_id === "string" && Boolean(convergenceReceipt.receipt_id.trim());
   await Promise.all(locallyExpiredOwners.map(row => enqueueWorkspaceAuthorityAuditEvent({
     tenantId: input.tenantId,
     eventType: "OWNER_LEASE_EXPIRED",
     eventId: `${row.workspace_id}:${row.owner_lease_expires_at}`,
   })));
+  if (canonicalConvergenceSucceeded) {
+    await enqueueWorkspaceAuthorityAuditEvent({
+      tenantId: input.tenantId,
+      eventType: "CANONICAL_CONVERGENCE_SUCCESS",
+      eventId: convergenceReceipt!.receipt_id as string,
+    });
+  }
   return {
     mode: "AUDIT_ONLY" as const,
     observedAt: now.toISOString(),
@@ -83,6 +98,7 @@ export async function executeWorkspaceAuthorityAudit(input: {
     offlineRunnerCount: rows.filter(row => row.status !== "online").length,
     unboundSessionCount: rows.filter(row => Boolean(row.activeSessionId) && row.status !== "online").length,
     ownerLeaseExpirationEventCount: locallyExpiredOwners.length,
+    canonicalConvergenceSuccessEventCount: canonicalConvergenceSucceeded ? 1 : 0,
     localWorkspaceAudit,
   };
 }
