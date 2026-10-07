@@ -549,30 +549,39 @@ def build_project_mission_control_read_model(
             "owner_host": row.get("owner_host"),
             "owner_lease_expires_at": row.get("owner_lease_expires_at"),
             "owner_pid": row.get("owner_pid"),
-            "agent_identity": None,
-            "provider": None,
+            "agent_identity": row.get("agent_identity") or "UNKNOWN",
+            "agent_identity_resolution_source": "registered_owner_fact" if row.get("agent_identity") else "no_authoritative_identity_fact",
+            "provider": row.get("provider") or "UNKNOWN",
+            "runner_id": row.get("runner_id"),
             "workspace_id": row.get("workspace_id"),
+            "task_id": row.get("task_id"),
             "execution_state": row.get("owner_state") or row.get("session_state"),
         }
         for row in workspaces
         if row.get("session_state") == "ACTIVE_SESSION" and (row.get("owner_session_id") or row.get("owner_pid"))
     ]
     temporary = [row for row in workspaces if row.get("role") in RETIRABLE_ROLES]
-    worktree_groups: dict[str, list[dict[str, Any]]] = {key: [] for key in ("active", "integrating", "retireable", "stale_or_unknown", "recovery")}
+    worktree_groups: dict[str, list[dict[str, Any]]] = {key: [] for key in ("active", "integrating", "retireable", "blocked", "unknown_owner", "recovery")}
     for row in workspaces:
         role = row.get("role")
         lifecycle = row.get("lifecycle_state")
-        item = {"workspace_id": row.get("workspace_id"), "role": role, "sha": row.get("head_sha"), "path": row.get("location"), "dirty": bool(row.get("dirty"))}
+        item = {"workspace_id": row.get("workspace_id"), "role": role, "sha": row.get("head_sha"), "path": row.get("location"), "dirty": bool(row.get("dirty")),
+                "owner_state": row.get("session_state"), "lifecycle_state": lifecycle,
+                "task_id": row.get("task_id"), "recovery_receipt_ref": row.get("recovery_linkage")}
         if role == "RECOVERY_WORKSPACE" or row.get("recovery_linkage"):
             worktree_groups["recovery"].append(item)
-        elif role in {"UNKNOWN_WORKSPACE", "EXTERNAL_WORKSPACE"} or lifecycle in {"MISSING", "UNKNOWN"} or row.get("session_state") == "STALE_CLOSED_SESSION":
-            worktree_groups["stale_or_unknown"].append(item)
         elif lifecycle == "INTEGRATING":
             worktree_groups["integrating"].append(item)
         elif lifecycle == "RETIREABLE":
             worktree_groups["retireable"].append(item)
+        elif str(row.get("last_verified_state") or "").startswith(("RETIREMENT_BLOCKED", "WORKTREE_BLOCKED")) or lifecycle == "BLOCKED":
+            worktree_groups["blocked"].append(item)
+        elif role in {"UNKNOWN_WORKSPACE", "EXTERNAL_WORKSPACE"} or lifecycle in {"MISSING", "UNKNOWN"} or row.get("session_state") == "STALE_CLOSED_SESSION":
+            worktree_groups["unknown_owner"].append(item)
         elif role in RETIRABLE_ROLES:
             worktree_groups["active"].append(item)
+    # Compatibility alias retained for older Mission Control consumers.
+    worktree_groups["stale_or_unknown"] = worktree_groups["unknown_owner"]
 
     dirty_work = [
         {"workspace_id": row.get("workspace_id"), "dirty_path_count": row.get("dirty_path_count"), "state": "PRESERVED_DIRTY"}
