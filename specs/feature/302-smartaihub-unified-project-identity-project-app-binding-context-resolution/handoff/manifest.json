@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -154,9 +154,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:21:12Z"
+    "integrated_at": "2026-10-07T05:22:30Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -321,7 +321,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:16:51.018079Z",
+  "updated_at": "2026-10-07T05:25:29.837227Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

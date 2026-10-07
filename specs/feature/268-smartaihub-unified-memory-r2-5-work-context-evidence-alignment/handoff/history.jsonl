@@ -6,3 +6,4 @@
 {"changes": ["authority.evidence", "disposition.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 5, "observed_at": "2026-10-07T05:12:55.569958Z", "provenance": "OBSERVED"}
 {"changes": ["authority.evidence", "disposition.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 6, "observed_at": "2026-10-07T05:16:24.188397Z", "provenance": "OBSERVED"}
 {"changes": ["authority.evidence", "disposition.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 7, "observed_at": "2026-10-07T05:19:35.756953Z", "provenance": "OBSERVED"}
+{"changes": ["integration.canonical_ref", "integration.canonical_sha", "integration.integrated", "integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 8, "observed_at": "2026-10-07T05:25:29.743509Z", "provenance": "OBSERVED"}

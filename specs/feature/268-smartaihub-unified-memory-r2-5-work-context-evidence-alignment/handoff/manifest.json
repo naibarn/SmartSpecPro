@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
@@ -146,7 +146,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -170,10 +170,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "integrated": true,
+    "integrated_at": "2026-10-07T05:22:30Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -321,7 +321,7 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:19:35.756953Z",
+  "updated_at": "2026-10-07T05:25:29.743509Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

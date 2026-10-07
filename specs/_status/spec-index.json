@@ -119696,7 +119696,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": null,
+      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -120801,8 +120801,7 @@
         "requirement REQ-EA40FDE33EAD is OPEN",
         "requirement REQ-E8F70441ADF8 is OPEN",
         "requirement REQ-233CE93441E3 is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
@@ -120912,7 +120911,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -134048,7 +134047,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -134173,7 +134172,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -134298,7 +134297,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
