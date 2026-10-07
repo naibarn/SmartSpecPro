@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 11 unresolved of 11
 - Next action: Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.
-- Manifest generation: 17
+- Manifest generation: 18
 
 ## Source-declared status and relationship claims
 

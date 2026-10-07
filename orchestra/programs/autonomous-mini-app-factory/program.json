@@ -5,20 +5,18 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
+    "sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
-      "canonical_sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
+      "status": "CANONICAL_CONVERGENCE_VERIFIED",
+      "integrated_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+      "canonical_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+      "canonical_user_workspace_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "canonical_user_workspace_sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
-      "integrated_sha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1",
-      "project_id": "smartspecpro",
-      "reasons": [],
-      "repository_id": "smartspecpro",
-      "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "verified_at": "2026-10-07T17:46:45.621+00:00"
+      "receipt_id": "workspace-convergence:55c25af8-85be-495b-a946-00849dc7c39d",
+      "verified_at": "2026-10-07T17:54:08.439+00:00"
     }
   },
   "inventory": {
@@ -52,8 +50,8 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC302_MIGRATION_0393_DISPOSABLE_DB_VALIDATION",
-    "state": "MIGRATION_RUNNER_REPAIR_IN_PROGRESS",
+    "id": "RESEARCH_NOTES_NONPROD_RUNTIME_AND_FACTORY_PIPELINE",
+    "state": "MIGRATION_0393_PASS_RUNTIME_WAITING_ENVIRONMENT",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -82,7 +80,13 @@
       "PR #250 source 2f623d9b2826d60dccbfd35d1d74e3aa59c31cdb merged normally at origin/main SHA 315e98c9efbb35699f97652d54e131974c66b862. SPEC-302 handoff and requirement-ledger updates validated; completion remains false with deployment/UAT and other normative requirements still open.",
       "PR #251 merged at 6a7c6d7b64c66fd77d69b5cbfec50069486ebb68; canonical workspace convergence verified. GitHub integration returned to IDLE_AFTER_SUCCESS; only registered non-production runtime/deployment/UAT remains WAITING_ENVIRONMENT.",
       "Read-only runtime scout found no configured non-production deployment; existing app listener on port 3000 is production mode and was not changed. Started an isolated PostgreSQL 17 cluster bound to 127.0.0.1 as a candidate local target.",
-      "First normal db:migrate attempt on the empty disposable database failed before invoking Drizzle because readAppliedHead did not see PostgreSQL 42P01 wrapped by DrizzleQueryError.cause. No migration ran and no receipt was emitted. Focused regression test now passes after cause-chain helper fix; retry full migrations after integration."
+      "First normal db:migrate attempt on the empty disposable database failed before invoking Drizzle because readAppliedHead did not see PostgreSQL 42P01 wrapped by DrizzleQueryError.cause. No migration ran and no receipt was emitted. Focused regression test now passes after cause-chain helper fix; retry full migrations after integration.",
+      "Migration 0393 was applied by the normal db:migrate receipt wrapper on source SHA a3ef6c8a8f68011bb8dbdb04d802eaa5d5864d03 to isolated loopback PostgreSQL target local-disposable-research-notes-uat. Receipt STARTED then SUCCEEDED; before head 0392, after head 0393; five canonical project/note constraints verified. The DB used a minimal synthetic 0392 prerequisite baseline, not a full historical schema.",
+      "Focused Research Notes + migration-helper Vitest: 7 files / 23 tests passed on source SHA 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. Package rebuilt: SPAAS digest 714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413; archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; status needs_context.",
+      "Nonproduction runtime was not deployed: whole-schema Drizzle push stopped because PostgreSQL lacks the vector type/extension; app process could not start because cookie-parser is declared but absent from the task workspace node_modules links. Existing production service was not contacted or changed.",
+      "Generic pipeline contract persisted at factory-pipeline.v1.json. It is a contract only; no generic executable pipeline or second Mini App reuse run has yet passed.",
+      "A temporary app process bound only to 127.0.0.1:43301 on source SHA 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. /healthz and /readyz returned HTTP 200. Research Notes API/UI probes returned HTTP 500 because the disposable database lacks current tenant columns and the full schema could not be provisioned without PostgreSQL vector extension. Process stopped; production untouched.",
+      "The disposable PostgreSQL and loopback app processes were stopped after capturing receipts and HTTP evidence. Temporary data and receipts remain under /tmp/research-notes-nonprod-v7e5fmbp for safe retry/recovery."
     ],
     "pending": [
       "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
@@ -216,7 +220,16 @@
     }
   ],
   "completedWorkunits": [],
-  "blockedWorkunits": [],
+  "blockedWorkunits": [
+    {
+      "id": "RESEARCH_NOTES_NONPROD_RUNTIME",
+      "state": "WAITING_ENVIRONMENT",
+      "rootCause": "Local PostgreSQL lacks vector type required by the full application schema, and task worktree dependency links omit declared cookie-parser package.",
+      "reactivationPredicate": "Use a dependency-complete task workspace and a non-production PostgreSQL 17 target with the required vector extension (or an approved Mini App-only schema bootstrap) and full pre-0393 baseline; then rerun deployment, authenticated smoke, worker execution, and UI acceptance.",
+      "nextAction": "Implement/validate a generic executable Mini App Factory pipeline and define a second app fixture while keeping M4/M5/M6 pending; resume runtime after the target prerequisites are available.",
+      "productionTouched": false
+    }
+  ],
   "criticalPath": [
     {
       "order": 1,
@@ -347,13 +360,13 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "SPEC302_HANDOFF_MIGRATION_AND_RUNTIME_EVIDENCE",
+    "nextEligibleWorkunit": "GENERIC_MINI_APP_FACTORY_PIPELINE_EXECUTION_CONTRACT",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "Retryable GitHub integration completed without a user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/252",
-      "integratedSha": "526b40b6df8e8aee730aeb7be13bca2a1120b7f1"
+      "lastScenario": "GitHub available; two normal PR merges completed.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/254",
+      "integratedSha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c"
     }
   },
   "deferredInfrastructure": [
@@ -361,5 +374,25 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T17:47:07Z"
+  "updatedAt": "2026-10-07T17:57:00Z",
+  "milestones": {
+    "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
+    "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
+    "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "WAITING_ENVIRONMENT",
+    "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
+    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "NOT_RUN",
+    "MINI_APP_FACTORY_MVP": "NOT_PASS"
+  },
+  "deployment": {
+    "state": "PREPARED_NOT_DEPLOYED",
+    "targetId": "local-disposable-research-notes-uat",
+    "reason": "Runtime bootstrap incomplete: PostgreSQL vector extension unavailable for full schema; runtime process dependency link cookie-parser absent.",
+    "productionTouched": false
+  },
+  "factoryPipeline": {
+    "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
+    "state": "CONTRACT_PERSISTED_EXECUTION_NOT_PROVEN",
+    "secondMiniApp": "NOT_RUN"
+  }
 }
