@@ -801,6 +801,24 @@ def preserve_dirty_workspace(
     return {"status": "DIRTY_WORK_PRESERVED", "workspace_id": registered["workspace_id"], "recovery_path": str(recovery), "manifest": str(manifest_path), "manifest_sha256": manifest_record["sha256"], "dirty_path_count": facts["dirty_path_count"]}
 
 
+def preserve_registered_workspace(
+    repo: Path,
+    policy_path: Path | None,
+    workspace_id: str,
+) -> dict[str, Any]:
+    """Preserve a registered workspace by opaque ID without accepting a path from the API."""
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    with _db(repo) as db:
+        workspace = _workspace_by_id(db, workspace_id)
+    if not workspace or workspace.get("project_id") != policy["project_id"] or workspace.get("repository_id") != policy["repository_id"]:
+        return {"status": "WORKSPACE_AUTHORITY_NOT_FOUND", "workspace_id": workspace_id}
+    location = workspace.get("location")
+    if not isinstance(location, str) or not location:
+        return {"status": "WORKSPACE_LOCATION_UNAVAILABLE", "workspace_id": workspace_id}
+    return preserve_dirty_workspace(repo, policy_path, Path(location))
+
+
 def _local_commit_classification(repo: Path, head: str, target: str) -> dict[str, Any]:
     if _is_ancestor(repo, head, target):
         return {"state": "ALREADY_IN_CANONICAL", "unique_commits": []}
@@ -1307,7 +1325,10 @@ def _cli() -> int:
         elif args.action == "verify":
             result = verify_canonical_convergence(repo, args.policy, integrated_sha=args.integrated_sha, task_workspace_id=args.workspace_id)
         elif args.action == "preserve":
-            result = preserve_dirty_workspace(repo, args.policy, args.workspace)
+            if args.workspace_id:
+                result = preserve_registered_workspace(repo, args.policy, args.workspace_id)
+            else:
+                result = preserve_dirty_workspace(repo, args.policy, args.workspace)
         elif args.action == "collect":
             result = collect_worktrees(repo, args.policy, mode=args.mode)
         elif args.action == "mission-control":

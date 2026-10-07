@@ -21,6 +21,12 @@ import {
 import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
 import { defaultSpec224RunnerInputStagingService } from "../services/spec224RunnerInputStaging";
 import { getWorkspaceAuthorityProjectReadModel } from "../services/workspaceAuthorityProjectReadModel";
+import {
+  enqueueWorkspaceAuthorityAction,
+  getWorkspaceAuthorityActionStatus,
+  WorkspaceAuthorityActionError,
+  type WorkspaceAuthorityAction,
+} from "../services/workspaceAuthoritySafeActions";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -30,6 +36,7 @@ function requireScope(ctx: {
   tenantId: string | null;
   user?: {
     id?: number | null;
+    role?: string | null;
     currentTenantId?: string | number | null;
   } | null;
 }) {
@@ -58,6 +65,17 @@ function errorCode(error: unknown): string {
 
 function asTrpcError(error: unknown): never {
   const code = errorCode(error);
+  if (error instanceof WorkspaceAuthorityActionError) {
+    if (code === "WORKSPACE_ACTION_AUTHENTICATION_REQUIRED")
+      throw new TRPCError({ code: "UNAUTHORIZED", message: code });
+    if (["WORKSPACE_ACTION_AUTHORITY_NOT_FOUND", "WORKSPACE_ACTION_NOT_FOUND"].includes(code))
+      throw new TRPCError({ code: "FORBIDDEN", message: code });
+    if (code === "WORKSPACE_ACTION_ROLE_REQUIRED")
+      throw new TRPCError({ code: "FORBIDDEN", message: code });
+    if (["WORKSPACE_ACTION_AUTHORITY_CONFLICT", "WORKSPACE_ACTION_IDEMPOTENCY_CONFLICT"].includes(code))
+      throw new TRPCError({ code: "CONFLICT", message: code });
+    throw new TRPCError({ code: "BAD_REQUEST", message: code });
+  }
   if (code === "SPEC224_GRANT_BINDING_OWNER_REQUIRED") {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -192,6 +210,29 @@ const providerInput = z.object({
   provider: z.literal("codex").default("codex"),
 });
 
+const safeActionInput = z.object({
+  projectId: z.string().trim().min(1).max(200),
+  repositoryId: z.string().trim().min(1).max(200),
+  workspaceId: z.string().trim().min(1).max(200).optional(),
+  action: z.enum(["SYNC_WORKSPACE_SAFELY", "INSPECT_LOCAL_CHANGES", "OPEN_CANONICAL_WORKSPACE", "RECOVER_WORK", "INTEGRATE_COMPLETED_WORK", "RETIRE_SAFE_WORKTREE", "VERIFY_PROJECT_CONVERGENCE"]),
+  idempotencyKey: z.string().trim().min(1).max(200),
+  integratedSha: z.string().regex(/^[a-f0-9]{40,64}$/).optional(),
+  pullRequestNumber: z.number().int().positive().optional(),
+  expectedHeadSha: z.string().regex(/^[a-f0-9]{40,64}$/).optional(),
+}).strict();
+
+function safeActionPayload(input: z.infer<typeof safeActionInput>): Record<string, string | number | boolean | null> {
+  const workspaceRequired = ["INSPECT_LOCAL_CHANGES", "RECOVER_WORK", "RETIRE_SAFE_WORKTREE"].includes(input.action);
+  if (workspaceRequired && !input.workspaceId) throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_WORKSPACE_REQUIRED");
+  if (input.action === "INTEGRATE_COMPLETED_WORK" && (!input.pullRequestNumber || !input.expectedHeadSha))
+    throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_PULL_REQUEST_REQUIRED");
+  if (input.action === "SYNC_WORKSPACE_SAFELY" || input.action === "VERIFY_PROJECT_CONVERGENCE")
+    return input.integratedSha ? { integratedSha: input.integratedSha } : {};
+  if (input.action === "INTEGRATE_COMPLETED_WORK")
+    return { pullRequestNumber: input.pullRequestNumber!, expectedHeadSha: input.expectedHeadSha! };
+  return {};
+}
+
 /**
  * Spec 226 user-surface adapter. Creation persists a pending canonical job;
  * dispatch remains gated by the Spec 224 authorization authority.
@@ -202,6 +243,55 @@ export const spec226DevelopmentControlRouter = router({
     .query(async ({ ctx }) => {
       try {
         return await getWorkspaceAuthorityProjectReadModel(requireScope(ctx));
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  executeWorkspaceAuthoritySafeAction: protectedProcedure
+    .input(safeActionInput)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const scope = requireScope(ctx);
+        const action = input.action as WorkspaceAuthorityAction;
+        if (action === "RETIRE_SAFE_WORKTREE" && !["admin", "system_agent"].includes(ctx.user?.role ?? ""))
+          throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_ROLE_REQUIRED");
+        const queued = await enqueueWorkspaceAuthorityAction({
+          ...scope,
+          projectId: input.projectId,
+          repositoryId: input.repositoryId,
+          workspaceId: input.workspaceId,
+          action,
+          idempotencyKey: input.idempotencyKey,
+          payload: safeActionPayload(input),
+        });
+        auditLogger.log({
+          eventType: "workspace_authority_action_queued" as AuditEventType,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: { jobId: queued.jobId, projectId: input.projectId, repositoryId: input.repositoryId,
+            workspaceId: input.workspaceId ?? null, action, status: queued.status,
+            runnerId: queued.authority.runnerId, snapshotRevision: queued.authority.snapshotRevision },
+        });
+        return { status: queued.status, jobId: queued.jobId };
+      } catch (error) {
+        auditLogger.log({
+          eventType: "workspace_authority_action_queued" as AuditEventType,
+          tenantId: ctx.tenantId ?? undefined,
+          userId: ctx.user?.id ?? null,
+          metadata: { projectId: input.projectId, repositoryId: input.repositoryId,
+            workspaceId: input.workspaceId ?? null, action: input.action,
+            accepted: false, errorCode: errorCode(error) },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
+  workspaceAuthoritySafeActionStatus: protectedProcedure
+    .input(z.object({ jobId: z.string().trim().min(1).max(36) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await getWorkspaceAuthorityActionStatus({ ...requireScope(ctx), jobId: input.jobId });
       } catch (error) {
         return asTrpcError(error);
       }

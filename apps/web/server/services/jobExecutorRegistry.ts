@@ -1287,3 +1287,19 @@ defaultJobExecutorRegistry.register({
     return { output: result };
   },
 });
+
+defaultJobExecutorRegistry.register({
+  jobType: "workspace.authority.safe_action",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, lease, reporter }) => {
+    await reporter.assertActive(lease);
+    const { executeWorkspaceAuthoritySafeAction } = await import("../jobs/workspaceAuthoritySafeActionJob");
+    const result = await executeWorkspaceAuthoritySafeAction({
+      ...(context.input as Parameters<typeof executeWorkspaceAuthoritySafeAction>[0]),
+      jobId: context.jobId,
+    });
+    await reporter.assertActive(lease);
+    return result;
+  },
+});

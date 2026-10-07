@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     resolveWorkspaceRunInput: vi.fn(),
   },
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
+  workspaceSafeActions: { enqueue: vi.fn(), status: vi.fn() },
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -62,9 +63,17 @@ vi.mock("../../services/spec224RunnerInputStaging", () => ({
   defaultSpec224RunnerInputStagingService: mocks.runnerInputStaging,
 }));
 
+vi.mock("../../services/workspaceAuthoritySafeActions", () => ({
+  enqueueWorkspaceAuthorityAction: (...args: unknown[]) => mocks.workspaceSafeActions.enqueue(...args),
+  getWorkspaceAuthorityActionStatus: (...args: unknown[]) => mocks.workspaceSafeActions.status(...args),
+  WorkspaceAuthorityActionError: class WorkspaceAuthorityActionError extends Error {
+    constructor(public readonly code: string) { super(code); }
+  },
+}));
+
 import { spec226DevelopmentControlRouter } from "../spec226DevelopmentControl";
 
-const CTX = { tenantId: "tenant-acme", user: { id: 42 } };
+const CTX = { tenantId: "tenant-acme", user: { id: 42, role: "admin" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -74,6 +83,42 @@ describe("spec226DevelopmentControlRouter", () => {
   it("keeps workspace viewing a query and treats preparation as a mutation", () => {
     expect((spec226DevelopmentControlRouter.getConversationWorkspace as any).procedureType).toBe("query");
     expect((spec226DevelopmentControlRouter.prepareWorkspaceRun as any).procedureType).toBe("mutation");
+  });
+
+  it("dispatches an authenticated safe action through the scoped worker job gateway", async () => {
+    mocks.workspaceSafeActions.enqueue.mockResolvedValueOnce({
+      status: "QUEUED", jobId: "job-safe-1", authority: { runnerId: "runner-a", snapshotRevision: "snap-4" },
+    });
+    await expect((spec226DevelopmentControlRouter.executeWorkspaceAuthoritySafeAction as unknown as Function)({
+      ctx: CTX,
+      input: { projectId: "project-a", repositoryId: "repo-a", workspaceId: "ws-a",
+        action: "RECOVER_WORK", idempotencyKey: "recover-key-1" },
+    })).resolves.toEqual({ status: "QUEUED", jobId: "job-safe-1" });
+    expect(mocks.workspaceSafeActions.enqueue).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-acme", actorId: 42, projectId: "project-a", repositoryId: "repo-a",
+      workspaceId: "ws-a", action: "RECOVER_WORK", idempotencyKey: "recover-key-1", payload: {},
+    }));
+    expect(mocks.auditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "workspace_authority_action_queued", userId: 42,
+      metadata: expect.objectContaining({ jobId: "job-safe-1", action: "RECOVER_WORK", runnerId: "runner-a" }),
+    }));
+  });
+
+  it("rejects workspace mutation requests that omit their target identity", async () => {
+    await expect((spec226DevelopmentControlRouter.executeWorkspaceAuthoritySafeAction as unknown as Function)({
+      ctx: CTX,
+      input: { projectId: "project-a", repositoryId: "repo-a", action: "RETIRE_SAFE_WORKTREE", idempotencyKey: "retire-key-1" },
+    })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "WORKSPACE_ACTION_WORKSPACE_REQUIRED" });
+    expect(mocks.workspaceSafeActions.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("requires an administrative role before dispatching safe worktree retirement", async () => {
+    await expect((spec226DevelopmentControlRouter.executeWorkspaceAuthoritySafeAction as unknown as Function)({
+      ctx: { ...CTX, user: { ...CTX.user, role: "user" } },
+      input: { projectId: "project-a", repositoryId: "repo-a", workspaceId: "ws-a",
+        action: "RETIRE_SAFE_WORKTREE", idempotencyKey: "retire-key-2" },
+    })).rejects.toMatchObject({ code: "FORBIDDEN", message: "WORKSPACE_ACTION_ROLE_REQUIRED" });
+    expect(mocks.workspaceSafeActions.enqueue).not.toHaveBeenCalled();
   });
 
   it("projects durable DevelopmentRun status for the bound workspace across Chat sections", async () => {
