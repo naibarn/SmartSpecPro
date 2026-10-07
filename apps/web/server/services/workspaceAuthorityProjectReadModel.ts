@@ -300,6 +300,13 @@ export function projectRunnerWorkspaceAuthority(input: {
     }
   }
   const activeSessions = [...activeSessionsById.values()];
+  const hostSessions = new Map<string, Record<string, unknown>>();
+  for (const session of activeSessions) {
+    const runnerId = sessionField(session, "runnerId", "runner_id");
+    if (typeof runnerId !== "string") continue;
+    const previous = hostSessions.get(runnerId);
+    hostSessions.set(runnerId, previous ? mergeActiveSessionFacts(previous, session) : session);
+  }
   const localDevelopment = local?.development_state && typeof local.development_state === "object"
     ? local.development_state as Record<string, unknown> : null;
   const localUserWorkspace = local?.user_workspace && typeof local.user_workspace === "object"
@@ -335,10 +342,20 @@ export function projectRunnerWorkspaceAuthority(input: {
       const snapshotFresh = Boolean(row.snapshotExpiresAt && row.snapshotExpiresAt > now && row.snapshotObservedAt && row.snapshotObservedAt <= now);
       const activeSession = snapshotFresh && !row.revokedAt && row.status === "online" && row.trustState === "trusted" &&
         Boolean(row.activeSessionId && snapshot?.runnerSessionId === row.activeSessionId);
-      const providerFact = activeSessionProvider(row.currentSnapshotJson, activeSession, now);
+      const sessionFact = hostSessions.get(row.runnerId);
+      const sessionProvider = sessionFact ? knownSessionProvider(sessionFact.provider) : null;
+      const sessionProviderSource = sessionFact?.providerResolutionSource ?? sessionFact?.provider_resolution_source;
+      const providerFact = sessionFact
+        ? {
+            provider: sessionProvider ?? "UNKNOWN",
+            source: typeof sessionProviderSource === "string" ? sessionProviderSource : "registered_owner_session_fact",
+          }
+        : activeSessionProvider(row.currentSnapshotJson, activeSession, now);
       return {
         hostId: row.runnerId,
-        agentIdentity: providerFact.provider === "UNKNOWN" ? row.runnerId : providerFact.provider,
+        agentIdentity: providerFact.provider === "UNKNOWN"
+          ? row.runnerId
+          : typeof sessionFact?.agentIdentity === "string" ? sessionFact.agentIdentity : providerFact.provider,
         agentIdentityResolutionSource: providerFact.provider === "UNKNOWN" ? "trusted_runner_registration" : providerFact.source,
         provider: providerFact.provider,
         providerResolutionSource: providerFact.source,
