@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "smartaihub.mini-app-deployment/v1",
+  "appId": "app_research_notes",
+  "packageManifest": "app.manifest.yaml",
+  "deploymentAuthority": "SPEC-295",
+  "target": {
+    "kind": "existing-web-service",
+    "buildTarget": "smartspec-web",
+    "configuredBy": ".development-repository.toml",
+    "environment": "UNSELECTED",
+    "environmentId": null,
+    "baseUrl": null
+  },
+  "release": {
+    "sourceRef": "origin/main",
+    "packageDigestRequired": true,
+    "migration": {
+      "id": "0393_spec302_canonical_project_identity",
+      "path": "apps/web/drizzle/0393_spec302_canonical_project_identity.sql",
+      "executionAuthority": "existing-SPEC-295-migration-lifecycle",
+      "status": "NOT_APPLIED"
+    }
+  },
+  "runtime": {
+    "route": "/apps/{publicAppId}",
+    "livenessProbe": "/healthz",
+    "machineActions": "actions.json"
+  },
+  "state": "PREPARED_NOT_DEPLOYED",
+  "blockingPredicates": [
+    "a non-production migration target with known credentials and disposable data is registered",
+    "a SPEC-295 deployment target and environment are selected through the existing authority",
+    "runtime placement and migration rollback evidence are bound to the exact package digest"
+  ]
+}
