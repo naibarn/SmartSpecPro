@@ -11,6 +11,19 @@ Status: prepared only. No deployment, migration, provider call, or live UAT has 
 
 ## Smoke sequence
 
+Run the non-provider CRUD/readiness portion with an authenticated non-production target:
+
+```sh
+RESEARCH_NOTES_ENVIRONMENT=development \
+RESEARCH_NOTES_BASE_URL=https://<registered-target> \
+RESEARCH_NOTES_APP_ID=<public-app-id> \
+RESEARCH_NOTES_PROJECT_ID=<authorized-project-id> \
+RESEARCH_NOTES_AUTH_BEARER=<platform-issued-user-token> \
+pnpm --filter @smartspec/web exec tsx scripts/research-notes-smoke.ts
+```
+
+Run the summary job scenario only in a cost-approved non-production environment by adding `--with-summary` and setting `RESEARCH_NOTES_ALLOW_PROVIDER_COST=true`. The runner refuses the production environment and never prints the credential.
+
 1. `GET /healthz` returns HTTP 200 with `{"status":"ok"}`.
 2. Open `/apps/{publicAppId}` using principal A; the Research Notes shell renders without client errors.
 3. Call `researchNotes.listProjects` for the app and verify only A's authorized projects are returned.

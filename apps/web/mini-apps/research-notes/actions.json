@@ -4,7 +4,7 @@
   "transport": {
     "protocol": "tRPC",
     "basePath": "/api/trpc/researchNotes",
-    "authentication": "authenticated-platform-session",
+    "authentication": "authenticated-platform-session-or-user-bearer",
     "tenantAuthority": "derived-from-authenticated-principal",
     "callerMaySetTenantOrUserId": false
   },
