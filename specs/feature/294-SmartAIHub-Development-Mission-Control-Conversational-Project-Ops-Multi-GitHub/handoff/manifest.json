@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "5a66c4ee6f09464718fdf34453a7bede2f73a0dc",
+    "expected_canonical_sha": "e14d9329f6a0cd62c84532146f2eb606f4a8636e",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind Mission Control pushed/unintegrated and semantic integration facts to an authoritative freshness-aware remote source; resolve task/provider assignment only from explicit owner/task/provider facts; identify an existing failed-migration result source without creating a second registry; finish remaining regression and acceptance evidence. External production verification remains separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind workspace rows with explicit branch/upstream identity where available and keep detached/no-upstream rows UNKNOWN without guessing; resolve task/provider assignment only from explicit owner/task/provider facts; identify an existing authoritative failed-migration result source without creating a second registry; finish remaining regression and acceptance evidence. External production verification remains separate and has not been attempted.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 49,
+  "generation": 50,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -200,7 +200,8 @@
       "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
       "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
       "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
-      "13266879192cf761a45a0f2a8a70d19eff3a0317"
+      "13266879192cf761a45a0f2a8a70d19eff3a0317",
+      "d70d14aa97a7aefc4e6751e62379999ae5a87702"
     ],
     "mapping": [],
     "source_paths": [
@@ -240,9 +241,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5a66c4ee6f09464718fdf34453a7bede2f73a0dc",
+    "canonical_sha": "e14d9329f6a0cd62c84532146f2eb606f4a8636e",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:09:41Z"
+    "integrated_at": "2026-10-07T06:27:10Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -311,7 +312,9 @@
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-migration-provider-boundary.md",
       "https://github.com/naibarn/SmartSpecPro/pull/187",
       "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/191",
+      "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -465,7 +468,9 @@
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-migration-provider-boundary.md",
         "https://github.com/naibarn/SmartSpecPro/pull/187",
         "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/191",
+        "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -551,7 +556,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T06:10:40.576404Z",
+  "updated_at": "2026-10-07T06:28:02.213693Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -700,6 +705,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-action-authority-freshness.md",
         "scope": "Reject stale/future Runner snapshots and ambiguous multi-Runner action authority; focused control-plane regression suite (49 passed)",
         "source_sha": "13266879192cf761a45a0f2a8a70d19eff3a0317",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_REMOTE_HEAD_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-fresh-remote-observation-e14d9329.md",
+        "scope": "fresh remote canonical/push/integration observation, 60-second stale projection, exact and patch-equivalent integration; Python 45 tests and TypeScript projection 11 tests",
+        "source_sha": "d70d14aa97a7aefc4e6751e62379999ae5a87702",
         "status": "PASS"
       }
     ],

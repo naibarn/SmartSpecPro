@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 166 unresolved of 166
 - Next action: Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.
-- Manifest generation: 51
+- Manifest generation: 52
 
 ## Source-declared status and relationship claims
 
