@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "4d4d46259099721e088b9b9b47e452225426fb2c",
+    "expected_canonical_sha": "af4e3284b38070dcae5a2cf27b65200317226f9d",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind any approved durable failed-migration-attempt source if one exists; current Drizzle ledger has no such history, so do not infer failures or create a competing migration authority. Preserve the remaining 46 UNKNOWN_OWNER workspaces until per-workspace provenance exists; keep all destructive automation disabled for unknown owners. External production verification remains a separate gate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind migration failures only from an authorized durable execution-result source. The Drizzle source now distinguishes UNKNOWN from confirmed NONE and the provider-neutral contract accepts FAILED; no durable failure result source is configured in this environment, so do not infer one or add a parallel registry. Preserve the 46 UNKNOWN_OWNER workspaces until per-workspace provenance is explicit; keep destructive automation disabled for them. External runtime verification remains separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0_INTERNAL_GAP_CLOSURE: migration failure evidence source; per-workspace UNKNOWN_OWNER provenance.",
+    "resume_point": "P0_INTERNAL_GAP_CLOSURE: authorized durable failed-migration result source and explicit provenance for remaining unknown-owner workspaces.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 55,
+  "generation": 56,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -243,9 +243,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4d4d46259099721e088b9b9b47e452225426fb2c",
+    "canonical_sha": "af4e3284b38070dcae5a2cf27b65200317226f9d",
     "integrated": true,
-    "integrated_at": "2026-10-07T07:01:27Z"
+    "integrated_at": "2026-10-07T07:12:50Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -570,7 +570,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:05:19.764814Z",
+  "updated_at": "2026-10-07T07:13:57.192335Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -796,6 +796,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-authority-audit-refresh-20261007.md",
         "scope": "Current-main Python Workspace Authority/Runtime Authority suites (88 passed); fresh 51-row AUDIT_ONLY and explicit registration of the task-owned worktree; 46 unknown-owner workspaces remain preserved.",
         "source_sha": "4d4d46259099721e088b9b9b47e452225426fb2c",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_MIGRATION_FAILURE_STATE_CONTRACT",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-failure-state-integrated-20261007.md",
+        "scope": "Typed FAILED/NONE/UNKNOWN migration failure evidence, Drizzle UNKNOWN mapping, alternate provider FAILED and NONE contract fixtures; 7 focused tests pass at integrated source SHA.",
+        "source_sha": "af4e3284b38070dcae5a2cf27b65200317226f9d",
         "status": "PASS"
       }
     ],
