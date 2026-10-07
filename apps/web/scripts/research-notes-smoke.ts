@@ -3,6 +3,7 @@ import superjson from "superjson";
 import type { AppRouter } from "../server/routers";
 
 const SUMMARY_FLAG = "--with-summary";
+let smokePhase = "startup";
 
 function usage(): void {
   process.stdout.write(
@@ -25,6 +26,7 @@ function safeError(error: unknown): string {
 }
 
 async function main(): Promise<void> {
+  smokePhase = "configuration";
   if (process.argv.includes("--help")) return usage();
 
   const environment = requiredEnv("RESEARCH_NOTES_ENVIRONMENT").toLowerCase();
@@ -62,16 +64,19 @@ async function main(): Promise<void> {
   const crossTenantClient = crossTenantBearer || crossTenantCookie
     ? makeClient(crossTenantBearer, crossTenantCookie)
     : undefined;
+  smokePhase = "health_check";
   const health = await fetch(new URL("/healthz", baseUrl), { signal: AbortSignal.timeout(5_000) });
   if (!health.ok) throw new Error(`Liveness probe returned HTTP ${health.status}`);
   const healthBody = await health.json() as { status?: string };
   if (healthBody.status !== "ok") throw new Error("Liveness probe payload is not healthy");
 
+  smokePhase = "list_projects";
   const projects = await client.researchNotes.listProjects.query({ appId });
   if (!projects.some((project) => project.projectId === projectId)) {
     throw new Error("Configured project is not visible to the authenticated principal");
   }
 
+  smokePhase = "create_note";
   const runId = crypto.randomUUID();
   const created = await client.researchNotes.createNote.mutate({
     appId,
@@ -81,6 +86,7 @@ async function main(): Promise<void> {
   });
   let archived = false;
   try {
+    smokePhase = "list_created_note";
     const visible = await client.researchNotes.listNotes.query({ appId, projectId });
     if (!visible.some((note) => note.noteId === created.noteId)) throw new Error("Created note is not visible to its author");
     if (crossTenantClient) {
@@ -93,6 +99,7 @@ async function main(): Promise<void> {
       }
       if (leaked) throw new Error("Cross-tenant principal could read the smoke note");
     }
+    smokePhase = "update_note";
     const updated = await client.researchNotes.updateNote.mutate({
       appId,
       projectId,
@@ -104,6 +111,7 @@ async function main(): Promise<void> {
 
     let summaryStatus: string | undefined;
     if (includeSummary) {
+      smokePhase = "request_summary";
       const job = await client.researchNotes.requestSummary.mutate({ appId, projectId, noteId: created.noteId });
       if (crossTenantClient) {
         let visibleToOtherTenant = false;
@@ -127,11 +135,13 @@ async function main(): Promise<void> {
       }
     }
 
+    smokePhase = "archive_note";
     await client.researchNotes.archiveNote.mutate({ appId, projectId, noteId: created.noteId });
     archived = true;
     process.stdout.write(`${JSON.stringify({ status: "PASS", scope: "non-production Research Notes CRUD", summaryStatus: summaryStatus ?? "NOT_RUN", noteId: created.noteId })}\n`);
   } finally {
     if (!archived) {
+      smokePhase = "cleanup_archive";
       try { await client.researchNotes.archiveNote.mutate({ appId, projectId, noteId: created.noteId }); }
       catch { process.stderr.write("Cleanup archive failed; inspect only the synthetic note identified by this run.\n"); }
     }
@@ -139,6 +149,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${JSON.stringify({ status: "FAIL", errorCode: safeError(error) })}\n`);
+  process.stderr.write(`${JSON.stringify({ status: "FAIL", errorCode: `${smokePhase}:${safeError(error)}` })}\n`);
   process.exitCode = 1;
 });
