@@ -106,7 +106,6 @@ function AstryxWouterLink({
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AutomationPage = lazy(() => import("@/pages/AutomationPage"));
-const WorkflowStudioPage = lazy(() => import("@/pages/WorkflowStudioPage"));
 const TerminalPage = lazy(() => import("@/pages/TerminalPage"));
 const CLIPage = lazy(() => import("@/pages/CLIPage"));
 const Factory = lazy(() => import("@/pages/Factory"));
@@ -1141,16 +1140,6 @@ function Router() {
           <Route path="/automation">
             <RequireAuth>
               <AutomationPage />
-            </RequireAuth>
-          </Route>
-          <Route path="/studio/workflow/run">
-            <RequireAuth>
-              <WorkflowStudioPage />
-            </RequireAuth>
-          </Route>
-          <Route path="/studio/workflow">
-            <RequireAuth>
-              <WorkflowStudioPage />
             </RequireAuth>
           </Route>
           <Route path="/automation/live/:sessionId">

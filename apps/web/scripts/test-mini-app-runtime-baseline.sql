@@ -16,13 +16,21 @@ DECLARE
     'canonical_project_memberships', 'canonical_project_app_bindings',
     'mini_app_research_notes', 'mini_app_project_wiki_pages',
     'worker_jobs', 'worker_job_attempts', 'worker_job_events',
-    'worker_job_dispatches', 'worker_job_outbox', 'worker_job_settlements'
+    'worker_job_dispatches', 'worker_job_outbox', 'worker_job_settlements',
+    'tenant_data_transfer_previews', 'tenant_data_transfer_plans'
   ];
   retired_tables text[] := ARRAY[
     'workflow_templates', 'workflows', 'workflow_executions', 'agencies',
     'agency_agents', 'work_requests', 'workpacks', 'sandbox_jobs'
   ];
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'worker_jobs' AND column_name = 'activeDedupeKey'
+  ) THEN
+    RAISE EXCEPTION 'required_worker_job_active_dedupe_column_missing';
+  END IF;
+
   FOREACH required_table IN ARRAY required_tables LOOP
     IF to_regclass(format('public.%I', required_table)) IS NULL THEN
       RAISE EXCEPTION 'required_mini_app_table_missing:%', required_table;

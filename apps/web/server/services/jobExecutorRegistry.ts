@@ -8,7 +8,6 @@ import type {
 } from "./geoSources/refreshPipeline";
 import type { ChatIngressEvent } from "@shared/channelTypes";
 import { executeExternalAgentTask } from "./externalAgentTaskExecutor";
-import { executeWorkflowNodeTask } from "./workflowNodeTaskExecutor";
 import { executeComputerUseBrowserJob } from "./computerUseRunnerJobExecutor";
 import { createResearchNotesSummaryExecutor } from "./researchNotesSummaryExecutor";
 import { isFeature186HardCutoverEnabled } from "./cloudflareRuntimeTarget";
@@ -361,13 +360,6 @@ defaultJobExecutorRegistry.register({
   executionClass: "external",
   contractVersions: new Set(["feature-186-v1"]),
   executor: executeExternalAgentTask,
-});
-
-defaultJobExecutorRegistry.register({
-  jobType: "workflow.node.execute",
-  executionClass: "long",
-  contractVersions: new Set(["feature-186-v1"]),
-  executor: executeWorkflowNodeTask,
 });
 
 defaultJobExecutorRegistry.register({

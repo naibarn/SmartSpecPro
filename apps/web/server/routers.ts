@@ -75,7 +75,7 @@ import { unifiedAudioRouter } from "./routers/unifiedAudio";
 import { verticalDramaShareRouter } from "./routers/verticalDramaShare";
 import { financeRouter } from "./routers/finance";
 import { economicControlPlaneRouter } from "./routers/economicControlPlane";
-import { workflowStudioRouter } from "./routers/workflowStudio";
+import type { workflowStudioRouter } from "./routers/workflowStudio";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
@@ -3561,7 +3561,9 @@ const appRouterInternal = router<AppRouterShape>({
   databaseBackups: databaseBackupsRouter,
   contentProtection: contentProtectionRouter,
   economicControlPlane: economicControlPlaneRouter,
-  workflowStudio: workflowStudioRouter,
+  // Retain the compile-time client contract for dormant source files while
+  // keeping the retired Workflow Studio implementation out of server runtime.
+  workflowStudio: router({}) as unknown as typeof workflowStudioRouter,
   decisionIntelligence: decisionIntelligenceRouter,
   intelligenceRegistry: intelligenceRegistryRouter,
 

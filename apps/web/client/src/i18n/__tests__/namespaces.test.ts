@@ -49,9 +49,9 @@ describe("i18n/namespaces", () => {
     expect(getRouteNamespaces("/dashboard")).toEqual(["dashboard"]);
   });
 
-  it("/studio/workflow maps to the workflow namespace", () => {
-    expect(getRouteNamespaces("/studio/workflow")).toEqual(["workflow"]);
-    expect(getRouteNamespaces("/studio/workflow/run")).toEqual(["workflow"]);
+  it("does not load the retired Workflow Studio route namespace", () => {
+    expect(getRouteNamespaces("/studio/workflow")).not.toEqual(["workflow"]);
+    expect(getRouteNamespaces("/studio/workflow/run")).not.toEqual(["workflow"]);
   });
 
   it("/presentation/123 maps to presentation namespace", () => {

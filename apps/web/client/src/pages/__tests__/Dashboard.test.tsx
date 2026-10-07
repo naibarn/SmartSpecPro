@@ -550,13 +550,6 @@ vi.mock("@/hooks/useMenuItems", () => ({
         IconComponent: () => React.createElement("span", null, "D"),
       },
       {
-        id: "workflow-studio",
-        label: "Workflow Studio",
-        path: "/studio/workflow",
-        external: false,
-        IconComponent: () => React.createElement("span", null, "W"),
-      },
-      {
         id: "document-management",
         label: "Library",
         path: "/document-management",
@@ -956,15 +949,13 @@ describe("Dashboard", () => {
     expect(setLocationMock).toHaveBeenCalledWith("/dashboard/emergency");
   });
 
-  it("surfaces Workflow Studio as a dashboard quick action", () => {
+  it("does not surface the retired Workflow Studio dashboard action", () => {
     render(<Dashboard />);
 
     const quickLinks = screen.getByTestId("dashboard-quick-links");
-    fireEvent.click(
-      within(quickLinks).getByRole("button", { name: /workflow studio/i })
-    );
-
-    expect(setLocationMock).toHaveBeenCalledWith("/studio/workflow");
+    expect(
+      within(quickLinks).queryByRole("button", { name: /workflow studio/i })
+    ).not.toBeInTheDocument();
   });
 
   it("does not show hidden social menu items in the fallback social section", () => {
