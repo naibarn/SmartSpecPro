@@ -41,8 +41,8 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC304_RESEARCH_NOTES_AI_SUMMARY_BACKGROUND",
-    "state": "PARTIAL_INTEGRATED",
+    "id": "SPEC261_RESEARCH_NOTES_PORTABLE_PACKAGE_ACTIONS",
+    "state": "IMPLEMENTED_PENDING_INTEGRATION",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -54,13 +54,15 @@
       "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE integrated at 3ad161e36132db51d7a9260a20d07e362ac8b2cd; 21 focused tests passed on that exact SHA.",
       "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence.",
       "AI summary is enqueued atomically through canonical worker_jobs/outbox, uses tenant/project/note scope and source-version idempotency, and is registered with the PostgreSQL node worker. Focused suite: 8 files, 29 tests passed on source 4880ef58; git diff --check passed.",
-      "PR #240 merged normally: source 48e8dd1fad5789dcd3c63a615f9776a121e005cd is reachable from origin/main at de9498f0ae73b9c3f6d0d2abb6dba637f616463a. Registered canonical workspace /home/dev/projects/SmartSpecPro converged cleanly to de9498f0ae73b9c3f6d0d2abb6dba637f616463a."
+      "PR #240 merged normally: source 48e8dd1fad5789dcd3c63a615f9776a121e005cd is reachable from origin/main at de9498f0ae73b9c3f6d0d2abb6dba637f616463a. Registered canonical workspace /home/dev/projects/SmartSpecPro converged cleanly to de9498f0ae73b9c3f6d0d2abb6dba637f616463a.",
+      "Research Notes SPAAS package descriptor and machine-callable tRPC action catalog validated with the existing Spec 261 package validator; package digest spaas-package-v1:sha256:9090b2e9ec01b2490341e39d4140059d7d5aa34447d321b5e90a9ceb9b23a0fd. Validation is needs_context: V1/V2/V3/V4 passed; V5 runtime placement and V6 migration rollback remain not_evaluated."
     ],
     "pending": [
       "Migration 0393 has structural/schema/journal validation only; PostgreSQL application/integration is pending because this environment has no usable DB credentials.",
-      "AI summary worker/UI implementation is locally tested and awaits normal PR integration; package/portable manifest, headless actions, deployment descriptor and runtime/UAT evidence remain open."
+      "AI summary worker/UI implementation is locally tested and awaits normal PR integration; package/portable manifest, headless actions, deployment descriptor and runtime/UAT evidence remain open.",
+      "Package/action descriptor checkpoint is tested locally and awaits PR integration. Deployment descriptor, database migration application and runtime/UAT evidence remain open."
     ],
-    "nextAction": "Continue with the portable Mini App manifest/package and headless action contract, then deployment descriptor and smoke/UAT plan; database-backed migration and runtime evidence stay pending."
+    "nextAction": "Integrate the portable package/action checkpoint, then prepare a SPEC-295-aligned deployment descriptor and smoke-test/UAT plan while securing an explicitly safe PostgreSQL integration target."
   },
   "checkpoints": [
     {
@@ -108,6 +110,12 @@
       "evidence": "8 focused Vitest files, 29 tests passed; retry regression tests 3/3 passed; retry worker py_compile passed; git diff --check and program JSON validation passed. PostgreSQL migration application and provider runtime remain pending.",
       "sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/240"
+    },
+    {
+      "id": "SPEC261_RESEARCH_NOTES_PORTABLE_PACKAGE_ACTIONS",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "52e273f1779d151e371de08c2204ab3b7d233752",
+      "evidence": "9 focused Vitest files, 31 tests passed; deterministic SPAAS package build produced digest 9090b2e9ec01b2490341e39d4140059d7d5aa34447d321b5e90a9ceb9b23a0fd with validation needs_context (V5/V6 pending); git diff --check passed."
     }
   ],
   "completedWorkunits": [],
@@ -242,7 +250,7 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_PORTABLE_MANIFEST_PACKAGE_AND_HEADLESS_ACTIONS",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_SPEC295_DEPLOYMENT_DESCRIPTOR_AND_SMOKE_PLAN",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE applies only to integration workunits; independent implementation continues.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -256,5 +264,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T16:02:08Z"
+  "updatedAt": "2026-10-07T16:10:00Z"
 }
