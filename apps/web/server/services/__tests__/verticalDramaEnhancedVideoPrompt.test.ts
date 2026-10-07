@@ -731,6 +731,71 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(getEnhancedPromptSemanticValidationError(compact, input)).toBeNull();
   });
 
+  it("accepts compact dialogue bound by a unique canonical speaker name", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [{
+          characterKey: "character-look-casual_home",
+          speakerId: "character-look-casual_home",
+          speaker: "พิมพ์ชนก",
+          position: "viewer-center",
+          text: "คุณเห็นแฟ้มเอกสารนี้ไหม",
+        }],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const compact = {
+      prompt: 'Line 1 ONLY (พิมพ์ชนก @ viewer-center): "คุณเห็นแฟ้มเอกสารนี้ไหม"',
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+
+    expect(getEnhancedPromptSemanticValidationError(compact, input)).toBeNull();
+    expect(
+      getEnhancedPromptSemanticValidationError(
+        { ...compact, prompt: 'Line 1 ONLY (พิมพ์ชนก @ viewer-left): "คุณเห็นแฟ้มเอกสารนี้ไหม"' },
+        input,
+      ),
+    ).toContain("not bound to speaker พิมพ์ชนก");
+  });
+
+  it("rejects compact speaker-name anchors shared by different character IDs", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [
+          { characterKey: "character-a", speakerId: "character-a", speaker: "พิมพ์ชนก", text: "คุณเห็นแฟ้มเอกสารนี้ไหม" },
+          { characterKey: "character-b", speakerId: "character-b", speaker: "พิมพ์ชนก", text: "ฉันเห็นแล้ว" },
+        ],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const ambiguous = {
+      prompt: 'Line 1 ONLY (พิมพ์ชนก): "คุณเห็นแฟ้มเอกสารนี้ไหม"',
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+
+    expect(getEnhancedPromptSemanticValidationError(ambiguous, input)).toContain(
+      "not bound to speaker พิมพ์ชนก"
+    );
+  });
+
   it("rejects positional compact anchors when a speaker has an identity override", () => {
     const input = buildEnhancedSkillInput({
       shot: {
