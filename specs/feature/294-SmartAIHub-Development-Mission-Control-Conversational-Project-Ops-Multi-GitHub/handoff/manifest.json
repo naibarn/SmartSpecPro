@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "283edf93d94d572e79f3b1a4c0c3d57d9219ad64",
+    "expected_canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0-WU-4: provide bounded periodic scheduling for the conservative collector, then implement authority-backed project-level Mission Control read model and safe actions, cross-host workspace locators, and authenticated SPEC-295 runtime evidence adapters. Keep actual collector/runtime scheduling and production proof distinct from local simulations.",
+    "next_action": "Continue P0-WU-4: add bounded collector scheduling and authority-backed Mission Control safe actions; complete project read-model inputs for unpushed/pushed-unintegrated commits and agent/provider ownership; add transport-neutral cross-host workspace locators; implement authenticated provider-neutral SPEC-295 evidence adapters and Cloudflare Workers/Containers collectors; validate actual runtime evidence. Keep P0 partial until all platform-facing gates pass.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -103,7 +103,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "283edf93d94d572e79f3b1a4c0c3d57d9219ad64",
+    "canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
     "integrated": true,
     "integrated_at": "2026-10-07T00:00:00Z"
   },
@@ -222,10 +222,18 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T00:24:54.969151Z",
+  "updated_at": "2026-10-07T00:31:48.256713Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "FOCUSED_LOCAL_REGRESSION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4-mission-control-read-model-integrated-20261007.md",
+        "scope": "authority-backed project operational read model and 35-case matrix",
+        "source_sha": "2f384ba19",
+        "status": "PASS"
+      }
+    ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
     "sha": null,

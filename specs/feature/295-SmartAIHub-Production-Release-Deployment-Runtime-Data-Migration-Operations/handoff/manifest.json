@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "283edf93d94d572e79f3b1a4c0c3d57d9219ad64",
+    "expected_canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
     "expected_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814"
   },
   "continuation": {
-    "next_action": "Continue P0-WU-4: provide bounded periodic scheduling for the conservative collector, then implement authority-backed project-level Mission Control read model and safe actions, cross-host workspace locators, and authenticated SPEC-295 runtime evidence adapters. Keep actual collector/runtime scheduling and production proof distinct from local simulations.",
+    "next_action": "Continue P0-WU-4: add bounded collector scheduling and authority-backed Mission Control safe actions; complete project read-model inputs for unpushed/pushed-unintegrated commits and agent/provider ownership; add transport-neutral cross-host workspace locators; implement authenticated provider-neutral SPEC-295 evidence adapters and Cloudflare Workers/Containers collectors; validate actual runtime evidence. Keep P0 partial until all platform-facing gates pass.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
@@ -103,7 +103,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "283edf93d94d572e79f3b1a4c0c3d57d9219ad64",
+    "canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
     "integrated": true,
     "integrated_at": "2026-10-07T00:00:00Z"
   },
@@ -222,7 +222,7 @@
     "unresolved": 165
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T00:24:55.022925Z",
+  "updated_at": "2026-10-07T00:31:48.305172Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
