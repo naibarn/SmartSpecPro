@@ -19,13 +19,21 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.pushState.state).toBe("UNKNOWN");
   });
 
-  it("marks stale snapshots and conflicting host revisions explicitly", () => {
+  it("uses freshness to exclude expired facts while retaining them as ignored evidence", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
       runner({ snapshotExpiresAt: new Date("2026-10-07T11:59:00.000Z") }),
       runner({ runnerId: "runner-b", currentSnapshotJson: { workspaces: [{ workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "b".repeat(40) }] } }),
     ] as never[], now });
     expect(result.workspaces.observed[0].hostState).toBe("STALE");
-    expect(result.workspaceConflicts).toHaveLength(1);
+    expect(result.workspaceGroups.observed[0]).toMatchObject({
+      state: "OBSERVED",
+      reconciliation: {
+        status: "RESOLVED_BY_ELIGIBILITY_AND_AGREEMENT",
+        policy: "TRUSTED_RUNNER_FACTS_SAME_AUTHORITY; FRESH_FACTS_ONLY; DIVERGENT_RUNNER_GENERATIONS_ARE_NOT_COMPARABLE",
+        ignoredClaims: [{ hostId: "runner-a", freshness: "STALE", generation: "snapshot-1" }],
+        selectedFact: null,
+      },
+    });
   });
 
   it("does not guess a provider from the Runner profile or workspace name when no active tool fact exists", () => {
@@ -40,7 +48,43 @@ describe("projectRunnerWorkspaceAuthority", () => {
       runner({ runnerId: "runner-b", currentSnapshotJson: { workspaces: [{ workspaceId: "ws-a", projectId: "project-b", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: true }] } }),
     ] as never[], now });
     expect(result.workspaceConflicts).toHaveLength(1);
-    expect(result.workspaceConflicts[0].state).toBe("CONFLICT");
+    expect(result.workspaceConflicts[0]).toMatchObject({
+      state: "CONFLICT",
+      projectId: null,
+      reconciliation: {
+        status: "CONFLICT",
+        reasons: ["TRUSTED_FACTS_DISAGREE_ON_PROJECT_OR_REPOSITORY", "TRUSTED_FACTS_DISAGREE_ON_WORKSPACE_STATE"],
+        conflictingFields: ["dirty"],
+        selectedFact: null,
+      },
+    });
+  });
+
+  it("does not let a revoked host override a fresh trusted workspace fact", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner(),
+      runner({ runnerId: "runner-revoked", trustState: "revoked", revokedAt: new Date("2026-10-07T11:59:30.000Z"), currentSnapshotJson: {
+        workspaces: [{ workspaceId: "ws-a", projectId: "project-b", repositoryId: "repo-a", gitHead: "b".repeat(40), dirty: true }],
+      } }),
+    ] as never[], now });
+    expect(result.workspaceGroups.observed[0]).toMatchObject({
+      state: "OBSERVED",
+      projectId: "project-a",
+      reconciliation: {
+        eligibleHostIds: ["runner-a"],
+        ignoredClaims: [{ hostId: "runner-revoked", trust: "REVOKED", generation: "snapshot-1" }],
+      },
+    });
+    expect(result.workspaceConflicts).toHaveLength(0);
+  });
+
+  it("associates a canonical convergence receipt only with its bound workspace ID", () => {
+    const receipt = { workspace_id: "ws-a", receipt_id: "receipt-ws-a", result: "USER_WORKSPACE_CONVERGED" };
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now,
+      localAuthorityStatus: "OBSERVED",
+      localMissionControl: { user_workspace: { workspace_id: "ws-a", convergence_receipt: receipt } },
+    });
+    expect(result.workspaceGroups.observed[0].reconciliation.canonicalReceipt).toEqual(receipt);
   });
 
   it("keeps identical opaque workspace IDs isolated across project/repository scopes", () => {
