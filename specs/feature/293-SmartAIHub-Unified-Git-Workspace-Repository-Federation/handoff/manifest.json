@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "83b1a8fc20fe0d3bcc6666c9b7bbd6200bded718",
+    "expected_canonical_sha": "a56d221aa17b5986c2175e7b4ad5e59042917a89",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Implement bounded event-driven retirement and periodic audit-only stale-worktree collection; build project-level Mission Control source/agent/session/integration/worktree summaries and safe actions from authority-backed snapshots; add authenticated runtime-produced evidence adapters for SPEC-295 migrations/deployments/Workers/Containers. Preserve the seven passing contract simulations as non-production evidence until real runtime collectors and acceptance checks exist.",
+    "next_action": "Continue P0-WU-4: add integration-completion vs retirement race coverage and bounded event-driven/periodic scheduling for the conservative collector; then implement authority-backed project-level Mission Control read model and safe actions, cross-host workspace locators, authenticated SPEC-295 runtime evidence adapters, and investigate the Spec-224 RUN_IDEMPOTENCY_CONFLICT baseline. Collector currently supports explicit local invocation only; keep simulations distinct from live runtime evidence.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "83b1a8fc20fe0d3bcc6666c9b7bbd6200bded718",
+    "canonical_sha": "a56d221aa17b5986c2175e7b4ad5e59042917a89",
     "integrated": true,
-    "integrated_at": "2026-10-06T19:12:57Z"
+    "integrated_at": "2026-10-07T00:00:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -222,7 +222,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T19:14:24.665106Z",
+  "updated_at": "2026-10-07T00:11:59.651065Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -245,6 +245,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4-retirement-race-integrated-20261007.md",
         "scope": "retirement/registration ownership race and exact-SHA focused regression suites",
         "source_sha": "83b1a8fc20fe0d3bcc6666c9b7bbd6200bded718",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_LOCAL_REGRESSION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4-collector-integrated-20261007.md",
+        "scope": "conservative registered worktree collector and 31-case incident matrix",
+        "source_sha": "598e10f41",
         "status": "PASS"
       }
     ],

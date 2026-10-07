@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "83b1a8fc20fe0d3bcc6666c9b7bbd6200bded718",
+    "expected_canonical_sha": "a56d221aa17b5986c2175e7b4ad5e59042917a89",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Implement bounded event-driven retirement and periodic audit-only stale-worktree collection; build project-level Mission Control source/agent/session/integration/worktree summaries and safe actions from authority-backed snapshots; add authenticated runtime-produced evidence adapters for SPEC-295 migrations/deployments/Workers/Containers. Preserve the seven passing contract simulations as non-production evidence until real runtime collectors and acceptance checks exist.",
+    "next_action": "Continue P0-WU-4: add integration-completion vs retirement race coverage and bounded event-driven/periodic scheduling for the conservative collector; then implement authority-backed project-level Mission Control read model and safe actions, cross-host workspace locators, authenticated SPEC-295 runtime evidence adapters, and investigate the Spec-224 RUN_IDEMPOTENCY_CONFLICT baseline. Collector currently supports explicit local invocation only; keep simulations distinct from live runtime evidence.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -103,9 +103,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "83b1a8fc20fe0d3bcc6666c9b7bbd6200bded718",
+    "canonical_sha": "a56d221aa17b5986c2175e7b4ad5e59042917a89",
     "integrated": true,
-    "integrated_at": "2026-10-06T19:12:57Z"
+    "integrated_at": "2026-10-07T00:00:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -222,7 +222,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T19:14:27.757472Z",
+  "updated_at": "2026-10-07T00:11:59.711238Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
