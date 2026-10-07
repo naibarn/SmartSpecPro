@@ -80,7 +80,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 25,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -297,7 +297,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:14:37.939781Z",
+  "updated_at": "2026-10-07T04:15:54.585535Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
