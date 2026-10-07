@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { isRunnerWorkspaceConvergenceState } from "../services/runnerContracts";
 import { runnerNodes } from "../../drizzle/schema";
 
 function tenantRequired(ctx: {
@@ -83,10 +84,15 @@ export function safeWorkspaceIds(input: unknown): string[] {
 
 export type SafeWorkspaceFact = {
   workspaceId: string;
+  projectId: string | null;
+  repositoryId: string | null;
   displayName: string | null;
   gitHead: string | null;
   gitBranch: string | null;
   dirty: boolean | null;
+  taskId: string | null;
+  convergenceState: string;
+  convergenceCanonicalSha: string | null;
 };
 
 export function safeWorkspaceFacts(
@@ -104,12 +110,26 @@ export function safeWorkspaceFacts(
     seen.add(workspaceId);
     const gitHead = boundedText(raw.gitHead, 64);
     const gitBranch = boundedText(raw.gitBranch, 160);
+    const projectId = boundedText(raw.projectId, 200);
+    const repositoryId = boundedText(raw.repositoryId, 200);
+    const taskId = boundedText(raw.taskId, 160);
+    const convergenceState = isRunnerWorkspaceConvergenceState(raw.convergenceState)
+      ? raw.convergenceState
+      : "NOT_REPORTED";
+    const rawConvergenceSha = boundedText(raw.convergenceCanonicalSha, 64);
+    const convergenceCanonicalSha = rawConvergenceSha && /^[a-f0-9]{40,64}$/i.test(rawConvergenceSha) ? rawConvergenceSha : null;
+    const safeIdentity = (value: string | null) => value && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(value) && !value.includes("://") && !value.includes("@") && !value.includes("//") && !value.includes("..") ? value : null;
     return [{
       workspaceId,
+      projectId: safeIdentity(projectId),
+      repositoryId: safeIdentity(repositoryId),
       displayName: boundedText(raw.displayName, 160),
       gitHead: gitHead && /^[a-f0-9]{40,64}$/i.test(gitHead) ? gitHead : null,
       gitBranch: gitBranch && /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(gitBranch) && !gitBranch.includes("..") && !gitBranch.includes("//") ? gitBranch : null,
       dirty: typeof raw.dirty === "boolean" ? raw.dirty : null,
+      taskId: taskId && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(taskId) ? taskId : null,
+      convergenceState: convergenceState === "USER_WORKSPACE_CONVERGED" && !convergenceCanonicalSha ? "NOT_REPORTED" : convergenceState,
+      convergenceCanonicalSha,
     }];
   });
 }

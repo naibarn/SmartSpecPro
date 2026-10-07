@@ -437,6 +437,7 @@ fn connection_status_inner(
         &tools,
         runner_session_id.as_deref(),
         tenant_id.as_deref(),
+        config.job_id.as_deref(),
         endpoint.control_plane_origin(),
     );
     let execution_snapshot = snapshot.clone();
@@ -2356,9 +2357,13 @@ fn capability_snapshot(
     tools: &[ToolCandidate],
     runner_session_id: Option<&str>,
     tenant_id: Option<&str>,
+    task_id: Option<&str>,
     control_plane_origin: &str,
 ) -> serde_json::Value {
-    let workspace_facts = crate::workspace_registry::snapshot_facts(config).unwrap_or_default();
+    let mut workspace_facts = crate::workspace_registry::snapshot_facts(config).unwrap_or_default();
+    for workspace in &mut workspace_facts {
+        workspace.task_id = task_id.map(str::to_string);
+    }
     let workspace_ids = workspace_facts
         .iter()
         .map(|workspace| workspace.workspace_id.clone())
@@ -2848,7 +2853,8 @@ mod lifecycle_tests {
     fn computer_use_browser_is_unavailable_until_probe_and_pairing_are_ready() {
         let config = RunnerConfig::local("runner-1", "device-1", "https://example.test");
         let tools = scan_known_tools(RunnerProfile::LocalDevice, &["browser".into()]);
-        let snapshot = capability_snapshot(&config, &tools, None, None, "https://example.test");
+        let snapshot =
+            capability_snapshot(&config, &tools, None, None, None, "https://example.test");
         let evidence = snapshot_evidence(&snapshot);
 
         assert_eq!(
@@ -2871,14 +2877,29 @@ mod lifecycle_tests {
         let project = temp.path().join("private-project-folder");
         let data_root = temp.path().join("runner-data");
         std::fs::create_dir_all(&project).unwrap();
-        let config = RunnerConfig {
+        let mut config = RunnerConfig {
             data_root: data_root.to_string_lossy().into_owned(),
             ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
         };
+        config.job_id = Some("job-42".into());
         let registered = crate::workspace_registry::register(&config, &project).unwrap();
+        crate::workspace_registry::bind_identity(
+            &config,
+            &registered.workspace_id,
+            Some("project-a"),
+            Some("github.com/org/repository"),
+        )
+        .unwrap();
         let tools = scan_known_tools(RunnerProfile::LocalDevice, &[]);
 
-        let snapshot = capability_snapshot(&config, &tools, None, None, "https://example.test");
+        let snapshot = capability_snapshot(
+            &config,
+            &tools,
+            None,
+            None,
+            config.job_id.as_deref(),
+            "https://example.test",
+        );
         let serialized = serde_json::to_string(&snapshot).unwrap();
 
         assert_eq!(
@@ -2893,6 +2914,11 @@ mod lifecycle_tests {
             snapshot["workspaces"][0]["displayName"],
             "private-project-folder"
         );
+        assert_eq!(snapshot["workspaces"][0]["projectId"], "project-a");
+        assert_eq!(
+            snapshot["workspaces"][0]["repositoryId"],
+            "github.com/org/repository"
+        );
         assert_eq!(
             snapshot["workspaces"][0]["gitHead"],
             serde_json::Value::Null
@@ -2902,6 +2928,15 @@ mod lifecycle_tests {
             serde_json::Value::Null
         );
         assert_eq!(snapshot["workspaces"][0]["dirty"], false);
+        assert_eq!(snapshot["workspaces"][0]["taskId"], "job-42");
+        assert_eq!(
+            snapshot["workspaces"][0]["convergenceState"],
+            "NOT_REPORTED"
+        );
+        assert_eq!(
+            snapshot["workspaces"][0]["convergenceCanonicalSha"],
+            serde_json::Value::Null
+        );
         assert!(!serialized.contains(&project.to_string_lossy().to_string()));
     }
 

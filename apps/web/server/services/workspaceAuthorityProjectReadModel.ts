@@ -187,6 +187,8 @@ export function projectRunnerWorkspaceAuthority(input: {
       ownerUserId: runner.ownerUserId,
       sessionId: activeSession ? runner.activeSessionId : null,
       sessionState: activeSession ? "ACTIVE" : runner.activeSessionId ? "STALE_OR_UNBOUND" : "NONE",
+      taskId: activeSession ? workspace.taskId : null,
+      taskIdSource: activeSession && workspace.taskId ? "trusted_runner_snapshot_active_session" : "UNKNOWN",
       trust,
       hostState,
       factSource: "trusted_runner_snapshot",
@@ -197,7 +199,8 @@ export function projectRunnerWorkspaceAuthority(input: {
       authorityEligible: trust === "TRUSTED" && snapshotFresh,
       factFreshness: snapshotFresh ? "FRESH" : "STALE",
       contentFingerprint: workspace.contentFingerprint,
-      convergenceState: "NOT_REPORTED" as const,
+      convergenceState: workspace.convergenceState,
+      convergenceCanonicalSha: workspace.convergenceCanonicalSha,
       localPath: null,
     }));
   });
@@ -214,10 +217,14 @@ export function projectRunnerWorkspaceAuthority(input: {
     const eligibleFacts = facts.filter((fact) => fact.authorityEligible);
     const ineligibleFacts = facts.filter((fact) => !fact.authorityEligible);
     const identities = new Set(eligibleFacts.map((fact) => JSON.stringify([fact.projectId, fact.repositoryId])));
-    const comparableFields = ["observedSha", "branch", "dirty", "contentFingerprint"] as const;
-    const conflictingFields = comparableFields.filter((field) =>
-      new Set(eligibleFacts.map((fact) => fact[field])).size > 1
-    );
+    const comparableFields = ["observedSha", "branch", "dirty", "contentFingerprint", "convergenceState", "convergenceCanonicalSha"] as const;
+    const conflictingFields = comparableFields.filter((field) => {
+      const values = eligibleFacts.map((fact) => fact[field]);
+      const comparableValues = field === "convergenceState" || field === "convergenceCanonicalSha"
+        ? values.filter((value) => value !== null && value !== "NOT_REPORTED")
+        : values;
+      return new Set(comparableValues).size > 1;
+    });
     const missingBinding = eligibleFacts.some((fact) => !fact.projectId || !fact.repositoryId);
     const reasons = [
       ...(identities.size > 1 ? ["TRUSTED_FACTS_DISAGREE_ON_PROJECT_OR_REPOSITORY"] : []),
@@ -233,7 +240,13 @@ export function projectRunnerWorkspaceAuthority(input: {
             ? "STALE"
             : "UNTRUSTED";
     const agreedWorkspaceState = eligibleFacts.length && !conflictingFields.length
-      ? Object.fromEntries(comparableFields.map((field) => [field, eligibleFacts[0][field]]))
+      ? Object.fromEntries(comparableFields.map((field) => {
+        const values = eligibleFacts.map((fact) => fact[field]);
+        const reportedValues = field === "convergenceState" || field === "convergenceCanonicalSha"
+          ? values.filter((value) => value !== null && value !== "NOT_REPORTED")
+          : values;
+        return [field, reportedValues[0] ?? eligibleFacts[0][field]];
+      }))
       : null;
     const userWorkspace = input.localMissionControl?.user_workspace &&
       typeof input.localMissionControl.user_workspace === "object"

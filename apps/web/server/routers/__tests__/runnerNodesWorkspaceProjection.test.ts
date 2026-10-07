@@ -28,10 +28,15 @@ describe("safeWorkspaceFacts", () => {
     expect(safeWorkspaceFacts([
       {
         workspaceId: "ws-project-a1b2c3",
+        projectId: "project-a",
+        repositoryId: "owner/repository",
         displayName: "SmartSpecPro",
         gitHead: "a".repeat(40),
         gitBranch: "feature/workspace-status",
         dirty: true,
+        taskId: "task-42",
+        convergenceState: "USER_WORKSPACE_CONVERGED",
+        convergenceCanonicalSha: "c".repeat(40),
         localPath: "/home/private/project",
       },
       {
@@ -44,6 +49,8 @@ describe("safeWorkspaceFacts", () => {
       {
         workspaceId: "workspace-legacy",
         displayName: "Malformed Git facts",
+        projectId: "org/project",
+        repositoryId: "https://token@github.com/org/repository",
         gitHead: "remote:https://private.example/repo",
         gitBranch: "origin/https://private.example/repo",
         dirty: "unknown",
@@ -51,17 +58,27 @@ describe("safeWorkspaceFacts", () => {
     ], ["ws-project-a1b2c3", "workspace-legacy"])).toEqual([
       {
         workspaceId: "ws-project-a1b2c3",
+        projectId: "project-a",
+        repositoryId: "owner/repository",
         displayName: "SmartSpecPro",
         gitHead: "a".repeat(40),
         gitBranch: "feature/workspace-status",
         dirty: true,
+        taskId: "task-42",
+        convergenceState: "USER_WORKSPACE_CONVERGED",
+        convergenceCanonicalSha: "c".repeat(40),
       },
       {
         workspaceId: "workspace-legacy",
+        projectId: "org/project",
+        repositoryId: null,
         displayName: "Malformed Git facts",
         gitHead: null,
         gitBranch: null,
         dirty: null,
+        taskId: null,
+        convergenceState: "NOT_REPORTED",
+        convergenceCanonicalSha: null,
       },
     ]);
   });

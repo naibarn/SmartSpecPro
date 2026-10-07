@@ -264,6 +264,34 @@ export type RunnerIdentity = {
   registeredAt: string;
 };
 
+export const RUNNER_WORKSPACE_CONVERGENCE_STATES = [
+  "USER_WORKSPACE_CONVERGED",
+  "RECOVERY_PENDING",
+  "RETIRED",
+  "CONVERGENCE_PENDING",
+  "DIVERGED",
+  "DIRTY",
+  "UNKNOWN",
+] as const;
+
+export type RunnerWorkspaceFact = {
+  workspaceId: string;
+  projectId: string | null;
+  repositoryId: string | null;
+  displayName: string | null;
+  gitHead: string | null;
+  gitBranch: string | null;
+  dirty: boolean | null;
+  contentFingerprint: string | null;
+  taskId?: string | null;
+  convergenceState?: typeof RUNNER_WORKSPACE_CONVERGENCE_STATES[number] | "NOT_REPORTED";
+  convergenceCanonicalSha?: string | null;
+};
+
+export function isRunnerWorkspaceConvergenceState(value: unknown): value is NonNullable<RunnerWorkspaceFact["convergenceState"]> {
+  return value === "NOT_REPORTED" || (typeof value === "string" && (RUNNER_WORKSPACE_CONVERGENCE_STATES as readonly string[]).includes(value));
+}
+
 export type RunnerCapabilitySnapshot = {
   runnerId: string;
   /** Tenant binding emitted by an authenticated local Runner session. */
@@ -282,7 +310,7 @@ export type RunnerCapabilitySnapshot = {
   capabilities: string[];
   workspaceIds: string[];
   /** Sanitized, Runner-authenticated workspace facts; workspace IDs remain the execution identity. */
-  workspaces?: Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }>;
+  workspaces?: RunnerWorkspaceFact[];
   resourceClass: "small" | "medium" | "large";
   /** Redacted platform identity safe for Task Control and scheduling projection. */
   platform?: {
@@ -459,7 +487,7 @@ function stringList(
   return values;
 }
 
-function workspaceFacts(value: unknown, workspaceIds: string[]): Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }> {
+function workspaceFacts(value: unknown, workspaceIds: string[]): RunnerWorkspaceFact[] {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > 64) invalid("snapshot.workspaces is invalid");
   const ids = new Set(workspaceIds);
@@ -467,13 +495,13 @@ function workspaceFacts(value: unknown, workspaceIds: string[]): Array<{ workspa
   return value.map((candidate, index) => {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) invalid("snapshot.workspaces is invalid");
     const record = candidate as Record<string, unknown>;
-    if (Object.keys(record).some(key => !["workspaceId", "projectId", "repositoryId", "displayName", "gitHead", "gitBranch", "dirty", "contentFingerprint"].includes(key))) invalid("snapshot.workspaces is invalid");
+    if (Object.keys(record).some(key => !["workspaceId", "projectId", "repositoryId", "displayName", "gitHead", "gitBranch", "dirty", "contentFingerprint", "taskId", "convergenceState", "convergenceCanonicalSha"].includes(key))) invalid("snapshot.workspaces is invalid");
     const workspaceId = requiredText(record.workspaceId, `snapshot.workspaces[${index}].workspaceId`, 160);
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(workspaceId) || !ids.has(workspaceId) || seen.has(workspaceId)) invalid("snapshot.workspaces is invalid");
     seen.add(workspaceId);
     const projectId = record.projectId === undefined || record.projectId === null ? null : requiredText(record.projectId, `snapshot.workspaces[${index}].projectId`, 200);
     const repositoryId = record.repositoryId === undefined || record.repositoryId === null ? null : requiredText(record.repositoryId, `snapshot.workspaces[${index}].repositoryId`, 200);
-    if ([projectId, repositoryId].some(value => value !== null && !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(value))) invalid("snapshot.workspaces is invalid");
+    if ([projectId, repositoryId].some(value => value !== null && (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(value) || value.includes("://") || value.includes("@") || value.includes("//") || value.includes("..")))) invalid("snapshot.workspaces is invalid");
     const displayName = record.displayName === undefined || record.displayName === null ? null : requiredText(record.displayName, `snapshot.workspaces[${index}].displayName`, 160);
     const gitHead = record.gitHead === undefined || record.gitHead === null ? null : requiredText(record.gitHead, `snapshot.workspaces[${index}].gitHead`, 64);
     if (gitHead !== null && !/^[a-f0-9]{40,64}$/.test(gitHead)) invalid("snapshot.workspaces is invalid");
@@ -482,7 +510,18 @@ function workspaceFacts(value: unknown, workspaceIds: string[]): Array<{ workspa
     if (record.dirty !== undefined && record.dirty !== null && typeof record.dirty !== "boolean") invalid("snapshot.workspaces is invalid");
     const contentFingerprint = record.contentFingerprint === undefined || record.contentFingerprint === null ? null : requiredText(record.contentFingerprint, `snapshot.workspaces[${index}].contentFingerprint`, 64);
     if (contentFingerprint !== null && !/^[a-f0-9]{64}$/.test(contentFingerprint)) invalid("snapshot.workspaces is invalid");
-    return { workspaceId, projectId, repositoryId, displayName, gitHead, gitBranch, dirty: record.dirty ?? null, contentFingerprint };
+    const taskId = record.taskId === undefined || record.taskId === null ? null : requiredText(record.taskId, `snapshot.workspaces[${index}].taskId`, 160);
+    if (taskId !== null && !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(taskId)) invalid("snapshot.workspaces is invalid");
+    const convergenceState = record.convergenceState === undefined || record.convergenceState === null
+      ? "NOT_REPORTED" as const
+      : requiredText(record.convergenceState, `snapshot.workspaces[${index}].convergenceState`, 64);
+    if (!isRunnerWorkspaceConvergenceState(convergenceState)) invalid("snapshot.workspaces is invalid");
+    const convergenceCanonicalSha = record.convergenceCanonicalSha === undefined || record.convergenceCanonicalSha === null
+      ? null
+      : requiredText(record.convergenceCanonicalSha, `snapshot.workspaces[${index}].convergenceCanonicalSha`, 64);
+    if (convergenceCanonicalSha !== null && !/^[a-f0-9]{40,64}$/.test(convergenceCanonicalSha)) invalid("snapshot.workspaces is invalid");
+    if (convergenceState === "USER_WORKSPACE_CONVERGED" && !convergenceCanonicalSha) invalid("snapshot.workspaces is invalid");
+    return { workspaceId, projectId, repositoryId, displayName, gitHead, gitBranch, dirty: record.dirty ?? null, contentFingerprint, taskId, convergenceState: convergenceState as RunnerWorkspaceFact["convergenceState"], convergenceCanonicalSha };
   });
 }
 

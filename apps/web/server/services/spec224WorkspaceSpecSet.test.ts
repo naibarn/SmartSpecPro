@@ -65,8 +65,8 @@ describe("spec224 workspace Spec Set", () => {
     expect(workspaceFactsFromSnapshot({
       runnerId: "runner-a",
       workspaceIds: ["workspace-legacy"],
-      workspaces: [{ workspaceId: "workspace-a", displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-a", repositoryRef: "do-not-expose" }],
-    })).toEqual([{ workspaceId: "workspace-a", projectId: null, repositoryId: null, displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-legacy", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null }]);
+      workspaces: [{ workspaceId: "workspace-a", displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64), repositoryId: "https://token@github.com/org/repository" }, { workspaceId: "workspace-a", repositoryRef: "do-not-expose" }],
+    })).toEqual([{ workspaceId: "workspace-a", projectId: null, repositoryId: null, displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64), taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }, { workspaceId: "workspace-legacy", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }]);
   });
 
   it("keeps authenticated project and repository bindings through snapshot normalization", () => {
@@ -84,6 +84,13 @@ describe("spec224 workspace Spec Set", () => {
     expect(workspaceFactsFromSnapshot(snapshot)).toMatchObject([
       { workspaceId: "workspace-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false },
     ]);
+  });
+
+  it("does not promote an unbound legacy convergence claim to canonical evidence", () => {
+    expect(workspaceFactsFromSnapshot({
+      workspaceIds: ["workspace-a"],
+      workspaces: [{ workspaceId: "workspace-a", convergenceState: "USER_WORKSPACE_CONVERGED" }],
+    })).toMatchObject([{ convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }]);
   });
 
   it("accepts bounded Markdown and JSON artifacts deterministically", async () => {

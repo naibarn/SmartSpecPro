@@ -157,13 +157,13 @@ describe("Feature 197 Runner contracts", () => {
       ...snapshot,
       workspaceIds: ["workspace-1", "workspace-2"],
       workspaces: [
-        { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64) },
+        { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64), taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "c".repeat(40) },
         { workspaceId: "workspace-2" },
       ],
     });
     expect(normalized.workspaces).toEqual([
-      { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64) },
-      { workspaceId: "workspace-2", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null },
+      { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64), taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "c".repeat(40) },
+      { workspaceId: "workspace-2", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null },
     ]);
     expect(() => validateRunnerCapabilitySnapshot({
       ...snapshot,
@@ -179,7 +179,31 @@ describe("Feature 197 Runner contracts", () => {
     );
     expect(() => validateRunnerCapabilitySnapshot({
       ...snapshot,
+      workspaces: [{ workspaceId: "workspace-1", repositoryId: "https://token@github.com/org/repository" }],
+    } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(() => validateRunnerCapabilitySnapshot({
+      ...snapshot,
       workspaces: [{ workspaceId: "workspace-1", gitHead: "not-a-commit", gitBranch: "../unsafe", dirty: "yes" }],
+    } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(() => validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaces: [{ workspaceId: "workspace-1", convergenceState: "CONVERGED_BY_NAME" }],
+    } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(() => validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaces: [{ workspaceId: "workspace-1", convergenceCanonicalSha: "not-a-commit" }],
+    } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(() => validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaces: [{ workspaceId: "workspace-1", convergenceState: "USER_WORKSPACE_CONVERGED" }],
     } as unknown as RunnerCapabilitySnapshot)).toThrowError(
       expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
     );

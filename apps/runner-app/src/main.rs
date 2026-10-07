@@ -52,26 +52,17 @@ fn main() {
                     std::process::exit(3);
                 }
             },
-            Some("add") => {
-                let Some(path) = args.get(2) else {
-                    eprintln!("usage: smartaihub-runner workspace add <folder-path>");
-                    std::process::exit(2);
-                };
-                match smartaihub_runner::workspace_registry::register(
-                    &config,
-                    std::path::Path::new(path),
-                ) {
-                    Ok(workspace) => println!(
-                        "{}",
-                        serde_json::to_string(&workspace)
-                            .unwrap_or_else(|_| "{\"status\":\"registered\"}".into())
-                    ),
-                    Err(error) => {
-                        eprintln!("workspace registration failed: {error}");
-                        std::process::exit(3);
-                    }
+            Some("add") => match register_workspace_command(&config, &args[2..]) {
+                Ok(workspace) => println!(
+                    "{}",
+                    serde_json::to_string(&workspace)
+                        .unwrap_or_else(|_| "{\"status\":\"registered\"}".into())
+                ),
+                Err(error) => {
+                    eprintln!("workspace registration failed: {error}");
+                    std::process::exit(3);
                 }
-            }
+            },
             Some("remove") => {
                 let Some(workspace_id) = args.get(2) else {
                     eprintln!("usage: smartaihub-runner workspace remove <workspace-id>");
@@ -133,6 +124,43 @@ fn main() {
             eprintln!("unknown command: {command}");
             std::process::exit(2);
         }
+    }
+}
+
+fn register_workspace_command(
+    config: &RunnerConfig,
+    args: &[String],
+) -> Result<smartaihub_runner::workspace_registry::RegisteredWorkspace, String> {
+    let path = args
+        .first()
+        .filter(|value| !value.starts_with("--"))
+        .ok_or_else(|| "usage: smartaihub-runner workspace add <folder-path> [--project-id <id>] [--repository-id <id>]".to_string())?;
+    let mut project_id = None;
+    let mut repository_id = None;
+    let mut index = 1;
+    while index < args.len() {
+        let value = args
+            .get(index + 1)
+            .filter(|value| !value.starts_with("--"))
+            .ok_or_else(|| "workspace identity option requires a value".to_string())?;
+        match args[index].as_str() {
+            "--project-id" if project_id.is_none() => project_id = Some(value.as_str()),
+            "--repository-id" if repository_id.is_none() => repository_id = Some(value.as_str()),
+            _ => return Err("workspace identity option is invalid or duplicated".into()),
+        }
+        index += 2;
+    }
+    let workspace =
+        smartaihub_runner::workspace_registry::register(config, std::path::Path::new(path))?;
+    if project_id.is_some() || repository_id.is_some() {
+        smartaihub_runner::workspace_registry::bind_identity(
+            config,
+            &workspace.workspace_id,
+            project_id,
+            repository_id,
+        )
+    } else {
+        Ok(workspace)
     }
 }
 
