@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "fb208c253879ef81dc357942169227433ee5fc73",
+    "sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "fb208c253879ef81dc357942169227433ee5fc73",
-      "canonical_sha": "fb208c253879ef81dc357942169227433ee5fc73",
-      "canonical_user_workspace_sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "integrated_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+      "canonical_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+      "canonical_user_workspace_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:60094351-08a1-4ce6-9a62-cbf086530dc2",
-      "verified_at": "2026-10-07T20:09:28.431+00:00"
+      "receipt_id": "workspace-convergence:9254cf4b-bbba-45d3-9708-3c5726472d07",
+      "verified_at": "2026-10-07T20:11:13.564+00:00"
     },
-    "observedAt": "2026-10-08T03:10:00+07:00",
+    "observedAt": "2026-10-08T03:16:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "fb208c253879ef81dc357942169227433ee5fc73",
-      "canonical_user_workspace_sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "integrated_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+      "canonical_user_workspace_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T20:09:35.934+00:00",
-      "receipt_id": "workspace-convergence:60094351-08a1-4ce6-9a62-cbf086530dc2"
+      "verified_at": "2026-10-07T20:12:00.058+00:00",
+      "receipt_id": "workspace-convergence:9254cf4b-bbba-45d3-9708-3c5726472d07"
     }
   },
   "inventory": {
@@ -60,25 +60,23 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_PGVECTOR_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "PARTIAL_INTEGRATED",
-    "objective": "Run the authenticated Research Notes loopback API against a disposable PostgreSQL image that supports pgvector, while keeping the database bound to loopback and isolated from shared or production data.",
+    "id": "RESEARCH_NOTES_HEADLESS_RUNTIME_ACCEPTANCE",
+    "state": "LOCAL_VERIFIED_PENDING_PR",
+    "objective": "Exercise the packaged headless Research Notes smoke client against the authenticated loopback API backed by a disposable database, with real session and tenant isolation.",
     "implementation": [
-      "apps/web/package.json",
-      "apps/web/scripts/test-mini-app-authenticated-runtime.sh",
-      "apps/web/scripts/test-mini-app-authenticated-runtime-pgvector.sh"
+      "apps/web/scripts/research-notes-focused-runtime.ts",
+      "apps/web/scripts/research-notes-smoke.ts"
     ],
     "evidence": [
-      "PR #271 merged normally as fb208c253879ef81dc357942169227433ee5fc73; source c1b5d3777f9cafdc6358cf7048b7edf2942afba6 is integrated and reachable from origin/main.",
-      "Disposable pgvector/pgvector:pg15 container exposed only on 127.0.0.1; vector extension 0.8.2 available and installed before baseline migrations.",
-      "Focused authenticated runtime passed: Research Notes create/list/update/archive; unauthenticated, cross-tenant, other-project, revoked-membership, and archived-App checks passed.",
-      "ResearchNotesPage.test.tsx passed 1 file/3 tests; component evidence only, not browser, responsive, full app deployment, or UAT evidence."
+      "The existing headless smoke client now runs asynchronously beside the focused loopback server, preserving the server event loop and validating health, authorized project context, create/list/update/archive, and cross-tenant hiding.",
+      "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed on disposable local PostgreSQL 17; receipt reports headlessSmokePassed=true.",
+      "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime-pgvector passed on loopback-only disposable PostgreSQL 15 + pgvector 0.8.2; headlessSmokePassed=true.",
+      "Five Research Notes router/service/summary/package suites passed, 19 tests total, at the same source state.",
+      "The smoke runner emits a phase-scoped safe error code; it does not log session credentials or note content."
     ],
-    "nextAction": "Continue dependency-safe Factory work. Full app/UI runtime and UAT remain waiting for an isolated supported app composition that does not activate retired workflow surfaces; background jobs and stage execution remain waiting on an approved durable non-retired worker binding.",
-    "sourceSha": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
-    "sha": "fb208c253879ef81dc357942169227433ee5fc73",
-    "pr": "https://github.com/naibarn/SmartSpecPro/pull/271",
-    "integration": "PARTIAL_INTEGRATED"
+    "nextAction": "Integrate through a normal PR, then continue the remaining deployment/UI/runtime and Factory execution lanes. Provider summary and background worker runtime remain separate waits; headless smoke did not execute paid/provider or background actions.",
+    "sourceSha": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
+    "integration": "PENDING_NORMAL_PR"
   },
   "checkpoints": [
     {
@@ -411,7 +409,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:10:00+07:00",
+  "updatedAt": "2026-10-08T03:16:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -436,8 +434,8 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/miniapp-pgvector-runtime-bootstrap-20261008",
-    "sourceBranch": "codex/miniapp-pgvector-runtime-bootstrap-20261008",
+    "taskWorktree": "/home/dev/worktrees/research-notes-headless-smoke-runtime-20261008",
+    "sourceBranch": "codex/research-notes-headless-smoke-runtime-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -453,16 +451,15 @@
       "f89c9f549047c9a94a86aed3769fa29b8fc89c42",
       "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
       "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
-      "fb0ec8c37ecdb0e0e9d02055f3c93ecc5151e6ce"
+      "fb0ec8c37ecdb0e0e9d02055f3c93ecc5151e6ce",
+      "74bc4fcc74a9d6984e3c4509dc9ae041e2644598"
     ],
-    "intendedRemoteBranch": "codex/miniapp-pgvector-runtime-bootstrap-20261008",
+    "intendedRemoteBranch": "codex/research-notes-headless-smoke-runtime-20261008",
     "pendingPullRequest": {
-      "number": 271,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/271",
-      "state": "MERGED",
-      "integration": "SQUASH_MERGED_NORMALLY",
-      "sourceSha": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
-      "integratedSha": "fb208c253879ef81dc357942169227433ee5fc73"
+      "number": null,
+      "url": null,
+      "state": "NOT_CREATED",
+      "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
@@ -529,17 +526,32 @@
         "revision": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6 based on canonical 9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
         "command": "pnpm --filter @smartspec/web exec vitest run client/src/pages/__tests__/ResearchNotesPage.test.tsx",
         "outcome": "PASS: 1 file, 3 tests; component-level evidence only, no browser or responsive UAT."
+      },
+      {
+        "revision": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598 based on canonical dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
+        "outcome": "PASS: disposable PostgreSQL 17 loopback; real session cookie and headless Research Notes smoke client passed CRUD/archive, authorized project context, health and cross-tenant isolation."
+      },
+      {
+        "revision": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598 based on canonical dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime-pgvector",
+        "outcome": "PASS: disposable pgvector/pgvector:pg15 bound to 127.0.0.1; vector 0.8.2 available/installed; authenticated API and packaged headless smoke acceptance passed."
+      },
+      {
+        "revision": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598 based on canonical dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/routers/researchNotes.test.ts server/services/researchNotesService.test.ts server/services/researchNotesSummaryExecutor.test.ts server/services/researchNotesSummaryContract.test.ts server/services/researchNotesPackage.test.ts",
+        "outcome": "PASS: 5 files, 19 tests."
       }
     ],
-    "githubIntegration": "IDLE_AFTER_PR_271_MERGE; normal non-force path succeeded",
+    "githubIntegration": "IDLE_AFTER_PR_272; headless runtime checkpoint pending normal PR",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "fb208c253879ef81dc357942169227433ee5fc73",
+    "canonicalAtCheckpoint": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:60094351-08a1-4ce6-9a62-cbf086530dc2"
+      "receiptId": "workspace-convergence:9254cf4b-bbba-45d3-9708-3c5726472d07"
     }
   }
 }
