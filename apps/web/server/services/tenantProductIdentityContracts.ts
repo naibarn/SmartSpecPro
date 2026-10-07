@@ -215,6 +215,121 @@ export function buildProductReleaseSnapshot(input: Omit<ProductReleaseSnapshot, 
   return { ...snapshot, contentHash: hash(snapshot) };
 }
 
+/** Stable App identity from SPEC-304. Slugs and hostnames live in aliases. */
+export type AppIdentity = {
+  appId: string;
+  publicAppId: string;
+  tenantId: string;
+  publisherId: string;
+  lifecycle: "draft" | "active" | "suspended" | "archived";
+  canonicalProductId: string;
+  policyRefs: string[];
+  createdAt: string;
+  parentAppId?: string;
+};
+
+export type AppRouteAlias = {
+  aliasId: string;
+  tenantId: string;
+  appId: string;
+  kind: "slug" | "custom-domain";
+  value: string;
+  status: DomainBindingStatus;
+};
+
+export function buildAppIdentity(input: {
+  appId: string;
+  publicAppId: string;
+  tenantId: string;
+  publisherId: string;
+  canonicalProductId: string;
+  policyRefs?: string[];
+  createdAt: string;
+  parentAppId?: string;
+  lifecycle?: AppIdentity["lifecycle"];
+}): AppIdentity {
+  const tenantId = assertTenantId(input.tenantId);
+  const createdAt = text(input.createdAt, "APP_IDENTITY_INVALID");
+  if (
+    !Number.isFinite(Date.parse(createdAt)) ||
+    !["draft", "active", "suspended", "archived"].includes(input.lifecycle ?? "draft")
+  ) throw new ProductIdentityContractError("APP_IDENTITY_INVALID");
+  const appId = assertId(input.appId, "APP_IDENTITY_INVALID");
+  const publicAppId = assertId(input.publicAppId, "APP_IDENTITY_INVALID");
+  const parentAppId = input.parentAppId ? assertId(input.parentAppId, "APP_IDENTITY_INVALID") : undefined;
+  if (appId === publicAppId || parentAppId === appId) throw new ProductIdentityContractError("APP_IDENTITY_INVALID");
+  return {
+    appId,
+    publicAppId,
+    tenantId,
+    publisherId: assertId(input.publisherId, "APP_IDENTITY_INVALID"),
+    lifecycle: input.lifecycle ?? "draft",
+    canonicalProductId: assertId(input.canonicalProductId, "APP_IDENTITY_INVALID"),
+    policyRefs: (input.policyRefs ?? []).map(ref => assertId(ref, "APP_IDENTITY_INVALID")),
+    createdAt: new Date(createdAt).toISOString(),
+    ...(parentAppId ? { parentAppId } : {}),
+  };
+}
+
+export function buildAppRouteAlias(input: {
+  aliasId: string;
+  tenantId: string;
+  appId: string;
+  appTenantId: string;
+  kind: AppRouteAlias["kind"];
+  value: string;
+}): AppRouteAlias {
+  const tenantId = assertTenantId(input.tenantId);
+  assertTenantMatch(tenantId, assertTenantId(input.appTenantId));
+  if (input.kind !== "slug" && input.kind !== "custom-domain") {
+    throw new ProductIdentityContractError("APP_ROUTE_ALIAS_INVALID");
+  }
+  const value = text(input.value, "APP_ROUTE_ALIAS_INVALID").toLowerCase();
+  if (input.kind === "slug" ? !SLUG.test(value) : !HOSTNAME.test(value)) {
+    throw new ProductIdentityContractError("APP_ROUTE_ALIAS_INVALID");
+  }
+  return {
+    aliasId: assertId(input.aliasId, "APP_ROUTE_ALIAS_INVALID"),
+    tenantId,
+    appId: assertId(input.appId, "APP_ROUTE_ALIAS_INVALID"),
+    kind: input.kind,
+    value,
+    status: input.kind === "custom-domain" ? "DNS_VERIFICATION_PENDING" : "PLATFORM_SUBDOMAIN",
+  };
+}
+
+export function activateAppRouteAlias(alias: AppRouteAlias): AppRouteAlias {
+  if (alias.kind === "custom-domain" && alias.status !== "CERTIFICATE_PENDING") {
+    throw new ProductIdentityContractError("APP_ROUTE_ALIAS_NOT_VERIFIED");
+  }
+  if (alias.kind === "slug" && alias.status !== "PLATFORM_SUBDOMAIN") {
+    throw new ProductIdentityContractError("APP_ROUTE_ALIAS_INVALID_STATE");
+  }
+  if (alias.kind !== "slug" && alias.kind !== "custom-domain") {
+    throw new ProductIdentityContractError("APP_ROUTE_ALIAS_INVALID");
+  }
+  return { ...alias, status: "ACTIVE" };
+}
+
+/** Routing may resolve an active alias; it never changes the App's identity. */
+export function resolveAppRouteAlias(input: {
+  alias: AppRouteAlias;
+  app: AppIdentity;
+  tenantId: string;
+}): { appId: string; publicAppId: string; tenantId: string } | null {
+  if (
+    (input.alias.kind !== "slug" && input.alias.kind !== "custom-domain") ||
+    (input.alias.kind === "slug" && !SLUG.test(input.alias.value)) ||
+    (input.alias.kind === "custom-domain" && !HOSTNAME.test(input.alias.value)) ||
+    input.alias.status !== "ACTIVE" ||
+    input.alias.appId !== input.app.appId ||
+    input.alias.tenantId !== input.app.tenantId ||
+    input.tenantId !== input.app.tenantId ||
+    input.app.lifecycle !== "active"
+  ) return null;
+  return { appId: input.app.appId, publicAppId: input.app.publicAppId, tenantId: input.app.tenantId };
+}
+
 export function assertProductReleaseSnapshotImmutable(
   original: ProductReleaseSnapshot,
   candidate: ProductReleaseSnapshot

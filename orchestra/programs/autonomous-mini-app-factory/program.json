@@ -1,0 +1,69 @@
+{
+  "programId": "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+  "objective": "Build and verify a reusable SmartAIHub pipeline that turns requirements into a portable Mini App, tests and packages it, deploys it to one supported target, verifies runtime behavior, and resumes after interruption.",
+  "state": "WORKING",
+  "canonical": {
+    "repository": "naibarn/SmartSpecPro",
+    "ref": "origin/main",
+    "sha": "e85d40c5b4fea951f40a2b2c54661957a2f725a5",
+    "userWorkspace": "/home/dev/projects/SmartSpecPro",
+    "userWorkspaceClean": true,
+    "convergenceReceipt": "workspace-convergence:db10e955-1f93-4fc8-accb-b8b255f60d65"
+  },
+  "inventory": {
+    "canonicalSpecCount": 311,
+    "canonicalSourcesMissingFromOriginMain": 0,
+    "activeCanonicalSpecs": ["038", "161", "268", "269", "302", "303", "304", "specs/security/20260211", "specs/security/20260212"],
+    "authorityUnresolved": ["224", "240", "256", "270", "273", "279", "287", "288", "293", "294", "295"],
+    "evidenceSource": "specs/_status/spec-index.json reconciled against source paths in origin/main",
+    "outsideMainSources": "not fully audited yet"
+  },
+  "currentWorkunit": {
+    "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS",
+    "state": "WORKING",
+    "objective": "Add a stable App identity contract and separately mutable, tenant-bound route aliases, with fail-closed resolution.",
+    "implementation": "apps/web/server/services/tenantProductIdentityContracts.ts",
+    "evidence": ["apps/web/server/services/__tests__/tenantProductIdentityContracts.test.ts: 9 tests passed"],
+    "nextAction": "Integrate the identity contract with persisted App identity and authorized runtime routing under SPEC-304, then implement SPEC-302 project context resolution."
+  },
+  "completedWorkunits": [],
+  "blockedWorkunits": [],
+  "criticalPath": [
+    { "order": 1, "spec": "261", "state": "IMPLEMENTED_UNVERIFIED", "capability": "Portable App manifest/package standard", "gap": "No verified Spec 224 caller consumes its package-validation report." },
+    { "order": 2, "spec": "304", "state": "PARTIAL_IMPLEMENTATION", "capability": "Stable App identity, routes, runtime context and deployment bindings", "gap": "Persisted identity, route resolution and host-signed runtime context are not integrated." },
+    { "order": 3, "spec": "302", "state": "PARTIAL_IMPLEMENTATION", "capability": "Project identity and App binding/context", "gap": "Runtime project resolution and direct acceptance remain open." },
+    { "order": 4, "specs": ["273", "288"], "state": "PARTIAL_IMPLEMENTATION", "capability": "Portable data and backend/resource contracts", "gap": "No verified end-to-end Mini App data-plane binding." },
+    { "order": 5, "specs": ["240", "270", "287"], "state": "PARTIAL_IMPLEMENTATION", "capability": "Scaffold, generated UI and rendering/design conformance", "gap": "No integrated scaffold-to-rendered-app acceptance path." },
+    { "order": 6, "specs": ["279", "256"], "state": "PARTIAL_IMPLEMENTATION", "capability": "Headless command and capability surface", "gap": "Mini App actions are not wired to a portable app command contract." },
+    { "order": 7, "specs": ["268", "269"], "state": "PARTIAL_IMPLEMENTATION", "capability": "User, Project and App context with shared assistant runtime", "gap": "App/Project context resolver and direct runtime acceptance." },
+    { "order": 8, "spec": "224", "state": "PARTIAL_IMPLEMENTATION", "capability": "Autonomous plan, implementation, test, repair and resume", "gap": "SPAAS compliance, durable program selection and automatic next-work continuation are not proven end to end." },
+    { "order": 9, "spec": "295", "state": "PARTIAL_IMPLEMENTATION", "capability": "Package deploy, migration, runtime smoke and evidence", "gap": "First Mini App deployment and runtime acceptance are not demonstrated." }
+  ],
+  "referenceMiniApp": {
+    "name": "Research Notes",
+    "purpose": "Capture project notes, search/summarize them with AI, and expose the same actions through UI and a headless command surface.",
+    "acceptance": ["responsive accessible UI", "tenant/project-scoped CRUD persistence", "AI summary capability", "durable background indexing/export action", "authenticated permission checks", "portable manifest and package digest", "tests and migration", "one supported deployment target", "runtime smoke evidence", "resume-safe handoff"]
+  },
+  "waves": {
+    "wave1": ["261", "304", "302", "273", "288", "240", "270", "287", "279", "268", "269", "224", "295"],
+    "wave2": ["224 recovery, continuation and safe parallel execution gaps"],
+    "wave3": ["additional database providers, runtime surfaces, memory modes, command transports"],
+    "wave4": ["product verticals consuming the factory"],
+    "wave5": ["non-blocking production operations and secondary providers"]
+  },
+  "autonomy": {
+    "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
+    "autoNextWorkSelection": "NOT_IMPLEMENTED",
+    "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
+    "crossSessionHandoff": "PARTIAL",
+    "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
+    "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
+    "nextEligibleWorkunit": "SPEC304_PERSISTED_IDENTITY_AND_ROUTE_RESOLUTION"
+  },
+  "deferredInfrastructure": [
+    "Full reconciliation of unrelated dormant Specs not needed by Mini App Factory MVP",
+    "External provider/runtime certification beyond the first supported target",
+    "Retirement of stale or unknown worktrees"
+  ],
+  "updatedAt": "2026-10-07T13:55:00Z"
+}
