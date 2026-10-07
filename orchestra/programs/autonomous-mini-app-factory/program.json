@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "LOCAL_VERIFIED_PENDING_PR",
+    "state": "PR_OPEN",
     "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
     "implementation": [
       "apps/web/scripts/research-notes-focused-runtime.ts",
@@ -81,7 +81,7 @@
     "nextAction": "Integrate the expanded API authorization acceptance, then continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING as the next dependency-safe workunit.",
     "sourceSha": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
     "integration": "PENDING_NORMAL_PR",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/265",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/267",
     "integratedSha": "2e1042c6523765915c7970c8958c9951905d07cd"
   },
   "checkpoints": [
@@ -434,9 +434,9 @@
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
-      "number": null,
-      "url": null,
-      "state": "NOT_CREATED",
+      "number": 267,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/267",
+      "state": "OPEN",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
@@ -471,7 +471,7 @@
         "outcome": "PASS: real session auth; unauthenticated, cross-tenant, unmembered-project, revoked-membership and archived-App denial/hiding; CRUD/archive over loopback HTTP/tRPC"
       }
     ],
-    "githubIntegration": "IDLE_BEFORE_AUTHORIZATION_FOLLOWUP_PR; normal non-force PR path",
+    "githubIntegration": "PR #267 open for normal non-force integration",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
     "canonicalAtCheckpoint": "2e1042c6523765915c7970c8958c9951905d07cd",
     "canonicalWorkspace": {
