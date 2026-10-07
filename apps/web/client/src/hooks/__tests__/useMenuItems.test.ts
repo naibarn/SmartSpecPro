@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { Sparkles } from "lucide-react";
+import { defaultMenuItems } from "../../../../../../packages/shared/src/constants/menu";
 
 vi.mock("@smartspec/shared", async () => {
   const actual = await vi.importActual<typeof import("@smartspec/shared")>("@smartspec/shared");
@@ -21,13 +22,8 @@ describe("useMenuItems", () => {
     expect(privateFiles?.IconComponent).not.toBe(Sparkles);
   });
 
-  it("exposes Workflow Studio from the authenticated dashboard menu", () => {
-    const items = getResolvedMenuItems("user", "main");
-    const workflowStudio = items.find(item => item.id === "workflow-studio");
-
-    expect(workflowStudio).toBeDefined();
-    expect(workflowStudio?.path).toBe("/studio/workflow");
-    expect(workflowStudio?.IconComponent).not.toBe(Sparkles);
+  it("does not expose the retired Workflow Studio menu entry", () => {
+    expect(defaultMenuItems.some(item => item.id === "workflow-studio")).toBe(false);
   });
 
   it("keeps the emergency route visible when a menu override tries to hide it", () => {

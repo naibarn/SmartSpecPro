@@ -8,6 +8,20 @@
       "when": 1791402007493,
       "tag": "0000_common_ultimo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791488400000,
+      "tag": "0001_feature_186_active_scope_dedupe",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791574800000,
+      "tag": "0002_worker_admission_transfer_guard",
+      "breakpoints": true
     }
   ]
 }

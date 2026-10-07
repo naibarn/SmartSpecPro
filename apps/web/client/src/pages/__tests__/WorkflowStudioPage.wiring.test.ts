@@ -8,7 +8,7 @@ const page = readFileSync(
 );
 const app = readFileSync(join(import.meta.dirname, "../../App.tsx"), "utf8");
 
-describe("mockup-led Workflow Studio wiring", () => {
+describe("retired Workflow Studio runtime wiring", () => {
   it("keeps the three attached mockup surfaces represented", () => {
     expect(page).toContain('data-testid="workflow-studio-builder"');
     expect(page).toContain('data-testid="workflow-studio-run"');
@@ -20,15 +20,9 @@ describe("mockup-led Workflow Studio wiring", () => {
     expect(page).toContain("latestPreview");
   });
 
-  it("exposes only authenticated studio routes and leaves the retired route untouched", () => {
-    expect(app).toContain(
-      'const WorkflowStudioPage = lazy(() => import("@/pages/WorkflowStudioPage"));'
-    );
-    expect(app).toContain('<Route path="/studio/workflow/run">');
-    expect(app).toContain('<Route path="/studio/workflow">');
-    expect(app).toContain(
-      "<RequireAuth>\n              <WorkflowStudioPage />"
-    );
+  it("does not load or expose Workflow Studio in the application router", () => {
+    expect(app).not.toContain("WorkflowStudioPage");
+    expect(app).not.toContain('<Route path="/studio/workflow');
     expect(app).not.toContain('<Route path="/workflows"');
   });
 });

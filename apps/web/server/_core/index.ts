@@ -26,7 +26,6 @@ import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerWorkerRuntimeRoutes } from "../routes/workerRuntime";
 import { registerWorkerRuntimeReleaseRoutes } from "../routes/workerRuntimeReleases";
-import { registerWorkflowWorkerRuntimeRoutes } from "../routes/workflowWorkerRuntime";
 import { registerWorkerSeriesControlPlaneRoutes } from "../routes/workerSeriesControlPlane";
 import { registerJobControlPlaneRoutes } from "../routes/jobControlPlane";
 import {
@@ -1059,7 +1058,6 @@ registerRunnerControlRoutes(app);
 registerDesktopHostRoutes(app);
 registerDesktopReleaseRoutes(app);
 registerRunnerReleaseRoutes(app);
-registerWorkflowWorkerRuntimeRoutes(app);
 registerContentAutomationRoutes(app);
 registerContentManifestImportRoutes(app);
 registerAutoDraftToolRoute(app);

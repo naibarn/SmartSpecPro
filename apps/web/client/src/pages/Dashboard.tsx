@@ -1170,7 +1170,6 @@ export default function Dashboard() {
     "finance",
     "finance-reports",
     "media-studio",
-    "workflow-studio",
     "content-protection",
     "content-protection-assets",
     "content-protection-verify",
@@ -1194,7 +1193,6 @@ export default function Dashboard() {
     finance: "from-slate-700 to-emerald-700",
     "finance-reports": "from-slate-700 to-teal-700",
     "media-studio": "from-slate-700 to-slate-900",
-    "workflow-studio": "from-indigo-700 to-violet-700",
     "content-protection": "from-slate-700 to-emerald-700",
     emergency: "from-red-700 to-orange-700",
     "emergency-command": "from-orange-700 to-amber-700",
@@ -1252,11 +1250,6 @@ export default function Dashboard() {
       label: t("dashboard:quickActions.mediaStudio"),
       icon: Sparkles,
       href: "/media-studio",
-    },
-    "workflow-studio": {
-      label: t("dashboard:quickActions.workflowStudio"),
-      icon: Workflow,
-      href: "/studio/workflow",
     },
     "content-protection": {
       label: t("dashboard:contentProtection.title"),

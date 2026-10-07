@@ -7,6 +7,7 @@ import {
   CONTENT_PROTECTION_CONTRACT_VERSION,
   CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
 } from "../../shared/contentProtectionWorker";
+import { RESEARCH_NOTES_SUMMARY_CONTRACT } from "./researchNotesSummaryContract";
 
 /**
  * Canonical transports carry the envelope unchanged. Keep every contract
@@ -17,6 +18,11 @@ export const CANONICAL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   "feature-186-v1",
   CONTENT_PROTECTION_CONTRACT_VERSION,
   CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
+]);
+
+const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
+  ...CANONICAL_JOB_CONTRACT_VERSIONS,
+  RESEARCH_NOTES_SUMMARY_CONTRACT,
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";
@@ -40,7 +46,7 @@ export class PostgresPullJobTransportAdapter implements JobTransportAdapter {
   readonly name = "postgres-pull";
   readonly referenceNamespace = "postgres-pull";
 
-  constructor(private readonly supportedContractVersions: ReadonlySet<string> = CANONICAL_JOB_CONTRACT_VERSIONS) {}
+  constructor(private readonly supportedContractVersions: ReadonlySet<string> = POSTGRES_PULL_JOB_CONTRACT_VERSIONS) {}
 
   supports(input: { jobType: string; executionClass: string; contractVersion: string }): boolean {
     return Boolean(input.jobType && input.executionClass && this.supportedContractVersions.has(input.contractVersion));

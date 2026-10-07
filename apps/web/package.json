@@ -103,7 +103,8 @@
     "release-gate:vertical-drama-assurance": "tsx scripts/verify-vertical-drama-assurance-release-gate.ts",
     "test:mini-app-authenticated-runtime": "bash scripts/test-mini-app-authenticated-runtime.sh",
     "test:mini-app-authenticated-runtime-pgvector": "bash scripts/test-mini-app-authenticated-runtime-pgvector.sh",
-    "test:mini-app-factory-cross-process-resume": "bash scripts/test-mini-app-factory-cross-process-resume.sh"
+    "test:mini-app-factory-cross-process-resume": "bash scripts/test-mini-app-factory-cross-process-resume.sh",
+    "test:research-notes-background-worker-runtime": "bash scripts/test-research-notes-background-worker-runtime.sh"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.6.3",

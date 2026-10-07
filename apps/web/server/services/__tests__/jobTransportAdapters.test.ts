@@ -35,6 +35,21 @@ describe("job transport adapters", () => {
     }
   });
 
+  it("routes the Research Notes contract only through the PostgreSQL worker transport", () => {
+    const postgres = new PostgresPullJobTransportAdapter();
+    const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    expect(postgres.supports({
+      jobType: "research_notes.summarize",
+      executionClass: "long",
+      contractVersion: "mini-app-research-v1",
+    })).toBe(true);
+    expect(cloudflare.supports({
+      jobType: "research_notes.summarize",
+      executionClass: "long",
+      contractVersion: "mini-app-research-v1",
+    })).toBe(false);
+  });
+
   it("publishes a PostgreSQL-pull reference without touching a broker", async () => {
     const adapter = new PostgresPullJobTransportAdapter();
     const reference = await adapter.publish({
