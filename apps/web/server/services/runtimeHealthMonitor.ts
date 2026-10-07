@@ -37,6 +37,21 @@ export interface RuntimeHealthSnapshot {
   cgroup: CgroupMemoryMetrics;
 }
 
+export interface RuntimeHealthEvidence {
+  status: "OBSERVED" | "UNAVAILABLE";
+  observedAt: string;
+  value: {
+    runtimeIdentity: string;
+    expectedRevision: string | null;
+    observedRevision: string | null;
+    readiness: "UNKNOWN";
+    health: "HEALTHY" | "DEGRADED";
+    freshness: "FRESH";
+    evidenceSource: "web_process_self_attestation";
+    metrics: Pick<RuntimeHealthSnapshot, "memory" | "eventLoop" | "cgroup">;
+  } | null;
+}
+
 function parseCgroupValue(value: string | null): number | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -121,6 +136,39 @@ export function collectRuntimeHealthSnapshot(options: {
     eventLoop: getEventLoopMetrics(options.eventLoop),
     cgroup: readCgroupMemoryMetrics(options.cgroupRoot),
   };
+}
+
+/** Normalizes evidence from this live web process without treating it as deployment proof. */
+export function collectRuntimeHealthEvidence(input: {
+  snapshot?: RuntimeHealthSnapshot;
+  env?: NodeJS.ProcessEnv;
+  now?: Date;
+} = {}): RuntimeHealthEvidence {
+  const observedAt = (input.now ?? new Date()).toISOString();
+  try {
+    const snapshot = input.snapshot ?? collectRuntimeHealthSnapshot();
+    const env = input.env ?? process.env;
+    const observedRevision = env.RELEASE?.trim() || env.COMMIT_SHA?.trim() || null;
+    const expectedRevision = env.SMARTSPEC_EXPECTED_REVISION?.trim() || null;
+    const hasMemory = Number.isFinite(snapshot.memory.rssBytes) && snapshot.memory.rssBytes > 0;
+    return {
+      status: "OBSERVED",
+      observedAt: snapshot.timestamp,
+      value: {
+        runtimeIdentity: env.SMARTSPEC_RUNTIME_ID?.trim() || `${env.NODE_ENV ?? "unknown"}:${process.pid}`,
+        expectedRevision,
+        observedRevision,
+        // The web process monitor does not probe dependencies or a readiness route.
+        readiness: "UNKNOWN",
+        health: hasMemory ? "HEALTHY" : "DEGRADED",
+        freshness: "FRESH",
+        evidenceSource: "web_process_self_attestation",
+        metrics: { memory: snapshot.memory, eventLoop: snapshot.eventLoop, cgroup: snapshot.cgroup },
+      },
+    };
+  } catch {
+    return { status: "UNAVAILABLE", observedAt, value: null };
+  }
 }
 
 export interface RuntimeHealthMonitor {
