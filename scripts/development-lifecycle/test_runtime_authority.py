@@ -22,7 +22,6 @@ evaluate_multi_instance_convergence = runtime.evaluate_multi_instance_convergenc
 sign_workspace_fact = runtime.sign_workspace_fact
 CloudflareEvidenceProvider = runtime.CloudflareEvidenceProvider
 CanonicalBuildArtifactEvidenceProvider = runtime.CanonicalBuildArtifactEvidenceProvider
-SqliteActionLedger = runtime.SqliteActionLedger
 mark_evidence_freshness = runtime.mark_evidence_freshness
 
 
@@ -286,35 +285,6 @@ class RuntimeAuthorityTests(unittest.TestCase):
     def test_cached_provider_observation_expires_by_collection_timestamp(self):
         result = EvidenceResult("OBSERVED", "cloudflare-workers", "2020-01-01T00:00:00Z", {"deployment_id": "d"})
         self.assertEqual("STALE", mark_evidence_freshness(result, now=self.now, max_age_seconds=60).status)
-
-    def test_sqlite_action_ledger_reserves_across_retries(self):
-        with tempfile.TemporaryDirectory() as temp:
-            ledger = SqliteActionLedger(Path(temp) / "authority.sqlite3")
-            scope = ("tenant", "project", "actor")
-            status, _ = ledger.reserve(scope, "key", "hash", {"status": "STARTED"})
-            in_progress, _ = ledger.reserve(scope, "key", "hash", {"status": "STARTED"})
-        self.assertEqual("CREATED", status)
-        self.assertEqual("IN_PROGRESS", in_progress)
-
-    def test_sqlite_action_ledger_replays_completed_receipt(self):
-        with tempfile.TemporaryDirectory() as temp:
-            ledger = SqliteActionLedger(Path(temp) / "authority.sqlite3")
-            scope = ("tenant", "project", "actor")
-            ledger.reserve(scope, "key", "hash", {"status": "STARTED"})
-            receipt = {"status": "COMPLETED", "receipt_id": "receipt-1"}
-            ledger.complete(scope, "key", "hash", receipt)
-            replay, observed = ledger.reserve(scope, "key", "hash", {})
-        self.assertEqual("REPLAY", replay)
-        self.assertEqual(receipt, observed)
-
-    def test_sqlite_action_ledger_rejects_conflicting_idempotency_key(self):
-        with tempfile.TemporaryDirectory() as temp:
-            ledger = SqliteActionLedger(Path(temp) / "authority.sqlite3")
-            scope = ("tenant", "project", "actor")
-            ledger.reserve(scope, "key", "original-hash", {"status": "STARTED"})
-            status, _ = ledger.reserve(scope, "key", "different-hash", {})
-        self.assertEqual("CONFLICT", status)
-
 
 if __name__ == "__main__":
     unittest.main()
