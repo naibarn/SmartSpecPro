@@ -49,4 +49,18 @@ describe("Research Notes portable package", () => {
     expect(actions.actions.flatMap(({ input }) => input)).not.toContain("tenantId");
     expect(actions.actions.flatMap(({ input }) => input)).not.toContain("userId");
   });
+
+  it("keeps deployment and UAT explicitly pending until an authorized environment exists", () => {
+    const deployment = JSON.parse(readFileSync(join(packageRoot, "deployment.json"), "utf8")) as {
+      state: string;
+      target: { environment: string; environmentId: string | null; baseUrl: string | null };
+      release: { migration: { status: string } };
+    };
+    const smokePlan = readFileSync(join(packageRoot, "SMOKE-TEST-PLAN.md"), "utf8");
+    expect(deployment.state).toBe("PREPARED_NOT_DEPLOYED");
+    expect(deployment.target).toMatchObject({ environment: "UNSELECTED", environmentId: null, baseUrl: null });
+    expect(deployment.release.migration.status).toBe("NOT_APPLIED");
+    expect(smokePlan).toContain("Status: prepared only.");
+    expect(smokePlan).toContain("NOT_RUN");
+  });
 });
