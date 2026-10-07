@@ -12,7 +12,6 @@ import hmac
 import importlib.util
 import json
 import re
-import sqlite3
 import time
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
@@ -380,47 +379,6 @@ def cloudflare_http_get(url: str, token: str, *, timeout_seconds: int = 15) -> t
 class IdempotencyStore(Protocol):
     def reserve(self, scope: tuple[str, str, str], key: str, request_hash: str, receipt: Any) -> tuple[str, Any | None]: ...
     def complete(self, scope: tuple[str, str, str], key: str, request_hash: str, receipt: Any) -> None: ...
-
-
-class SqliteActionLedger:
-    """Durable same-host ledger for repositories using the shared authority DB."""
-
-    def __init__(self, database_path: Path):
-        self.database_path = database_path
-        self.database_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        new_database = not self.database_path.exists()
-        with sqlite3.connect(database_path, timeout=10) as db:
-            db.execute("""CREATE TABLE IF NOT EXISTS safe_action_receipts (
-                tenant_id TEXT NOT NULL, project_id TEXT NOT NULL, actor_id TEXT NOT NULL,
-                idempotency_key TEXT NOT NULL, request_hash TEXT NOT NULL,
-                receipt_json TEXT NOT NULL, status TEXT NOT NULL, created_at REAL NOT NULL,
-                updated_at REAL NOT NULL,
-                PRIMARY KEY (tenant_id, project_id, actor_id, idempotency_key))""")
-        if new_database:
-            self.database_path.chmod(0o600)
-
-    def reserve(self, scope: tuple[str, str, str], key: str, request_hash: str, receipt: Any) -> tuple[str, Any | None]:
-        tenant_id, project_id, actor_id = scope
-        now = time.time()
-        with sqlite3.connect(self.database_path, timeout=10, isolation_level=None) as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT request_hash, receipt_json, status FROM safe_action_receipts WHERE tenant_id=? AND project_id=? AND actor_id=? AND idempotency_key=?", (*scope, key)).fetchone()
-            if row:
-                db.execute("COMMIT")
-                if row[0] != request_hash:
-                    return "CONFLICT", None
-                if row[2] == "STARTED":
-                    return "IN_PROGRESS", None
-                return "REPLAY", json.loads(row[1])
-            db.execute("INSERT INTO safe_action_receipts VALUES(?,?,?,?,?,?,?,?,?)", (*scope, key, request_hash, json.dumps(receipt, sort_keys=True), "STARTED", now, now))
-            db.execute("COMMIT")
-        return "CREATED", None
-
-    def complete(self, scope: tuple[str, str, str], key: str, request_hash: str, receipt: Any) -> None:
-        with sqlite3.connect(self.database_path, timeout=10, isolation_level=None) as db:
-            cursor = db.execute("UPDATE safe_action_receipts SET receipt_json=?, status=?, updated_at=? WHERE tenant_id=? AND project_id=? AND actor_id=? AND idempotency_key=? AND request_hash=?", (json.dumps(receipt, sort_keys=True), receipt["status"], time.time(), *scope, key, request_hash))
-            if cursor.rowcount != 1:
-                raise RuntimeError("ACTION_LEDGER_FENCE_MISMATCH")
 
 
 class WorkspaceActionDispatcher:
