@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f1bf44911d8176db9414ddc4eee934b0f304dec7",
+    "expected_canonical_sha": "3369b76ef4aaa252c56121c6abf2b8108bae9969",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 62,
+  "generation": 63,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -207,7 +207,8 @@
       "0b19f95cbc8648358e082ae1e946e00247d9498b",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
       "452a2073b64a7a610b504b5175196a95a5e58d81",
-      "f1bf44911d8176db9414ddc4eee934b0f304dec7"
+      "f1bf44911d8176db9414ddc4eee934b0f304dec7",
+      "3369b76ef4aaa252c56121c6abf2b8108bae9969"
     ],
     "mapping": [],
     "source_paths": [
@@ -247,9 +248,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f1bf44911d8176db9414ddc4eee934b0f304dec7",
+    "canonical_sha": "3369b76ef4aaa252c56121c6abf2b8108bae9969",
     "integrated": true,
-    "integrated_at": "2026-10-07T07:55:59Z"
+    "integrated_at": "2026-10-07T08:00:36Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -631,7 +632,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:56:40.795689Z",
+  "updated_at": "2026-10-07T08:01:13.058074Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -857,6 +858,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-host-owner-provider-reconciliation-20261007.md",
         "scope": "Host provider projection uses reconciled live owner-session and Runner evidence, surfacing conflicts as UNKNOWN.",
         "source_sha": "f1bf44911d8176db9414ddc4eee934b0f304dec7",
+        "status": "PASS"
+      },
+      {
+        "kind": "MIGRATION_APPLIED_HEAD_REVISION_TAG",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-migration-applied-head-tag-20261007.md",
+        "scope": "Drizzle applied hash is mapped back to journal revision tag in applied head and latest successful execution.",
+        "source_sha": "3369b76ef4aaa252c56121c6abf2b8108bae9969",
         "status": "PASS"
       }
     ],
