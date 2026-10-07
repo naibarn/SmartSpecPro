@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 303 — SmartAIHub Ecosystem Asset Registry, Ownership, Transfer, Distribution & Discover Contract
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
+- Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `VALIDATION_PENDING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 11 unresolved of 11
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Next action: Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

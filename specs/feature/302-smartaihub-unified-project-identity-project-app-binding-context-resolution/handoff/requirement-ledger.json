@@ -1,5 +1,5 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "79eec73780c55b46e9004df53471f15dc356b1f5e7959a0c7bec496e3f86658f",
       "requirement_id": "REQ-E44287595301",
       "requirement_text": "normative_language: RFC-style MUST / MUST NOT / SHOULD / SHOULD NOT / MAY",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "fc5f2f9e5a37dd3bab9030f9ec03a4a914a49d0d022910cd234b5aa8f94b6c53",
       "requirement_id": "REQ-6B4D8C8FA775",
       "requirement_text": "1. A Project MUST NOT be a child of one App; an App MUST NOT own global Project identity.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "b5baa588f3c5a664edf7f53d2dd7ee415d5888a05ff60c4071259e144b76f496",
       "requirement_id": "REQ-8D8136DAE54F",
       "requirement_text": "5. Identity resolution is distinct from authorization. Every read/write MUST re-check tenant, membership, ACL, and current revocation state.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "3058f1873ac59b9115b91a64a1cd056e3e819d4621b6d6c9588e24766b0e5ed5",
       "requirement_id": "REQ-5FCEBAF7DDBD",
       "requirement_text": "6. Similarity can retrieve or rank candidates, but MUST NOT alone select a durable project destination.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "865492a68414082ae2c357bc44882559551078d7075d1c042e2af9374c1bcd3a",
       "requirement_id": "REQ-408D3F532E4C",
       "requirement_text": "7. Ambiguous or unresolved project context MUST fail closed for durable shared writes and high-impact actions.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "a9f32abfb970627a65aeef69ba0017632fe0920a864d367d1a957765286ca5b9",
       "requirement_id": "REQ-4A23D3237DAA",
       "requirement_text": "8. Every durable resolution MUST emit a receipt bound to the inputs and resolver/policy version.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "0e445987c7cad8700bb52affccc5e1354cd8d4da6156258f335e27367786501a",
       "requirement_id": "REQ-99ECFBC73E36",
       "requirement_text": "Migration MUST proceed as inventory → read-only mapping → dual-read/observe → explicit binding backfill → consistency reconciliation → selected consumer cutover → retirement of an old reference only after rollback and retention windows close. Backfill MUST preserve original keys and ACLs, be idempotent, report collisions/orphans, and support pause/resume. No production migration is authorized by this Spec alone.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "f47bd875a306ee6a25c4b3bd3c8b9d8e12a51418a3cb862b386974ae0b495422",
       "requirement_id": "REQ-95939C508234",
       "requirement_text": "The picker MUST be offered when multiple plausible candidates, close scores, low confidence, or a durable/high-impact action requires confirmation. It MUST support recommended candidates, recent/active projects, search across authorized projects, `No Project`, and `Create New Project`. A choice becomes effective only after authorization and durable binding are recorded.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "3001c44e6678a7444f55f8a22fae89d8ccd06d90df33caa59acf2ddb28e86c5d",
       "requirement_id": "REQ-2F48B40CB174",
       "requirement_text": "For `AMBIGUOUS`, `UNRESOLVED`, or `NO_PROJECT`, the system MUST NOT write durable Project data. It MAY retain content in a session/pending scope according to user consent, retention, and tenant policy; pending content is not searchable as shared project memory and can be promoted only after confirmation plus ACL revalidation.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "5e0a006fff103742edf3e082765b28e385b80e353b211313cfb277d49d180817",
       "requirement_id": "REQ-F92F6DEEC383",
       "requirement_text": "The resolver MUST not use `userId` alone. Tenant, principal, app/installation, project, workspace/space, conversation/session, environment, and purpose are independent dimensions. Cross-tenant candidates MUST never be exposed through similarity search.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,13 +239,13 @@
       "requirement_digest": "1d9b2c492f866602cd3f8ec6d49897f06f364671e946995de863968f7687feee",
       "requirement_id": "REQ-BDF88A4A3364",
       "requirement_text": "Required scenarios include one user with two apps and one project; one user/app across two projects; multiple users with ACLs on one project; project switch within a conversation; no project; ambiguous candidates; picker confirmation; near-equal vector scores; pending write promotion; project revocation mid-session; external project namespace collision; and backfill retry with an orphan/collision report.",
-      "source_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+  "spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
   "spec_id": "302"
 }

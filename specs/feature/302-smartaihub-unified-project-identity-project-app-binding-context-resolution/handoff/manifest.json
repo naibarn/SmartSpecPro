@@ -6,23 +6,46 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+      },
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "RECOVERED_DEPENDENCY_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      },
+      {
+        "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+        "kind": "RECOVERED_SOURCE",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "IMPLEMENTATION",
+      "id": "SPEC302_DIRECT_ACCEPTANCE",
+      "next_action": "Implement and execute direct acceptance against current canonical source.",
+      "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+    },
+    {
+      "class": "EXTERNAL_DEPENDENCY",
+      "id": "EXTERNAL_SPEC_LIBRARY_COLLISION_CHECK",
+      "next_action": "Verify against an authoritative external export when available; do not renumber based on hypothetical conflict.",
+      "root_cause": "No external Spec Library connector/export is available in this environment."
+    }
+  ],
   "concurrency": {
     "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
-    "expected_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8"
+    "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
     "next_action": null,
@@ -32,24 +55,49 @@
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+    "rationale": "Repository-local authority and dependency edges are clear; executable acceptance and external Spec Library verification remain open.",
+    "residual_requirements": [
+      "Direct acceptance tests for owned contracts",
+      "External Spec Library collision check remains NOT_VERIFIED"
+    ]
   },
   "dependencies": {
     "predicates": [],
     "runtime_capabilities": [],
     "satisfaction_evidence": [],
-    "specs": []
+    "specs": [
+      {
+        "minimum_revision": "2.6",
+        "relationship": "MEMORY_SCOPE_CONTEXT_CONSUMER",
+        "spec_id": "268",
+        "status": "CANONICALIZED_PENDING_INTEGRATION"
+      },
+      {
+        "relationship": "LIVING_PROJECT_CONSUMER",
+        "spec_id": "233",
+        "status": "INTEGRATED"
+      },
+      {
+        "relationship": "WORK_CONTEXT_CONSUMER",
+        "spec_id": "292",
+        "status": "INTEGRATED"
+      },
+      {
+        "relationship": "EVIDENCE_CONTINUITY_CONSUMER",
+        "spec_id": "284",
+        "status": "INTEGRATED"
+      }
+    ]
   },
   "deployment": {
     "artifact_digest": null,
@@ -60,27 +108,37 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "evidence": [
       {
-        "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+      },
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "RECOVERED_DEPENDENCY_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      },
+      {
+        "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+        "kind": "RECOVERED_SOURCE",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 6,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
-    "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+    "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
     "metadata": {
       "implementation_last_touched_at": null,
       "last_evidence_at": "2026-10-07T04:14:02.839575Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-07T11:19:51+07:00",
+      "spec_last_changed_at": "2026-10-07T11:19:51+07:00"
     },
     "revision": "0.1",
     "slug": "302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
@@ -101,23 +159,99 @@
     "integrated_at": "2026-10-07T04:21:12Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
     "updated_at": "2026-10-07T04:14:02.839575Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+        },
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "RECOVERED_DEPENDENCY_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        },
+        {
+          "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+          "kind": "RECOVERED_SOURCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+        }
+      ],
+      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "rationale": "Repository-local authority and dependency edges are clear; executable acceptance and external Spec Library verification remain open.",
+      "residual_requirements": [
+        "Direct acceptance tests for owned contracts",
+        "External Spec Library collision check remains NOT_VERIFIED"
+      ]
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
+        },
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "RECOVERED_DEPENDENCY_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        },
+        {
+          "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+          "kind": "RECOVERED_SOURCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
+        }
+      ],
+      "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [],
+      "updated_at": "2026-10-07T04:14:02.839575Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+      "value": "HIGH"
+    }
+  },
   "reconciliation": {
-    "confidence": "LOW",
+    "confidence": "HIGH",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
       "continuation_assessment.decision"
     ],
-    "mode": "AUTOMATED_CONSERVATIVE",
+    "mode": "EVIDENCE_RECONCILED",
     "reconciled_at": "2026-10-07T04:14:02.839575Z",
     "sources": [
       {
-        "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
       },
@@ -129,11 +263,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
-        "source_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "source_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "value": "DESIGN_CONTRACT"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +294,14 @@
         "excerpt": "status: DESIGN_CONTRACT",
         "line": 6,
         "source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
-        "source_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "source_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "value": "DESIGN_CONTRACT"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
+        "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
       }
@@ -182,14 +321,36 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:22:34.496506Z",
+  "updated_at": "2026-10-07T05:16:51.018079Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
+    "evidence": [
+      {
+        "kind": "REPOSITORY_ID_AUTHORITY",
+        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
+        "scope": "SPEC-302 canonical uniqueness, occupied registry state, dependency closure, and integrated handoff source",
+        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "status": "PASS"
+      },
+      {
+        "kind": "TARGETED_REGRESSION",
+        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
+        "scope": "supporting local tests only; not direct T acceptance",
+        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "status": "PASS"
+      },
+      {
+        "kind": "EXTERNAL_SPEC_LIBRARY",
+        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
+        "scope": "external library collision evidence unavailable",
+        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "status": "NOT_VERIFIED"
+      }
+    ],
+    "freshness": "STALE",
     "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

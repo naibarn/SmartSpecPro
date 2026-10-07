@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 269 — SmartAIHub Primary Assistant, Specialist Assistant Teams & Autonomous Workforce Runtime
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
+- Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `VALIDATION_PENDING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1677 unresolved of 1677
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Next action: Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 

@@ -1,0 +1,334 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      },
+      {
+        "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+        "kind": "RECOVERED_SOURCE",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
+      },
+      {
+        "digest": "5efa4e6555b87b11aef983216e5643b48000f9c6865201eb6bfaa551415f080e",
+        "kind": "PROVENANCE",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/provenance.json"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [
+    {
+      "class": "IMPLEMENTATION",
+      "id": "SPEC268_RUNTIME_ACCEPTANCE",
+      "next_action": "Implement and test additive runtime integration.",
+      "root_cause": "R2.6 defines contract but does not implement runtime resolver/context binding or direct acceptance suite."
+    },
+    {
+      "class": "NOT_STARTED",
+      "id": "SPEC268_PRODUCTION_MIGRATION",
+      "next_action": "Require the SPEC-295 migration gate after local integration evidence.",
+      "root_cause": "No production migration or cutover was requested or executed."
+    }
+  ],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      }
+    ],
+    "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+    "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
+    "residual_requirements": [
+      "R2.6 runtime MemoryContext integration",
+      "Project resolution receipt/state integration with SPEC-302",
+      "Cross-App/Project isolation acceptance",
+      "Legacy Chat memory migration evidence"
+    ]
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": [
+      {
+        "minimum_revision": "0.1",
+        "relationship": "PROJECT_IDENTITY_AND_RESOLUTION",
+        "spec_id": "302",
+        "status": "CANONICAL"
+      },
+      {
+        "minimum_revision": "3.18",
+        "relationship": "SHARED_CHAT_CONSUMER",
+        "spec_id": "269",
+        "status": "CANONICAL"
+      },
+      {
+        "minimum_revision": "current",
+        "relationship": "WORK_CONTEXT",
+        "spec_id": "292",
+        "status": "CANONICAL"
+      },
+      {
+        "minimum_revision": "current",
+        "relationship": "PORTABLE_MINI_APP_KNOWLEDGE",
+        "spec_id": "281",
+        "status": "CANONICAL"
+      },
+      {
+        "minimum_revision": "current",
+        "relationship": "EVIDENCE_KNOWLEDGE",
+        "spec_id": "266",
+        "status": "CANONICAL"
+      },
+      {
+        "minimum_revision": "current",
+        "relationship": "PRODUCTION_MIGRATION_GATE",
+        "spec_id": "295",
+        "status": "CANONICAL"
+      }
+    ]
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      },
+      {
+        "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+        "kind": "RECOVERED_SOURCE",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
+      },
+      {
+        "digest": "5efa4e6555b87b11aef983216e5643b48000f9c6865201eb6bfaa551415f080e",
+        "kind": "PROVENANCE",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/provenance.json"
+      }
+    ],
+    "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 7,
+  "identity": {
+    "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
+    "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-07T05:05:37.875870Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "2.6",
+    "slug": "268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
+    "spec_id": "268",
+    "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-07T05:05:37.875870Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        },
+        {
+          "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+          "kind": "RECOVERED_SOURCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
+        },
+        {
+          "digest": "5efa4e6555b87b11aef983216e5643b48000f9c6865201eb6bfaa551415f080e",
+          "kind": "PROVENANCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/provenance.json"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        }
+      ],
+      "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
+      "residual_requirements": [
+        "R2.6 runtime MemoryContext integration",
+        "Project resolution receipt/state integration with SPEC-302",
+        "Cross-App/Project isolation acceptance",
+        "Legacy Chat memory migration evidence"
+      ]
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        },
+        {
+          "digest": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+          "kind": "RECOVERED_SOURCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md"
+        },
+        {
+          "digest": "5efa4e6555b87b11aef983216e5643b48000f9c6865201eb6bfaa551415f080e",
+          "kind": "PROVENANCE",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/provenance.json"
+        }
+      ],
+      "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": null,
+      "state_evidence": [],
+      "updated_at": "2026-10-07T05:05:37.875870Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+      "value": "HIGH"
+    }
+  },
+  "reconciliation": {
+    "confidence": "HIGH",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "EVIDENCE_RECONCILED",
+    "reconciled_at": "2026-10-07T05:05:37.875870Z",
+    "sources": [
+      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/provenance.json",
+      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/recovery/SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md",
+      "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md"
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "runtime implementation and executable T acceptance",
+      "external Spec Library collision check",
+      "production migration and cutover"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_CANONICAL_MEMORY_CONTEXT_CONTRACT",
+        "line": 7,
+        "source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
+        "source_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "value": "PROPOSED_ADDITIVE_CANONICAL_MEMORY_CONTEXT_CONTRACT"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 1101,
+    "unresolved": 1101
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-07T05:19:35.756953Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

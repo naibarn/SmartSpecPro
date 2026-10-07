@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 304 — SmartAIHub Application Identity, Universal Routing, Managed Hosting & Deployment Contract
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Disposition: `ACTIVE_CANONICAL` (HIGH)
+- Lifecycle: `VALIDATION_PENDING`
+- Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 8 unresolved of 8
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 6
+- Next action: Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 
