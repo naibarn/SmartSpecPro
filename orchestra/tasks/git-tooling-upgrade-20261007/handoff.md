@@ -37,7 +37,8 @@ is pending because the registered user checkout contains unrelated local work.
 
 - Conflict-policy tests: 21 total, 20 passed, 1 Windows-only test skipped on Debian.
 - Lifecycle alignment tests: 6 passed.
-- Skill audit: passed, including 330 existing deep-implement tests.
+- Skill audit: passed, including 330 Orchestra tests, 139 deep-implement tests,
+  and 166 deep-project tests.
 - `bash -n skills/session-finish/scripts/session-preflight.sh`: passed.
 - `git diff --check` and `git diff --cached --check`: passed before staging.
 - Native behavior exercised against Git 2.56.0; legacy fallback exercised with
