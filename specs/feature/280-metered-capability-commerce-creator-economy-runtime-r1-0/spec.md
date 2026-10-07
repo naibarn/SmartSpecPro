@@ -3,7 +3,7 @@
 
 **Status:** Proposed / Additive implementation-ready specification  
 **Spec ID:** 280  
-**Revision:** 1.1 — second cross-spec production audit; immutable commercial snapshot, settlement saga, failure attribution, tenant attribution path, payout/reversal safety, signed commercial grants and nested budget reservations added  
+**Revision:** 1.2 — additive SPEC-303 asset/party and infrastructure economics boundary
 **Date:** 2026-10-04  
 **Target repository path:** `specs/feature/280-metered-capability-commerce-creator-economy-runtime/spec.md`  
 **Primary owner:** SmartAIHub Capability Commerce / Marketplace Settlement Runtime  
@@ -2039,3 +2039,9 @@ creator / tenant / platform projections & payout lifecycle
 ```
 
 The commercial runtime SHALL make SmartAIHub monetizable without forcing users to buy their LLM from SmartAIHub and without weakening the existing orchestration/job authority boundaries.
+
+## R1.2 Additive asset, party, infrastructure-cost, and referral boundary — 2026-10-07
+
+SPEC-303 owns stable Asset identity, ownership and commercial-right bindings, transfer history, and channel distribution context. SPEC-280 remains the capability-usage, pricing, and revenue-attribution policy authority; it MUST consume asset/economic-party bindings rather than create a competing asset registry or settlement ledger. Settlement and wallet execution remain in SPEC-207, charge/debit/refund remains with existing `credit_transactions`/`creditService`, and charged-work lineage remains in SPEC-166.
+
+Revenue policy distinguishes `INFRA_VARIABLE_COST`, `INFRA_FIXED_COST_ALLOCATION`, `INFRA_COST_RECOVERY`, `INFRA_OPERATOR_MARGIN`, `INFRA_SUBSIDY`, and `PLATFORM_REVENUE`. Metered actual CPU/GPU, memory, storage, egress, queues/workflows, database, vector, and provider use is cost evidence; infrastructure cost MUST NOT be represented as a fixed transaction percentage. A planned deficit requires an explicit authorized subsidy source (`PLATFORM_GROWTH`, `TENANT`, `SPONSOR`, or `CAPITAL`) and MUST NOT silently reduce creator/App/Skill allocation. Referral is one-time by default on `FIRST_QUALIFYING_REVENUE_EVENT`; no downstream perpetual/MLM or review/rating reward is allowed. Referral acquisition cost normally uses a Platform/Tenant acquisition budget, not infra recovery. Effective-time policy snapshots and linked reversals preserve allocations after transfer/refund.

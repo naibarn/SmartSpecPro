@@ -1,0 +1,251 @@
+{
+  "generation": 2,
+  "reconciliation_version": 3,
+  "requirements": [
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L9"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L9",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "79eec73780c55b46e9004df53471f15dc356b1f5e7959a0c7bec496e3f86658f",
+      "requirement_id": "REQ-D2C57FC9CD6E",
+      "requirement_text": "normative_language: RFC-style MUST / MUST NOT / SHOULD / SHOULD NOT / MAY",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L16"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L16",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "1ff0c6632113cb9e9fddb811ccc6cdd28cf302c95e589c3aaf5cc1aa099b7ba2",
+      "requirement_id": "REQ-EF1EF7CE1775",
+      "requirement_text": "SmartAIHub is an ecosystem operator and MUST NOT be presumed to own every asset. Users, tenants, companies, creators, and partners may hold legally distinct asset, publication, operational, maintenance, and revenue rights. This Spec defines stable asset identity, rights, distribution, ownership history, and economic-party bindings. It does not create a credit ledger, wallet, payment rail, or settlement engine.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L32"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L32",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "696ac1de09728baa2f69c04896d5d7d56a4ed31c698a7e550cdc047c2745c833",
+      "requirement_id": "REQ-FC6856002B9A",
+      "requirement_text": "A `WORKFLOW` asset is an identity/listing for a portable definition or approved-runtime adapter only; it MUST NOT restore the retired `/workflows` route or legacy custom workflow engine. Agent execution uses the OpenAI Agents API on the Python backend; long-running work uses `worker_jobs` plus outbox, and risky isolation uses the approved Cloudflare Container runtime.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L34"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L34",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "6ce5a81fda8049d8faa98cec1668b981901b67e1438728072e220cb98cb81808",
+      "requirement_id": "REQ-781B1AB1524A",
+      "requirement_text": "Ownership and rights MUST bind to stable organization, legal-party, or principal identifiers, never email/login strings. `SmartAIHub Official` denotes certification/relationship and is not ownership.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L44"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L44",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9bed406c969ead9cbe59ea9ddd32a8514d15895fa20fd3b845927b7b2f8add50",
+      "requirement_id": "REQ-266246BD8A70",
+      "requirement_text": "Sale, ownership transfer, publisher/operator/maintainer change, control change, settlement-account change, and lease are distinct events. Transfer MUST be authorized by the effective owner and applicable policy, identify transferred rights and exclusions, record an effective time, preserve immutable before/after history, and be idempotent. App ID, canonical route, aliases, reviews, installs, saved references, and user relationships do not change merely because ownership changes.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L46"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L46",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "b2b8bdb95cb99971a666aec2474f2056804ca590a051ded6469c64af4cdebe05",
+      "requirement_id": "REQ-D6DC460390AB",
+      "requirement_text": "`App ownership transfer ≠ transfer of user memory.` `App clone/fork ≠ clone user private memory.` Asset dependencies retain their original ownership unless separately licensed/transferred. Shared/project data transfer requires its own policy and data-rights agreement, tenant/ACL checks, user notice where required, and a provenance record. A lease grants only enumerated temporary rights; it does not change legal ownership. Maintainer change does not imply ownership change.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L56"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L56",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "031f8134891501a93b1bb68dde1e185331596d874061b8be38206ca7298ffa84",
+      "requirement_id": "REQ-D59231D4AC58",
+      "requirement_text": "Target concepts: `EconomicParty`, `SettlementAccount`, `RecipientBinding`, `ControllerBinding`, and `PayoutProfile`. These connect business identity to existing settlement infrastructure; they do not hold balances or replace its ledger. Revenue allocation MUST NOT bind to email/login account. Allocation snapshots reference policy version, economic roles, recipient bindings, effective time, currency/amount semantics, lineage ID, and correction/reversal link.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L64"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L64",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "7705d0e857f261f0843f577d4064798b465850b2cb2dbfe5311fdae1d9449b62",
+      "requirement_id": "REQ-7131D967C571",
+      "requirement_text": "Planned operating losses are allowed only with explicit subsidy source (`PLATFORM_GROWTH`, `TENANT`, `SPONSOR`, or `CAPITAL`) and policy/budget authorization. Infra shortfall MUST NOT silently reduce creator, App, or Skill revenue. Referral is one-time by default, triggered by `FIRST_QUALIFYING_REVENUE_EVENT`; no MLM/perpetual downstream commission, and no review/rating reward. Acquisition referral cost normally comes from Platform/Tenant acquisition budget, not infrastructure recovery.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L68"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L68",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "9191855457666347573dd447eef1206a195fdb34ffea2eff551a7264de286b0b",
+      "requirement_id": "REQ-98D161CCBFEE",
+      "requirement_text": "Ownership, rights grant/revoke, listing, distribution, transfer, lease, settlement binding, payout profile, and policy changes are immutable versioned events or auditable state transitions. Retries use caller-stable idempotency keys plus source version/effective-time fencing. Reversal corrects an allocation with linked compensating records; prior history is never rewritten. Unauthorized or stale owner/policy epochs reject mutation. High-impact ownership, payout-recipient, and custom-domain transfers require step-up authorization and, where policy classifies risk as elevated, independent review or time-bounded hold. Dispute/fraud controls may freeze a transfer or settlement binding without silently changing legal ownership. Ranking, promotion, reviews, referral, and fraud scoring have separate policies; payment, rating, install, or referral rewards MUST NOT be used to manipulate reviews or rankings.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L75"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L75",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "bc9f2237726bad8a533649634e9126e7df46c32bc9fbb6e1310504f8aee1d26e",
+      "requirement_id": "REQ-DAF79BA75A08",
+      "requirement_text": "- `credit_transactions` remains current debit/refund authority. A refund/reversal must link to original charge and affected allocations without a second credit ledger.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L80"
+      ],
+      "authority_source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md#L80",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "f35e8e06500967f3d940af1aa42ae9f64539e9fa9554fe805425fd09fd1774cb",
+      "requirement_id": "REQ-ABFC7B329ABD",
+      "requirement_text": "Required scenarios: asset sale while installs/reviews persist; effective-date revenue split; App clone without private memory; dependency Skill retains owner; lease with limited rights; maintainer/controller change without ownership transfer; domain change; tenant/channel distribution of one asset; infra deficit with named subsidy and unchanged creator share; one-time referral; refund after allocation; payout recipient change; private tenant App hidden from public Discover; and transfer retry/replay.",
+      "source_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    }
+  ],
+  "schema_version": 1,
+  "spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+  "spec_id": "303"
+}

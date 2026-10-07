@@ -1,6 +1,6 @@
 # Spec 263 — SmartAIHub Public Website Experience Modernization
 
-**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.
+**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.9; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.
 **Target:** `https://smartaihub.app` public website  
 **Spec Type:** Public Product Experience / Brand System / Conversion / Discovery  
 **Audit Date:** 2026-10-02  
@@ -3498,3 +3498,11 @@ Implementation SHOULD verify current versions at implementation time. Baseline r
 These references guide technical compliance; they do not override SmartAIHub product truthfulness or the stricter requirements in this spec.
 
 **Spec 263 is the source of truth for the SmartAIHub public website modernization initiative.**
+
+## 42. Revision 263.9 — Additive AI asset and App ecosystem positioning
+
+SmartAIHub's public narrative MAY describe an AI asset/App ecosystem: people and organizations can discover, use, publish, and distribute Apps and other governed assets. This ecosystem framing supplements the universal AI work platform story and the AI Film/Short Film/Vertical Series flagship; it MUST NOT make SmartAIHub appear to be only a marketplace, skill catalog, workflow builder, or agent framework.
+
+Public navigation MAY evolve toward **Product**, **Discover**, **Creators**, **Solutions**, **Pricing**, and **Developers** while retaining the existing public-route inventory and deep links. Discover MAY expose Apps, Agents, categories, collections, creators, and asset listings only when each record is explicitly public and its rights/policy permit anonymous access. Public listings MUST be browsable without login where the listing is public; private tenant data, analytics, source access, and non-public metadata remain protected.
+
+Asset ownership, rights, and channel distribution consume SPEC-303. Stable App identity, canonical route, aliases, custom domains, and channel routing consume SPEC-304. Public pages do not become an ownership, project, knowledge, memory, or deployment authority. Existing deployed routes MUST NOT be removed or rekeyed without a route inventory, explicit compatibility/redirect plan, and acceptance evidence tied to the deployment SHA. This additive positioning does not claim that Discover or ecosystem listing flows are implemented or deployed.

@@ -1,6 +1,7 @@
 ---
 spec_id: 233
 title: SmartAIHub Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle
+revision: 2.2
 revision: 2.1
 status: PROPOSED — implementation-ready architecture candidate; production certification pending
 created: 2026-09-23
@@ -1336,3 +1337,7 @@ Spec 233 private gap state distinguishes discovered/planned/approved from `DEV_V
 ## R2a.5 Adoption and verification
 
 This erratum is a documentation-level repair, not proof that the actual repository, registry, migrations or deployed API are identical to these documents. Release gates require: acyclic build DAG; original Spec 212 and 224 baseline byte-for-byte unchanged by this pack; 234 disabled leaves 212 operational; 235 disabled leaves 224 in-flight work untouched; no raw private project data reaches Admin/Harness without a current scoped authorization; provider auto-sync does not recreate evicted indexes; late 224 acceptance is not duplicated; and no `SUPPORTED` claim follows merely from a proposed Skill, PR or passing development test. Confirm provisional IDs 233–235 with the live default branch, registry, active worktrees and PRs before integration.
+
+## R2.2 Additive global Project identity boundary — 2026-10-07
+
+SPEC-302 is the platform contract for canonical cross-domain Project identity and domain/App bindings. A `LivingProject` in this Spec is an intelligence/evolution projection that MAY bind to a SPEC-302 `projectId`; it MUST NOT become the global Project identity, membership/ACL authority, or competing project lifecycle. Existing domain project records continue to own domain data and lifecycle until a separately reviewed additive binding migration is integrated. WorkContext is owned by SPEC-292 and evidence continuity/query by SPEC-284. A LivingProject signal or semantic match may suggest a candidate but MUST NOT alone select a durable memory/evidence destination. This amendment records a normative relationship only; it does not claim runtime integration or migration.

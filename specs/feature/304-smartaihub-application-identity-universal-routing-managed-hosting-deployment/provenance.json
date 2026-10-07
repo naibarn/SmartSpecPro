@@ -1,0 +1,12 @@
+{
+  "canonical_spec_id": "304",
+  "source_type": "USER_REQUEST_AND_REPOSITORY_EVIDENCE",
+  "source_path": "/home/dev/.codex/attachments/5bff1593-3e46-493d-ba4b-f075040a67d4/Pasted text.txt",
+  "source_sha256": "82f242c68b66ffb26249c5f2f4a34ecbb559f43a551a32e0db20785368491e07",
+  "audit_source_path": "/home/dev/projects/SmartSpecPro/.tmp-audit-download/SmartSpecPro-True-Latest-Audit-2026-10-07.zip",
+  "audit_sha256": "06873c141463fd38e08538388e977934cbb0d4b79917093e403180aa45b80348",
+  "audit_source_revision": "6ff720a8395435dda9c800a28fa56fa9d7c1fc5d",
+  "repository_baseline": "1f65499e1ed9f111ea8a5803a706ef2aba66f3ef",
+  "external_library_reservation": "Not verified; no connected Spec Library/Drive tool available in this session.",
+  "design_only": "These contracts declare target architecture and do not assert runtime implementation, migration, deployment, or acceptance."
+}

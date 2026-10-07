@@ -4,7 +4,7 @@
 **Status:** Proposed / Additive / Implementation-ready candidate  
 **Spec ID:** 295  
 **Stable semantic identity:** `smartaihub.production-release-deployment-runtime-migration-operations`  
-**Revision:** R1.2 — 36-pass production architecture audit; queue/metric exactness contradictions corrected, Pages lifecycle, immutable artifact provenance, recovery/PITR/DR readiness, multi-target migration groups, data backfill/reindex sets, secret/config epoch compatibility, quota/capacity risk and change-window governance hardened  
+**Revision:** R1.3 — additive SPEC-304 stable App identity integration
 **Date:** 2026-10-06  
 **Target repository path:** `specs/feature/295-production-release-deployment-runtime-data-migration-operations/spec.md`  
 **Primary UI surface:** Admin → Platform Operations / Production Operations; App/Tenant deployment views consume scoped projections  
@@ -2203,3 +2203,7 @@ instances converged with health evidence. `PROJECT_CONVERGED` requires both for
 the selected release target. SPEC-294 displays a bounded projection of this
 state; production mutation remains within the registered deployment and
 migration authorities.
+
+## R1.3 Additive SPEC-304 stable App identity integration — 2026-10-07
+
+SPEC-304 owns stable `AppIdentity`/`publicAppId`, canonical app route and mutable aliases, App Shell/startup semantics, runtime requirement declarations, and app/channel-to-release/deployment references. SPEC-295 remains sole authority for release sets, migration execution, deployment lifecycle, desired/observed state, health, rollback, and production operations. A route resolution or App identity receipt MUST NOT imply deployment health, rollout completion, or acceptance. A domain/slug/owner change MUST NOT mutate historical deployment or release identity. Runtime requirements declared by SPEC-304 are inputs to SPEC-295's existing target/capacity/security gates, not a second provisioner or deployment executor. This is a contract alignment only; no production migration or deployment is authorized.

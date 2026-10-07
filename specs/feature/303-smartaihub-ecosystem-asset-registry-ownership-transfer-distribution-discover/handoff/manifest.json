@@ -1,0 +1,200 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 5,
+  "identity": {
+    "canonical_path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+    "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-07T04:14:02.841499Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "0.1",
+    "slug": "303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+    "spec_id": "303",
+    "title": "SmartAIHub Ecosystem Asset Registry, Ownership, Transfer, Distribution & Discover Contract"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [],
+    "updated_at": "2026-10-07T04:14:02.841499Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-07T04:14:02.841499Z",
+    "sources": [
+      {
+        "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DESIGN_CONTRACT",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+        "source_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "value": "DESIGN_CONTRACT"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: DESIGN_CONTRACT",
+        "line": 6,
+        "source": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+        "source_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "value": "DESIGN_CONTRACT"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 11,
+    "unresolved": 11
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-07T04:14:02.841499Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

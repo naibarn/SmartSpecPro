@@ -1,13 +1,13 @@
 {
-  "generation": 3,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L27"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L28"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L27",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -17,9 +17,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ffcca5a859d98ffc70dee411aab9f5a504ba808161c661c3ac9693ac5d3ab1c7",
-      "requirement_id": "REQ-69E13623012E",
+      "requirement_id": "REQ-F1635E654124",
       "requirement_text": "SmartAIHub SHALL evolve from a chat-and-tools platform into a **Living Project and Product Intelligence platform** that can accumulate user knowledge over long periods, understand what SmartAIHub can and cannot currently do, combine that platform knowledge with private user knowledge and model knowledge, identify missing capabilities, and continuously turn validated needs into Skills, Workflows, Mini Apps, Products or platform capabilities.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -27,9 +27,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L29"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L30"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L29",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L30",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -39,9 +39,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "e6c724380acf28646571003050453774f9272af991f411800a8c89b05c30f861",
-      "requirement_id": "REQ-0DE611C30069",
+      "requirement_id": "REQ-9CAB84F307D7",
       "requirement_text": "The system SHALL support users who spend days, months or years discussing, researching, uploading material, changing direction, running experiments and gradually building systems without knowing the final destination at project start.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -49,9 +49,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L63"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L64"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L63",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L64",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -61,31 +61,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "5989fb213da0c140db83a15f89c3f5819f5385e8adb471344fa6118339fa87f8",
-      "requirement_id": "REQ-D54D06BDF0C4",
+      "requirement_id": "REQ-1928EE1EABC6",
       "requirement_text": "The system SHALL NOT treat Vectorize, chat history, an LLM answer, a harness proposal or a generated workflow as durable truth by itself.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L72"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L72",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "67f2fb3ed45b2c9f2f6e411bb705f136b90625fcd9b2484ff2b7d3308ff02902",
-      "requirement_id": "REQ-80D63463E5E0",
-      "requirement_text": "4. **Spec 229 remains the only production Retrieval Broker / search / RAG authority. Spec 233 may request indexing, demotion, rehydration and retrieval but SHALL NOT create an independent RAG stack.**",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -104,10 +82,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "40eaa8ba4c6b5089beeb1a85800f883336b0ef46ab1f690900e392ec52b8ad52",
-      "requirement_id": "REQ-10B46681DFA7",
-      "requirement_text": "5. **Spec 220 remains authorization/privacy/data-access authority. Private project knowledge must never become cross-user or cross-tenant knowledge merely because an LLM summarized it.**",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "67f2fb3ed45b2c9f2f6e411bb705f136b90625fcd9b2484ff2b7d3308ff02902",
+      "requirement_id": "REQ-71236D7F5711",
+      "requirement_text": "4. **Spec 229 remains the only production Retrieval Broker / search / RAG authority. Spec 233 may request indexing, demotion, rehydration and retrieval but SHALL NOT create an independent RAG stack.**",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -115,9 +93,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L77"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L74"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L77",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L74",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -126,10 +104,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "dbddfdcd7fd8f57d3d33f4c1b33c2165dd0fe9c8f4aba6f88affd22b4e2c8a92",
-      "requirement_id": "REQ-2A86B416846A",
-      "requirement_text": "9. **The Spec 212 design/corpus baseline is the intended Use Case / Workflow Template / Capability Lab boundary, but its current runtime owner must be source/deployment-verified. Spec 234, NOT a retroactive Spec 212 revision, bridges Spec 233 eligible demand and approved candidates only to verified admission/publication interfaces.**",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "40eaa8ba4c6b5089beeb1a85800f883336b0ef46ab1f690900e392ec52b8ad52",
+      "requirement_id": "REQ-D6416ADAD7E1",
+      "requirement_text": "5. **Spec 220 remains authorization/privacy/data-access authority. Private project knowledge must never become cross-user or cross-tenant knowledge merely because an LLM summarized it.**",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -148,10 +126,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4c443d4ac057d9fc906cba37fd1b42885cfb6b6cc3a7bab8f2c73e0f40392c55",
-      "requirement_id": "REQ-4BB681513958",
-      "requirement_text": "10. **Implemented specs through 213 SHALL NOT be retroactively rewritten. Feature 196 integration is additive through Spec 226.**",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "dbddfdcd7fd8f57d3d33f4c1b33c2165dd0fe9c8f4aba6f88affd22b4e2c8a92",
+      "requirement_id": "REQ-DA70A5D8C2B5",
+      "requirement_text": "9. **The Spec 212 design/corpus baseline is the intended Use Case / Workflow Template / Capability Lab boundary, but its current runtime owner must be source/deployment-verified. Spec 234, NOT a retroactive Spec 212 revision, bridges Spec 233 eligible demand and approved candidates only to verified admission/publication interfaces.**",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -159,9 +137,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L81"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L79"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L81",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L79",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4c443d4ac057d9fc906cba37fd1b42885cfb6b6cc3a7bab8f2c73e0f40392c55",
+      "requirement_id": "REQ-6FE09E3F2C2A",
+      "requirement_text": "10. **Implemented specs through 213 SHALL NOT be retroactively rewritten. Feature 196 integration is additive through Spec 226.**",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L82"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L82",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -171,9 +171,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "978e9d517cbdf1e90e6fbd9c8c965986711290b37c16cba49dd9122d53a26b22",
-      "requirement_id": "REQ-F616018DD9D8",
+      "requirement_id": "REQ-B8B6411549AA",
       "requirement_text": "13. **No vector shall be retained forever solely because its source remains retained. No important source shall be deleted solely because its vector is demoted.**",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -181,9 +181,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L127"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L128"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L127",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L128",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -193,9 +193,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "65da65f8c14c7e3a0c9e8fdc4db13363b63220e0bc34e11c9277f24de27837af",
-      "requirement_id": "REQ-23FDFCE50581",
+      "requirement_id": "REQ-AECF0876A8B1",
       "requirement_text": "The system MUST preserve source identity. Model knowledge cannot prove platform availability; platform metadata cannot prove a scientific claim; private user evidence cannot be generalized to other users without governance.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -203,9 +203,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L160"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L161"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L160",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L161",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -215,9 +215,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "bdda6cb6f97c82f5f7dd87e8d88a1d933846c566d603c5a4aaddb69ade15d145",
-      "requirement_id": "REQ-0E5A8FF97023",
+      "requirement_id": "REQ-B2E4BDE964B6",
       "requirement_text": "- what must be added to make a solution feasible.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -225,9 +225,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L172"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L173"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L172",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L173",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -237,9 +237,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "bb196515c8deca38b742ec5e19f8cb6b0c0af1e56fa7bfb44a14988d1fd2808f",
-      "requirement_id": "REQ-6D4CCD60CA9E",
+      "requirement_id": "REQ-2FE001E0A777",
       "requirement_text": "At minimum the implementation SHALL define versioned contracts for:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -247,9 +247,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L243"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L244"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L243",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L244",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -259,9 +259,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ebba55e9e9103110171fae5dbdcc1cdc64c7c588e85f64f1a1417253e062e6bf",
-      "requirement_id": "REQ-6AC4955FEBFE",
+      "requirement_id": "REQ-C121309F73FF",
       "requirement_text": "The Project Memory Engine SHALL convert long-running conversation and project activity into durable, reviewable knowledge without treating the full transcript as active model context.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -269,9 +269,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L278"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L279"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L278",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L279",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -281,9 +281,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "79ef4281f61ce1e94af5096d8e18bf975aa652761d8367b251a7858d919ceb86",
-      "requirement_id": "REQ-AACA397549A8",
+      "requirement_id": "REQ-7CB9490E4A98",
       "requirement_text": "The system MUST NOT rewrite all memory on every message.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -291,9 +291,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L295"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L296"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L295",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L296",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -303,9 +303,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "fc04a77ede39088f1075938d0c1376292114a407f522c381a36f7532441a7acd",
-      "requirement_id": "REQ-2748491CD4F7",
+      "requirement_id": "REQ-2AFEBD02E2F7",
       "requirement_text": "Ephemeral operational facts such as a transient queue count or current provider response MUST NOT become long-term project memory unless independently relevant.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -313,9 +313,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L299"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L300"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L299",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L300",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -325,9 +325,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2fadd9f7a4423a063c19dbff6e75245f0ac55e8fb3415adbea11fd97b9eeb954",
-      "requirement_id": "REQ-B8650E5B1894",
+      "requirement_id": "REQ-8B7B189A27FD",
       "requirement_text": "Memory SHALL preserve history without presenting old state as current state.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -335,9 +335,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L317"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L318"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L317",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L318",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -349,7 +349,7 @@
       "requirement_digest": "a0713a8e579a900499607237f0af839d07ddd8fe4403f56deb30f20c87585344",
       "requirement_id": "R2",
       "requirement_text": "For appropriate projects, SmartAIHub SHALL compile durable human-readable knowledge artifacts in Library/R2. A default logical structure is:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -357,9 +357,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L336"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L337"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L336",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L337",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -369,9 +369,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "c8ec21755e730aeec85e0a1bd03e62d8422b112166963f8d899bd1e6a6a53112",
-      "requirement_id": "REQ-66D00A04B7EA",
+      "requirement_id": "REQ-AE20499BF590",
       "requirement_text": "The physical file layout MAY be virtualized, but exported artifacts MUST remain deterministic and reconstructable.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -379,9 +379,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L346"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L347"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L346",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L347",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -391,9 +391,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "c2fa303010d8b8d59f6076d467f45c2e5a7c7985bc019e04bc03cbd99fbd9e92",
-      "requirement_id": "REQ-57C1F20B7A03",
+      "requirement_id": "REQ-09D91BB8AE3A",
       "requirement_text": "Consolidation SHOULD update the affected section rather than blindly append duplicate summaries. Human edits MUST be protected using versioning/managed sections or conflict-aware merge.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -401,9 +401,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L350"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L351"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L350",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L351",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -413,9 +413,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "076f7d6b40fa4e5072b5b0ec322b70fbe3726e5009f9e912027c882ced3ed46e",
-      "requirement_id": "REQ-16156225D9A9",
+      "requirement_id": "REQ-E5381C6B6DCA",
       "requirement_text": "The Project Knowledge Compiler SHALL produce a compact `ProjectKnowledgePack` containing references, not copies of all content.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -423,9 +423,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L382"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L383"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L382",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L383",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -435,9 +435,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "6f7decbceb467f7c262e6f708d643afab15b90947fa5e5499b475398c7418e6b",
-      "requirement_id": "REQ-428795DD1DD3",
+      "requirement_id": "REQ-3C75472C632B",
       "requirement_text": "Thresholds are configurable and must not be hard-coded by this spec.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -445,9 +445,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L390"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L391"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L390",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L391",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -457,9 +457,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "c179f2106ae4a36843626a493c1836a94d2ca873904901dd068f138cc16acbaf",
-      "requirement_id": "R2-390",
+      "requirement_id": "R2-391",
       "requirement_text": "The UI must continue to show archived conversations. Opening an archived thread MAY stream content from R2 rather than restoring the entire transcript to SQL.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -467,9 +467,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L394"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L395"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L394",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L395",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -479,9 +479,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "99871515ab0fa537d71f8ce44caa1809c5b350700ea4961608b4999845ac948c",
-      "requirement_id": "REQ-115D2678C08A",
+      "requirement_id": "REQ-615E0ADA8E3A",
       "requirement_text": "Archival MUST preserve:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -489,9 +489,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L419"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L420"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L419",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L420",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -501,9 +501,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "b9ca958130f39d527bb29f4045e0f464c12920942fe50ecd267b4ff109a3720b",
-      "requirement_id": "REQ-0FB82DDAC96D",
+      "requirement_id": "REQ-4D1F4501E0B2",
       "requirement_text": "Spec 229 SHALL expose lifecycle semantics covering at least:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -511,9 +511,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L431"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L432"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L431",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L432",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -523,9 +523,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "74481d3ef50bb72f37a5514565d359d274f8a187b8c475e2d598b3c6b3a01544",
-      "requirement_id": "REQ-F088CA80A42E",
+      "requirement_id": "REQ-0C51A6D1028E",
       "requirement_text": "The controller SHALL consider more than age:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -533,9 +533,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L451"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L452"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L451",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L452",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -545,9 +545,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "49eb05a92651c57c2200ac80398639d03269032e1b6b7d08e20fab88b0dcae48",
-      "requirement_id": "REQ-F5ADCE601318",
+      "requirement_id": "REQ-30B2A7E1A73F",
       "requirement_text": "Cold or source-only content SHALL remain discoverable through a compact authorized Knowledge Catalog containing enough metadata to locate and rehydrate the source without retaining detailed vectors.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -555,9 +555,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L464"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L465"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L464",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L465",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -567,9 +567,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "32893eaa63952b84f312dcdffe48eb6e8eba20a6a99dd963371c87f96b74fb56",
-      "requirement_id": "REQ-FC4081544393",
+      "requirement_id": "REQ-443CECFA180F",
       "requirement_text": "Re-indexing must not be required merely to open a known file by ID.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -577,9 +577,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L476"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L477"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L476",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L477",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -589,9 +589,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "67fed4d948c2e0e44e07ffdf80d4ffe8f2c798b175d3cc0360d3aa2e1e591eb5",
-      "requirement_id": "REQ-84FA5A986C82",
+      "requirement_id": "REQ-6F0A5F04DF5E",
       "requirement_text": "Every product-intelligence answer involving feasibility SHALL distinguish:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -599,9 +599,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L534"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L535"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L534",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L535",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -611,9 +611,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "61c412d4c821aa5d7ba1f973c913d021f8e02a8611f71cf836bd44975a542748",
-      "requirement_id": "REQ-CC9E00995E8B",
+      "requirement_id": "REQ-17306A7478AE",
       "requirement_text": "into a semantic need such as `user-recorded-character-voice`, but MUST preserve source privacy.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -621,9 +621,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L538"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L539"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L538",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L539",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -633,9 +633,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "21d6bbc32a7023d13cea2f7371e78cbfc73bdb6d36e8ecbe0220513c24f47053",
-      "requirement_id": "REQ-53403BFFEC94",
+      "requirement_id": "REQ-90324859EA92",
       "requirement_text": "A need SHALL be classified before development:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -643,9 +643,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L551"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L552"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L551",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L552",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -655,9 +655,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "cbd5c33d7a42d72bb7d3a014559107a6f1a5a5546b9a7f55dd7891f10e2b8666",
-      "requirement_id": "REQ-DDC8664F344D",
+      "requirement_id": "REQ-4C090E8711CF",
       "requirement_text": "Private project questions MUST NOT automatically become admin roadmap items.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -665,9 +665,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L567"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L568"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L567",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L568",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -677,9 +677,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "d3c878fbca541c64e1be3144f2da2c79d03a5635f175ae7a01033ad9600cf0be",
-      "requirement_id": "REQ-972D9EDF1BA4",
+      "requirement_id": "REQ-5497D77DEFBC",
       "requirement_text": "The reasoning engine SHALL be able to construct:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -687,9 +687,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L616"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L617"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L616",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L617",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -699,9 +699,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "081de35efd0ef06df2cd9a2f775558dc6f2aa30cb46feffeec9fe21f0cfa6ecb",
-      "requirement_id": "REQ-52D3D8B69F3C",
+      "requirement_id": "REQ-D8459D3D093B",
       "requirement_text": "Harness proposals SHALL NOT mutate Capability Registry directly.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -709,9 +709,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L618"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L619"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L618",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L619",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -721,9 +721,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "db8c35d79222cead3b6df207bfc7f07e7c09370a99702347116e86f37d0bc085",
-      "requirement_id": "REQ-DD0825E38704",
+      "requirement_id": "REQ-0D840A9F97AB",
       "requirement_text": "Private data forwarding follows Spec 220 policy and must use the minimum required projection. External provider permission is independent from project-file permission.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -731,9 +731,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L642"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L643"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L642",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L643",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -743,9 +743,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "8b23c319c4fdc3004a2109bf289ff1adcff01816a933697f12112062404e212d",
-      "requirement_id": "REQ-F20C1D483F4C",
+      "requirement_id": "REQ-46B30900625B",
       "requirement_text": "Mini Apps, Web Apps and Workflows created inside a Living Project SHALL be evolvable artifacts, not one-shot outputs.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -753,9 +753,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L657"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L658"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L657",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L658",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -765,9 +765,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a404ac18642bede6f0d0ff7377a4929df4e8f7aaf5404c59142b23d93df51714",
-      "requirement_id": "REQ-CD30C12C6FDB",
+      "requirement_id": "REQ-63EAD41143C9",
       "requirement_text": "Experimental branches MUST NOT silently mutate the stable application.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -775,9 +775,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L708"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L709"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L708",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L709",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -787,31 +787,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "79c6a99386a1a677e06aa725c0f1336de111bef518e97a432ada7e12d7512a31",
-      "requirement_id": "REQ-BCACCFC5C836",
+      "requirement_id": "REQ-3DC55B5BB377",
       "requirement_text": "Only after approval/policy eligibility MAY an approved development intent enter the Spec 235 independent bridge. Spec 235 SHALL submit the versioned package to the **actual existing Spec 224 ingress only after its separately verified integration-readiness gate**, without editing or restarting Spec 224. The package contains:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L715"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L715",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "235a5a91e9c3b0fd4817f49d67faee39ca00f30f1b78a340a995d2fa9cd2f866",
-      "requirement_id": "REQ-6727DD28EF76",
-      "requirement_text": "- required artifact class;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -830,10 +808,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "94a8e077f378f33a94b676c1045d84f98c31e9ddaa86ae62cb590e61c78e4f42",
-      "requirement_id": "REQ-B40AC3B325B9",
-      "requirement_text": "- acceptance criteria;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "235a5a91e9c3b0fd4817f49d67faee39ca00f30f1b78a340a995d2fa9cd2f866",
+      "requirement_id": "REQ-57AD1F863832",
+      "requirement_text": "- required artifact class;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -841,9 +819,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L725"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L717"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L725",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L717",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "94a8e077f378f33a94b676c1045d84f98c31e9ddaa86ae62cb590e61c78e4f42",
+      "requirement_id": "REQ-A3A07E5E6828",
+      "requirement_text": "- acceptance criteria;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L726"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L726",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -853,9 +853,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "7a5f9966ee29003818f6008b1dbba4df44bfca370d81748fb2bfdc3ed2c9d4e5",
-      "requirement_id": "REQ-FE6F1457B8B8",
+      "requirement_id": "REQ-1CBE35338531",
       "requirement_text": "A successfully released capability SHALL trigger:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -863,9 +863,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L740"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L741"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L740",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L741",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -875,31 +875,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "8eb7a68e86f64b634338f4ee6e3023b92211143daab78e65b83aa43aa1b7ad16",
-      "requirement_id": "REQ-210B6A768134",
+      "requirement_id": "REQ-5037A2715D07",
       "requirement_text": "A Living Project MUST expose a user-accessible memory view with at least:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L742"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L742",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "66f84464800d6a71074b3df3cc1e63148d89c56a75421ba88397b06d73f3c51e",
-      "requirement_id": "REQ-265F96FC4C8D",
-      "requirement_text": "- Current goals;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -918,10 +896,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e8ec04321b1677861b6e23e8268229274861870e48a0aef418d7b5a371337355",
-      "requirement_id": "REQ-8F9F1B58C128",
-      "requirement_text": "- Ideas;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "66f84464800d6a71074b3df3cc1e63148d89c56a75421ba88397b06d73f3c51e",
+      "requirement_id": "REQ-85383714D2B5",
+      "requirement_text": "- Current goals;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -940,10 +918,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2c2a08daffd7cdb0187bea3fd82f6294d74c84f56b67caa15272fca9e3010275",
-      "requirement_id": "REQ-214B4832CB03",
-      "requirement_text": "- Decisions;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "e8ec04321b1677861b6e23e8268229274861870e48a0aef418d7b5a371337355",
+      "requirement_id": "REQ-2FAE34B3E865",
+      "requirement_text": "- Ideas;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -962,10 +940,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "91f22ccf24115342ba19b09c63981f7f5b911beb9e047c9fcf0a817a2f977ed3",
-      "requirement_id": "REQ-944E660672BC",
-      "requirement_text": "- Research/findings;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "2c2a08daffd7cdb0187bea3fd82f6294d74c84f56b67caa15272fca9e3010275",
+      "requirement_id": "REQ-C7EACC376C59",
+      "requirement_text": "- Decisions;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -984,10 +962,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "0bd655e59ba0b0b6411597f7384d013a2cff189f8ea0cc379e8e533d15f2ef3a",
-      "requirement_id": "REQ-AA63511AF9AA",
-      "requirement_text": "- Experiments;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "91f22ccf24115342ba19b09c63981f7f5b911beb9e047c9fcf0a817a2f977ed3",
+      "requirement_id": "REQ-BF908DA7CE5D",
+      "requirement_text": "- Research/findings;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1006,10 +984,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fcb7dce70ada1aa8d8aab698dd45ea41e1d6e7f0c1b1fa0da2bfadc31f4142d6",
-      "requirement_id": "REQ-F84B40040C7C",
-      "requirement_text": "- Open questions;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "0bd655e59ba0b0b6411597f7384d013a2cff189f8ea0cc379e8e533d15f2ef3a",
+      "requirement_id": "REQ-2A8CF4B8B54E",
+      "requirement_text": "- Experiments;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1028,10 +1006,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "4bccfc64f7e6fae086782cf84321c4a1b47baae8394e2bc8fd7df53203095950",
-      "requirement_id": "REQ-D04EF22E72A9",
-      "requirement_text": "- Capability gaps/opportunities;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "fcb7dce70ada1aa8d8aab698dd45ea41e1d6e7f0c1b1fa0da2bfadc31f4142d6",
+      "requirement_id": "REQ-E580F66261AD",
+      "requirement_text": "- Open questions;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1050,10 +1028,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "729f3333b6afc025c6591b898a2a057ef334d1ab0a2a27dc1d62864bd16a8516",
-      "requirement_id": "REQ-AE1918A39362",
-      "requirement_text": "- source/evidence links;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "4bccfc64f7e6fae086782cf84321c4a1b47baae8394e2bc8fd7df53203095950",
+      "requirement_id": "REQ-9FF626E95AD5",
+      "requirement_text": "- Capability gaps/opportunities;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1072,10 +1050,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "ccd4c71a6e5a1210714307103fa7580853d3bfa003e82388480b89da7f0747a3",
-      "requirement_id": "REQ-835B96640156",
-      "requirement_text": "- status/history;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "729f3333b6afc025c6591b898a2a057ef334d1ab0a2a27dc1d62864bd16a8516",
+      "requirement_id": "REQ-128A3628B615",
+      "requirement_text": "- source/evidence links;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1094,10 +1072,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "caee55c0bb477f2badb6895f5f2dd222f89bd728dfbd5e392202e84d758aca63",
-      "requirement_id": "REQ-78B6CE09624F",
-      "requirement_text": "- pin / exclude / correct actions;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "ccd4c71a6e5a1210714307103fa7580853d3bfa003e82388480b89da7f0747a3",
+      "requirement_id": "REQ-FE38B84F8B68",
+      "requirement_text": "- status/history;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1116,10 +1094,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "2019e7be2b6358433168f84a88088b267d0e4cc4a1d6b857bf965db7ed42497d",
-      "requirement_id": "REQ-48FD709A61F6",
-      "requirement_text": "- privacy/share scope.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "caee55c0bb477f2badb6895f5f2dd222f89bd728dfbd5e392202e84d758aca63",
+      "requirement_id": "REQ-D59580E7798B",
+      "requirement_text": "- pin / exclude / correct actions;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1127,9 +1105,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L778"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L753"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L778",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L753",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "2019e7be2b6358433168f84a88088b267d0e4cc4a1d6b857bf965db7ed42497d",
+      "requirement_id": "REQ-959E68E8D10A",
+      "requirement_text": "- privacy/share scope.",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L779"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L779",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1139,31 +1139,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "e8b0cffc035497418465d603a44476966a45911fa2815489f6617c50446beaa8",
-      "requirement_id": "REQ-FE877556DC18",
+      "requirement_id": "REQ-982C4D1191AA",
       "requirement_text": "Admin/product owners SHALL have a queue for eligible product signals showing:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L780"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L780",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "fb8a7fd84d069c5c2af16c2cc7701ad2ca0229abd3b613c9ded477026b7e4738",
-      "requirement_id": "REQ-DC864E1808B3",
-      "requirement_text": "- canonical need;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1182,10 +1160,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "1bda3cbd6bfb119743e6c13de8226a126e918df2cb5365b9124996c04f27c432",
-      "requirement_id": "REQ-113A769026C9",
-      "requirement_text": "- evidence-safe demand count;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "fb8a7fd84d069c5c2af16c2cc7701ad2ca0229abd3b613c9ded477026b7e4738",
+      "requirement_id": "REQ-D5DA88273130",
+      "requirement_text": "- canonical need;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1204,10 +1182,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "18edd296224090e76bbb5c2cca788cbba02384b1c8ea7dc2e08c32f008939c8a",
-      "requirement_id": "REQ-3075A9222B1C",
-      "requirement_text": "- affected use cases;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "1bda3cbd6bfb119743e6c13de8226a126e918df2cb5365b9124996c04f27c432",
+      "requirement_id": "REQ-9C0B62C51E31",
+      "requirement_text": "- evidence-safe demand count;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1226,10 +1204,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "6b2d4e0f08380e0e26dd54c0f6e8e50bfddde844584a36eee878df83f6cce619",
-      "requirement_id": "REQ-915579B8BA36",
-      "requirement_text": "- current capability coverage;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "18edd296224090e76bbb5c2cca788cbba02384b1c8ea7dc2e08c32f008939c8a",
+      "requirement_id": "REQ-D4A29C8B8C43",
+      "requirement_text": "- affected use cases;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1248,10 +1226,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "d6fc3416dcbf295d403c7c5c9722590b8a6dba6b0da9deee231789e0e2e869f6",
-      "requirement_id": "REQ-1696203A6158",
-      "requirement_text": "- existing/in-progress duplicate check;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "6b2d4e0f08380e0e26dd54c0f6e8e50bfddde844584a36eee878df83f6cce619",
+      "requirement_id": "REQ-434A57440717",
+      "requirement_text": "- current capability coverage;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1270,10 +1248,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "c2c98c1ddff8d87a242c8c7f09175bbbc93b9b04cadb4e7cec2dc71d5188961b",
-      "requirement_id": "REQ-884F23488EE2",
-      "requirement_text": "- resolution class;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "d6fc3416dcbf295d403c7c5c9722590b8a6dba6b0da9deee231789e0e2e869f6",
+      "requirement_id": "REQ-9DE4A4D67147",
+      "requirement_text": "- existing/in-progress duplicate check;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1292,10 +1270,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "32838579bdb6fb5c7c48f1c3abeac0c57c872578e4f682ad60769f0fb12fcd1e",
-      "requirement_id": "REQ-BADE9841FBDA",
-      "requirement_text": "- reuse potential;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "c2c98c1ddff8d87a242c8c7f09175bbbc93b9b04cadb4e7cec2dc71d5188961b",
+      "requirement_id": "REQ-4A08CC06DE4A",
+      "requirement_text": "- resolution class;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1314,10 +1292,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "78002c8cfa4f9457f7e2bbefe551f924302c3f71a200affaf3950f73c9c389ee",
-      "requirement_id": "REQ-3C380779A337",
-      "requirement_text": "- estimated effort/risk;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "32838579bdb6fb5c7c48f1c3abeac0c57c872578e4f682ad60769f0fb12fcd1e",
+      "requirement_id": "REQ-57C24B2B13EE",
+      "requirement_text": "- reuse potential;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1336,10 +1314,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "5b869f203f1f338890e8d30571061ab0e40bd76e9ca071df264e7411e29fec8f",
-      "requirement_id": "REQ-EEA6B85FCFE2",
-      "requirement_text": "- suggested action;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "78002c8cfa4f9457f7e2bbefe551f924302c3f71a200affaf3950f73c9c389ee",
+      "requirement_id": "REQ-B51C7E3DFA77",
+      "requirement_text": "- estimated effort/risk;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1358,10 +1336,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a19183df79d99145e444865303034e57af5776acb4b3762e40ccdcd9b5705a72",
-      "requirement_id": "REQ-B2FF5EA94367",
-      "requirement_text": "- approval/merge/defer/reject controls.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "5b869f203f1f338890e8d30571061ab0e40bd76e9ca071df264e7411e29fec8f",
+      "requirement_id": "REQ-DD6DF3784685",
+      "requirement_text": "- suggested action;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1369,9 +1347,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L791"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L790"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L791",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L790",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a19183df79d99145e444865303034e57af5776acb4b3762e40ccdcd9b5705a72",
+      "requirement_id": "REQ-557F9E5F2A42",
+      "requirement_text": "- approval/merge/defer/reject controls.",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L792"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L792",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1381,31 +1381,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "dcaf45543a0ccebb59b0beeb8245e03c631b00e99da5458f6bd5a99424d32249",
-      "requirement_id": "REQ-6EA9727A5513",
+      "requirement_id": "REQ-033AC2204E1F",
       "requirement_text": "Private source content SHALL NOT be exposed merely to justify aggregate demand.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L800"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L800",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "f4ff1c1ef52178a1865137bb5ecef1da3b0dd1f424bdd423a3bc9c9214ae7637",
-      "requirement_id": "REQ-FFCB07E634D3",
-      "requirement_text": "4. Revocation must invalidate future retrieval and propagate to derived indexes/caches according to policy.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1424,10 +1402,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "e0e5330761ed50a3a662e446587eeeec6a15b7e5e7542d265fb5a84ca858460a",
-      "requirement_id": "REQ-7D6D1B643E7F",
-      "requirement_text": "5. External harness forwarding must be explicitly policy-eligible; source files and derived summaries can have different forwarding permissions.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "f4ff1c1ef52178a1865137bb5ecef1da3b0dd1f424bdd423a3bc9c9214ae7637",
+      "requirement_id": "REQ-52B118569903",
+      "requirement_text": "4. Revocation must invalidate future retrieval and propagate to derived indexes/caches according to policy.",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1435,9 +1413,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L805"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L802"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L805",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L802",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e0e5330761ed50a3a662e446587eeeec6a15b7e5e7542d265fb5a84ca858460a",
+      "requirement_id": "REQ-51D93610658F",
+      "requirement_text": "5. External harness forwarding must be explicitly policy-eligible; source files and derived summaries can have different forwarding permissions.",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L806"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L806",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1447,9 +1447,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "cc4d450c6549e272932cc41a00449b3dc3393753636a02ec52332f0ce570cf70",
-      "requirement_id": "REQ-16B767F6D0F3",
+      "requirement_id": "REQ-98214FDC4F78",
       "requirement_text": "9. Admin aggregate signals must satisfy minimum aggregation/privacy thresholds when configured.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1457,9 +1457,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L846"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L847"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L846",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L847",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1469,9 +1469,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "ce4a3c36a5dada4a02dca82d719bd4a350afa495244ed01ac408d746adc57e83",
-      "requirement_id": "REQ-B7D563E0ECA4",
+      "requirement_id": "REQ-8532C312DA97",
       "requirement_text": "All durable background consolidation, archive, rehydration, indexing and development handoff work must execute through the canonical job/control plane. Spec 233 creates no new durable job authority.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1479,9 +1479,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L872"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L873"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L872",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L873",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1491,9 +1491,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "8111b09c279b3da2157ea4cc86f290a283fd08feda101c1b9048b7d0a991e10b",
-      "requirement_id": "REQ-4F987C638C76",
+      "requirement_id": "REQ-7053E218A3A0",
       "requirement_text": "Spec 233 SHALL request new logical source classes/profiles rather than direct provider access:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1501,9 +1501,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L891"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L892"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L891",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L892",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1513,9 +1513,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "448fd5306a39dd2f35f5a2e02ed8dc350bb9c7574952b406929d89272c1083a0",
-      "requirement_id": "REQ-72993E0D70F4",
+      "requirement_id": "REQ-B9DC610A3204",
       "requirement_text": "Spec 230 SHALL extend its Project Context Pack to reference, not duplicate:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1523,9 +1523,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L902"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L903"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L902",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L903",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1535,9 +1535,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "4c115c5d79837259e5686b2e9ef66be01a124ac63121fbf6d0bb1e22bd053201",
-      "requirement_id": "REQ-5B7E61D09CEC",
+      "requirement_id": "REQ-39BB1AAC44DD",
       "requirement_text": "External harness adapters receive only the bounded context required by the development task.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1545,9 +1545,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L925"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L926"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L925",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L926",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1557,9 +1557,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "85e655b9e21f1b0db900c95ddd4ac1aa757311501c443f06a09ef37d67f89f38",
-      "requirement_id": "REQ-0FB493D28C17",
+      "requirement_id": "REQ-EA88D6CBB216",
       "requirement_text": "Spec 222 MUST NOT:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1567,9 +1567,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L936"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L937"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L936",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L937",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1579,9 +1579,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "039febbed0670c3421a4c6ef27dc62ab435c4e87ecf6d23f3925fe52f80cd1ce",
-      "requirement_id": "REQ-BF3F8D04AF1B",
+      "requirement_id": "REQ-5F09EFC10A3C",
       "requirement_text": "The **independent Spec 234** SHALL bridge approved semantic needs to the *source-verified* Spec 212 admission/validation/publication interfaces, detect semantic duplicates and coordinate targeted Solution Variant re-evaluation when new capabilities ship. If that runtime interface is not present in the target deployment, the bridge remains disabled and reports a capability gap. Spec 212 baseline code/spec/corpus SHALL NOT be rewritten by this upgrade.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1589,9 +1589,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L944"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L945"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L944",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L945",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1601,9 +1601,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "72930f7218a5598ed7fd54c0b76a681b6e11f103c6abf1418c9921a1513ceac7",
-      "requirement_id": "REQ-8425F9B278B7",
+      "requirement_id": "REQ-C44716009139",
       "requirement_text": "Product-improvement signals may originate from Feedback/Issue intake but must be classified:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1611,9 +1611,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L958"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L959"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L958",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L959",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1623,9 +1623,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a61559d80fa7b3ee006eac8ca15e5b03149473a124569524a0d227944efda893",
-      "requirement_id": "REQ-4522B1936D68",
+      "requirement_id": "REQ-DD0E8811E77C",
       "requirement_text": "Feature 196 is part of the implemented <=213 baseline and SHALL NOT be retroactively rewritten.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1633,9 +1633,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L960"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L961"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L960",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L961",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1645,9 +1645,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "a4839d707ed63f5956fa1c8f0eec9a5cf70f560b3d24df66f7097d445b48708d",
-      "requirement_id": "REQ-A9AC9E9D82F0",
+      "requirement_id": "REQ-DD50F4510B95",
       "requirement_text": "Spec 226 SHALL add adapters/events so existing Chat can:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1655,9 +1655,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L973"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L974"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L973",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L974",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1667,9 +1667,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "bec202d250b6bbbeb1e71ba15d0b411d0840fafe6f7477ff9b2e9b4638dbf3f1",
-      "requirement_id": "REQ-788C0268EB2F",
+      "requirement_id": "REQ-2566F0D46EC4",
       "requirement_text": "Implementation SHALL use expand → shadow → validate → promote → compact.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1677,9 +1677,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1049"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1050"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1049",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1050",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1689,9 +1689,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "611120978f5636aed3e01c79dd88dbcf0f5fbf2d7e8652359588cea9dcf9079a",
-      "requirement_id": "REQ-F81A48060C4E",
+      "requirement_id": "REQ-02AEBB5C79DB",
       "requirement_text": "Spec 233 / 234 / 235 SHALL NOT become prerequisites or retroactive amendments for finishing the already-started Spec 224 orchestration kernel. Spec 235 integration is an independent optional post-milestone bridge.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1699,9 +1699,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1076"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1077"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1076",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1077",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1711,9 +1711,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "751b6d371fc2a91f5df5bf36c337ff6761e989286a96d9864a95627f405ab68a",
-      "requirement_id": "REQ-EE4DBD975FEE",
+      "requirement_id": "REQ-10E8F3A179C5",
       "requirement_text": "Metrics must preserve tenant/privacy boundaries.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1721,9 +1721,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1082"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1083"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1082",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1083",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1733,9 +1733,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "e127b7ba2266c525cbad1b1281e500d828acaa56f8c9d6c25fcdabd69527c1df",
-      "requirement_id": "REQ-A9C46D43C553",
+      "requirement_id": "REQ-54D237416E35",
       "requirement_text": "Required fail-safe behavior:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1743,9 +1743,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1151"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1152"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1151",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1152",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1755,31 +1755,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "1e6fb1c2dffa30d79d2268ced6297aff38c3e87a059298ab21b6ea400a6826d2",
-      "requirement_id": "REQ-DCCA7950A9AA",
+      "requirement_id": "REQ-40A396470C25",
       "requirement_text": "Must prove:",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
-      "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
-    },
-    {
-      "applicability": "UNASSESSED",
-      "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1153"
-      ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1153",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "8886f5184d381083eff1a70a6de5f7f542c9ab16e4b4465df5b0fb9a14a715ea",
-      "requirement_id": "REQ-A982774C3993",
-      "requirement_text": "- tenant/project ACL enforcement before model exposure;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1798,10 +1776,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "3ffd623c0edeff9af041e7b60565a61efe1af5704c53220dc728d52063b07c86",
-      "requirement_id": "REQ-88F58D0A9DE9",
-      "requirement_text": "- no cross-project/cross-tenant vector leakage;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "8886f5184d381083eff1a70a6de5f7f542c9ab16e4b4465df5b0fb9a14a715ea",
+      "requirement_id": "REQ-A980455C3A59",
+      "requirement_text": "- tenant/project ACL enforcement before model exposure;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1820,10 +1798,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "49bbd4be00e405b46b076b253a85b19e00fd108fedeee7efdfea6522b8bd63c4",
-      "requirement_id": "REQ-18EDC41E3F0A",
-      "requirement_text": "- deletion/revocation propagation;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "3ffd623c0edeff9af041e7b60565a61efe1af5704c53220dc728d52063b07c86",
+      "requirement_id": "REQ-2C20A9347F4A",
+      "requirement_text": "- no cross-project/cross-tenant vector leakage;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1842,10 +1820,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a5348c360262f8806448e4a31273568a4acd8f672dbab67b90b36a1e20b5e997",
-      "requirement_id": "REQ-14EA38E7B858",
-      "requirement_text": "- prompt-injection treatment for uploaded content;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "49bbd4be00e405b46b076b253a85b19e00fd108fedeee7efdfea6522b8bd63c4",
+      "requirement_id": "REQ-6603ED7D7730",
+      "requirement_text": "- deletion/revocation propagation;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1864,10 +1842,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "99a9554373062e40ecec6921f46cb2c501967ef0a70a8e2d76db687f744afddb",
-      "requirement_id": "REQ-820C69DEDA54",
-      "requirement_text": "- least-privilege external harness projection;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "a5348c360262f8806448e4a31273568a4acd8f672dbab67b90b36a1e20b5e997",
+      "requirement_id": "REQ-97ABFE2EE7E2",
+      "requirement_text": "- prompt-injection treatment for uploaded content;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1886,10 +1864,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "b074cab80a6a23b2c78ddf623548bf4d5eb1aae8f00b80a6720146b7b08eb381",
-      "requirement_id": "REQ-01706F1F674D",
-      "requirement_text": "- admin Product Evolution queue does not expose private research text;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "99a9554373062e40ecec6921f46cb2c501967ef0a70a8e2d76db687f744afddb",
+      "requirement_id": "REQ-14BE84AF3516",
+      "requirement_text": "- least-privilege external harness projection;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1908,10 +1886,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "cffe35a4cf2d55bd2aaac6c9f06919d1c57c8c989c5a445dbd9b07e183cce4c4",
-      "requirement_id": "R2-1159",
-      "requirement_text": "- archived SQL/R2 data respects retention and deletion requests;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "b074cab80a6a23b2c78ddf623548bf4d5eb1aae8f00b80a6720146b7b08eb381",
+      "requirement_id": "REQ-EEA767474E2E",
+      "requirement_text": "- admin Product Evolution queue does not expose private research text;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1930,10 +1908,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "7996de13c78b838c5aac85942a38665c076a78f439d52525487e501ac0c6d2c2",
-      "requirement_id": "REQ-433ACDE45AC6",
-      "requirement_text": "- derived memory/index artifacts are covered by deletion semantics;",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "cffe35a4cf2d55bd2aaac6c9f06919d1c57c8c989c5a445dbd9b07e183cce4c4",
+      "requirement_id": "R2-1160",
+      "requirement_text": "- archived SQL/R2 data respects retention and deletion requests;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1952,10 +1930,10 @@
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
-      "requirement_digest": "a40640602e68185b6ac3fdcc0e3e500af7bbba0ce30f3b373dba2750e58c9085",
-      "requirement_id": "REQ-0A3F9EDFD4D4",
-      "requirement_text": "- capability verification cannot grant permission or deployment authority.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "requirement_digest": "7996de13c78b838c5aac85942a38665c076a78f439d52525487e501ac0c6d2c2",
+      "requirement_id": "REQ-5E185FB57488",
+      "requirement_text": "- derived memory/index artifacts are covered by deletion semantics;",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1963,9 +1941,31 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1279"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1162"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1279",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1162",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "a40640602e68185b6ac3fdcc0e3e500af7bbba0ce30f3b373dba2750e58c9085",
+      "requirement_id": "REQ-76DE97784C98",
+      "requirement_text": "- capability verification cannot grant permission or deployment authority.",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1280"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1280",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1975,9 +1975,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "f10c4885721747955fc9f6b5d6dbc1697effdae583a6c2536426c48297384b5f",
-      "requirement_id": "REQ-C3D53D0C17E0",
+      "requirement_id": "REQ-53C3D4C5155B",
       "requirement_text": "| Baseline | Actual user-provided state | Required behavior |",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1985,9 +1985,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1288"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1289"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1288",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1289",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -1997,9 +1997,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "b0483b302092d403eacdcf8faf94640568261c8292c3d9ff1b1c2c97f8e7bd8d",
-      "requirement_id": "REQ-104868E4D544",
+      "requirement_id": "REQ-1F027D43EB55",
       "requirement_text": "Spec 233 owns private/project Need/Gap/Proposal status and consent. Spec 234 owns eligibility-aware Use Case candidate translation but NOT the catalog's canonical IDs, published variants or benchmark grades. Spec 235 owns only approved, versioned intent queues, compatibility preflight and handoff receipts; it does NOT own DevelopmentRun, `worker_jobs`/leases, approvals, Final Verify or deployment. The current 224 implementation SHALL not see P235 as a prerequisite.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2007,9 +2007,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1292"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1293"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1292",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1293",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2019,9 +2019,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "2982b1fa998a30b9a0b0e2767be5dce292f0750195e653cc294ebb655ced8de4",
-      "requirement_id": "REQ-04FE72E2D28D",
+      "requirement_id": "REQ-128140C3F824",
       "requirement_text": "P233.0–P233.4 and Spec 234's read-only matching MAY progress while 224 continues if resources permit. Spec 235 P235.0–P235.1 MAY inventory the actual ingress and queue scoped intents. Writable P235.2+ MUST remain blocked until a certified supported ingress/approval/idempotency profile actually exists in the deployed 224 implementation. An absent feature is `NOT_READY`, not implied integration success.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2029,9 +2029,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1296"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1297"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1296",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1297",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2041,9 +2041,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "b1e66948e6683b2e27c07d9609de336519aa6ac9ee386b9d38a899ea2b2b35cd",
-      "requirement_id": "REQ-D555D2DAC4A4",
+      "requirement_id": "REQ-164F2ABAF384",
       "requirement_text": "`Spec224 COMPLETED` is evidence only for its authorized development lifecycle. After a real 235 completion receipt, the domain release owner must verify deployment, trust/certification, entitlements and availability before 233 can claim the new capability is supported. Spec 234 may then reevaluate ONLY impacted Use Cases.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2051,9 +2051,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1326"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1327"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1326",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1327",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2063,9 +2063,9 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "331fa5507c39139dee236791747fcc81af7deb8a341137dbf1a612b59d302034",
-      "requirement_id": "REQ-BB05C9C4DC3C",
+      "requirement_id": "REQ-3CD46C60CE8B",
       "requirement_text": "Spec 233 publishes only eligible/declassified `NEED_ELIGIBLE` and `NEED_WITHDRAWN` projections for 234, and separately owner/admin-authorized `PROPOSAL_APPROVED` and `PROPOSAL_REVOKED` intents for 235. Each event carries `schemaVersion=1.0`, authenticated publisher, event ID, source aggregate/revision, tenant/project/scope, policy version, ACL epoch, eligibility proof when required, immutable payload digest, causal predecessor, idempotency key and retention class. Delivery uses the existing transactional outbox/`worker_jobs` with independent consumer inbox dedup, replay fencing and schema compatibility. An event carries only a limited reference where source is private. 234/235 NEVER receive blanket permission to mine raw chats or access user Library contents. Late/duplicate/reordered events SHALL not create duplicate catalog identities, developer jobs, public demand stats or capability claims.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2073,9 +2073,9 @@
     {
       "applicability": "UNASSESSED",
       "authority_refs": [
-        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1330"
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1331"
       ],
-      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1330",
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1331",
       "blocker": null,
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
@@ -2085,15 +2085,37 @@
       "implementation_status": "UNVERIFIED",
       "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "c4cb29cd9c8fb7265c17f7070187f31a384aaea22c11e8a0f62779ffa36bcfa7",
-      "requirement_id": "R2-1330",
+      "requirement_id": "R2-1331",
       "requirement_text": "PostgreSQL is the authoritative state/ACL/manifests store; R2/Library holds authorized durable knowledge; Spec 229 is the sole search projection authority. Archived or deliberately evicted objects SHALL be outside any connected AI Search R2 source include path or be covered by enforceable exclusion rules before declaring eviction successful. Connected AI Search runs scheduled source sync and can reindex retained R2 objects; provider-specific sync and delete verification are mandatory. For direct Vectorize, asynchronous upsert/delete mutation completion and new-snapshot lookup are separately verified; ACL/consent tombstones exclude stale results immediately at the Retrieval Broker. Rehydration after renewed user interest uses approved current source revision/ACL, cost budget and bounded asynchronous `worker_jobs`; direct source read remains available if no vector is needed.",
-      "source_spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1343"
+      ],
+      "authority_source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1343",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "99573102139c0057dd20a6382117da31dee328d8769fa25372dbaa1d232c5b03",
+      "requirement_id": "REQ-E27C14AE9834",
+      "requirement_text": "SPEC-302 is the platform contract for canonical cross-domain Project identity and domain/App bindings. A `LivingProject` in this Spec is an intelligence/evolution projection that MAY bind to a SPEC-302 `projectId`; it MUST NOT become the global Project identity, membership/ACL authority, or competing project lifecycle. Existing domain project records continue to own domain data and lifecycle until a separately reviewed additive binding migration is integrated. WorkContext is owned by SPEC-292 and evidence continuity/query by SPEC-284. A LivingProject signal or semantic match may suggest a candidate but MUST NOT alone select a durable memory/evidence destination. This amendment records a normative relationship only; it does not claim runtime integration or migration.",
+      "source_spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+  "spec_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
   "spec_id": "233"
 }

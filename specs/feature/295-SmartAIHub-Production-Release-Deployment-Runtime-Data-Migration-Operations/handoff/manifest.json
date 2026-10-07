@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+        "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
-    "expected_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814"
+    "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
     "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
@@ -72,7 +72,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+        "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
       }
@@ -80,18 +80,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 26,
+  "generation": 27,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-    "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+    "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T09:28:58.246992Z",
+      "last_evidence_at": "2026-10-07T04:18:10.947322Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
     },
-    "revision": "1.2",
+    "revision": "1.3",
     "slug": "295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
     "spec_id": "295",
     "title": "SPEC-295 — SmartAIHub Unified Production Environment, Release, Deployment, Data Migration & Runtime Operations Fabric"
@@ -224,12 +224,40 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T09:28:58.246992Z",
+    "reconciled_at": "2026-10-07T04:18:10.947322Z",
     "sources": [
       {
-        "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+        "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
+      },
+      {
+        "excerpt": "else {\"status\": \"UNKNOWN\", \"reason\": \"SPEC-295 runtime evidence was not supplied\"}",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 558,
+        "path": "scripts/development-lifecycle/workspace_authority.py"
+      },
+      {
+        "excerpt": "parser.add_argument(\"--production-evidence\", type=Path, help=\"SPEC-295 evidence JSON for Mission Control projection\")",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 1267,
+        "path": "scripts/development-lifecycle/workspace_authority.py"
+      },
+      {
+        "excerpt": "\"production_projection\": \"SPEC-295\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 5,
+        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
+      },
+      {
+        "excerpt": "\"assert\": \"authority-backed aggregation reports only explicit live owner facts as active sessions and leaves production unknown without SPEC-295 evidence\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 248,
+        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -239,7 +267,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-        "source_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+        "source_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
         "value": "Proposed / Additive / Implementation-ready candidate"
       }
     ],
@@ -257,7 +285,36 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [],
+    "active_references": [
+      {
+        "excerpt": "else {\"status\": \"UNKNOWN\", \"reason\": \"SPEC-295 runtime evidence was not supplied\"}",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 558,
+        "path": "scripts/development-lifecycle/workspace_authority.py"
+      },
+      {
+        "excerpt": "parser.add_argument(\"--production-evidence\", type=Path, help=\"SPEC-295 evidence JSON for Mission Control projection\")",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 1267,
+        "path": "scripts/development-lifecycle/workspace_authority.py"
+      },
+      {
+        "excerpt": "\"production_projection\": \"SPEC-295\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 5,
+        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
+      },
+      {
+        "excerpt": "\"assert\": \"authority-backed aggregation reports only explicit live owner facts as active sessions and leaves production unknown without SPEC-295 evidence\",",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 248,
+        "path": "scripts/development-lifecycle/workspace_authority_scenarios.json"
+      }
+    ],
     "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
@@ -270,14 +327,14 @@
         "excerpt": "**Status:** Proposed / Additive / Implementation-ready candidate",
         "line": 4,
         "source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-        "source_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+        "source_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
         "value": "Proposed / Additive / Implementation-ready candidate"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+        "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md"
       }
@@ -293,11 +350,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 165,
-    "unresolved": 165
+    "total": 166,
+    "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:15:54.644553Z",
+  "updated_at": "2026-10-07T04:18:10.947322Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

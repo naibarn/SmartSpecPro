@@ -2,11 +2,11 @@
 # 166 — Feature 166: Polymorphic Credit Context and Work Lineage
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 260 unresolved of 260
+- Requirements: 0 pass / 261 unresolved of 261
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 12
 
 ## Source-declared status and relationship claims
 

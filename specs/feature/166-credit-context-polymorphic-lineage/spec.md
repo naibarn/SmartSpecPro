@@ -1,7 +1,7 @@
 # Feature 166: Polymorphic Credit Context and Work Lineage
 
 **Status:** SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending
-**Version:** 1.10.0
+**Version:** 1.11.0 — additive ecosystem lineage dimensions
 **Created:** 2026-08-27
 **Last reviewed:** 2026-08-27
 **Priority:** P0 — auditable credit attribution and work-level reporting
@@ -1965,3 +1965,7 @@ reconciled.
    Series detail card for internal cost evaluation, but it must be labelled as
    an estimate and must never be presented as provider-reported USD or an
    invoice amount.
+
+## 1.11 Additive ecosystem lineage dimensions — 2026-10-07
+
+Without creating another ledger, a charged-work lineage MAY add nullable, versioned references for `ecosystemId`, `channelId`, `partnerId`, `tenantId`, `canonicalProjectId`, `appId`, `assetId`, `skillId/capabilityId`, `deploymentId`, `conversationId`, `traceId`, `pricingPolicyVersionId`, `revenuePolicyVersionId`, `promotionPolicyVersionId`, and `referralPolicyVersionId`, in addition to the existing payer/user and credit context. A charged credit MUST be traceable from payer through tenant/channel, App/Asset, Skill/Capability, Runtime/Deployment, and settlement allocation. These are provenance dimensions, not a new charge, balance, wallet, revenue-allocation, or settlement authority. SPEC-303 supplies asset/party identity; SPEC-280 supplies revenue attribution policy; SPEC-207 supplies settlement infrastructure. Existing `credit_transactions` and `creditService` remain the charge/refund authority. Backfill is additive, nullable, idempotent, and evidence-backed; do not infer historical owner or policy from current email/login data.

@@ -1,7 +1,7 @@
 # SPEC-287 — Unified UI Governance, Rendering Conformance & Mini App Design Contract
 
 **Status:** PROPOSED / ADDITIVE  
-**Revision:** R1.3 — 12-PASS IMPLEMENTATION GAP-CLOSURE  
+**Revision:** R1.4 — additive shared App and Project context primitives
 **Scope:** SmartAIHub Web UI + Mini Apps + externally deployable Mini Apps  
 **Relationship:** Extends existing UI architecture without replacing implemented providers.  
 **Key constraint:** Mini App functional invocation/capability protocol is **DEFERRED** to the separate canonical function-invocation specification currently being drafted. This spec MUST consume that future contract and MUST NOT invent a competing protocol.
@@ -2001,3 +2001,7 @@ Instead the system can answer deterministically:
 - and what evidence justified Final Verify.
 
 This turns UI generation from provider-dependent styling into a governed, portable, testable platform capability for both SmartAIHub and Mini Apps.
+
+## R1.4 Additive shared App and Project context primitives — 2026-10-07
+
+Shared UI contracts MAY provide `ProjectContextChip`, `ProjectPicker`, `ProjectAmbiguityPrompt`, `NoProjectState`, `CreateProjectFlow`, `ChatSurface`, `ChatSkinProfile`, `AppShell`, and `AppHome`. They consume project resolution from SPEC-302, memory policy from SPEC-268, shared conversation runtime from SPEC-269, and stable app identity from SPEC-304; UI components MUST NOT create a competing identity, memory, or conversation authority. Project context is visible and accessible without obscuring the primary task. Picker choices include recommended authorized candidates, recent/active projects, authorized search, `No Project`, and `Create New Project` where allowed. Ambiguous context MUST be presented before a durable shared write. App Home may compose Continue, Saved, Recent, My Apps, My Assets, Purchased, Subscribed/Hosted, Recommended, Official, Trending, and Discover. `Official` is a certification badge, not an ownership claim. Existing dashboards/routes are migrated only with their owning Spec and explicit compatibility evidence. Project picker and ambiguity states MUST work at mobile widths, support keyboard-only operation, expose accessible names/roles/status to assistive technology, preserve focus on open/close, announce resolver/loading/error state, and provide a non-color-only distinction between active, pending, and no-project states.

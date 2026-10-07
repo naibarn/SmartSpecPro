@@ -1,0 +1,14 @@
+{
+  "canonical_spec_id": "269",
+  "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
+  "canonical_revision": "3.18",
+  "recovered_revision": "3.17",
+  "recovery_source_1": "/home/dev/.codex/attachments/5acaff64-b783-458b-a371-a2748c950fec/SPEC-269-SmartAIHub-Primary-Specialist-Assistant-Teams-Autonomous-Workforce-R3.17.md",
+  "recovery_source_1_sha256": "f22593c292daa2390cc8875675d9de182d1826e6873080f9707abf177bcdf1d4",
+  "recovery_source_2": "/home/dev/.codex/attachments/af804a51-4d5c-4cfd-b808-c4ba3a511147/SPEC-269-SmartAIHub-Primary-Specialist-Assistant-Teams-Autonomous-Workforce-R3.17.md",
+  "recovery_source_2_sha256": "f22593c292daa2390cc8875675d9de182d1826e6873080f9707abf177bcdf1d4",
+  "duplicate_sources_byte_identical": true,
+  "recovery_method": "Imported R3.17 source into canonical path and appended separately labeled additive R3.18 contract; source attachments preserved unchanged.",
+  "base_canonical_sha": "1f65499e1ed9f111ea8a5803a706ef2aba66f3ef",
+  "external_library_check": "Unavailable in this session; repository canonicalization only."
+}
