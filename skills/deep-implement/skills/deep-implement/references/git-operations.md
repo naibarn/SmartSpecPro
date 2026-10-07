@@ -50,6 +50,16 @@ Always name every task-owned path explicitly, including new and modified files:
 git add -- path/to/new/file1.py path/to/modified/file2.py
 ```
 
+This is ordinary task staging. For merge/rebase/cherry-pick conflicts, do not
+use ordinary or broad staging as a resolution shortcut. Use the shared
+`skills/development-lifecycle/git_capabilities.py resolve --repo <worktree>
+--path <owned-path>` policy, adding `--expected-unmerged <path>` for each
+explicitly known conflict that remains in the integration. Unlisted paths
+block continuation. The policy selects native `git add --resolved --`
+starting with Git 2.56 and an explicit-path, marker-checked fallback on older
+Git. Check staged-before, intended paths, staged-after, remaining unmerged
+paths, and `git diff --cached --check`; keep semantic verification separate.
+
 ## Generating Diffs
 
 For code review:

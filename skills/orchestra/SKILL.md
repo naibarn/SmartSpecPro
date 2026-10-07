@@ -181,6 +181,25 @@ This applies to ALL user-facing output from Orchestra: questions, confirmations,
 
 ## Repository Discovery
 
+### Conflict resolution and staging ownership
+
+Use the shared policy at `skills/development-lifecycle/git_capabilities.py` for
+Git version and operation state. Before resolving conflicts, record the source
+and target refs/SHAs, merge base, operation type, expected paths, staged paths
+before resolution, unmerged paths, and owner of each path. Resolve content,
+then invoke `python3 skills/development-lifecycle/git_capabilities.py resolve
+--repo <worktree> --path <owned-path>` once for each explicitly owned path,
+adding `--expected-unmerged <path>` for every other known conflict that remains
+in this operation. Unlisted unmerged paths block continuation.
+Git 2.56+ uses `git add --resolved -- <paths>`; older runners use the
+marker-checked explicit-path fallback and emit a capability warning. Never use
+broad staging to mark conflicts resolved. Check the remaining unmerged paths,
+staged set, and cached diff before any commit. A clean `--resolved` result is
+only a textual marker guard; it does not establish semantic correctness or
+replace targeted tests and repository gates. Keep normal user staging and
+integration staging separate from this conflict-only operation. Preserve
+another session's worktree and pre-staged content.
+
 When Orchestra runs inside a code repository, use targeted shell discovery:
 
 - Start with narrow `rg` searches and bounded file reads.

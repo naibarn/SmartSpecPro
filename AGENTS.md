@@ -85,6 +85,13 @@ Use targeted `rg`, file reads, and normal shell tools to inspect the relevant
 files before making changes. Prefer narrow searches and bounded reads, and record
 any discovery fallback when a specialized codebase index is unavailable.
 
+For conflict resolution, use `skills/development-lifecycle/git_capabilities.py`:
+on Git >=2.56 prefer `git add --resolved -- <scope>` through that policy; never
+use broad staging to mark conflicts resolved. `--resolved` guards against
+remaining textual markers; it is not semantic verification. Verify staged paths
+before commit and preserve compatibility with Git <2.56 external runners via
+the policy's explicit-path fallback.
+
 ## Outcome Completion
 
 For requests to implement, finish, or close an outcome, derive completion from

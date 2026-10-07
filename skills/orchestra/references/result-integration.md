@@ -66,6 +66,21 @@ Single-agent waves (sequential dispatch) cannot have file conflicts — skip thi
 
 ### Step 3: Apply Merge Strategy
 
+For Git integration conflicts (merge, rebase, or cherry-pick), first record
+source/target refs and SHAs, merge base, expected paths, operation type, and
+pre-existing staged paths. The shared implementation is
+`skills/development-lifecycle/git_capabilities.py`; use its `inspect` command,
+resolve only explicitly owned conflict paths, and declare any expected remaining
+unmerged paths. Git 2.56+ uses `git add --resolved -- <paths>`. Older runners
+use the marker-checked explicit-path fallback. The helper blocks unlisted
+unmerged paths, pre-staged paths outside ownership, unexpected staged paths,
+and cached whitespace errors. A passing marker guard is not semantic approval:
+review the combined content and run targeted tests before committing.
+
+The manual file-level reconciliation below is an ownership/content decision;
+it does not itself mark Git index conflicts resolved. Do not say the merge is
+complete until both decisions and Git operation state are verified.
+
 ```
 Are the changes in different sections or functions of the file?
   YES → Manual merge: read both agents' versions, combine non-conflicting changes, write result.
@@ -155,7 +170,7 @@ If the convergence loop applies, do not finalize until the loop reaches its stop
 
 ---
 
-## Merge Strategy
+## Agent output merge strategy
 
 ### Conflict Resolution Log Format (orchestra/decisions.md)
 

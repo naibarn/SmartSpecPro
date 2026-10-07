@@ -64,6 +64,15 @@ git add path/to/new/file1.py path/to/new/file2.py
 git add -u
 ```
 
+These are ordinary task-staging examples, not conflict-resolution commands.
+For merge/rebase/cherry-pick conflicts, use the repository shared policy
+`skills/development-lifecycle/git_capabilities.py resolve` with explicit owned
+paths and `--expected-unmerged` entries for known remaining conflicts. Git
+2.56+ uses `git add --resolved -- <paths>`; older Git uses a marker-checked
+explicit-path fallback. Verify staged-before/intended/staged-after and reject
+unlisted unmerged or staged paths before any commit. `--resolved` does not
+prove semantic correctness.
+
 ## Generating Diffs
 
 For code review:

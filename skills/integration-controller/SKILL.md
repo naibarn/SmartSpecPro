@@ -11,6 +11,16 @@ configured canonical ref is the first durable central landing point for safe dev
 
 Read `references/integration-verification.md` before running promotion or post-integration checks.
 
+For conflict handling, use `skills/development-lifecycle/git_capabilities.py` as
+the shared version/state policy. Record source branch/SHA, target branch/SHA,
+merge base, integration operation, expected changed paths, and the pre-integration
+staged set. Resolve only owned conflict paths through the helper; Git 2.56+
+uses `git add --resolved -- <paths>` and older versions use its explicit-path,
+marker-checked fallback. Verify remaining unmerged paths, unexpected staged
+paths, and `git diff --cached --check` before commit. Pre-existing staged paths
+outside the operation's ownership block automatic commit. Record resolved
+paths, verification outcome, and final integration SHA in the handoff.
+
 ## Required rule
 
 ```text
