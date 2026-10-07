@@ -70,7 +70,7 @@ class RetryableGitHubIntegrationRegressionTests(unittest.TestCase):
                     return subprocess.CompletedProcess(command, 0, "", "")
                 if command[:3] == ["git", "merge-base", "--is-ancestor"]:
                     reachability_checks += 1
-                    return subprocess.CompletedProcess(command, 1 if reachability_checks == 1 else 0, "", "")
+                    return subprocess.CompletedProcess(command, 0 if reachability_checks == 3 else 1, "", "")
                 if "push" in command:
                     push_attempt += 1
                     if push_attempt == 1:
@@ -125,6 +125,8 @@ class RetryableGitHubIntegrationRegressionTests(unittest.TestCase):
             self.assertTrue(waiting["blockedWorkunits"][0]["pendingPullRequest"])
             self.assertTrue(any("lfs.https://github.com/naibarn/SmartSpecPro.git/info/lfs.locksverify=false" in item for cmd in commands for item in cmd))
             self.assertFalse(any(item in {"--force", "-f", "--force-with-lease"} for cmd in commands for item in cmd))
+            self.assertTrue(any(command[:3] == ["gh", "pr", "create"] for command in commands))
+            self.assertTrue(any(command[:4] == ["gh", "pr", "merge", "https://github.com/naibarn/SmartSpecPro/pull/999"] and "--merge" in command for command in commands))
 
             resumed = json.loads(program_path.read_text())
             self.assertEqual(resumed["state"], "WORKING")

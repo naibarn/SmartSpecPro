@@ -8,7 +8,7 @@ function usage(): void {
   process.stdout.write(
     "Research Notes non-production smoke runner\n" +
       "Required: RESEARCH_NOTES_BASE_URL, RESEARCH_NOTES_ENVIRONMENT, RESEARCH_NOTES_APP_ID, RESEARCH_NOTES_PROJECT_ID, and either RESEARCH_NOTES_SESSION_COOKIE or RESEARCH_NOTES_AUTH_BEARER\n" +
-      `Optional: ${SUMMARY_FLAG} (also requires RESEARCH_NOTES_ALLOW_PROVIDER_COST=true)\n`,
+      `Optional: RESEARCH_NOTES_CROSS_TENANT_SESSION_COOKIE or RESEARCH_NOTES_CROSS_TENANT_AUTH_BEARER for isolation checks; ${SUMMARY_FLAG} requires RESEARCH_NOTES_ALLOW_PROVIDER_COST=true\n`,
   );
 }
 
@@ -40,22 +40,28 @@ async function main(): Promise<void> {
   const cookie = process.env.RESEARCH_NOTES_SESSION_COOKIE?.trim();
   const bearer = process.env.RESEARCH_NOTES_AUTH_BEARER?.trim();
   if (!cookie && !bearer) throw new Error("Provide an authenticated platform session cookie or user Bearer credential");
+  const crossTenantCookie = process.env.RESEARCH_NOTES_CROSS_TENANT_SESSION_COOKIE?.trim();
+  const crossTenantBearer = process.env.RESEARCH_NOTES_CROSS_TENANT_AUTH_BEARER?.trim();
   const includeSummary = process.argv.includes(SUMMARY_FLAG);
   if (includeSummary && process.env.RESEARCH_NOTES_ALLOW_PROVIDER_COST !== "true") {
     throw new Error(`${SUMMARY_FLAG} requires RESEARCH_NOTES_ALLOW_PROVIDER_COST=true`);
   }
 
-  const client = createTRPCProxyClient<AppRouter>({
+  const makeClient = (authBearer?: string, sessionCookie?: string) => createTRPCProxyClient<AppRouter>({
     transformer: superjson,
     links: [httpLink({
       url: new URL("/trpc", baseUrl).toString(),
       transformer: superjson,
       headers: {
-        ...(bearer ? { authorization: `Bearer ${bearer}` } : { cookie }),
+        ...(authBearer ? { authorization: `Bearer ${authBearer}` } : { cookie: sessionCookie }),
         origin: baseUrl.origin,
       },
     })],
   });
+  const client = makeClient(bearer, cookie);
+  const crossTenantClient = crossTenantBearer || crossTenantCookie
+    ? makeClient(crossTenantBearer, crossTenantCookie)
+    : undefined;
   const health = await fetch(new URL("/healthz", baseUrl), { signal: AbortSignal.timeout(5_000) });
   if (!health.ok) throw new Error(`Liveness probe returned HTTP ${health.status}`);
   const healthBody = await health.json() as { status?: string };
@@ -77,6 +83,16 @@ async function main(): Promise<void> {
   try {
     const visible = await client.researchNotes.listNotes.query({ appId, projectId });
     if (!visible.some((note) => note.noteId === created.noteId)) throw new Error("Created note is not visible to its author");
+    if (crossTenantClient) {
+      let leaked = false;
+      try {
+        const otherTenantNotes = await crossTenantClient.researchNotes.listNotes.query({ appId, projectId });
+        leaked = otherTenantNotes.some((note) => note.noteId === created.noteId);
+      } catch {
+        // A denial or hidden resource is the expected isolation result.
+      }
+      if (leaked) throw new Error("Cross-tenant principal could read the smoke note");
+    }
     const updated = await client.researchNotes.updateNote.mutate({
       appId,
       projectId,
@@ -89,6 +105,16 @@ async function main(): Promise<void> {
     let summaryStatus: string | undefined;
     if (includeSummary) {
       const job = await client.researchNotes.requestSummary.mutate({ appId, projectId, noteId: created.noteId });
+      if (crossTenantClient) {
+        let visibleToOtherTenant = false;
+        try {
+          await crossTenantClient.researchNotes.summaryJob.query({ appId, projectId, noteId: created.noteId, jobId: job.jobId });
+          visibleToOtherTenant = true;
+        } catch {
+          // A denial or hidden job is the expected isolation result.
+        }
+        if (visibleToOtherTenant) throw new Error("Cross-tenant principal could read the summary job");
+      }
       const deadline = Date.now() + 120_000;
       do {
         const current = await client.researchNotes.summaryJob.query({ appId, projectId, noteId: created.noteId, jobId: job.jobId });
