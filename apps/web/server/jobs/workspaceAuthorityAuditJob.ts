@@ -77,6 +77,10 @@ export async function executeWorkspaceAuthorityAudit(input: {
     ? userWorkspace.convergence_receipt as Record<string, unknown> : undefined;
   const canonicalConvergenceSucceeded = convergenceReceipt?.result === "USER_WORKSPACE_CONVERGED" &&
     typeof convergenceReceipt.receipt_id === "string" && Boolean(convergenceReceipt.receipt_id.trim());
+  const integrationSucceeded = canonicalConvergenceSucceeded &&
+    typeof convergenceReceipt.integrated_sha === "string" && /^[a-f0-9]{40,64}$/.test(convergenceReceipt.integrated_sha) &&
+    convergenceReceipt.canonical_sha === convergenceReceipt.integrated_sha &&
+    convergenceReceipt.workspace_role === "CANONICAL_USER_WORKSPACE" && convergenceReceipt.dirty === false;
   await Promise.all(locallyExpiredOwners.map(row => enqueueWorkspaceAuthorityAuditEvent({
     tenantId: input.tenantId,
     eventType: "OWNER_LEASE_EXPIRED",
@@ -89,6 +93,13 @@ export async function executeWorkspaceAuthorityAudit(input: {
       eventId: convergenceReceipt!.receipt_id as string,
     });
   }
+  if (integrationSucceeded) {
+    await enqueueWorkspaceAuthorityAuditEvent({
+      tenantId: input.tenantId,
+      eventType: "INTEGRATION_FINISH",
+      eventId: `${convergenceReceipt!.receipt_id}:${convergenceReceipt!.integrated_sha}`,
+    });
+  }
   return {
     mode: "AUDIT_ONLY" as const,
     observedAt: now.toISOString(),
@@ -99,6 +110,7 @@ export async function executeWorkspaceAuthorityAudit(input: {
     unboundSessionCount: rows.filter(row => Boolean(row.activeSessionId) && row.status !== "online").length,
     ownerLeaseExpirationEventCount: locallyExpiredOwners.length,
     canonicalConvergenceSuccessEventCount: canonicalConvergenceSucceeded ? 1 : 0,
+    integrationFinishEventCount: integrationSucceeded ? 1 : 0,
     localWorkspaceAudit,
   };
 }
