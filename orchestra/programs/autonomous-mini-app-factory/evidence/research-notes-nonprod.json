@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "research-notes-nonprod-evidence.v1",
+  "target": {
+    "id": "local-disposable-research-notes-uat",
+    "kind": "local-disposable-postgresql",
+    "bindAddress": "127.0.0.1",
+    "port": 35645,
+    "runtimeState": "NOT_DEPLOYED"
+  },
+  "migration": {
+    "sourceSha": "a3ef6c8a8f68011bb8dbdb04d802eaa5d5864d03",
+    "receiptPath": "external:/tmp/research-notes-nonprod-v7e5fmbp/migration-0393-corrected.jsonl",
+    "receipts": [
+      {
+        "schemaVersion": "migration-execution-receipt.v1",
+        "phase": "STARTED",
+        "idempotencyKey": "research-notes-0393-corrected-1791395435",
+        "environment": "development",
+        "databaseTargetId": "local-disposable-research-notes-uat",
+        "migrationProvider": "drizzle",
+        "expectedMigrationHead": "0393_spec302_canonical_project_identity",
+        "beforeAppliedHead": "0392_spec304_app_identity_and_route_aliases",
+        "sourceSha": "a3ef6c8a8f68011bb8dbdb04d802eaa5d5864d03",
+        "attemptNumber": 1,
+        "startedAt": "2026-10-07T17:50:36.091Z"
+      },
+      {
+        "schemaVersion": "migration-execution-receipt.v1",
+        "phase": "SETTLED",
+        "result": "SUCCEEDED",
+        "idempotencyKey": "research-notes-0393-corrected-1791395435",
+        "environment": "development",
+        "databaseTargetId": "local-disposable-research-notes-uat",
+        "migrationProvider": "drizzle",
+        "expectedMigrationHead": "0393_spec302_canonical_project_identity",
+        "beforeAppliedHead": "0392_spec304_app_identity_and_route_aliases",
+        "appliedHead": "0393_spec302_canonical_project_identity",
+        "sourceSha": "a3ef6c8a8f68011bb8dbdb04d802eaa5d5864d03",
+        "attemptNumber": 1,
+        "startedAt": "2026-10-07T17:50:36.091Z",
+        "completedAt": "2026-10-07T17:50:36.869Z",
+        "failureCategory": null,
+        "failureCode": null
+      }
+    ],
+    "schemaObjects": [
+      "canonical_projects",
+      "canonical_project_memberships",
+      "canonical_project_app_bindings",
+      "mini_app_research_notes"
+    ],
+    "verifiedConstraints": [
+      "canonical_projects_tenant_project_unique",
+      "canonical_project_memberships_project_fk",
+      "canonical_project_app_bindings_app_fk",
+      "mini_app_research_notes_project_fk",
+      "mini_app_research_notes_content_size_check"
+    ],
+    "scopeNote": "0393 ran through the normal receipt wrapper against a disposable database seeded with the minimum synthetic pre-0393 prerequisites; this does not prove the entire historical migration chain on a fresh database."
+  },
+  "package": {
+    "manifestVersion": "1.0.0",
+    "digest": "spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413",
+    "archiveSha256": "0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c",
+    "validation": "needs_context"
+  },
+  "runtimeAttempts": [
+    {
+      "result": "BOOTSTRAPPED_LOOPBACK_ONLY",
+      "sourceSha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+      "bind": "127.0.0.1:43301",
+      "syntheticSecretsOnly": true,
+      "healthz": 200,
+      "readyz": 200,
+      "productionTouched": false
+    },
+    {
+      "result": "SMOKE_BLOCKED_INCOMPLETE_SCHEMA",
+      "sourceSha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+      "researchNotesApiHttp": 500,
+      "uiHttp": 500,
+      "causes": [
+        "Drizzle full-schema push cannot create vector columns because PostgreSQL vector extension is unavailable",
+        "tenant fixture schema lacks current application columns because full-schema bootstrap did not complete"
+      ],
+      "processStopped": true,
+      "productionTouched": false
+    },
+    {
+      "result": "INITIAL_BOOTSTRAP_LIMITATIONS",
+      "causes": [
+        "workspace dependency link for declared cookie-parser was absent and was repaired locally using the existing pnpm store package",
+        "process requires synthetic API_KEY_HMAC_SECRET and CONTROL_PLANE_API_KEY values for local startup"
+      ]
+    }
+  ],
+  "sourceSha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+  "generatedAt": "2026-10-07T17:54:08Z",
+  "deployment": {
+    "state": "PREPARED_NOT_DEPLOYED",
+    "reason": "Loopback server reached healthz/readyz, but full schema bootstrap and authenticated Research Notes API/UI smoke failed on the incomplete disposable DB. Drizzle push needs the unavailable vector extension.",
+    "productionTouched": false
+  },
+  "runtime": {
+    "serverProcess": "STOPPED",
+    "postgresProcess": "STOPPED_AFTER_EVIDENCE_CAPTURE"
+  }
+}

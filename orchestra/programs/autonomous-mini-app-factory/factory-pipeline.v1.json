@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "mini-app-factory-pipeline.v1",
+  "pipelineId": "mini-app-factory-v1",
+  "purpose": "Turn an app-neutral Mini App manifest into a tested, packaged, deployed, migrated, smoke-tested, accepted, and recoverable app.",
+  "inputs": {
+    "manifest": "Mini App manifest conforming to the portable app contract",
+    "sourceRevision": "Exact repository revision used for implementation and package generation",
+    "target": "Explicit non-production target descriptor with isolated runtime and database",
+    "fixture": "Synthetic tenant, principal, project, app binding, roles, and test data",
+    "capabilities": "Optional provider and durable job capabilities declared by the manifest"
+  },
+  "invariants": [
+    "Never use production customer data, credentials, databases, or runtime processes for acceptance.",
+    "Authenticate through the platform and derive tenant and principal identity from authenticated context.",
+    "Long-running work uses the platform worker_jobs and outbox authority.",
+    "Every migration and deployment receipt binds target identity, source revision, package digest, and outcome.",
+    "A completed stage is checkpointed before selecting the next dependency-ready stage.",
+    "A retryable external failure waits only the affected stage while independent stages continue.",
+    "Deployment, runtime health, acceptance, and production readiness remain separate states."
+  ],
+  "stages": [
+    { "id": "manifest_validate", "dependsOn": [], "inputs": ["manifest"], "outputs": ["validatedManifest", "contractReport"], "gate": "all required fields and capability declarations are valid" },
+    { "id": "scaffold", "dependsOn": ["manifest_validate"], "inputs": ["validatedManifest"], "outputs": ["appSource", "ownershipMap"], "gate": "generated paths are app-scoped and do not overwrite unrelated work" },
+    { "id": "data_migration", "dependsOn": ["manifest_validate", "scaffold"], "inputs": ["validatedManifest", "target"], "outputs": ["migrationSet", "rollbackPlan"], "gate": "migration scope and rollback or recovery behavior are declared" },
+    { "id": "backend_actions", "dependsOn": ["scaffold", "data_migration"], "inputs": ["validatedManifest", "fixture"], "outputs": ["authenticatedActions", "authorizationTests"], "gate": "actions enforce tenant, project, app, and principal permissions" },
+    { "id": "ui_implementation", "dependsOn": ["scaffold", "backend_actions"], "inputs": ["validatedManifest", "authenticatedActions"], "outputs": ["responsiveUI", "accessibilityEvidence"], "gate": "required user journeys and accessibility-critical interactions are covered" },
+    { "id": "ai_capabilities", "dependsOn": ["backend_actions"], "inputs": ["capabilities", "fixture"], "outputs": ["capabilityBindings", "fallbackEvidence"], "gate": "provider absence or failure has a declared fallback or a scoped wait" },
+    { "id": "background_jobs", "dependsOn": ["backend_actions", "data_migration"], "inputs": ["capabilities", "fixture"], "outputs": ["jobBindings", "retryIdempotencyEvidence"], "gate": "jobs use worker_jobs/outbox and prove retry, idempotency, and recovery" },
+    { "id": "tests", "dependsOn": ["ui_implementation", "ai_capabilities", "background_jobs"], "inputs": ["appSource", "fixture"], "outputs": ["testEvidence"], "gate": "focused unit, authorization, isolation, action, job, and UI checks pass" },
+    { "id": "package", "dependsOn": ["tests"], "inputs": ["validatedManifest", "appSource", "sourceRevision"], "outputs": ["portableArtifact", "packageDigest"], "gate": "manifest and artifact validate and the digest is deterministic" },
+    { "id": "deploy", "dependsOn": ["package"], "inputs": ["portableArtifact", "packageDigest", "target"], "outputs": ["deploymentReceipt", "runtimeIdentity"], "gate": "deployment consumes the recorded artifact on an isolated non-production target" },
+    { "id": "migrate", "dependsOn": ["deploy", "data_migration"], "inputs": ["target", "migrationSet", "sourceRevision"], "outputs": ["migrationReceipt", "schemaEvidence"], "gate": "normal migration path records STARTED and SUCCEEDED for the declared target" },
+    { "id": "smoke", "dependsOn": ["deploy", "migrate"], "inputs": ["target", "fixture", "runtimeIdentity"], "outputs": ["healthEvidence", "apiEvidence", "jobEvidence"], "gate": "authenticated API and required background behavior pass without production access" },
+    { "id": "uat", "dependsOn": ["smoke", "tests"], "inputs": ["fixture", "runtimeIdentity", "packageDigest"], "outputs": ["journeyEvidence", "isolationEvidence"], "gate": "end-to-end user and equivalent headless journeys pass across required viewports" },
+    { "id": "evidence", "dependsOn": ["uat"], "inputs": ["contractReport", "testEvidence", "deploymentReceipt", "migrationReceipt", "journeyEvidence"], "outputs": ["handoff", "milestoneReport"], "gate": "all claims bind to exact revisions, target, artifact, and evidence freshness" },
+    { "id": "recovery", "dependsOn": ["manifest_validate"], "inputs": ["sourceRevision", "target", "packageDigest"], "outputs": ["checkpoint", "resumeCapsule"], "gate": "waiting stages have a durable owner, predicate, retry policy, and next ready stage" }
+  ],
+  "stateModel": ["READY", "WORKING", "WAITING_ENVIRONMENT", "WAITING_EXTERNAL_RETRYABLE", "PASS", "FAIL", "NOT_RUN"],
+  "completionRule": "A Mini App MVP requires manifest, implementation, tests, package, non-production deployment, migration, smoke, UAT, and evidence stages to pass. Factory reuse is reported separately until a second app completes the same pipeline."
+}

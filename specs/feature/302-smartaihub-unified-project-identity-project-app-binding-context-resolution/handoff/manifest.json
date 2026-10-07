@@ -44,15 +44,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+    "expected_canonical_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
     "next_action": "Continue independent implementation and regression evidence; retryable GitHub failures resume automatically. Do not claim deployment/UAT until executed on a registered non-production target.",
-    "next_ready_workunit": "RESEARCH_NOTES_RUNTIME_DEPLOYMENT_TARGET",
-    "reactivation_predicate": null,
-    "resume_point": "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248 and canonical user workspace converged cleanly. Migration 0393 plus Research Notes service authorization passed on disposable PostgreSQL 17; continue with safe authenticated non-production runtime smoke, migration rollback evidence, deployment and UAT when the registered target predicate is met.",
-    "waiting_predicate": null
+    "next_ready_workunit": "RESEARCH_NOTES_NONPROD_RUNTIME_TARGET",
+    "reactivation_predicate": "When the waiting predicate is true, seed synthetic authenticated fixture, start loopback app and canonical worker, deploy recorded package, then run authenticated API/UI/job smoke and UAT.",
+    "resume_point": "origin/main at 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. Migration 0393 receipt and schema constraints are recorded in the program evidence file; healthz/readyz passed on loopback but app API/UI smoke is blocked by incomplete schema/vector extension. Continue generic factory pipeline work independently, then resume deployment/UAT.",
+    "waiting_predicate": "An approved nonproduction PostgreSQL 17 runtime schema bootstrap with pgvector (or scoped Mini App bootstrap), plus dependency-complete workspace, is available."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -163,9 +163,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+    "canonical_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
     "integrated": true,
-    "integrated_at": "2026-10-07T17:02:28Z"
+    "integrated_at": "2026-10-07T17:53:45Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -418,7 +418,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T17:06:32.773944Z",
+  "updated_at": "2026-10-07T17:58:24.517011Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -435,11 +435,25 @@
         "scope": "9 focused Vitest files, 33 tests passed; GitHub outage retry regression 4 tests passed; source integrated by PR 249.",
         "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
         "status": "PASS"
+      },
+      {
+        "kind": "NORMAL_MIGRATION_RECEIPT_0393",
+        "path": "orchestra/programs/autonomous-mini-app-factory/evidence/research-notes-nonprod.json",
+        "scope": "Normal db:migrate receipt wrapper applied 0393 to an isolated disposable loopback PostgreSQL target; synthetic minimal 0392 baseline only. Five schema constraints verified. This does not prove full historical-chain bootstrap or app UAT.",
+        "source_sha": "a3ef6c8a8f68011bb8dbdb04d802eaa5d5864d03",
+        "status": "PASS"
+      },
+      {
+        "kind": "NONPRODUCTION_LOOPBACK_RUNTIME_PROBE",
+        "path": "orchestra/programs/autonomous-mini-app-factory/evidence/research-notes-nonprod.json",
+        "scope": "Loopback web process healthz/readyz returned HTTP 200. Research Notes route and UI returned HTTP 500 because the disposable app schema was incomplete; vector extension unavailable. No authenticated UAT or deployment claim.",
+        "source_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+    "sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
     "status": "PARTIAL",
     "task_regressions": []
   }
