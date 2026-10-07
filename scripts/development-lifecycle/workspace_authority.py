@@ -1268,7 +1268,7 @@ def _cli() -> int:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")
             result = retire_completed_worktree(repo, args.policy, args.workspace_id, apply=args.apply)
         print(json.dumps(result, sort_keys=True))
-        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE"} else 20
+        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY"} else 20
     except WorkspaceAuthorityError as exc:
         print(str(exc), file=sys.stderr)
         return 20

@@ -247,6 +247,13 @@
       "proof_kind": "LOCAL_EXECUTABLE",
       "assert": "authority-backed aggregation reports only explicit live owner facts as active sessions and leaves production unknown without SPEC-295 evidence",
       "test_name": "test_project_mission_control_read_model_uses_authority_sessions_and_unknown_production"
+    },
+    {
+      "number": 35,
+      "name": "mission-control-cli-emits-authority-backed-project-snapshot",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "project snapshot command exits successfully and uses resolver facts",
+      "test_name": "test_mission_control_cli_returns_success_for_authority_snapshot"
     }
   ]
 }
