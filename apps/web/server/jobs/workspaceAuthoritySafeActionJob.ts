@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 
 import { enqueueWorkspaceAuthorityAuditEvent } from "./workspaceAuthorityAuditJob";
-import type { WorkspaceAuthorityAction } from "../services/workspaceAuthoritySafeActions";
+import {
+  resolveOwnedWorkspaceAuthority,
+  type WorkspaceAuthorityAction,
+} from "../services/workspaceAuthoritySafeActions";
 
 const execFileAsync = promisify(execFile);
 
@@ -17,7 +20,12 @@ type ActionInput = {
   workspaceId: string | null;
   action: WorkspaceAuthorityAction;
   payload: Record<string, unknown>;
-  authority: { runnerId: string; snapshotRevision: string | null };
+  authority: {
+    runnerId: string;
+    snapshotRevision: string | null;
+    snapshotObservedAt: string | null;
+    snapshotExpiresAt: string | null;
+  };
 };
 
 function safeEvidence(value: unknown): unknown {
@@ -146,6 +154,7 @@ export async function executeWorkspaceAuthoritySafeAction(
   env: NodeJS.ProcessEnv = process.env,
   dependencies: {
     runAuthority?: typeof runAuthority;
+    resolveAuthority?: typeof resolveOwnedWorkspaceAuthority;
     github?: {
       repository: (root: string) => Promise<string>;
       inspect: (root: string, number: number) => Promise<PullRequestFact>;
@@ -156,7 +165,22 @@ export async function executeWorkspaceAuthoritySafeAction(
   } = {},
 ) {
   const executeAuthority = dependencies.runAuthority ?? runAuthority;
+  const resolveAuthority = dependencies.resolveAuthority ?? resolveOwnedWorkspaceAuthority;
   const github = dependencies.github ?? { repository: canonicalGithubRepository, inspect: inspectPullRequest, merge: mergePullRequest };
+  const currentRunnerAuthority = await resolveAuthority({
+    tenantId: input.tenantId,
+    actorId: input.actorId,
+    projectId: input.projectId,
+    repositoryId: input.repositoryId,
+    workspaceId: input.workspaceId ?? undefined,
+  });
+  const authorityChanged =
+    currentRunnerAuthority.runnerId !== input.authority.runnerId ||
+    currentRunnerAuthority.snapshotRevision !== input.authority.snapshotRevision ||
+    (input.authority.snapshotRevision === null &&
+      currentRunnerAuthority.snapshotObservedAt !== input.authority.snapshotObservedAt);
+  if (authorityChanged) throw new Error("WORKSPACE_ACTION_AUTHORITY_CHANGED");
+
   const repository = requiredRepository(env);
   const resolved = await executeAuthority(repository, env, ["resolve"]);
   if (resolved.project_id !== input.projectId || resolved.repository_id !== input.repositoryId)

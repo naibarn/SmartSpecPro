@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ enqueueEvent: vi.fn() }));
+const mocks = vi.hoisted(() => ({ enqueueEvent: vi.fn(), resolveAuthority: vi.fn() }));
 vi.mock("./workspaceAuthorityAuditJob", () => ({ enqueueWorkspaceAuthorityAuditEvent: mocks.enqueueEvent }));
+vi.mock("../services/workspaceAuthoritySafeActions", () => ({ resolveOwnedWorkspaceAuthority: mocks.resolveAuthority }));
 
 import { executeWorkspaceAuthoritySafeAction } from "./workspaceAuthoritySafeActionJob";
 
@@ -10,7 +11,11 @@ function request(overrides: Record<string, unknown> = {}) {
   return {
     jobId: "job-1", tenantId: "tenant-a", actorId: 42, projectId: "project-a", repositoryId: "repo-a",
     workspaceId: "ws-a", action: "INSPECT_LOCAL_CHANGES", payload: {},
-    authority: { runnerId: "runner-a", snapshotRevision: "snap-1" }, ...overrides,
+    authority: {
+      runnerId: "runner-a", snapshotRevision: "snap-1",
+      snapshotObservedAt: "2026-10-07T11:59:00.000Z",
+      snapshotExpiresAt: "2026-10-07T12:01:00.000Z",
+    }, ...overrides,
   };
 }
 const resolved = {
@@ -19,9 +24,45 @@ const resolved = {
   workspaces: [{ workspace_id: "ws-a", location: "/private/worktree" }],
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.resolveAuthority.mockResolvedValue({
+    runnerId: "runner-a",
+    snapshotRevision: "snap-1",
+    snapshotObservedAt: "2026-10-07T11:59:00.000Z",
+    snapshotExpiresAt: "2026-10-07T12:01:00.000Z",
+  });
+});
 
 describe("workspace authority safe action executor", () => {
+  it("rechecks trusted Runner authority before any local or mutating execution", async () => {
+    const runAuthority = vi.fn().mockResolvedValue(resolved);
+    mocks.resolveAuthority.mockResolvedValueOnce({
+      runnerId: "runner-a",
+      snapshotRevision: "snap-2",
+      snapshotObservedAt: "2026-10-07T11:59:30.000Z",
+      snapshotExpiresAt: "2026-10-07T12:01:30.000Z",
+    });
+
+    await expect(executeWorkspaceAuthoritySafeAction(request({ action: "RETIRE_SAFE_WORKTREE" }), env, { runAuthority }))
+      .rejects.toThrow("WORKSPACE_ACTION_AUTHORITY_CHANGED");
+
+    expect(mocks.resolveAuthority).toHaveBeenCalledWith({
+      tenantId: "tenant-a", actorId: 42, projectId: "project-a", repositoryId: "repo-a", workspaceId: "ws-a",
+    });
+    expect(runAuthority).not.toHaveBeenCalled();
+  });
+
+  it("does not start local execution when the registered Runner snapshot has expired", async () => {
+    const runAuthority = vi.fn().mockResolvedValue(resolved);
+    mocks.resolveAuthority.mockRejectedValueOnce(new Error("WORKSPACE_ACTION_AUTHORITY_STALE"));
+
+    await expect(executeWorkspaceAuthoritySafeAction(request({ action: "SYNC_WORKSPACE_SAFELY" }), env, { runAuthority }))
+      .rejects.toThrow("WORKSPACE_ACTION_AUTHORITY_STALE");
+
+    expect(runAuthority).not.toHaveBeenCalled();
+  });
+
   it("runs local inspection only through the canonical worker executor and removes host paths from the receipt", async () => {
     const calls: string[][] = [];
     const runAuthority = vi.fn(async (_root: string, _env: NodeJS.ProcessEnv, args: string[]) => {
