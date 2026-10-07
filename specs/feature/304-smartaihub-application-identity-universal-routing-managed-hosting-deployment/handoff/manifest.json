@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "c32a222ba51380a6700109be43ab707cc995bda6",
+    "expected_canonical_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
@@ -130,7 +130,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 13,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -155,9 +155,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "c32a222ba51380a6700109be43ab707cc995bda6",
+    "canonical_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
     "integrated": true,
-    "integrated_at": "2026-10-07T14:26:45Z"
+    "integrated_at": "2026-10-07T14:34:40Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -250,18 +250,24 @@
         "blocker": null,
         "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "c32a222ba51380a6700109be43ab707cc995bda6",
+        "evidence_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
             "kind": "PERSISTED_ROUTE_RESOLVER",
             "path": "apps/web/server/services/appIdentityRepository.ts",
-            "source_sha": "c32a222ba51380a6700109be43ab707cc995bda6",
+            "source_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
             "summary": "Resolves active App aliases from persisted identity scoped by trusted tenant, alias kind, and normalized value; fails closed on tenant or lifecycle mismatch."
+          },
+          {
+            "kind": "AUTHENTICATED_ROUTE_API",
+            "path": "apps/web/server/routers/appIdentity.ts",
+            "source_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
+            "summary": "Exposes protected route resolution and derives tenant scope only from authenticated account context."
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Bind route lookup to trusted request-host and authenticated Mini App runtime API; apply migration 0392 only to a verified non-production database and run integration evidence.",
+        "next_action": "Add reference Mini App UI and persisted CRUD/actions using the App route API; apply migration 0392 only to a verified non-production database and run integration evidence.",
         "requirement_digest": "860a0105aee860bc035dc55b3b4893d093312ac13cd89fffbef97e31f0e11081",
         "requirement_id": "REQ-8267DE389563",
         "requirement_text": "`AppIdentity` has stable opaque `appId` and `publicAppId`, tenant/publisher relationships, lifecycle, canonical product identity, policy references, creation time, and aliases. Listing, Release, Deployment, and channel records reference it; none becomes its identity. The canonical SmartAIHub route is `https://smartaihub.app/apps/{publicAppId}`. URL/slug/domain is mutable alias data and MUST NOT be used as canonical identity.",
@@ -270,10 +276,10 @@
         "verification_evidence": [
           {
             "kind": "FOCUSED_TEST",
-            "path": "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
+            "path": "apps/web/server/routers/appIdentity.test.ts",
             "result": "PASS",
-            "source_sha": "c32a222ba51380a6700109be43ab707cc995bda6",
-            "summary": "12 focused route identity tests passed on the exact integrated tree."
+            "source_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
+            "summary": "15 focused route, repository and identity contract tests passed on the exact integrated tree."
           }
         ],
         "verification_method": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/tenantProductIdentityContracts.test.ts"
@@ -356,7 +362,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T14:28:46.087858Z",
+  "updated_at": "2026-10-07T14:35:46.677554Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
