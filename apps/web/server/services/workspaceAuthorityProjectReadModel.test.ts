@@ -69,7 +69,8 @@ describe("projectRunnerWorkspaceAuthority", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [], now, localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: now, localMissionControl: {
       repository: { repository_id: "repo-a", canonical_ref: "refs/heads/main", canonical_branch: "main", canonical_sha: "a".repeat(40), verification_state: "USER_WORKSPACE_CONVERGED" },
       user_workspace: { workspace_id: "workspace-a", role: "CANONICAL_USER_WORKSPACE", sha: "a".repeat(40), state: "SYNCED", dirty: false },
-      development_state: { uncommitted_intended_work: [], unpushed_intended_commits: { state: "UNKNOWN" } },
+      sessions: { active_count: 1, active: [{ session_id: "local-session", owner_host: "host-a", owner_lease_expires_at: 1791374460, execution_state: "LEASED", provider: "UNKNOWN", runner_id: null, task_id: "task-a" }] },
+      development_state: { uncommitted_intended_work: [], unpushed_intended_commits: { state: "UNKNOWN" }, pushed_unintegrated_work: { state: "OBSERVED", count: 2 }, integrated_work: { state: "PARTIAL" }, recovery_pending: [{ workspace_id: "recovery-a" }] },
       worktrees: { active: [], integrating: [], retireable: [], stale_or_unknown: [], recovery: [] },
       production: { status: "UNKNOWN", reason: "SPEC-295 runtime evidence was not supplied" },
     } });
@@ -80,6 +81,11 @@ describe("projectRunnerWorkspaceAuthority", () => {
       userWorkspace: { workspace_id: "workspace-a", role: "CANONICAL_USER_WORKSPACE" },
       developmentIntegration: { unpushed_intended_commits: { state: "UNKNOWN" } },
       worktreeLifecycle: { integrating: [], recovery: [] },
+      sessions: { activeCount: 1, active: [{ session_id: "local-session", provider: "UNKNOWN", task_id: "task-a" }] },
+      pushState: { state: "OBSERVED", count: 2 },
+      integrationState: { state: "PARTIAL" },
+      recoveryState: [{ workspace_id: "recovery-a" }],
+      convergenceReceipt: null,
       production: { status: "UNKNOWN", reason: "SPEC-295 runtime evidence was not supplied" },
     });
   });

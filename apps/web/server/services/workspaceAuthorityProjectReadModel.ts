@@ -133,6 +133,22 @@ export function projectRunnerWorkspaceAuthority(input: {
   const sessions = workspaceRows.filter((row) => row.sessionState === "ACTIVE");
   const local = input.localAuthorityStatus && input.localAuthorityStatus !== "OBSERVED"
     ? null : input.localMissionControl;
+  const localSessionProjection = local?.sessions && typeof local.sessions === "object"
+    ? local.sessions as Record<string, unknown> : null;
+  const localActiveSessions = localSessionProjection && Array.isArray(localSessionProjection.active)
+    ? localSessionProjection.active.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object"))
+    : [];
+  const activeSessionsById = new Map<string, Record<string, unknown>>();
+  for (const row of [...sessions, ...localActiveSessions]) {
+    const id = typeof row.sessionId === "string" ? row.sessionId
+      : typeof row.session_id === "string" ? row.session_id : null;
+    if (id) activeSessionsById.set(id, row);
+  }
+  const activeSessions = [...activeSessionsById.values()];
+  const localDevelopment = local?.development_state && typeof local.development_state === "object"
+    ? local.development_state as Record<string, unknown> : null;
+  const localUserWorkspace = local?.user_workspace && typeof local.user_workspace === "object"
+    ? local.user_workspace as Record<string, unknown> : null;
   return {
     tenantId,
     generatedAt: now.toISOString(),
@@ -157,12 +173,12 @@ export function projectRunnerWorkspaceAuthority(input: {
       activeSessionId: row.activeSessionId,
       lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
     })) },
-    sessions: { activeCount: sessions.length, active: sessions },
+    sessions: { activeCount: activeSessions.length, active: activeSessions },
     workspaceConflicts: workspaces.filter((row) => row.state === "CONFLICT"),
-    pushState: { state: "UNKNOWN", reason: "Runner snapshots do not publish upstream parity" },
-    integrationState: { state: "UNKNOWN", reason: "No canonical integration receipt is attached to this Runner snapshot" },
-    convergenceReceipt: null,
-    recoveryState: { state: "UNKNOWN", reason: "Recovery receipts are stored by the local Workspace Authority registry" },
+    pushState: localDevelopment?.pushed_unintegrated_work ?? { state: "UNKNOWN", reason: "No authoritative push parity evidence is available" },
+    integrationState: localDevelopment?.integrated_work ?? { state: "UNKNOWN", reason: "No authoritative integration classification is available" },
+    convergenceReceipt: localUserWorkspace?.convergence_receipt ?? null,
+    recoveryState: localDevelopment?.recovery_pending ?? { state: "UNKNOWN", reason: "Recovery receipts are stored by the local Workspace Authority registry" },
   };
 }
 
