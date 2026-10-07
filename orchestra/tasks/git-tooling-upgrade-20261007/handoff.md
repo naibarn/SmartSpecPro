@@ -1,6 +1,7 @@
 # Git 2.56 Conflict Resolution Handoff
 
-Status: implementation complete on task branch; canonical integration pending.
+Status: implementation merged into `origin/main`; canonical workspace convergence
+is pending because the registered user checkout contains unrelated local work.
 
 ## Environment
 
@@ -10,6 +11,10 @@ Status: implementation complete on task branch; canonical integration pending.
 - Source: official kernel.org Git 2.56.0 release tarball; built into `/usr/local`
 - Optional Tcl/Tk and gettext integrations were disabled; no unrelated OS packages were upgraded.
 - Canonical base at task start: `origin/main` `5928f373f7c395d1e0cf900615df3b116aae9fee`
+- Implementation commit: `375195fa3ab6e3166be0be0ed0a4fc3a4c80daae`
+- PR #147 merged with GitHub merge commit `86e4c95f059b198344ae7dbd8a7204f709c8a8a4`.
+- The implementation commit is reachable from the current `origin/main` tip
+  `f229104e2172ccf4ddd72ad6b13013b82773f507` at handoff refresh.
 - Primary checkout's unrelated `finance-ocr-debug.jsonl` and `.tmp-audit-download/` changes were preserved.
 
 ## Implementation
@@ -52,8 +57,8 @@ shared policy exclusively.
 ## Remaining work
 
 - Commit only task-owned files and push this task branch through the normal
-  non-force path.
-- Canonical/main integration and any PR protection path remain pending until
-  the pushed revision is checked against the latest configured canonical ref.
+- A fresh authority read reports the registered workspace at
+  `/home/dev/projects/SmartSpecPro` as dirty with two preserved paths and a
+  recovery linkage. Do not converge or overwrite it automatically.
 - Actual Windows execution remains unverified; Windows path normalization has
   a Windows-only automated test.
