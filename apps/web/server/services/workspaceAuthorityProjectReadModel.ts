@@ -96,12 +96,20 @@ export function projectRunnerWorkspaceAuthority(input: {
 
   const byWorkspace = new Map<string, typeof workspaceRows>();
   for (const row of workspaceRows) {
-    const key = `${row.repositoryId ?? "unknown-repository"}:${row.workspaceId}`;
+    const key = row.workspaceId;
     byWorkspace.set(key, [...(byWorkspace.get(key) ?? []), row]);
   }
   const workspaces = [...byWorkspace.values()].map((facts) => {
-    const revisions = new Set(facts.map((fact) => fact.observedSha).filter(Boolean));
-    const state = revisions.size > 1 ? "CONFLICT" : facts.every((fact) => fact.hostState === "STALE") ? "STALE" : "OBSERVED";
+    const identities = new Set(facts.map((fact) => JSON.stringify([fact.projectId, fact.repositoryId])));
+    const workspaceStates = new Set(facts.map((fact) => JSON.stringify([fact.observedSha, fact.branch, fact.dirty, fact.contentFingerprint])));
+    const missingBinding = facts.some((fact) => !fact.projectId || !fact.repositoryId);
+    const state = identities.size > 1 || workspaceStates.size > 1
+      ? "CONFLICT"
+      : missingBinding
+        ? "UNBOUND"
+        : facts.some((fact) => fact.hostState === "STALE")
+          ? "STALE"
+          : "OBSERVED";
     return { state, hosts: facts };
   });
   const sessions = workspaceRows.filter((row) => row.sessionState === "ACTIVE");
@@ -110,6 +118,7 @@ export function projectRunnerWorkspaceAuthority(input: {
     generatedAt: now.toISOString(),
     authority: "runner-control-plane",
     workspaces: { count: workspaceRows.length, observed: workspaceRows },
+    workspaceGroups: { count: workspaces.length, observed: workspaces },
     hosts: { count: rows.length, observed: rows.map((row) => ({
       hostId: row.runnerId,
       agentIdentity: row.runnerId,
