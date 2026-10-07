@@ -1451,6 +1451,52 @@ def retire_completed_worktree(
     return candidate
 
 
+def _classify_unknown_owner(workspace: dict[str, Any]) -> dict[str, Any]:
+    """Classify only unknown-owner states supported by explicit stored facts."""
+    location = Path(str(workspace.get("location") or ""))
+    git_dir = Path(str(workspace.get("git_dir") or ""))
+    path_exists = bool(workspace.get("location") and location.is_dir())
+    git_metadata_exists = bool(workspace.get("git_dir") and git_dir.exists())
+    recovery_linkage = bool(workspace.get("recovery_linkage"))
+    live_owner = workspace.get("session_state") == "ACTIVE_SESSION"
+    if workspace.get("role") == "RECOVERY_WORKSPACE" or recovery_linkage:
+        state = "RECOVERY_WORKSPACE"
+    elif not path_exists or not git_metadata_exists:
+        state = "STALE_METADATA"
+    elif workspace.get("role") == "EXTERNAL_WORKSPACE" and live_owner:
+        state = "ACTIVE_EXTERNAL_WORKSPACE"
+    else:
+        state = "UNRESOLVED_OWNER_PROVENANCE"
+    return {
+        "state": state,
+        "evidence": {
+            "path_exists": path_exists,
+            "git_metadata_exists": git_metadata_exists,
+            "role": workspace.get("role"),
+            "owner_state": workspace.get("session_state"),
+            "owner_lease_present": workspace.get("owner_lease_expires_at") is not None,
+            "task_assignment_present": bool(workspace.get("task_id")),
+            "recovery_linkage_present": recovery_linkage,
+            "dirty": bool(workspace.get("dirty")),
+            "dirty_path_count": int(workspace.get("dirty_path_count") or 0),
+            "branch_present": bool(workspace.get("branch") and workspace.get("branch") != "DETACHED"),
+            "upstream_present": bool(workspace.get("upstream")),
+            "last_verified_state": workspace.get("last_verified_state"),
+        },
+        "unresolved_candidates": [
+            "VALID_LEGACY_UNKNOWN_OWNER",
+            "MANUALLY_RETAINED_WORKSPACE",
+            "MIGRATION_ERA_ARTIFACT",
+        ] if state == "UNRESOLVED_OWNER_PROVENANCE" else [],
+        "next_evidence": [
+            "explicit_owner_or_session",
+            "recovery_or_manual_disposition",
+            "workspace_origin_provenance",
+        ] if state == "UNRESOLVED_OWNER_PROVENANCE" else [],
+        "destructive_action": "PROHIBITED_WITHOUT_EXPLICIT_AUTHORITY",
+    }
+
+
 def collect_worktrees(
     repo: Path,
     policy_path: Path | None = None,
@@ -1476,11 +1522,15 @@ def collect_worktrees(
         if workspace["lifecycle_state"] == "RETIRED":
             results.append({"workspace_id": wid, "classification": "RETIRED"})
             continue
-        if workspace["role"] == "UNKNOWN_WORKSPACE" or workspace["role"] == "EXTERNAL_WORKSPACE":
-            results.append({"workspace_id": wid, "classification": "UNKNOWN_OWNER", "path": workspace["location"]})
-            continue
-        if workspace["role"] == "RECOVERY_WORKSPACE":
-            results.append({"workspace_id": wid, "classification": "RECOVERY_REQUIRED", "path": workspace["location"]})
+        if workspace["role"] in {"UNKNOWN_WORKSPACE", "EXTERNAL_WORKSPACE", "RECOVERY_WORKSPACE"}:
+            owner_classification = _classify_unknown_owner(workspace)
+            classification = owner_classification["state"]
+            results.append({
+                "workspace_id": wid,
+                "classification": "UNKNOWN_OWNER" if classification == "UNRESOLVED_OWNER_PROVENANCE" else classification,
+                "owner_classification": owner_classification,
+                "path": workspace["location"],
+            })
             continue
         if workspace["role"] not in RETIRABLE_ROLES:
             results.append({"workspace_id": wid, "classification": "ACTIVE", "role": workspace["role"]})

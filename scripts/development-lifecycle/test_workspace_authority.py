@@ -684,11 +684,31 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         classifications = {item["workspace_id"]: item["classification"] for item in report["workspaces"]}
         self.assertEqual(classifications[registered_task["workspace_id"]], "RETIRED")
         self.assertEqual(classifications[registered_unknown["workspace_id"]], "UNKNOWN_OWNER")
+        unknown_row = next(item for item in report["workspaces"] if item["workspace_id"] == registered_unknown["workspace_id"])
+        self.assertEqual(unknown_row["owner_classification"]["state"], "UNRESOLVED_OWNER_PROVENANCE")
+        self.assertTrue(unknown_row["owner_classification"]["evidence"]["path_exists"])
+        self.assertEqual(unknown_row["owner_classification"]["next_evidence"], ["explicit_owner_or_session", "recovery_or_manual_disposition", "workspace_origin_provenance"])
         self.assertFalse(task.exists())
         self.assertTrue(unknown.exists())
         retired = next(item["result"]["receipt"] for item in report["workspaces"] if item["workspace_id"] == registered_task["workspace_id"])
         self.assertEqual(retired["previous_path"], str(task))
         self.assertEqual(retired["workspace_id"], registered_task["workspace_id"])
+
+    def test_unknown_owner_classification_uses_only_explicit_recovery_path_and_live_owner_facts(self) -> None:
+        base = {
+            "location": str(self.canonical), "git_dir": str(self.canonical / ".git"),
+            "role": "UNKNOWN_WORKSPACE", "session_state": "NO_ACTIVE_SESSION",
+            "owner_lease_expires_at": None, "task_id": None, "recovery_linkage": None,
+            "dirty": False, "dirty_path_count": 0, "branch": "DETACHED", "upstream": None,
+            "last_verified_state": "OBSERVED",
+        }
+
+        self.assertEqual(authority._classify_unknown_owner({**base, "recovery_linkage": "receipt:recovery"})["state"], "RECOVERY_WORKSPACE")
+        self.assertEqual(authority._classify_unknown_owner({**base, "location": str(self.root / "missing")})["state"], "STALE_METADATA")
+        self.assertEqual(authority._classify_unknown_owner({**base, "role": "EXTERNAL_WORKSPACE", "session_state": "ACTIVE_SESSION"})["state"], "ACTIVE_EXTERNAL_WORKSPACE")
+        unresolved = authority._classify_unknown_owner(base)
+        self.assertEqual(unresolved["state"], "UNRESOLVED_OWNER_PROVENANCE")
+        self.assertIn("MIGRATION_ERA_ARTIFACT", unresolved["unresolved_candidates"])
 
     def test_collector_cli_reports_success_for_completed_report_only_audit(self) -> None:
         arguments = [
