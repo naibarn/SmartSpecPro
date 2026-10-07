@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
+    "expected_canonical_sha": "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete Mission Control pushed/unintegrated and task/provider identity evidence; identify any existing failed-migration result source without creating a second registry; finish remaining regression and acceptance gates. Cloudflare credential-center fixture path is verified; do not attempt external production runtime checks until code-side closure.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind Mission Control pushed/unintegrated and semantic integration facts to an authoritative freshness-aware remote source; resolve task/provider assignment only from explicit owner/task/provider facts; identify an existing failed-migration result source without creating a second registry; finish remaining regression and acceptance evidence. External production verification remains separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -97,7 +97,10 @@
       "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-runner-route-isolation.md",
       "https://github.com/naibarn/SmartSpecPro/pull/186",
       "git:3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
-      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md"
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/187",
+      "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
     ],
     "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
     "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -136,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 47,
+  "generation": 48,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -195,7 +198,8 @@
       "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
       "55571e18378880a7058bde38548e8211aa280842",
       "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
-      "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60"
+      "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
+      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9"
     ],
     "mapping": [],
     "source_paths": [
@@ -235,9 +239,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
+    "canonical_sha": "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:03:08Z"
+    "integrated_at": "2026-10-07T06:04:16Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -303,7 +307,10 @@
       "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-runner-route-isolation.md",
       "https://github.com/naibarn/SmartSpecPro/pull/186",
       "git:3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
-      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md"
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/187",
+      "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -374,7 +381,10 @@
         "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-runner-route-isolation.md",
         "https://github.com/naibarn/SmartSpecPro/pull/186",
         "git:3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
-        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md"
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/187",
+        "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
       ],
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
       "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -451,7 +461,10 @@
         "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-runner-route-isolation.md",
         "https://github.com/naibarn/SmartSpecPro/pull/186",
         "git:3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
-        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md"
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-provider-boundary.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/187",
+        "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -537,7 +550,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T06:03:35.397255Z",
+  "updated_at": "2026-10-07T06:04:55.771848Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
