@@ -59,28 +59,26 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
-    "state": "PARTIAL_INTEGRATED",
-    "objective": "Provide a deterministic loopback-only fresh schema baseline for the Research Notes and Project Wiki Pages acceptance slice using the existing worker_jobs/outbox authority while excluding retired systems.",
+    "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
+    "state": "LOCAL_VERIFIED_PENDING_PR",
+    "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
     "implementation": [
-      "apps/web/drizzle.mini-app-baseline.config.ts",
-      "apps/web/drizzle/mini-app-fresh-baseline/",
-      "apps/web/scripts/test-mini-app-runtime-baseline.sh",
-      "apps/web/scripts/test-mini-app-runtime-baseline.sql"
+      "apps/web/scripts/research-notes-focused-runtime.ts",
+      "apps/web/scripts/research-notes-focused-runtime.seed.sql",
+      "apps/web/scripts/test-mini-app-authenticated-runtime.sh",
+      "apps/web/package.json"
     ],
     "evidence": [
-      "The isolated projection applied successfully to a new PostgreSQL 17 cluster using its own Drizzle journal: 20 active tables. Required project/App/Mini App/worker_jobs/outbox tables exist; workflow_templates, workflows, agencies, workpacks, and sandbox_jobs are absent.",
-      "`pnpm --filter @smartspec/web run test:mini-app-runtime-baseline` passed end-to-end. It creates a loopback-only temporary cluster, applies the guarded projection migration, validates tenant/project isolation, note/page constraints, path reuse after archive, and inserts worker_jobs plus outbox, then rolls back fixtures and tears down the cluster.",
-      "The acceptance database had only plpgsql and no vector extension; the Mini App projection itself does not require pgvector. This does not establish that the full SmartSpecPro schema can run without it.",
-      "The existing full-schema migration chain still fails at 0015 due to missing workflow_templates. The Mini App projection avoids that historical legacy assumption without creating compatibility schema.",
-      "No authenticated web session, app process, deployment, or UAT was run.",
-      "PR #263 merged normally as a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15; registered canonical user workspace converged and verified clean at the same SHA. Attach-artifact API could not attach because thread identity count exceeds 100."
+      "Disposable PostgreSQL 17 baseline migration applied successfully through drizzle.mini-app-baseline.config.ts.",
+      "Focused Express/tRPC runtime bound to 127.0.0.1 and exposed only the Research Notes router; /healthz returned 200.",
+      "Unauthenticated listProjects was denied. A signed session cookie created by the platform SDK was validated by createContext/authenticateRequest; tenant came from the authenticated user currentTenantId.",
+      "Authenticated principal listed its bound project and completed note create, list, update, and archive over HTTP/tRPC against the disposable database.",
+      "A second authenticated tenant was denied access to the first tenant project; the first tenant user was denied access to a same-tenant project without membership.",
+      "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched."
     ],
-    "nextAction": "Start the loopback-only authenticated Research Notes runtime lane from the integrated Mini App schema projection; discover missing boot prerequisites and complete API smoke where feasible. Keep deployment/UAT pending until an authenticated app process and browser journey pass.",
-    "sourceSha": "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/263",
-    "integratedSha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
-    "integration": "MERGED_NORMAL_PR"
+    "nextAction": "Integrate this focused API runtime slice, then investigate the smallest safe path to actual UI/runtime acceptance and worker execution. Deployment, provider summary execution, browser UAT, and full service boot remain separate pending evidence.",
+    "sourceSha": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
+    "integration": "PENDING_NORMAL_PR"
   },
   "checkpoints": [
     {
@@ -356,12 +354,12 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; executor integrated; runtime work is the next eligible lane",
+    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; runtime API path now has focused session-auth evidence",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_UI_AND_BACKGROUND_RUNTIME_ACCEPTANCE",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -375,12 +373,12 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T02:46:00+07:00",
+  "updatedAt": "2026-10-08T03:02:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "BASELINE_READY_RUNTIME_NOT_DEPLOYED",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "FOCUSED_API_RUNTIME_PASS_DEPLOYMENT_NOT_RUN",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
@@ -391,7 +389,7 @@
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "The Mini App-only schema baseline and worker_jobs/outbox DB contracts pass and are integrated at a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15. An authenticated app process has not been started on this target, so deployment and runtime remain pending.",
+    "reason": "Focused loopback API runtime with real SDK session-cookie auth and tenant/project/App-scoped CRUD passes on a disposable schema baseline. Full product deployment/UI and worker runtime remain unverified.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -400,20 +398,20 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_BUILT_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-factory-resume-test-20261008",
-    "sourceBranch": "codex/mini-app-runtime-schema-baseline-20261008",
+    "taskWorktree": "/home/dev/worktrees/mini-app-auth-runtime-next-20261008",
+    "sourceBranch": "codex/mini-app-auth-runtime-next-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
-      "453811db9a79c6f944590aad0ca0a7f8e91c7cf5"
+      "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
+      "091a3b7f66fdaebbb5d4fdeec95b06fa3e5dfd17"
     ],
-    "intendedRemoteBranch": "codex/mini-app-runtime-schema-baseline-20261008",
+    "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
-      "number": 263,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/263",
-      "state": "MERGED",
-      "integration": "MERGED_NORMAL_PR",
-      "integratedSha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15"
+      "number": null,
+      "url": null,
+      "state": "NOT_CREATED",
+      "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
@@ -435,17 +433,22 @@
         "revision": "88a7870c963941b71aca348ae860d0d1d97b8ae3 + PR #263; integration SHA a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
         "command": "pnpm --filter @smartspec/web run test:mini-app-runtime-baseline",
         "outcome": "PASS (rerun before merge): disposable PostgreSQL 17 loopback schema migration and contract fixture; no vector extension required by Mini App projection"
+      },
+      {
+        "revision": "3ae709d67481d82eba8b235608c2063a8fa6dc76 + authenticated runtime probe delta",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
+        "outcome": "PASS: disposable PostgreSQL 17; real signed session-cookie authentication; unauthenticated denial; cross-tenant and unmembered-project denial; project-scoped create/list/update/archive over loopback HTTP/tRPC"
       }
     ],
-    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #263 merged normally",
+    "githubIntegration": "IDLE_BEFORE_RUNTIME_PR; normal non-force PR path",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+    "canonicalAtCheckpoint": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "a93cf2ba6085f3cf68f529bc9ed5b498f15dbe15",
+      "sha": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:849f521e-6a37-4773-afae-565bcd0a1797"
+      "receiptId": "workspace-convergence:fc9a9033-7e3f-4cdd-bfc1-21f3a672332b"
     }
   }
 }
