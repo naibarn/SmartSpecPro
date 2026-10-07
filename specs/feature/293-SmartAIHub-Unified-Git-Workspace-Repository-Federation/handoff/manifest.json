@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "d08d7973ba80f04299d90f24044a83eb08cbb69a",
+    "expected_canonical_sha": "25f4804ac572bf6fda6b87a1bd3f2d344833e230",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: determine an approved existing source for failed db:migrate attempts; until that source is bound, retain failure state as unknown and do not infer from pending migrations. Resolve the 47 UNKNOWN_OWNER rows only from explicit owner/provenance evidence; keep the 37 detached/no-upstream and 10 branch/upstream rows non-destructive while origin is unknown. Finish applicable local acceptance; production runtime/provider verification remains separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: identify an approved durable source for failed Drizzle migration attempts (the current Drizzle ledger records applied migrations only); preserve the 47 UNKNOWN_OWNER workspaces until explicit provenance supports classification; complete any remaining applicable local acceptance. Keep the dirty canonical user workspace preserved and external runtime verification separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0_INTERNAL_GAP_CLOSURE",
+    "resume_point": "P0_INTERNAL_GAP_CLOSURE: failed Drizzle migration attempt source and UNKNOWN_OWNER provenance classification",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 53,
+  "generation": 54,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -243,9 +243,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d08d7973ba80f04299d90f24044a83eb08cbb69a",
+    "canonical_sha": "25f4804ac572bf6fda6b87a1bd3f2d344833e230",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:40:44Z"
+    "integrated_at": "2026-10-07T06:57:58Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -570,7 +570,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T06:42:41.312267Z",
+  "updated_at": "2026-10-07T07:00:46.281416Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -782,6 +782,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-detached-integration-d08d7973.md",
         "scope": "fresh remote commit-graph classification for detached/no-upstream heads with negative boundary; 47-row AUDIT_ONLY owner classification; convergence evidence",
         "source_sha": "9536f33358331ac12a77fa54bbbb663d86fa1d48",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_RUNNER_WORKSPACE_PROVENANCE",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-runner-workspace-provenance-20261007.md",
+        "scope": "Explicit project/repository identity, active Runner task and convergence facts; 10 focused Vitest files (82 passed), Runner Rust tests/check/format passed; clean canonical checkout remains blocked by preserved dirty user work.",
+        "source_sha": "25f4804ac572bf6fda6b87a1bd3f2d344833e230",
         "status": "PASS"
       }
     ],
