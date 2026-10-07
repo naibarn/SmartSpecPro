@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
+    "sha": "b65aa8551d483d12b18da3982abcbc685d808603",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
-      "canonical_sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
-      "canonical_user_workspace_sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
+      "integrated_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "canonical_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "canonical_user_workspace_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:715fbfa8-45a5-4adc-8824-e899ed7c4676",
-      "verified_at": "2026-10-07T20:18:25.048+00:00"
+      "receipt_id": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929",
+      "verified_at": "2026-10-07T20:20:58.898+00:00"
     },
-    "observedAt": "2026-10-08T03:20:00+07:00",
+    "observedAt": "2026-10-08T03:22:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
-      "canonical_user_workspace_sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
+      "integrated_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "canonical_user_workspace_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T20:18:30.762+00:00",
-      "receipt_id": "workspace-convergence:715fbfa8-45a5-4adc-8824-e899ed7c4676"
+      "verified_at": "2026-10-07T20:21:05.186+00:00",
+      "receipt_id": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929"
     }
   },
   "inventory": {
@@ -68,11 +68,11 @@
       "apps/web/server/services/__tests__/researchNotesSmokeRunner.test.ts"
     ],
     "evidence": [
-      "PR #274 source d8bf17af0974a85feac7e10287371f1096d7ff35 merged normally at 724046c39650288df6a0b5506bcbfac757bc1dcb; its commit is reachable from origin/main.",
-      "Focused Vitest suite passed 1 file/2 tests: production environment refused before credential use/logging; provider-cost gate enforced before network/provider requests.",
-      "Canonical workspace /home/dev/projects/SmartSpecPro converged clean at the integrated SHA."
+      "PR #274 implementation source d8bf17af0974a85feac7e10287371f1096d7ff35 integrated at 724046c39650288df6a0b5506bcbfac757bc1dcb.",
+      "PR #275 handoff state merged normally at b65aa8551d483d12b18da3982abcbc685d808603; canonical workspace is clean and converged at that SHA.",
+      "Focused Vitest suite passed 1 file/2 tests: production environment refused before credential use/logging; provider-cost gate enforced before network/provider requests."
     ],
-    "nextAction": "Keep M4 full app deployment/UI/UAT and M6/M7 execution/resume as scoped waits until a supported non-retired full app composition and approved durable stage worker binding are available. Continue with any implementation-side checks that do not import or activate retired workflow surfaces.",
+    "nextAction": "Resume the highest-priority dependency-safe work when a non-retired full application runtime and approved worker binding exist. Current remaining MVP execution paths are persisted as scoped waits, not program-wide STOP.",
     "sourceSha": "d8bf17af0974a85feac7e10287371f1096d7ff35",
     "sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
     "pr": "https://github.com/naibarn/SmartSpecPro/pull/274",
@@ -232,6 +232,14 @@
       "sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/274",
       "evidence": "Production smoke target refusal and explicit provider-cost authorization guard are covered by 2 focused tests. Secrets are not echoed; no provider call is made without the gate."
+    },
+    {
+      "id": "RESEARCH_NOTES_SMOKE_GUARDRAIL_HANDOFF",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "c37c8c3d94673821da9248a76eddc1923b6e1d47",
+      "sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/275",
+      "evidence": "PR #275 recorded PR #274 smoke safety implementation and canonical convergence receipt. Handoff JSON validates; program remains WORKING with full app/UI/UAT, provider, background execution and cross-process resume waits unchanged."
     }
   ],
   "completedWorkunits": [
@@ -389,13 +397,13 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "DEPENDENCY_SAFE_FACTORY_IMPLEMENTATION_CHECKS; full app runtime, background worker and cross-process resume are waiting on safe non-retired runtime/execution composition.",
+    "nextEligibleWorkunit": "WAIT_FOR_SCOPED_RUNTIME_AND_EXECUTION_PREDICATES; continue any future dependency-safe implementation checks that avoid retired workflow imports.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "PR #274 merged through normal squash path and canonical workspace converged clean.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/274",
-      "integratedSha": "724046c39650288df6a0b5506bcbfac757bc1dcb"
+      "lastScenario": "PR #275 handoff merged normally; canonical workspace convergence verified.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/275",
+      "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
     },
     "waitingWorkunits": [
       {
@@ -430,7 +438,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:20:00+07:00",
+  "updatedAt": "2026-10-08T03:22:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -455,8 +463,8 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/research-notes-smoke-guardrails-20261008",
-    "sourceBranch": "codex/research-notes-smoke-guardrails-20261008",
+    "taskWorktree": "/home/dev/worktrees/research-notes-smoke-guardrails-closeout-20261008",
+    "sourceBranch": "codex/research-notes-smoke-guardrails-closeout-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -475,16 +483,17 @@
       "fb0ec8c37ecdb0e0e9d02055f3c93ecc5151e6ce",
       "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
       "d8bf17af0974a85feac7e10287371f1096d7ff35",
-      "928de50657f8fbe245ae5c9b9ed8975d3d036c6d"
+      "928de50657f8fbe245ae5c9b9ed8975d3d036c6d",
+      "c37c8c3d94673821da9248a76eddc1923b6e1d47"
     ],
-    "intendedRemoteBranch": "codex/research-notes-smoke-guardrails-20261008",
+    "intendedRemoteBranch": "codex/research-notes-smoke-guardrails-closeout-20261008",
     "pendingPullRequest": {
-      "number": 274,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/274",
+      "number": 275,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/275",
       "state": "MERGED",
       "integration": "SQUASH_MERGED_NORMALLY",
-      "sourceSha": "d8bf17af0974a85feac7e10287371f1096d7ff35",
-      "integratedSha": "724046c39650288df6a0b5506bcbfac757bc1dcb"
+      "sourceSha": "c37c8c3d94673821da9248a76eddc1923b6e1d47",
+      "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
     },
     "testEvidence": [
       {
@@ -578,15 +587,15 @@
         "outcome": "PASS: 1 file, 2 tests; production target/credential refusal and provider-cost gate verified before external requests."
       }
     ],
-    "githubIntegration": "IDLE_AFTER_PR_274_MERGE; normal non-force path succeeded",
+    "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "724046c39650288df6a0b5506bcbfac757bc1dcb",
+    "canonicalAtCheckpoint": "b65aa8551d483d12b18da3982abcbc685d808603",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
+      "sha": "b65aa8551d483d12b18da3982abcbc685d808603",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:715fbfa8-45a5-4adc-8824-e899ed7c4676"
+      "receiptId": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929"
     }
   }
 }
