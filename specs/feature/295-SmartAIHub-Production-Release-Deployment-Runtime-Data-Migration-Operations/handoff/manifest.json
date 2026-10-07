@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3369b76ef4aaa252c56121c6abf2b8108bae9969",
+    "expected_canonical_sha": "bea3933b18bc11dc76dbac4d972b8ed14532be65",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Continue the remaining P0-WU-4C local wiring gaps: bind Cloudflare evidence adapters to authoritative target configuration without invoking live production endpoints; determine whether durable migration failure results exist in an authorized internal source; finish evidence-backed provenance for 46 unresolved UNKNOWN_OWNER workspaces when owner/manual/archive history is available; preserve the dirty canonical user workspace until its two changes have an owner/disposition; retain P0_CODE_IMPLEMENTATION=PARTIAL until every completion-gate item has implementation and fresh evidence.",
+    "next_action": "Continue P0-WU-4C local gap closure. Keep P0_CODE_IMPLEMENTATION=PARTIAL while: (1) the registered canonical user workspace has modified apps/web/finance-ocr-debug.jsonl and untracked .tmp-audit-download/SmartSpecPro-True-Latest-Audit-2026-10-07.zip, preserved at the linked recovery receipt; (2) 46 UNKNOWN_OWNER rows remain UNRESOLVED_OWNER_PROVENANCE; (3) no durable failed-migration execution-result source is bound, so Drizzle remains UNKNOWN/NOT_TRACKED; and (4) Cloudflare runtime evidence adapters have no internal call site bound to tenant/deployment targets, while local provider/account refs are not configured. Do not invoke live production endpoints or infer ownership/provider configuration.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0-WU-4C after evidence-backed UNKNOWN_OWNER audit integrated at 452a2073b64a7a610b504b5175196a95a5e58d81. Latest AUDIT_ONLY classifies 46 as UNRESOLVED_OWNER_PROVENANCE and confirms zero are automatically retired.",
+    "resume_point": "P0-WU-4C at canonical main bea3933b18bc11dc76dbac4d972b8ed14532be65. The code and Handoff through PR #212 are integrated. First preserve/resolve the two dirty canonical workspace paths by their owner, then continue provider-target discovery and migration execution-result source analysis; do not perform destructive worktree cleanup.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 63,
+  "generation": 64,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -248,9 +248,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3369b76ef4aaa252c56121c6abf2b8108bae9969",
+    "canonical_sha": "bea3933b18bc11dc76dbac4d972b8ed14532be65",
     "integrated": true,
-    "integrated_at": "2026-10-07T08:00:36Z"
+    "integrated_at": "2026-10-07T08:02:08Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -632,7 +632,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T08:01:13.058074Z",
+  "updated_at": "2026-10-07T08:05:40.548418Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -866,6 +866,13 @@
         "scope": "Drizzle applied hash is mapped back to journal revision tag in applied head and latest successful execution.",
         "source_sha": "3369b76ef4aaa252c56121c6abf2b8108bae9969",
         "status": "PASS"
+      },
+      {
+        "kind": "CANONICAL_USER_WORKSPACE_CONVERGENCE",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-current-canonical-workspace-convergence-20261007.md",
+        "scope": "Attempted exact-SHA convergence and verification of the registered canonical checkout; dirty work was preserved with a recovery receipt.",
+        "source_sha": "bea3933b18bc11dc76dbac4d972b8ed14532be65",
+        "status": "BLOCKED"
       }
     ],
     "freshness": "UNKNOWN",
