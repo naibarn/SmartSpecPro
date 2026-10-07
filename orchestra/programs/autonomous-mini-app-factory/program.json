@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+    "sha": "fb208c253879ef81dc357942169227433ee5fc73",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
-      "canonical_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
-      "canonical_user_workspace_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "integrated_sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "canonical_sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "canonical_user_workspace_sha": "fb208c253879ef81dc357942169227433ee5fc73",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:7f74ea99-026c-44d0-a725-e04f4739d446",
-      "verified_at": "2026-10-07T20:05:00+00:00"
+      "receipt_id": "workspace-convergence:60094351-08a1-4ce6-9a62-cbf086530dc2",
+      "verified_at": "2026-10-07T20:09:28.431+00:00"
     },
-    "observedAt": "2026-10-08T03:08:00+07:00",
+    "observedAt": "2026-10-08T03:10:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
-      "canonical_user_workspace_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "integrated_sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "canonical_user_workspace_sha": "fb208c253879ef81dc357942169227433ee5fc73",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T20:05:00+00:00",
-      "receipt_id": "workspace-convergence:7f74ea99-026c-44d0-a725-e04f4739d446"
+      "verified_at": "2026-10-07T20:09:35.934+00:00",
+      "receipt_id": "workspace-convergence:60094351-08a1-4ce6-9a62-cbf086530dc2"
     }
   },
   "inventory": {
@@ -61,7 +61,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_PGVECTOR_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "LOCAL_VERIFIED_PENDING_PR",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Run the authenticated Research Notes loopback API against a disposable PostgreSQL image that supports pgvector, while keeping the database bound to loopback and isolated from shared or production data.",
     "implementation": [
       "apps/web/package.json",
@@ -69,13 +69,16 @@
       "apps/web/scripts/test-mini-app-authenticated-runtime-pgvector.sh"
     ],
     "evidence": [
+      "PR #271 merged normally as fb208c253879ef81dc357942169227433ee5fc73; source c1b5d3777f9cafdc6358cf7048b7edf2942afba6 is integrated and reachable from origin/main.",
       "Disposable pgvector/pgvector:pg15 container exposed only on 127.0.0.1; vector extension 0.8.2 available and installed before baseline migrations.",
-      "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime-pgvector passed: authenticated Research Notes create/list/update/archive; unauthenticated, cross-tenant, other-project, revoked-membership, and archived-App checks passed.",
-      "ResearchNotesPage.test.tsx passed 1 file/3 tests at the same task source. This is component test evidence, not browser, responsive, full app deployment, or UAT evidence."
+      "Focused authenticated runtime passed: Research Notes create/list/update/archive; unauthenticated, cross-tenant, other-project, revoked-membership, and archived-App checks passed.",
+      "ResearchNotesPage.test.tsx passed 1 file/3 tests; component evidence only, not browser, responsive, full app deployment, or UAT evidence."
     ],
-    "nextAction": "Integrate this runtime harness through a normal PR. Continue with full application UI/runtime and Factory execution only through approved paths; preserve runtime/bootstrap and worker-binding waits until a safe non-retired app composition and approved durable execution binding are available.",
+    "nextAction": "Continue dependency-safe Factory work. Full app/UI runtime and UAT remain waiting for an isolated supported app composition that does not activate retired workflow surfaces; background jobs and stage execution remain waiting on an approved durable non-retired worker binding.",
     "sourceSha": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
-    "integration": "PENDING_NORMAL_PR"
+    "sha": "fb208c253879ef81dc357942169227433ee5fc73",
+    "pr": "https://github.com/naibarn/SmartSpecPro/pull/271",
+    "integration": "PARTIAL_INTEGRATED"
   },
   "checkpoints": [
     {
@@ -207,6 +210,14 @@
       "sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/270",
       "evidence": "PR #270 merged normally at this SHA and canonical workspace converged clean. Focused selector/executor suite passed 2 files/6 tests with a fresh executor invocation resuming the dependent stage from the persisted DevelopmentRun snapshot; test adapter is in-memory, so cross-process PostgreSQL recovery/M7 remain pending. Existing DevelopmentRun persistence/integration tests passed 2 files/21 tests at prior SHA 41444f8ff520dfae154373df23ee64f7a99b1212."
+    },
+    {
+      "id": "RESEARCH_NOTES_PGVECTOR_AUTHENTICATED_LOOPBACK_RUNTIME",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
+      "sha": "fb208c253879ef81dc357942169227433ee5fc73",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/271",
+      "evidence": "Disposable PostgreSQL 15 pgvector runtime extension 0.8.2, loopback-only database; Mini App baseline migrated and authenticated Research Notes API acceptance passed (unauthenticated, cross-tenant/project, revoked membership, archived App, CRUD/archive). ResearchNotesPage component suite 1 file/3 tests passed. Full app deployment/browser UAT remain pending."
     }
   ],
   "completedWorkunits": [
@@ -368,9 +379,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "GitHub recovered and two normal checkpoint PRs merged without user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/257",
-      "integratedSha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74"
+      "lastScenario": "Normal non-force GitHub API merge recovered from local gh pr merge checkout collision; canonical workspace converged without user intervention.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/271",
+      "integratedSha": "fb208c253879ef81dc357942169227433ee5fc73"
     },
     "waitingWorkunits": [
       {
@@ -400,7 +411,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:08:00+07:00",
+  "updatedAt": "2026-10-08T03:10:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -441,14 +452,17 @@
       "357f55a63b2db85510af80610208a0e9f3a19cbf",
       "f89c9f549047c9a94a86aed3769fa29b8fc89c42",
       "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
-      "c1b5d3777f9cafdc6358cf7048b7edf2942afba6"
+      "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
+      "fb0ec8c37ecdb0e0e9d02055f3c93ecc5151e6ce"
     ],
     "intendedRemoteBranch": "codex/miniapp-pgvector-runtime-bootstrap-20261008",
     "pendingPullRequest": {
-      "number": null,
-      "url": null,
-      "state": "NOT_CREATED",
-      "integration": "PENDING_NORMAL_PR"
+      "number": 271,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/271",
+      "state": "MERGED",
+      "integration": "SQUASH_MERGED_NORMALLY",
+      "sourceSha": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
+      "integratedSha": "fb208c253879ef81dc357942169227433ee5fc73"
     },
     "testEvidence": [
       {
@@ -517,15 +531,15 @@
         "outcome": "PASS: 1 file, 3 tests; component-level evidence only, no browser or responsive UAT."
       }
     ],
-    "githubIntegration": "IDLE_AFTER_PR_270; PGVECTOR_RUNTIME_CHECKPOINT_PENDING_NORMAL_PR",
+    "githubIntegration": "IDLE_AFTER_PR_271_MERGE; normal non-force path succeeded",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+    "canonicalAtCheckpoint": "fb208c253879ef81dc357942169227433ee5fc73",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "sha": "fb208c253879ef81dc357942169227433ee5fc73",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:7f74ea99-026c-44d0-a725-e04f4739d446"
+      "receiptId": "workspace-convergence:60094351-08a1-4ce6-9a62-cbf086530dc2"
     }
   }
 }
