@@ -5,27 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+    "sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
-      "canonical_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
-      "canonical_user_workspace_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+      "integrated_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+      "canonical_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+      "canonical_user_workspace_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:c3d1c60a-d86d-4a61-918f-11b0fdf652bb",
-      "verified_at": "2026-10-07T19:58:13.782+00:00"
+      "receipt_id": "workspace-convergence:5b76c8ec-4d1e-476a-a718-3523fac65046",
+      "verified_at": "2026-10-07T20:01:15.976+00:00"
     },
-    "observedAt": "2026-10-08T03:00:10+07:00",
+    "observedAt": "2026-10-08T03:01:55+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
-      "canonical_user_workspace_sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+      "integrated_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+      "canonical_user_workspace_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T19:58:13.782+00:00"
+      "verified_at": "2026-10-07T20:01:15.976+00:00",
+      "receipt_id": null
     }
   },
   "inventory": {
@@ -59,33 +60,20 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "PARTIAL_INTEGRATED",
-    "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
+    "id": "FACTORY_STAGE_EXECUTOR_RESUME_SEAM",
+    "state": "LOCAL_VERIFIED_PENDING_PR",
+    "objective": "Prove that a new Mini App Factory executor invocation resumes the next ready stage from the latest persisted DevelopmentRun checkpoint.",
     "implementation": [
-      "apps/web/scripts/research-notes-focused-runtime.ts",
-      "apps/web/scripts/research-notes-focused-runtime.seed.sql",
-      "apps/web/scripts/test-mini-app-authenticated-runtime.sh",
-      "apps/web/package.json"
+      "apps/web/server/services/miniAppFactoryRunExecutor.test.ts"
     ],
     "evidence": [
-      "Disposable PostgreSQL 17 baseline migration applied successfully through drizzle.mini-app-baseline.config.ts.",
-      "Focused Express/tRPC runtime bound to 127.0.0.1 and exposed only the Research Notes router; /healthz returned 200.",
-      "Unauthenticated listProjects was denied. A signed session cookie created by the platform SDK was validated by createContext/authenticateRequest; tenant came from the authenticated user currentTenantId.",
-      "Authenticated principal listed its bound project and completed note create, list, update, and archive over HTTP/tRPC against the disposable database.",
-      "A second authenticated tenant was denied access to the first tenant project; the first tenant user was denied access to a same-tenant project without membership.",
-      "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched.",
-      "PR #265 merged normally as 2e1042c6523765915c7970c8958c9951905d07cd; /home/dev/projects/SmartSpecPro converged and verified clean at this SHA. The PR branch had diverged from the squash merge of #264; conflict was reconciled on the single owned program.json path using git_capabilities.py resolve before normal PR merge.",
-      "Authenticated loopback API suite now also denies revoked project membership and hides projects for an archived App; command passed against a fresh disposable PostgreSQL 17 baseline.",
-      "PR #267 merged normally as e85a66d9340b872872d1333047f687b5ad4fb558; canonical workspace verified clean at this SHA. The focused runtime suite now rejects revoked membership and hides projects after app archive.",
-      "After PR #268, both authenticated API and fresh schema baseline scripts passed again at canonical work SHA 831e6c04b2f13d4686627cf3abf956607fb8a08f. The second app Project Wiki Pages package rebuilt twice with the shared --package-root builder: digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a and archive SHA-256 7f42b43c66da09c47ac1a86e9ff5d58a1c897c1625ad6286c3eb528b18bc6643; validation remains needs_context.",
-      "At canonical SHA 831e6c04b2f13d4686627cf3abf956607fb8a08f, Project Wiki focused service/router/UI tests passed 3 files/7 tests; Mini App Factory pipeline/executor tests passed 2 files/5 tests."
+      "The first invocation executes one stage and records its canonical DevelopmentRun checkpoint before returning READY with the dependent stage selected.",
+      "A fresh service/executor instance reloads the saved run snapshot, resumes the dependent stage with prior completion and artifact context, and reaches implementation-scope completion.",
+      "Focused Mini App Factory selector/executor suite passed 2 files/6 tests at the task source. The persistence adapter in this focused test is in-memory; this is a resume-seam regression, not cross-process PostgreSQL or M7 AUTO_RESUME PASS."
     ],
-    "nextAction": "Continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING: bind the generic DAG executor to an approved durable DevelopmentRun/worker execution composition, without introducing a parallel queue or activating retired workflow surfaces. UI/deployment/UAT and provider summary runtime remain separate pending lanes.",
-    "sourceSha": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
-    "integration": "MERGED_NORMAL_PR",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/267",
-    "integratedSha": "831e6c04b2f13d4686627cf3abf956607fb8a08f"
+    "nextAction": "Bind the generic stage executor to an approved durable DevelopmentRun/worker execution composition. The executor still requires a caller-supplied executeStage callback; do not add another queue or route through retired workflow surfaces.",
+    "sourceSha": "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
+    "integration": "PENDING_NORMAL_PR"
   },
   "checkpoints": [
     {
@@ -361,12 +349,12 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; authenticated runtime and second app package revalidation passed; continue generic Factory worker wiring",
+    "autoNextWorkSelection": "PARTIAL_SELECTOR_AND_EXECUTOR_WITH_RESUME_SEAM_TEST; approved stage worker binding remains next",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "FACTORY_STAGE_EXECUTOR_WORKER_WIRING",
+    "nextEligibleWorkunit": "FACTORY_STAGE_EXECUTOR_APPROVED_WORKER_BINDING",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -383,7 +371,12 @@
       {
         "id": "RESEARCH_NOTES_BACKGROUND_EXECUTION",
         "state": "WAITING_SAFE_CONTROL_PLANE_PATH_REVIEW",
-        "predicate": "Exercise existing worker_jobs/outbox executor without activating retired workflow runtime imports or using a provider with cost; continue after identifying an allowed execution path."
+        "predicate": "Exercise worker_jobs/outbox execution only through an allowed path that does not activate the retired workflow runtime; do not run a provider with cost without the existing provider-cost gate."
+      },
+      {
+        "id": "FACTORY_STAGE_EXECUTOR_APPROVED_WORKER_BINDING",
+        "state": "WAITING_EXECUTION_RUNTIME_BINDING",
+        "predicate": "An approved non-retired stage implementation callback/runtime is available and can be invoked from DevelopmentRun with durable checkpoint/retry semantics; current generic executor has no default worker binding."
       },
       {
         "id": "RESEARCH_NOTES_AI_PROVIDER_RUNTIME",
@@ -397,7 +390,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:00:15+07:00",
+  "updatedAt": "2026-10-08T03:02:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -406,8 +399,8 @@
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
-    "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_TESTED_WORKER_WIRING_PENDING",
-    "M7_FACTORY_AUTO_RESUME_PASS": "NOT_RUN",
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_AND_RESUME_SEAM_TESTED_WORKER_BINDING_PENDING",
+    "M7_FACTORY_AUTO_RESUME_PASS": "PARTIAL_RESUME_SEAM_TESTED_CROSS_PROCESS_RESUME_PENDING",
     "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_SPEC_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_RUNTIME_PENDING"
   },
   "deployment": {
@@ -418,12 +411,12 @@
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "DEPENDENCY_READY_SELECTOR_AND_CHECKPOINT_EXECUTOR_TESTED_WORKER_COMPOSITION_PENDING",
+    "state": "DEPENDENCY_READY_SELECTOR_EXECUTOR_AND_RESUME_SEAM_TESTED_WORKER_BINDING_PENDING",
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-factory-post-runtime-20261008",
-    "sourceBranch": "codex/mini-app-factory-post-runtime-20261008",
+    "taskWorktree": "/home/dev/worktrees/mini-app-factory-resume-proof-20261008",
+    "sourceBranch": "codex/mini-app-factory-resume-proof-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -436,15 +429,15 @@
       "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
       "592aec5c4d732f85e9baed40cf56516e68962a92",
       "357f55a63b2db85510af80610208a0e9f3a19cbf",
-      "f89c9f549047c9a94a86aed3769fa29b8fc89c42"
+      "f89c9f549047c9a94a86aed3769fa29b8fc89c42",
+      "9886550e2a5d194efe59fffaac2abdf9cfe81ce6"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
-      "number": 268,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/268",
-      "state": "MERGED",
-      "integration": "MERGED_NORMAL_PR",
-      "integratedSha": "831e6c04b2f13d4686627cf3abf956607fb8a08f"
+      "number": null,
+      "url": null,
+      "state": "NOT_CREATED",
+      "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
@@ -496,17 +489,22 @@
         "revision": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
         "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts --package-root apps/web/mini-apps/project-wiki-pages/package --output-dir /tmp/project-wiki-pages-package-run-1 (repeat with run-2)",
         "outcome": "PASS: two identical builds; package digest spaas-package-v1:sha256:0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a; archive SHA-256 7f42b43c66da09c47ac1a86e9ff5d58a1c897c1625ad6286c3eb528b18bc6643; validator needs_context, so no deployment/UAT claim"
+      },
+      {
+        "revision": "9886550e2a5d194efe59fffaac2abdf9cfe81ce6 based on canonical 41444f8ff520dfae154373df23ee64f7a99b1212",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryRunExecutor.test.ts server/services/miniAppFactoryPipeline.test.ts",
+        "outcome": "PASS: 2 files, 6 tests; resumed a dependent stage from a fresh executor/service invocation using persisted DevelopmentRun snapshot; in-memory persistence only, cross-process database recovery remains pending"
       }
     ],
-    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #268 merged normally",
+    "githubIntegration": "IDLE_BEFORE_RESUME-SEAM_PR; normal non-force PR path",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+    "canonicalAtCheckpoint": "41444f8ff520dfae154373df23ee64f7a99b1212",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "831e6c04b2f13d4686627cf3abf956607fb8a08f",
+      "sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:c3d1c60a-d86d-4a61-918f-11b0fdf652bb"
+      "receiptId": "workspace-convergence:5b76c8ec-4d1e-476a-a718-3523fac65046"
     }
   }
 }
