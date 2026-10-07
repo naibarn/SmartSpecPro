@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
+    "expected_canonical_sha": "327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: finish cross-host Runner dispatch/fact persistence and conflict semantics; complete Mission Control integration/push state and provider/task identity precedence; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; complete remaining WU-4C regression/acceptance evidence. Keep P0 implementation PARTIAL.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -53,14 +53,18 @@
       "https://github.com/naibarn/SmartSpecPro/pull/158",
       "git:ba8da3fb51458b0ee98f16289e346d4fe0575474",
       "git:587e52b7067482582b807a8786b81c075b8f46b8",
-      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/160",
+      "git:f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
+      "git:327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md"
     ],
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
-    "rationale": "PR #158 adds authenticated worker_jobs safe-action dispatch and canonical execution with normalized evidence and lifecycle events. This closes the initial API/worker path but does not complete cross-host Runner execution or the other local WU-4C requirements. Canonical user checkout remains dirty on another branch and is preserved.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: finish cross-host Runner dispatch/fact persistence and conflict semantics; complete Mission Control integration/push state and provider/task identity precedence; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; complete remaining WU-4C regression/acceptance evidence. Keep P0 implementation PARTIAL.",
+    "rationale": "PR #160 separates blocked and unknown-owner worktrees and exposes additional local session facts without guessing identity. The seven-action worker path is integrated separately; cross-host action execution, complete integration state, remaining source bindings, and acceptance gates are still open. Canonical user checkout remains dirty on a different branch and is preserved.",
     "residual_requirements": [
       "cross-host Runner dispatch and durable fact ingestion/conflict reconciliation",
-      "complete Mission Control aggregation and active session identity precedence",
-      "periodic local worktree audit scheduler and handoff lifecycle producer",
+      "complete Mission Control push/integration and identity precedence fields",
+      "genuine handoff lifecycle event producer",
       "migration and runtime health bindings to internal sources",
       "Cloudflare credential-center integration path",
       "remaining WU-4C regression matrix and acceptance evidence"
@@ -92,7 +96,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -132,7 +136,9 @@
       "7902974a70d4631e51410de67762b1e59ded9bde",
       "b2791404dde26fef8a2a9a46caece7f3f8b24285",
       "ba8da3fb51458b0ee98f16289e346d4fe0575474",
-      "587e52b7067482582b807a8786b81c075b8f46b8"
+      "587e52b7067482582b807a8786b81c075b8f46b8",
+      "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
+      "327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c"
     ],
     "mapping": [],
     "source_paths": [
@@ -170,9 +176,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
+    "canonical_sha": "327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:10:40Z"
+    "integrated_at": "2026-10-07T05:17:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -199,7 +205,10 @@
       "git:4c5c43d52249ae767806947e9e6abe3222035542",
       "https://github.com/naibarn/SmartSpecPro/pull/158",
       "git:587e52b7067482582b807a8786b81c075b8f46b8",
-      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/160",
+      "git:327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
+      "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -226,14 +235,18 @@
         "https://github.com/naibarn/SmartSpecPro/pull/158",
         "git:ba8da3fb51458b0ee98f16289e346d4fe0575474",
         "git:587e52b7067482582b807a8786b81c075b8f46b8",
-        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/160",
+        "git:f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
+        "git:327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md"
       ],
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
-      "rationale": "PR #158 adds authenticated worker_jobs safe-action dispatch and canonical execution with normalized evidence and lifecycle events. This closes the initial API/worker path but does not complete cross-host Runner execution or the other local WU-4C requirements. Canonical user checkout remains dirty on another branch and is preserved.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: finish cross-host Runner dispatch/fact persistence and conflict semantics; complete Mission Control integration/push state and provider/task identity precedence; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; complete remaining WU-4C regression/acceptance evidence. Keep P0 implementation PARTIAL.",
+      "rationale": "PR #160 separates blocked and unknown-owner worktrees and exposes additional local session facts without guessing identity. The seven-action worker path is integrated separately; cross-host action execution, complete integration state, remaining source bindings, and acceptance gates are still open. Canonical user checkout remains dirty on a different branch and is preserved.",
       "residual_requirements": [
         "cross-host Runner dispatch and durable fact ingestion/conflict reconciliation",
-        "complete Mission Control aggregation and active session identity precedence",
-        "periodic local worktree audit scheduler and handoff lifecycle producer",
+        "complete Mission Control push/integration and identity precedence fields",
+        "genuine handoff lifecycle event producer",
         "migration and runtime health bindings to internal sources",
         "Cloudflare credential-center integration path",
         "remaining WU-4C regression matrix and acceptance evidence"
@@ -264,7 +277,10 @@
         "git:4c5c43d52249ae767806947e9e6abe3222035542",
         "https://github.com/naibarn/SmartSpecPro/pull/158",
         "git:587e52b7067482582b807a8786b81c075b8f46b8",
-        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/160",
+        "git:327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
+        "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -350,7 +366,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:12:14.180642Z",
+  "updated_at": "2026-10-07T05:18:25.520968Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -450,6 +466,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md",
         "scope": "authenticated seven-action API/worker dispatch, idempotency, retirement role gate, normalized receipt and lifecycle events",
         "source_sha": "ba8da3fb51458b0ee98f16289e346d4fe0575474",
+        "status": "PASS"
+      },
+      {
+        "kind": "MISSION_CONTROL_LIFECYCLE_REGRESSION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md",
+        "scope": "blocked/unknown-owner worktree grouping and local session owner projection",
+        "source_sha": "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
         "status": "PASS"
       }
     ],
