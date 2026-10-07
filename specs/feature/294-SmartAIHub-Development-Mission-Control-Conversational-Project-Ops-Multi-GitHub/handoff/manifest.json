@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
+    "expected_canonical_sha": "52633a023e4443903c3249d1076a2d6d412e95e6",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Do not mark P0 complete. Finish local provider-path wiring by resolving an authoritative tenant/deployment target source before calling Cloudflare adapters; inspect/establish a durable migration failure-result source without duplicating an existing ledger; obtain provenance or owner disposition for the 46 UNKNOWN_OWNER workspaces; and reconcile the registered canonical workspace only after its modified apps/web/finance-ocr-debug.jsonl and untracked audit ZIP have explicit disposition. No live provider query or destructive workspace action has been performed.",
+    "next_action": "Close the tenant-to-provider-to-credential-center Cloudflare runtime evidence path using an authoritative deployment target source; determine whether a durable failed-migration result source exists without adding a competing ledger; preserve the 46 UNKNOWN_OWNER rows pending provenance; reconcile the canonical user checkout only after explicit disposition of its two dirty paths. Keep production verification separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0-WU-4C at origin/main d6ca72a05ac2b574d8d05761a7913d06a17f7163. Last regression refresh passed 71 tests. Canonical user workspace is still dirty and behind, with recovery receipt /home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T080814745213Z/manifest.json. Cloudflare target and migration failed-result source discovery remain open; production verification is separate.",
+    "resume_point": "P0-WU-4C at origin/main 52633a023e4443903c3249d1076a2d6d412e95e6. Focused web 71, Workspace Authority 48, Runtime Authority 41 tests passed; handoff validation passed. Cloudflare tenant/deployment target wiring and durable migration failure evidence remain open. Canonical user checkout is dirty/behind and preserved at /home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T081157344231Z/manifest.json.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 63,
+  "generation": 64,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -248,9 +248,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
+    "canonical_sha": "52633a023e4443903c3249d1076a2d6d412e95e6",
     "integrated": true,
-    "integrated_at": "2026-10-07T08:07:04Z"
+    "integrated_at": "2026-10-07T08:11:23Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -575,7 +575,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T08:09:01.655480Z",
+  "updated_at": "2026-10-07T08:19:20.515451Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -829,6 +829,20 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-final-current-state-20261007.md",
         "scope": "Exact-SHA convergence attempted; the existing canonical checkout has two unrelated dirty user paths preserved with a recovery receipt.",
         "source_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
+        "status": "BLOCKED"
+      },
+      {
+        "kind": "P0_WU4C_CONTROL_PLANE_REGRESSION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-control-plane-regression-20261007.md",
+        "scope": "Eight focused web suites (71 tests), Workspace Authority (48), Runtime Authority (41), and Handoff validation at current integrated main.",
+        "source_sha": "52633a023e4443903c3249d1076a2d6d412e95e6",
+        "status": "PASS"
+      },
+      {
+        "kind": "P0_WU4C_WORKSPACE_CONVERGENCE",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-control-plane-regression-20261007.md",
+        "scope": "Post-integration verification; canonical user checkout remains dirty and behind; latest recovery receipt preserves both user paths.",
+        "source_sha": "52633a023e4443903c3249d1076a2d6d412e95e6",
         "status": "BLOCKED"
       }
     ],
