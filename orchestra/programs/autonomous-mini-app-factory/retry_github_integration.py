@@ -85,25 +85,14 @@ def retry_checkpoint(
     attempts: int = 10,
     base_seconds: int = 5,
     cap_seconds: int = 300,
+    title: str = "feat(mini-app): add Research Notes reference UI",
+    body: str = "Partial Mini App Factory checkpoint.",
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
     """Push, open/update a PR, and request a normal merge with bounded retries."""
     if attempts < 1:
         raise ValueError("attempts must be positive")
 
-    title = "feat(mini-app): add project research notes UI"
-    body = """## Summary
-- Add an authenticated Research Notes page for the reference Mini App.
-- Resolve the public App ID within the authenticated tenant and connect project-scoped note CRUD.
-- Record the exact-SHA program handoff and bounded GitHub retry state.
-
-## Verification
-- Focused Research Notes UI/router/service tests: 12 passed on the checkpoint source.
-- `git diff --check`: passed.
-
-## Status
-Partial implementation checkpoint. Migration 0393 has not been applied. AI background summary, package/deploy, and runtime acceptance remain open.
-"""
     last_error = "GitHub integration has not completed"
 
     for attempt in range(attempts):
@@ -255,6 +244,21 @@ def main() -> int:
     parser.add_argument("--attempts", type=int, default=10)
     parser.add_argument("--base-seconds", type=int, default=5)
     parser.add_argument("--cap-seconds", type=int, default=300)
+    parser.add_argument("--title", default="feat(mini-app): add Research Notes reference UI")
+    parser.add_argument(
+        "--body",
+        default=(
+            "## Summary\n"
+            "- Add the Research Notes reference Mini App UI and authenticated App resolution.\n"
+            "- Preserve program handoff and retryable GitHub integration state.\n\n"
+            "## Verification\n"
+            "- Focused UI/router/service tests passed.\n"
+            "- Retry-policy regression and SPEC-302 migration contract tests passed.\n"
+            "- `git diff --check` passed.\n\n"
+            "## Status\n"
+            "Partial implementation. Migration application, AI summary/background execution, package/deploy, and runtime acceptance remain open.\n"
+        ),
+    )
     args = parser.parse_args()
     return retry_checkpoint(
         repo_dir=args.repo_dir,
@@ -264,6 +268,8 @@ def main() -> int:
         attempts=args.attempts,
         base_seconds=args.base_seconds,
         cap_seconds=args.cap_seconds,
+        title=args.title,
+        body=args.body,
     )
 
 
