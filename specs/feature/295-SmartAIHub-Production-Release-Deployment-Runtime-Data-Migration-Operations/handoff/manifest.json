@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+    "expected_canonical_sha": "5a66c4ee6f09464718fdf34453a7bede2f73a0dc",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 50,
+  "generation": 51,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -199,7 +199,8 @@
       "55571e18378880a7058bde38548e8211aa280842",
       "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
       "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
-      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9"
+      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+      "13266879192cf761a45a0f2a8a70d19eff3a0317"
     ],
     "mapping": [],
     "source_paths": [
@@ -239,9 +240,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+    "canonical_sha": "5a66c4ee6f09464718fdf34453a7bede2f73a0dc",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:04:16Z"
+    "integrated_at": "2026-10-07T06:09:41Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -607,7 +608,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T06:04:55.856348Z",
+  "updated_at": "2026-10-07T06:10:40.625409Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -749,6 +750,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-provider-neutral-closeout.md",
         "scope": "Provider-neutral migration source wiring integrated; failed migration tracking and external provider discovery explicitly remain unknown",
         "source_sha": "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_SAFE_ACTION_AUTHORITY_FRESHNESS",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-safe-action-authority-freshness.md",
+        "scope": "Reject stale/future Runner snapshots and ambiguous multi-Runner action authority; focused control-plane regression suite (49 passed)",
+        "source_sha": "13266879192cf761a45a0f2a8a70d19eff3a0317",
         "status": "PASS"
       }
     ],
