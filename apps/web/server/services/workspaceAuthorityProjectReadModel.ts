@@ -96,6 +96,9 @@ export function projectRunnerWorkspaceAuthority(input: {
       observedAt: runner.snapshotObservedAt?.toISOString() ?? null,
       expiresAt: expiresAt?.toISOString() ?? null,
       snapshotRevision: runner.currentSnapshotRevision,
+      authorityLevel: trust === "TRUSTED" ? "TRUSTED_RUNNER" : trust,
+      authorityEligible: trust === "TRUSTED" && snapshotFresh,
+      factFreshness: snapshotFresh ? "FRESH" : "STALE",
       contentFingerprint: workspace.contentFingerprint,
       convergenceState: "NOT_REPORTED" as const,
       localPath: null,
@@ -111,23 +114,62 @@ export function projectRunnerWorkspaceAuthority(input: {
     byWorkspace.set(key, [...(byWorkspace.get(key) ?? []), row]);
   }
   const workspaces = [...byWorkspace.values()].map((facts) => {
-    const identities = new Set(facts.map((fact) => JSON.stringify([fact.projectId, fact.repositoryId])));
-    const workspaceStates = new Set(facts.map((fact) => JSON.stringify([fact.observedSha, fact.branch, fact.dirty, fact.contentFingerprint])));
-    const missingBinding = facts.some((fact) => !fact.projectId || !fact.repositoryId);
-    const state = identities.size > 1 || workspaceStates.size > 1
+    const eligibleFacts = facts.filter((fact) => fact.authorityEligible);
+    const ineligibleFacts = facts.filter((fact) => !fact.authorityEligible);
+    const identities = new Set(eligibleFacts.map((fact) => JSON.stringify([fact.projectId, fact.repositoryId])));
+    const comparableFields = ["observedSha", "branch", "dirty", "contentFingerprint"] as const;
+    const conflictingFields = comparableFields.filter((field) =>
+      new Set(eligibleFacts.map((fact) => fact[field])).size > 1
+    );
+    const missingBinding = eligibleFacts.some((fact) => !fact.projectId || !fact.repositoryId);
+    const reasons = [
+      ...(identities.size > 1 ? ["TRUSTED_FACTS_DISAGREE_ON_PROJECT_OR_REPOSITORY"] : []),
+      ...(conflictingFields.length ? ["TRUSTED_FACTS_DISAGREE_ON_WORKSPACE_STATE"] : []),
+    ];
+    const state = reasons.length
       ? "CONFLICT"
       : missingBinding
         ? "UNBOUND"
-        : facts.some((fact) => fact.hostState === "STALE")
-          ? "STALE"
-          : "OBSERVED";
+        : eligibleFacts.length
+          ? "OBSERVED"
+          : facts.some((fact) => fact.hostState === "STALE")
+            ? "STALE"
+            : "UNTRUSTED";
+    const agreedWorkspaceState = eligibleFacts.length && !conflictingFields.length
+      ? Object.fromEntries(comparableFields.map((field) => [field, eligibleFacts[0][field]]))
+      : null;
+    const userWorkspace = input.localMissionControl?.user_workspace &&
+      typeof input.localMissionControl.user_workspace === "object"
+      ? input.localMissionControl.user_workspace as Record<string, unknown>
+      : null;
+    const receiptCandidate = userWorkspace?.convergence_receipt && typeof userWorkspace.convergence_receipt === "object"
+      ? userWorkspace.convergence_receipt as Record<string, unknown> : null;
+    const canonicalReceipt = receiptCandidate?.workspace_id === facts[0].workspaceId ? receiptCandidate : null;
     return {
       tenantId: facts[0].tenantId,
-      projectId: facts[0].projectId,
-      repositoryId: facts[0].repositoryId,
+      projectId: identities.size === 1 ? eligibleFacts[0].projectId : null,
+      repositoryId: eligibleFacts.length ? eligibleFacts[0].repositoryId : null,
       workspaceId: facts[0].workspaceId,
       state,
       hosts: facts,
+      reconciliation: {
+        status: reasons.length ? "CONFLICT" : eligibleFacts.length ? "RESOLVED_BY_ELIGIBILITY_AND_AGREEMENT" : state,
+        policy: "TRUSTED_RUNNER_FACTS_SAME_AUTHORITY; FRESH_FACTS_ONLY; DIVERGENT_RUNNER_GENERATIONS_ARE_NOT_COMPARABLE",
+        reasons,
+        conflictingFields,
+        eligibleHostIds: eligibleFacts.map((fact) => fact.hostId),
+        ignoredClaims: ineligibleFacts.map((fact) => ({
+          hostId: fact.hostId,
+          trust: fact.trust,
+          authorityLevel: fact.authorityLevel,
+          freshness: fact.factFreshness,
+          generation: fact.snapshotRevision,
+          source: fact.factSource,
+        })),
+        agreedWorkspaceState: reasons.length ? null : agreedWorkspaceState,
+        canonicalReceipt,
+        selectedFact: null,
+      },
     };
   });
   const sessions = workspaceRows.filter((row) => row.sessionState === "ACTIVE");
