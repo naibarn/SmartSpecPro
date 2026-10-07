@@ -50,6 +50,7 @@ import {
 import { auditLogger } from "../services/auditLogger";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
+import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -305,6 +306,12 @@ export const infrastructureRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
     return getCloudflareCredentialCenterState(db);
+  }),
+
+  getInternalRuntimeEvidence: exactAdminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    return getInternalRuntimeEvidence({ db });
   }),
 
   updateCloudflareAccountId: rateLimitedAdminProcedure
