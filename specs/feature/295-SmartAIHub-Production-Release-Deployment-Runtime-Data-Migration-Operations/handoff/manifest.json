@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "expected_canonical_sha": "5928f373f7c395d1e0cf900615df3b116aae9fee",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
+    "next_action": "Implement the authenticated seven-action API and worker_jobs/Runner execution path; then close remaining Mission Control and lifecycle event producers. Keep P0_CODE_IMPLEMENTATION PARTIAL until the internal checklist is complete; external runtime verification remains separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -40,10 +40,13 @@
       "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4b-provider-evidence-integrated-20261007.md",
       "https://github.com/naibarn/SmartSpecPro/pull/122",
       "git:2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
-      "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-partial-checkpoint-20261007.md"
+      "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-partial-checkpoint-20261007.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/142",
+      "git:5928f373f7c395d1e0cf900615df3b116aae9fee",
+      "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/runner-workspace-binding-integrated-5928f373f7c3.md"
     ],
     "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
-    "rationale": "PR #122 safely integrated RunnerGateway test isolation, same-host AUDIT_ONLY local registry scheduling, retirement receipt completeness, and one known-owner retirement dogfood. Safe-action API/worker dispatch, complete Mission Control aggregation, lifecycle producer call sites, internal migration/runtime-health bindings, and deeper Cloudflare credential path proof remain open. Canonical workspace SHA parity is current; dirty user data remains preserved, so clean convergence is pending.",
+    "rationale": "Integrated PR #142 preserves validated project and repository identity fields from authenticated Runner snapshots into the workspace authority projection. This closes one cross-host evidence plumbing gap only. Safe-action API/worker execution, full Mission Control fields, lifecycle event call sites, and remaining internal source bindings are still open. Canonical user checkout remains dirty and convergence pending; preserve its unrelated data.",
     "residual_requirements": [
       "authenticated safe-action API and worker_jobs/Runner execution",
       "complete Mission Control project and lifecycle projections",
@@ -80,7 +83,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 29,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -111,7 +114,8 @@
       "97bfdefe2d787899ec498e1bee9633ec23b75eda",
       "94e2cd2eb95c63a078cf81b01250bc3ba4adf003",
       "4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
-      "4c5c43d52249ae767806947e9e6abe3222035542"
+      "4c5c43d52249ae767806947e9e6abe3222035542",
+      "5928f373f7c395d1e0cf900615df3b116aae9fee"
     ],
     "mapping": [],
     "source_paths": [
@@ -135,16 +139,19 @@
       "apps/web/server/services/workspaceAuthorityProjectReadModel.test.ts",
       "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts",
       "scripts/development-lifecycle/test_workspace_authority.py",
-      "scripts/development-lifecycle/workspace_authority_scenarios.json"
+      "scripts/development-lifecycle/workspace_authority_scenarios.json",
+      "apps/web/server/services/runnerContracts.ts",
+      "apps/web/server/services/__tests__/runnerContracts.test.ts",
+      "apps/web/server/services/spec224WorkspaceSpecSet.test.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "canonical_sha": "5928f373f7c395d1e0cf900615df3b116aae9fee",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:21:12Z"
+    "integrated_at": "2026-10-07T04:28:31Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -182,10 +189,13 @@
         "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4b-provider-evidence-integrated-20261007.md",
         "https://github.com/naibarn/SmartSpecPro/pull/122",
         "git:2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
-        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-partial-checkpoint-20261007.md"
+        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-partial-checkpoint-20261007.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/142",
+        "git:5928f373f7c395d1e0cf900615df3b116aae9fee",
+        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/runner-workspace-binding-integrated-5928f373f7c3.md"
       ],
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
-      "rationale": "PR #122 safely integrated RunnerGateway test isolation, same-host AUDIT_ONLY local registry scheduling, retirement receipt completeness, and one known-owner retirement dogfood. Safe-action API/worker dispatch, complete Mission Control aggregation, lifecycle producer call sites, internal migration/runtime-health bindings, and deeper Cloudflare credential path proof remain open. Canonical workspace SHA parity is current; dirty user data remains preserved, so clean convergence is pending.",
+      "rationale": "Integrated PR #142 preserves validated project and repository identity fields from authenticated Runner snapshots into the workspace authority projection. This closes one cross-host evidence plumbing gap only. Safe-action API/worker execution, full Mission Control fields, lifecycle event call sites, and remaining internal source bindings are still open. Canonical user checkout remains dirty and convergence pending; preserve its unrelated data.",
       "residual_requirements": [
         "authenticated safe-action API and worker_jobs/Runner execution",
         "complete Mission Control project and lifecycle projections",
@@ -361,7 +371,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:24:33.797259Z",
+  "updated_at": "2026-10-07T04:29:22.303833Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
