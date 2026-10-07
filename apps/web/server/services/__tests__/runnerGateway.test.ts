@@ -395,6 +395,11 @@ describe("RunnerGateway", () => {
     await expect(gateway.publishCapabilities({
       auth,
       snapshot: { ...snapshot("7", auth.runnerId), workspaceIds: ["different-workspace"] },
+      idempotencyKey: "revision-7-a",
+    })).rejects.toMatchObject({ code: "RUNNER_SNAPSHOT_IDEMPOTENCY_CONFLICT" });
+    await expect(gateway.publishCapabilities({
+      auth,
+      snapshot: { ...snapshot("7", auth.runnerId), workspaceIds: ["different-workspace"] },
       idempotencyKey: "revision-7-b",
     })).rejects.toMatchObject({ code: "RUNNER_SNAPSHOT_REVISION_CONFLICT" });
     await expect(repository.getNode(auth.runnerId, auth.tenantId)).resolves.toMatchObject({
