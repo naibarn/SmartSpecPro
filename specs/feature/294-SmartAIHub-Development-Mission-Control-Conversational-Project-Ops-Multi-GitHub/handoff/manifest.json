@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "fb9012f80ef413f34180ccf294588155b0454ae7",
+    "expected_canonical_sha": "452a2073b64a7a610b504b5175196a95a5e58d81",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0-WU-4C gap closure against current origin/main. Remaining code-side gaps include durable cross-host fact ingestion/persistence and conflict resolution, complete event/scheduler/read-model paths, authenticated provider configuration discovery/Cloudflare credential integration, and an authoritative durable migration failure-result source. Preserve all UNKNOWN_OWNER workspaces. Reconcile the registered canonical user workspace only after its two dirty paths are safely resolved; current resolver receipt is DIRTY_WORK_PRESERVED. Keep production runtime verification separate.",
+    "next_action": "Continue the remaining P0-WU-4C local wiring gaps: bind Cloudflare evidence adapters to authoritative target configuration without invoking live production endpoints; determine whether durable migration failure results exist in an authorized internal source; finish evidence-backed provenance for 46 unresolved UNKNOWN_OWNER workspaces when owner/manual/archive history is available; preserve the dirty canonical user workspace until its two changes have an owner/disposition; retain P0_CODE_IMPLEMENTATION=PARTIAL until every completion-gate item has implementation and fresh evidence.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0-WU-4C after safe-action execution authority recheck integrated at 0b19f95cbc8648358e082ae1e946e00247d9498b; next audit internal cross-host ingestion and lifecycle gaps, then preserve and converge the dirty canonical user workspace when safe.",
+    "resume_point": "P0-WU-4C after evidence-backed UNKNOWN_OWNER audit integrated at 452a2073b64a7a610b504b5175196a95a5e58d81. Latest AUDIT_ONLY classifies 46 as UNRESOLVED_OWNER_PROVENANCE and confirms zero are automatically retired.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 58,
+  "generation": 59,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -205,7 +205,8 @@
       "9fb15db189f7ecf928234aa6dffd15d31d1c677e",
       "9536f33358331ac12a77fa54bbbb663d86fa1d48",
       "0b19f95cbc8648358e082ae1e946e00247d9498b",
-      "fb9012f80ef413f34180ccf294588155b0454ae7"
+      "fb9012f80ef413f34180ccf294588155b0454ae7",
+      "452a2073b64a7a610b504b5175196a95a5e58d81"
     ],
     "mapping": [],
     "source_paths": [
@@ -245,9 +246,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fb9012f80ef413f34180ccf294588155b0454ae7",
+    "canonical_sha": "452a2073b64a7a610b504b5175196a95a5e58d81",
     "integrated": true,
-    "integrated_at": "2026-10-07T07:38:13Z"
+    "integrated_at": "2026-10-07T07:45:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -572,7 +573,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:39:05.132095Z",
+  "updated_at": "2026-10-07T07:48:18.910299Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -784,6 +785,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-mission-control-host-provider-20261007.md",
         "scope": "Mission Control host provider resolution from a fresh trusted active Runner session; stale facts remain UNKNOWN.",
         "source_sha": "fb9012f80ef413f34180ccf294588155b0454ae7",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_UNKNOWN_OWNER_EVIDENCE_CLASSIFICATION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-unknown-owner-evidence-classification-20261007.md",
+        "scope": "AUDIT_ONLY gives per-row evidence-backed recovery, stale metadata, active external, or unresolved owner provenance classifications without enabling destructive actions.",
+        "source_sha": "452a2073b64a7a610b504b5175196a95a5e58d81",
         "status": "PASS"
       }
     ],
