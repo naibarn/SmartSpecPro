@@ -573,6 +573,18 @@ def project_remote_development_state(
     unknown_integration_count = 0
     seen_local_states: set[tuple[str, str, str]] = set()
     integration_classifications: dict[tuple[str, str], dict[str, Any]] = {}
+    canonical_integrated_heads: set[tuple[str, str, str]] = set()
+    selected_canonical_remote = canonical_remote or next(
+        (name for name, observation in remote_observations.items()
+         if _remote_observation_is_fresh(observation, current) and canonical_ref in observation.get("heads", {})),
+        None,
+    )
+    canonical_observation = remote_observations.get(selected_canonical_remote) if selected_canonical_remote else None
+    canonical_tip = (canonical_observation or {}).get("heads", {}).get(canonical_ref)
+    canonical_is_fresh = _remote_observation_is_fresh(canonical_observation, current)
+    canonical_commit_available = isinstance(canonical_tip, str) and not subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"{canonical_tip}^{{commit}}"], capture_output=True
+    ).returncode
 
     for workspace in workspaces:
         if workspace.get("role") == "RECOVERY_WORKSPACE" or workspace.get("lifecycle_state") in {"RETIRED", "MISSING"}:
@@ -585,6 +597,19 @@ def project_remote_development_state(
         remote = next((name for name in sorted(remote_names, key=len, reverse=True)
                        if isinstance(upstream, str) and upstream.startswith(name + "/")), None)
         if not isinstance(branch, str) or branch == "DETACHED" or not isinstance(head, str) or remote is None:
+            if (isinstance(head, str) and selected_canonical_remote and canonical_is_fresh and canonical_commit_available and
+                    subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", head, str(canonical_tip)],
+                                   capture_output=True).returncode == 0):
+                state.update(remote=_safe_remote_label(selected_canonical_remote), upstream_ref=canonical_ref,
+                             upstream_sha=canonical_tip, remote_observed_at=canonical_observation.get("observed_at"),
+                             freshness_ttl_seconds=canonical_observation.get("freshness_ttl_seconds", 60),
+                             unpushed_commit_count=0, push_state="PUSHED", integration_state="INTEGRATED")
+                integrated_key = (selected_canonical_remote, str(canonical_tip), head)
+                if integrated_key not in canonical_integrated_heads:
+                    canonical_integrated_heads.add(integrated_key)
+                    integrated_count += 1
+                workspace_states.append(state)
+                continue
             state["reason"] = "upstream_or_commit_identity_unavailable"
             workspace_states.append(state); unknown_push_count += 1; unknown_integration_count += 1; continue
         observation = remote_observations[remote]
@@ -659,12 +684,6 @@ def project_remote_development_state(
                       "observed_at": observed_at, "ttl_seconds": 60}
     integration_freshness = {"state": "FRESH" if observed_times and not unknown_integration_count else "PARTIAL" if observed_times else "UNAVAILABLE",
                              "observed_at": observed_at, "ttl_seconds": 60}
-    selected_canonical_remote = canonical_remote or next(
-        (name for name, observation in remote_observations.items()
-         if _remote_observation_is_fresh(observation, current) and canonical_ref in observation.get("heads", {})),
-        None,
-    )
-    canonical_observation = remote_observations.get(selected_canonical_remote) if selected_canonical_remote else None
     canonical_sha = (canonical_observation or {}).get("heads", {}).get(canonical_ref)
     canonical_remote_state = {
         "status": "OBSERVED" if _remote_observation_is_fresh(canonical_observation, current) and isinstance(canonical_sha, str) else "UNKNOWN",

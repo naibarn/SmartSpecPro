@@ -857,6 +857,41 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         )
         self.assertEqual(future_state["unpushed_intended_commits"]["state"], "UNKNOWN")
 
+    def test_project_mission_control_recognizes_detached_commit_on_fresh_canonical_head(self) -> None:
+        task = self.root / "mission-control-detached-canonical-ancestor"
+        git(self.canonical, "worktree", "add", "--detach", str(task), "HEAD")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        observation = authority.observe_remote_heads(self.canonical, "origin")
+
+        remote_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": observation}
+        )
+
+        self.assertEqual(remote_state["workspaces"][0]["push_state"], "PUSHED")
+        self.assertEqual(remote_state["workspaces"][0]["integration_state"], "INTEGRATED")
+        self.assertEqual(remote_state["workspaces"][0]["unpushed_commit_count"], 0)
+        self.assertEqual(remote_state["unpushed_intended_commits"]["count"], 0)
+        self.assertEqual(remote_state["unpushed_intended_commits"]["unknown_workspace_count"], 0)
+        self.assertEqual(remote_state["integrated_work"]["count"], 1)
+
+    def test_project_mission_control_keeps_unpushed_no_upstream_commit_unknown(self) -> None:
+        task = self.root / "mission-control-unpushed-no-upstream"
+        git(self.canonical, "worktree", "add", "-b", "task/unpushed-no-upstream", str(task), "HEAD")
+        (task / "unpublished.txt").write_text("local only\n", encoding="utf-8")
+        git(task, "add", "unpublished.txt")
+        git(task, "commit", "-m", "local only checkpoint")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        observation = authority.observe_remote_heads(self.canonical, "origin")
+
+        remote_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": observation}
+        )
+
+        self.assertEqual(remote_state["workspaces"][0]["push_state"], "UNKNOWN")
+        self.assertEqual(remote_state["workspaces"][0]["integration_state"], "UNKNOWN")
+        self.assertEqual(remote_state["unpushed_intended_commits"]["state"], "UNKNOWN")
+        self.assertEqual(remote_state["pushed_unintegrated_work"]["state"], "UNKNOWN")
+
     def test_remote_label_redacts_credentials_in_configured_url(self) -> None:
         label = authority._safe_remote_label("https://user:secret@example.invalid/repository.git")
         self.assertEqual(label, "configured_remote")
