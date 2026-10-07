@@ -5,27 +5,27 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+    "sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
-      "canonical_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
-      "canonical_user_workspace_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+      "integrated_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+      "canonical_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+      "canonical_user_workspace_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:e7c7df1f-7794-4623-a917-c18662024772",
-      "verified_at": "2026-10-07T19:53:37.466+00:00"
+      "receipt_id": "workspace-convergence:2e9482e9-4e1f-4bc7-ba16-8d285747b4c0",
+      "verified_at": "2026-10-07T19:57:02.708+00:00"
     },
-    "observedAt": "2026-10-08T02:53:40+07:00",
+    "observedAt": "2026-10-08T02:57:05+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
-      "canonical_user_workspace_sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+      "integrated_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
+      "canonical_user_workspace_sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T19:53:37.466+00:00"
+      "verified_at": "2026-10-07T19:57:02.708+00:00"
     }
   },
   "inventory": {
@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "PR_OPEN",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
     "implementation": [
       "apps/web/scripts/research-notes-focused-runtime.ts",
@@ -76,13 +76,14 @@
       "A second authenticated tenant was denied access to the first tenant project; the first tenant user was denied access to a same-tenant project without membership.",
       "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched.",
       "PR #265 merged normally as 2e1042c6523765915c7970c8958c9951905d07cd; /home/dev/projects/SmartSpecPro converged and verified clean at this SHA. The PR branch had diverged from the squash merge of #264; conflict was reconciled on the single owned program.json path using git_capabilities.py resolve before normal PR merge.",
-      "Authenticated loopback API suite now also denies revoked project membership and hides projects for an archived App; command passed against a fresh disposable PostgreSQL 17 baseline."
+      "Authenticated loopback API suite now also denies revoked project membership and hides projects for an archived App; command passed against a fresh disposable PostgreSQL 17 baseline.",
+      "PR #267 merged normally as e85a66d9340b872872d1333047f687b5ad4fb558; canonical workspace verified clean at this SHA. The focused runtime suite now rejects revoked membership and hides projects after app archive."
     ],
-    "nextAction": "Integrate the expanded API authorization acceptance, then continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING as the next dependency-safe workunit.",
+    "nextAction": "Continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING as the next dependency-safe workunit; keep UI/deploy/UAT and summary worker execution as separate pending lanes.",
     "sourceSha": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
-    "integration": "PENDING_NORMAL_PR",
+    "integration": "MERGED_NORMAL_PR",
     "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/267",
-    "integratedSha": "2e1042c6523765915c7970c8958c9951905d07cd"
+    "integratedSha": "e85a66d9340b872872d1333047f687b5ad4fb558"
   },
   "checkpoints": [
     {
@@ -358,7 +359,7 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; authenticated API runtime integrated; select Factory executor wiring next",
+    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; authorization runtime integrated; Factory executor wiring is next",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
@@ -394,12 +395,12 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:08:00+07:00",
+  "updatedAt": "2026-10-08T02:57:10+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "FOCUSED_API_RUNTIME_PASS_DEPLOYMENT_NOT_RUN",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "FOCUSED_API_RUNTIME_AUTHORIZATION_PASS_DEPLOYMENT_NOT_RUN",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
@@ -410,7 +411,7 @@
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "Focused loopback API runtime with real SDK session-cookie auth, tenant/project/App authorization, and CRUD/archive passed and is integrated. Full product deployment/UI and worker execution remain unverified.",
+    "reason": "Authenticated loopback API and all tested tenant/project/App authorization behavior pass on disposable PostgreSQL. Full app deployment, UI/UAT, worker execution, and provider summary runtime remain unverified.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -430,14 +431,17 @@
       "e48bd280bc9ab0877a58f39dc1dace873f31db23",
       "290360e194974ee270e652dd811693336d1dad88",
       "2ecd11664227b82f3d007a7db737f06baf1f93e2",
-      "85ed6ce87079cfb6c81cc5043a18d0c83f37c368"
+      "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
+      "592aec5c4d732f85e9baed40cf56516e68962a92",
+      "357f55a63b2db85510af80610208a0e9f3a19cbf"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
       "number": 267,
       "url": "https://github.com/naibarn/SmartSpecPro/pull/267",
-      "state": "OPEN",
-      "integration": "PENDING_NORMAL_PR"
+      "state": "MERGED",
+      "integration": "MERGED_NORMAL_PR",
+      "integratedSha": "e85a66d9340b872872d1333047f687b5ad4fb558"
     },
     "testEvidence": [
       {
@@ -461,25 +465,25 @@
         "outcome": "PASS (rerun before merge): disposable PostgreSQL 17 loopback schema migration and contract fixture; no vector extension required by Mini App projection"
       },
       {
-        "revision": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727 (built from integrated baseline 3ae709d67481d82eba8b235608c2063a8fa6dc76)",
+        "revision": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368; integrated by PR #267 as e85a66d9340b872872d1333047f687b5ad4fb558",
         "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
-        "outcome": "PASS: disposable PostgreSQL 17; real signed session-cookie authentication; unauthenticated denial; cross-tenant and unmembered-project denial; project-scoped create/list/update/archive over loopback HTTP/tRPC"
+        "outcome": "PASS: disposable PostgreSQL 17; real session auth; unauthenticated, cross-tenant, unmembered-project, revoked-membership and archived-App denial/hiding; project-scoped CRUD/archive over loopback HTTP/tRPC"
       },
       {
-        "revision": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368 based on integrated 2e1042c6523765915c7970c8958c9951905d07cd",
+        "revision": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368; integrated by PR #267 as e85a66d9340b872872d1333047f687b5ad4fb558",
         "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
-        "outcome": "PASS: real session auth; unauthenticated, cross-tenant, unmembered-project, revoked-membership and archived-App denial/hiding; CRUD/archive over loopback HTTP/tRPC"
+        "outcome": "PASS: disposable PostgreSQL 17; real session auth; unauthenticated, cross-tenant, unmembered-project, revoked-membership and archived-App denial/hiding; project-scoped CRUD/archive over loopback HTTP/tRPC"
       }
     ],
-    "githubIntegration": "PR #267 open for normal non-force integration",
+    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #267 merged normally",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "2e1042c6523765915c7970c8958c9951905d07cd",
+    "canonicalAtCheckpoint": "e85a66d9340b872872d1333047f687b5ad4fb558",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "2e1042c6523765915c7970c8958c9951905d07cd",
+      "sha": "e85a66d9340b872872d1333047f687b5ad4fb558",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:e7c7df1f-7794-4623-a917-c18662024772"
+      "receiptId": "workspace-convergence:2e9482e9-4e1f-4bc7-ba16-8d285747b4c0"
     }
   }
 }
