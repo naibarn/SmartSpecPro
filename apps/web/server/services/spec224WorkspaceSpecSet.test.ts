@@ -9,6 +9,7 @@ import {
   workspaceFactsFromSnapshot,
   type Spec224WorkspaceSpecSetStore,
 } from "./spec224WorkspaceSpecSet";
+import { validateRunnerCapabilitySnapshot } from "./runnerContracts";
 
 function memoryStore(): Spec224WorkspaceSpecSetStore & {
   bindings: Map<string, any>;
@@ -66,6 +67,23 @@ describe("spec224 workspace Spec Set", () => {
       workspaceIds: ["workspace-legacy"],
       workspaces: [{ workspaceId: "workspace-a", displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-a", repositoryRef: "do-not-expose" }],
     })).toEqual([{ workspaceId: "workspace-a", projectId: null, repositoryId: null, displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-legacy", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null }]);
+  });
+
+  it("keeps authenticated project and repository bindings through snapshot normalization", () => {
+    const snapshot = validateRunnerCapabilitySnapshot({
+      runnerId: "runner-a",
+      tenantId: "tenant-a",
+      revision: "8",
+      observedAt: "2026-10-07T12:00:00.000Z",
+      expiresAt: "2026-10-07T12:05:00.000Z",
+      capabilities: [],
+      workspaceIds: ["workspace-a"],
+      resourceClass: "medium",
+      workspaces: [{ workspaceId: "workspace-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false }],
+    });
+    expect(workspaceFactsFromSnapshot(snapshot)).toMatchObject([
+      { workspaceId: "workspace-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false },
+    ]);
   });
 
   it("accepts bounded Markdown and JSON artifacts deterministically", async () => {
