@@ -2,11 +2,18 @@ import { describe, expect, it, vi } from "vitest";
 import { createAppIdentityRouter } from "./appIdentity";
 
 function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
-  const service = { resolveAppRouteForTenant: vi.fn(async () => ({
-    appId: "app_research",
-    publicAppId: "public_research",
-    tenantId: "tenant-account",
-  })) };
+  const service = {
+    resolveAppRouteForTenant: vi.fn(async () => ({
+      appId: "app_research",
+      publicAppId: "public_research",
+      tenantId: "tenant-account",
+    })),
+    resolveActiveAppByPublicId: vi.fn(async () => ({
+      appId: "app_research",
+      publicAppId: "public_research",
+      tenantId: "tenant-account",
+    })),
+  };
   const caller = createAppIdentityRouter(service).createCaller({
     user,
     tenantId: "tenant-from-host",
@@ -41,5 +48,17 @@ describe("appIdentity runtime router", () => {
     await expect(caller.resolveRoute({ kind: "slug", value: "research-notes", tenantId: "tenant-victim" } as any))
       .rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(service.resolveAppRouteForTenant).not.toHaveBeenCalled();
+  });
+
+  it("resolves the canonical public App identifier within authenticated tenant scope", async () => {
+    const { caller, service } = setup();
+    await expect(caller.resolvePublicApp({ publicAppId: "public_research" })).resolves.toMatchObject({
+      appId: "app_research",
+      tenantId: "tenant-account",
+    });
+    expect(service.resolveActiveAppByPublicId).toHaveBeenCalledWith({
+      tenantId: "tenant-account",
+      publicAppId: "public_research",
+    });
   });
 });

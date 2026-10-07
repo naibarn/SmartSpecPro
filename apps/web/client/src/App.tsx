@@ -128,6 +128,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DecisionIntelligencePage = lazy(() => import("@/pages/DecisionIntelligencePage"));
+const ResearchNotesPage = lazy(() => import("@/pages/ResearchNotesPage"));
 const EmergencyRoutePage = lazy(() => import("./pages/EmergencyRoutePage"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -736,6 +737,11 @@ function Router() {
           <Route path="/decision-intelligence">
             <RequireAuth>
               <DecisionIntelligencePage />
+            </RequireAuth>
+          </Route>
+          <Route path="/apps/:publicAppId">
+            <RequireAuth>
+              <ResearchNotesPage />
             </RequireAuth>
           </Route>
           <Route path="/marketplace-capture/intelligence/connect/authorize">
