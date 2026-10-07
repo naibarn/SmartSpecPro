@@ -1,0 +1,12 @@
+# P0-WU-4C control-plane regression and convergence evidence
+
+- Canonical ref/SHA at verification: `refs/heads/main` / `52633a023e4443903c3249d1076a2d6d412e95e6`; PR #214 merged at `2026-10-07T08:11:23Z`.
+- Focused Web regression: 8 files, 71 tests passed. Scope: RunnerGateway, safe-action dispatch/execution, lifecycle audit job, Mission Control project read model, Cloudflare runtime adapter, internal runtime evidence, and Drizzle migration evidence. Test-only JWT configuration followed the existing test contract.
+- RunnerGateway isolation: the suite mocks revocation, ephemeral, and TTL-dedupe stores; `afterEach` clears all three plus refresh-grace state. Its regression case revokes a token and verifies rejection still occurs. This preserves revocation behavior while avoiding shared PostgreSQL state.
+- Workspace Authority: `test_workspace_authority.py` passed 48 tests; `test_runtime_authority.py` passed 41 tests.
+- Handoff validation: 468 discovered/indexed records, 311 canonical Specs, no missing handoffs, invalid manifests, generated status drift, or global-index mismatch.
+- Current integration wiring still has open evidence gaps: Cloudflare adapter helpers lack an authoritative caller that binds a tenant/project to a configured deployment target; no Container application ID is defined in the checked-in Wrangler production configuration. Do not issue a live provider request until local implementation closure.
+- Migration source is `drizzle.__drizzle_migrations`, which records applied migrations but not failed attempts; failure evidence remains `UNKNOWN` / `NOT_TRACKED`. No parallel failure ledger was added.
+- Canonical user workspace verification at the integrated SHA remains `CONVERGENCE_PENDING` because `/home/dev/projects/SmartSpecPro` is on `1a30722479d6cb44f53f07dc411d7521df347aaa`, dirty on two preserved paths (`apps/web/finance-ocr-debug.jsonl`, modified; `.tmp-audit-download/SmartSpecPro-True-Latest-Audit-2026-10-07.zip`, untracked). Recovery receipt: `/home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T081157344231Z/manifest.json`. Its `origin/main` remote-tracking ref was refreshed to `52633a023e4443903c3249d1076a2d6d412e95e6`; checkout files/branch were not changed.
+- Latest UNKNOWN_OWNER audit has 46 `UNRESOLVED_OWNER_PROVENANCE` entries; no automated retirement is permitted for these rows.
+- Status remains `P0_CODE_IMPLEMENTATION=PARTIAL`, `P0_EXTERNAL_RUNTIME_VERIFICATION=NOT_VERIFIED`.
