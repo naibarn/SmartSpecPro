@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+    "sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
-      "canonical_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
-      "canonical_user_workspace_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "integrated_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+      "canonical_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+      "canonical_user_workspace_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929",
-      "verified_at": "2026-10-07T20:20:58.898+00:00"
+      "receipt_id": "workspace-convergence:2a263231-2fd7-4be1-93cc-1b196a5d5e11",
+      "verified_at": "2026-10-07T23:44:11.958+00:00"
     },
-    "observedAt": "2026-10-08T03:22:00+07:00",
+    "observedAt": "2026-10-08T06:55:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
-      "canonical_user_workspace_sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "integrated_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+      "canonical_user_workspace_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T20:21:05.186+00:00",
-      "receipt_id": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929"
+      "verified_at": "2026-10-07T23:44:11.958+00:00",
+      "receipt_id": "workspace-convergence:2a263231-2fd7-4be1-93cc-1b196a5d5e11"
     }
   },
   "inventory": {
@@ -60,23 +60,18 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_SMOKE_SAFETY_GUARDRAILS",
-    "state": "PARTIAL_INTEGRATED",
-    "objective": "Make production-environment refusal and explicit provider-cost authorization executable smoke-runner regression tests.",
+    "id": "MINI_APP_FACTORY_CROSS_PROCESS_RESUME",
+    "state": "FAST_GATE_PASSED_PENDING_PR",
+    "objective": "Prove the existing Factory work unit survives process termination and automatically continues its next eligible stage from durable PostgreSQL worker_jobs state.",
     "implementation": [
-      "apps/web/scripts/research-notes-smoke.ts",
-      "apps/web/server/services/__tests__/researchNotesSmokeRunner.test.ts"
+      "apps/web/scripts/mini-app-factory-cross-process-resume.ts",
+      "apps/web/scripts/test-mini-app-factory-cross-process-resume.sh",
+      "apps/web/package.json"
     ],
-    "evidence": [
-      "PR #274 implementation source d8bf17af0974a85feac7e10287371f1096d7ff35 integrated at 724046c39650288df6a0b5506bcbfac757bc1dcb.",
-      "PR #275 handoff state merged normally at b65aa8551d483d12b18da3982abcbc685d808603; canonical workspace is clean and converged at that SHA.",
-      "Focused Vitest suite passed 1 file/2 tests: production environment refused before credential use/logging; provider-cost gate enforced before network/provider requests."
-    ],
-    "nextAction": "Resume the highest-priority dependency-safe work when a non-retired full application runtime and approved worker binding exist. Current remaining MVP execution paths are persisted as scoped waits, not program-wide STOP.",
-    "sourceSha": "d8bf17af0974a85feac7e10287371f1096d7ff35",
-    "sha": "724046c39650288df6a0b5506bcbfac757bc1dcb",
-    "pr": "https://github.com/naibarn/SmartSpecPro/pull/274",
-    "integration": "PARTIAL_INTEGRATED"
+    "sourceSha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+    "evidence": "PASS: pnpm --filter @smartspec/web run test:mini-app-factory-cross-process-resume; disposable PostgreSQL 17 Mini App baseline; process A persisted SPEC/SCAFFOLD/IMPLEMENT and artifacts then exited; process B restored run at revision 3, selected TEST automatically, and completed the persisted work unit. Fresh baseline contains worker_jobs/outbox and omits retired workflow/Agency/workpack/sandbox tables.",
+    "integration": "PARTIAL_PENDING_PR",
+    "nextAction": "Integrate this safe proof, then continue approved worker execution binding and non-production runtime composition."
   },
   "checkpoints": [
     {
@@ -240,6 +235,14 @@
       "sha": "b65aa8551d483d12b18da3982abcbc685d808603",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/275",
       "evidence": "PR #275 recorded PR #274 smoke safety implementation and canonical convergence receipt. Handoff JSON validates; program remains WORKING with full app/UI/UAT, provider, background execution and cross-process resume waits unchanged."
+    },
+    {
+      "id": "MINI_APP_RUNTIME_RETIRED_WORKFLOW_SETTLEMENT_ISOLATION",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "418eac4f261bf5c1924ebb5759c77d3e001c024f",
+      "sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/277",
+      "evidence": "Removed jobControlPlane static import of workflowStudioSettlement; new isolation regression passed 1/1. No data/schema deletion. Existing jobControlPlane test has two reproduced baseline ReferenceErrors for buildRunnerCancellationCommand on both base and patched revisions."
     }
   ],
   "completedWorkunits": [
@@ -393,11 +396,11 @@
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
     "autoNextWorkSelection": "PARTIAL_SELECTOR_AND_EXECUTOR_WITH_RESUME_SEAM_TEST; approved stage worker binding remains next",
-    "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
+    "autoResume": "PASS_FACTORY_CROSS_PROCESS_POSTGRES_RESUME; DevelopmentRun/worker_jobs durable projection restored in a fresh process and selected next eligible Factory stage.",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "WAIT_FOR_SCOPED_RUNTIME_AND_EXECUTION_PREDICATES; continue any future dependency-safe implementation checks that avoid retired workflow imports.",
+    "nextEligibleWorkunit": "APPROVED_WORKER_EXECUTION_BINDING_AND_FULL_APP_COMPOSITION; do not activate workflowStudio or workflowWorkerRuntime while building the Mini App path.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -425,11 +428,6 @@
         "id": "RESEARCH_NOTES_AI_PROVIDER_RUNTIME",
         "state": "WAITING_EXTERNAL_RETRYABLE",
         "predicate": "A configured provider/runtime is available and provider-cost authorization is present; mocked or contract tests do not count as provider PASS."
-      },
-      {
-        "id": "FACTORY_AUTO_RESUME_CROSS_PROCESS_PERSISTENCE_PROOF",
-        "state": "WAITING_SAFE_PERSISTENCE_RUNTIME_COMPOSITION",
-        "predicate": "The canonical DevelopmentRun adapter persists on worker_jobs, but loading spec224DevelopmentRunPersistence imports jobControlPlane, which statically imports the retired workflowStudioSettlement module. Do not run a new cross-process persistence test through that import path unless an approved composition avoids activating retired workflow surfaces."
       }
     ]
   },
@@ -438,7 +436,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:22:00+07:00",
+  "updatedAt": "2026-10-08T06:55:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -448,7 +446,7 @@
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
     "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_AND_RESUME_SEAM_TESTED_WORKER_BINDING_PENDING",
-    "M7_FACTORY_AUTO_RESUME_PASS": "PARTIAL_RESUME_SEAM_TESTED_CROSS_PROCESS_RESUME_PENDING",
+    "M7_FACTORY_AUTO_RESUME_PASS": "PASS_CROSS_PROCESS_POSTGRES_WORKER_JOBS_RESUME",
     "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_SPEC_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_RUNTIME_PENDING"
   },
   "deployment": {
