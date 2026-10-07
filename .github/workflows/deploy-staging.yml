@@ -111,10 +111,19 @@ jobs:
       - name: Run database migrations (Drizzle)
         env:
           DATABASE_URL: ${{ secrets.NEON_STAGING_DB_URL }}
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/staging-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
         run: |
           cd apps/web
           npm ci --legacy-peer-deps --workspaces=false
           npm run db:migrate
+
+      - name: Upload staging migration execution receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-receipts-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/smartspecpro-migration-receipts/*.jsonl
+          if-no-files-found: ignore
 
       - name: Deploy node-api to Cloud Run (canary 10%)
         run: |

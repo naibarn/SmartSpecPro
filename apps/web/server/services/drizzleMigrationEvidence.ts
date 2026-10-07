@@ -7,6 +7,8 @@ import { sql } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
 
 export type MigrationEvidenceStatus = "OBSERVED" | "NOT_CONFIGURED" | "UNAVAILABLE" | "PERMISSION_DENIED" | "ERROR";
+export type MigrationExecutionState = "SUCCEEDED" | "FAILED" | "INTERRUPTED" | "IN_PROGRESS" | "RECOVERED" | "UNKNOWN";
+export type MigrationReconciliationState = "CONSISTENT" | "PENDING" | "FAILED_NO_CHANGE" | "PARTIAL_APPLICATION" | "INTERRUPTED_STALE" | "RECEIPT_DB_MISMATCH" | "FAILURE_HISTORY_UNAVAILABLE";
 export type MigrationFailureEvidence =
   | {
       state: "FAILED";
@@ -27,17 +29,19 @@ export type MigrationEvidence = {
     expectedMigrationHead: { tag: string; hash: string } | null;
     observedAppliedHead: { tag: string | null; hash: string; appliedAt: number | null } | null;
     pendingMigrations: Array<{ tag: string; hash: string }>;
-    currentState: "APPLIED" | "PENDING" | "PARTIALLY_APPLIED" | "UNKNOWN";
-    failureHistory: "FAILURE_HISTORY_UNAVAILABLE";
+      currentState: "APPLIED" | "PENDING" | "PARTIALLY_APPLIED" | "FAILED" | "IN_PROGRESS" | "INTERRUPTED" | "UNKNOWN";
+      failureHistory: "TRACKED" | "FAILURE_HISTORY_UNAVAILABLE";
     failedMigration: MigrationFailureEvidence;
     failureTracking: "TRACKED" | "NOT_TRACKED";
-    latestExecution: { tag: string | null; hash: string; result: "APPLIED" | "FAILED" | "UNKNOWN"; executedAt: number | null } | null;
+      latestExecution: { tag: string | null; hash: string; result: "APPLIED" | "FAILED" | "UNKNOWN"; executedAt: number | null } | null;
+      executionReconciliation: { state: MigrationReconciliationState; receiptState: MigrationExecutionState | "NONE"; idempotencyKey: string | null; executionId: string | null; sourceSha: string | null; startedAt: string | null; completedAt: string | null; failureCategory: string | null };
   } | null;
   reason?: string;
 };
 
 type MigrationJournal = { entries?: Array<{ tag?: unknown }> };
 type AppliedMigration = { hash: string; created_at: number | string | null };
+export type MigrationExecutionReceipt = Record<string, unknown>;
 type DbExecutor = Pick<DrizzleDB, "execute">;
 
 /** Provider-neutral normalized migration source consumed by internal runtime evidence. */
@@ -92,8 +96,92 @@ export function projectDrizzleMigrationEvidence(input: {
       },
       failureTracking: "NOT_TRACKED",
       latestExecution: latest ? { tag: latestTag, hash: latest.hash, result: "APPLIED", executedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
+      executionReconciliation: { state: "FAILURE_HISTORY_UNAVAILABLE", receiptState: "NONE", idempotencyKey: null,
+        executionId: null, sourceSha: null, startedAt: null, completedAt: null, failureCategory: null },
     },
   };
+}
+
+function receiptString(receipt: MigrationExecutionReceipt, key: string): string | null {
+  const value = receipt[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/** Combine authoritative Drizzle state with durable execution receipts without inventing legacy history. */
+export function reconcileMigrationExecutionReceipts(input: {
+  current: MigrationEvidence;
+  receipts: MigrationExecutionReceipt[];
+  now?: Date;
+  staleAfterMs?: number;
+}): MigrationEvidence {
+  const value = input.current.value;
+  if (!value || input.current.status !== "OBSERVED" || input.receipts.length === 0) return input.current;
+  const receipts = input.receipts.filter(receipt => receipt.schemaVersion === "migration-execution-receipt.v1" &&
+    receiptString(receipt, "idempotencyKey") && ["STARTED", "SETTLED"].includes(String(receipt.phase)));
+  if (!receipts.length) return input.current;
+  const sorted = [...receipts].sort((a, b) => Date.parse(receiptString(a, "startedAt") ?? "") - Date.parse(receiptString(b, "startedAt") ?? ""));
+  const latest = sorted.at(-1)!;
+  const key = receiptString(latest, "idempotencyKey");
+  const attemptNumber = typeof latest.attemptNumber === "number" ? latest.attemptNumber : 0;
+  const executionId = receiptString(latest, "executionId");
+  const paired = sorted.filter(receipt => receiptString(receipt, "idempotencyKey") === key &&
+    (typeof receipt.attemptNumber === "number" ? receipt.attemptNumber : 0) === attemptNumber);
+  const settled = paired.find(receipt => receipt.phase === "SETTLED");
+  const startedAt = receiptString(latest, "startedAt");
+  const completedAt = settled ? receiptString(settled, "completedAt") : null;
+  const actualHead = value.observedAppliedHead?.tag ?? null;
+  const actualHash = value.observedAppliedHead?.hash ?? null;
+  const expectedHead = value.expectedMigrationHead?.tag ?? null;
+  const nowMs = (input.now ?? new Date()).getTime();
+  const startMs = startedAt ? Date.parse(startedAt) : Number.NaN;
+  const stale = Number.isFinite(startMs) && nowMs - startMs >= (input.staleAfterMs ?? 15 * 60_000);
+  let receiptState: MigrationExecutionState;
+  let reconciliationState: MigrationReconciliationState;
+  let failureCategory: string | null = null;
+  let currentState = value.currentState;
+  if (!settled) {
+    receiptState = stale ? "INTERRUPTED" : "IN_PROGRESS";
+    reconciliationState = stale ? "INTERRUPTED_STALE" : "PENDING";
+    currentState = stale ? "INTERRUPTED" : "IN_PROGRESS";
+    if (stale) failureCategory = "STALE_NONTERMINAL_RECEIPT";
+  } else {
+    const result = receiptString(settled, "result");
+    receiptState = result === "SUCCEEDED" || result === "APPLIED" ? "SUCCEEDED" : result === "RECOVERED" ? "RECOVERED" : result === "INTERRUPTED" ? "INTERRUPTED" : result === "FAILED" ? "FAILED" : "UNKNOWN";
+    failureCategory = receiptString(settled, "failureCategory");
+    const reportedAppliedHead = receiptString(settled, "appliedHead");
+    const reportedAppliedHash = receiptString(settled, "appliedHash");
+    if ((receiptState === "SUCCEEDED" || receiptState === "RECOVERED") && expectedHead && actualHead === expectedHead &&
+        reportedAppliedHead === actualHead && reportedAppliedHash === actualHash) {
+      reconciliationState = "CONSISTENT";
+    } else if (receiptState === "SUCCEEDED" || receiptState === "RECOVERED") {
+      reconciliationState = "RECEIPT_DB_MISMATCH";
+      currentState = "UNKNOWN";
+    } else if ((receiptState === "FAILED" || receiptState === "INTERRUPTED") && receiptString(settled, "beforeAppliedHead") === actualHead) {
+      reconciliationState = "FAILED_NO_CHANGE";
+      currentState = receiptState === "FAILED" ? "FAILED" : "INTERRUPTED";
+    } else if ((receiptState === "FAILED" || receiptState === "INTERRUPTED") && value.currentState === "PARTIALLY_APPLIED") {
+      reconciliationState = "PARTIAL_APPLICATION";
+      currentState = "PARTIALLY_APPLIED";
+    } else if (receiptState === "FAILED" || receiptState === "INTERRUPTED") {
+      reconciliationState = "RECEIPT_DB_MISMATCH";
+      currentState = "UNKNOWN";
+    } else {
+      reconciliationState = "RECEIPT_DB_MISMATCH";
+      currentState = "UNKNOWN";
+    }
+  }
+  return { ...input.current, value: { ...value, currentState, failureHistory: "TRACKED", failureTracking: "TRACKED",
+    failedMigration: receiptState === "FAILED" || receiptState === "INTERRUPTED" ? {
+      state: "FAILED", source: "api_audit_events.migration_execution_receipt",
+      migration: { tag: value.expectedMigrationHead?.tag ?? "unknown", hash: value.expectedMigrationHead?.hash ?? "unknown" },
+      observedAt: completedAt ?? startedAt, reason: failureCategory ?? receiptState,
+    } : value.failedMigration,
+    latestExecution: { tag: receiptString(settled ?? latest, "appliedHead") ?? receiptString(settled ?? latest, "expectedMigrationHead"), hash: receiptString(settled ?? latest, "appliedHash") ?? receiptString(settled ?? latest, "expectedMigrationHash") ?? "",
+      result: receiptState === "SUCCEEDED" || receiptState === "RECOVERED" ? "APPLIED" : receiptState === "FAILED" || receiptState === "INTERRUPTED" ? "FAILED" : "UNKNOWN",
+      executedAt: completedAt ? Date.parse(completedAt) : startedAt ? Date.parse(startedAt) : null },
+    executionReconciliation: { state: reconciliationState, receiptState, idempotencyKey: key, executionId,
+      sourceSha: receiptString(latest, "sourceSha"), startedAt, completedAt, failureCategory },
+  } };
 }
 
 async function readExpectedMigrations(directory: string): Promise<Array<{ tag: string; hash: string }>> {
@@ -126,13 +214,21 @@ export async function getDrizzleMigrationEvidence(input: {
     const appliedRows = (await db.execute(
       sql`SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC`
     )) as unknown as AppliedMigration[];
-    return projectDrizzleMigrationEvidence({
+    const current = projectDrizzleMigrationEvidence({
       environment: input.environment ?? process.env.NODE_ENV ?? "unknown",
       databaseIdentity,
       expected,
       applied: appliedRows,
       observedAt: input.now,
     });
+    let receiptRows: Array<{ metadata: MigrationExecutionReceipt | null }> = [];
+    try {
+      receiptRows = (await db.execute(sql`SELECT "metadata" FROM "api_audit_events" WHERE "eventType" = 'migration_execution_receipt' ORDER BY "createdAt" ASC, "id" ASC`)) as unknown as Array<{ metadata: MigrationExecutionReceipt | null }>;
+    } catch (error) {
+      // Fresh databases do not have api_audit_events until its creating migration runs.
+      if (!(error && typeof error === "object" && "code" in error && String(error.code) === "42P01")) throw error;
+    }
+    return reconcileMigrationExecutionReceipts({ current, receipts: receiptRows.flatMap(row => row.metadata ? [row.metadata] : []), now: input.now });
   } catch (error) {
     return {
       status: dbFailureStatus(error), source: "drizzle.__drizzle_migrations", observedAt, value: null,

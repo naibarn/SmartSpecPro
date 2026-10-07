@@ -151,12 +151,20 @@ jobs:
       - name: Run SmartSpecWeb DB integration suite
         env:
           DATABASE_URL: postgresql://smartspec:smartspec123@localhost:5432/smartspec_test
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/ci-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
           RUN_DB_INTEGRATION_TESTS: "true"
           JWT_SECRET: ${{ steps.jwt-secret.outputs.value }}
         run: |
           cd apps/web
           npm run db:migrate
           npm run test:db-integration
+      - name: Upload migration execution receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-receipts-ci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/smartspecpro-migration-receipts/*.jsonl
+          if-no-files-found: ignore
       - name: Upload SmartSpecWeb coverage summary
         uses: actions/upload-artifact@v4
         with:
