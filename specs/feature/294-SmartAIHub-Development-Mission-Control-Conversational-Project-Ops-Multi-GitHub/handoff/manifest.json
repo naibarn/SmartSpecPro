@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0b19f95cbc8648358e082ae1e946e00247d9498b",
+    "expected_canonical_sha": "fb9012f80ef413f34180ccf294588155b0454ae7",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 57,
+  "generation": 58,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -204,7 +204,8 @@
       "d70d14aa97a7aefc4e6751e62379999ae5a87702",
       "9fb15db189f7ecf928234aa6dffd15d31d1c677e",
       "9536f33358331ac12a77fa54bbbb663d86fa1d48",
-      "0b19f95cbc8648358e082ae1e946e00247d9498b"
+      "0b19f95cbc8648358e082ae1e946e00247d9498b",
+      "fb9012f80ef413f34180ccf294588155b0454ae7"
     ],
     "mapping": [],
     "source_paths": [
@@ -244,9 +245,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0b19f95cbc8648358e082ae1e946e00247d9498b",
+    "canonical_sha": "fb9012f80ef413f34180ccf294588155b0454ae7",
     "integrated": true,
-    "integrated_at": "2026-10-07T07:24:34Z"
+    "integrated_at": "2026-10-07T07:38:13Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -571,7 +572,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:27:58.356660Z",
+  "updated_at": "2026-10-07T07:39:05.132095Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -776,6 +777,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-action-execution-recheck-20261007.md",
         "scope": "Worker-side revalidation of trusted Runner identity and snapshot freshness before local safe-action execution; changed and stale authority fail closed.",
         "source_sha": "0b19f95cbc8648358e082ae1e946e00247d9498b",
+        "status": "PASS"
+      },
+      {
+        "kind": "MISSION_CONTROL_HOST_PROVIDER_RESOLUTION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-mission-control-host-provider-20261007.md",
+        "scope": "Mission Control host provider resolution from a fresh trusted active Runner session; stale facts remain UNKNOWN.",
+        "source_sha": "fb9012f80ef413f34180ccf294588155b0454ae7",
         "status": "PASS"
       }
     ],
