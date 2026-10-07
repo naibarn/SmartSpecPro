@@ -746,6 +746,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
                 {"workspace_id": "integrating", "role": "INTEGRATION_WORKTREE", "location": "/integration", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "INTEGRATING"},
                 {"workspace_id": "recovery", "role": "RECOVERY_WORKSPACE", "location": "/recovery", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "ACTIVE"},
                 {"workspace_id": "unknown", "role": "UNKNOWN_WORKSPACE", "location": "/unknown", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "ACTIVE"},
+                {"workspace_id": "blocked", "role": "TASK_WORKTREE", "location": "/blocked", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "BLOCKED", "last_verified_state": "RETIREMENT_BLOCKED_UNPUSHED_INTENDED_WORK"},
             ],
         }
 
@@ -755,10 +756,15 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(result["user_workspace"]["convergence_receipt"]["receipt_id"], "receipt-1")
         self.assertEqual(result["sessions"]["active_count"], 1)
         self.assertEqual(result["sessions"]["active"][0]["session_id"], "session-1")
+        self.assertEqual(result["sessions"]["active"][0]["agent_identity"], "UNKNOWN")
+        self.assertEqual(result["sessions"]["active"][0]["task_id"], None)
         self.assertEqual(result["development_state"]["uncommitted_intended_work"][0]["workspace_id"], "task-dirty")
         self.assertEqual(result["development_state"]["unpushed_intended_commits"]["state"], "UNKNOWN")
         self.assertEqual(result["worktrees"]["integrating"][0]["workspace_id"], "integrating")
         self.assertEqual(result["worktrees"]["recovery"][0]["workspace_id"], "recovery")
+        self.assertEqual(result["worktrees"]["active"][0]["workspace_id"], "task-dirty")
+        self.assertEqual(result["worktrees"]["blocked"][0]["workspace_id"], "blocked")
+        self.assertEqual({row["workspace_id"] for row in result["worktrees"]["unknown_owner"]}, {"stale-task", "unknown"})
         self.assertEqual({row["workspace_id"] for row in result["worktrees"]["stale_or_unknown"]}, {"stale-task", "unknown"})
         self.assertEqual(result["production"]["status"], "UNKNOWN")
 
