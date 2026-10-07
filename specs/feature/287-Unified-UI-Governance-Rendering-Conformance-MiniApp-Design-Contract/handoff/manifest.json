@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "expected_spec_digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
     "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
@@ -96,9 +96,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "integrated": true,
-    "integrated_at": "2026-10-06T04:36:24Z"
+    "integrated_at": "2026-10-07T04:21:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -187,7 +187,7 @@
     "unresolved": 192
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:14:02.701895Z",
+  "updated_at": "2026-10-07T04:22:34.376468Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

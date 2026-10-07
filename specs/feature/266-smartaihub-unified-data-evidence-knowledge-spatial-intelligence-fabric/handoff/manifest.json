@@ -242,7 +242,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "expected_spec_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9"
   },
   "continuation": {
@@ -550,7 +550,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 14,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
     "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
@@ -574,10 +574,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "integrated": true,
+    "integrated_at": "2026-10-07T04:21:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -1239,7 +1239,7 @@
     "unresolved": 207
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:14:02.287419Z",
+  "updated_at": "2026-10-07T04:22:34.204711Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "expected_spec_digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "418a5d68afd884153d166416034f41c71218d2cf7a3c0b8751805b1939e1ead8",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "integrated": true,
+    "integrated_at": "2026-10-07T04:21:12Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -182,7 +182,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:14:02.839575Z",
+  "updated_at": "2026-10-07T04:22:34.496506Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
