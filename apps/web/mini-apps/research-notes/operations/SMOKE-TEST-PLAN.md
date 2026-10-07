@@ -2,6 +2,8 @@
 
 Status: prepared only. No deployment, migration, provider call, or live UAT has been performed.
 
+The migration itself has local disposable-PostgreSQL evidence from `pnpm --filter @smartspec/web run test:research-notes-migration`. That isolated check does not apply the migration to any shared, staging, or production database and does not establish live deployment compatibility.
+
 ## Preconditions
 
 1. Select and register a non-production environment through the existing SPEC-295 deployment authority; do not infer an environment from `.development-repository.toml`.
