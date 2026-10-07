@@ -132,6 +132,7 @@ import { webhookTriggersRouter } from "./routers/webhookTriggers";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 import { appIdentityRouter } from "./routers/appIdentity";
 import { researchNotesRouter } from "./routers/researchNotes";
+import { projectWikiPagesRouter } from "./routers/projectWikiPages";
 import { agentRegistryRouter } from "./routers/agentRegistry";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
@@ -3339,6 +3340,7 @@ type AppRouterShape = {
   tenantFeatureFlags: typeof tenantFeatureFlagsRouter;
   appIdentity: typeof appIdentityRouter;
   researchNotes: typeof researchNotesRouter;
+  projectWikiPages: typeof projectWikiPagesRouter;
   automationCopilot: typeof automationCopilotRouter;
   liveBrowser: typeof liveBrowserRouter;
   metaChannels: typeof metaChannelsRouter;
@@ -3526,6 +3528,7 @@ const appRouterInternal = router<AppRouterShape>({
   tenantFeatureFlags: tenantFeatureFlagsRouter,
   appIdentity: appIdentityRouter,
   researchNotes: researchNotesRouter,
+  projectWikiPages: projectWikiPagesRouter,
   automationCopilot: automationCopilotRouter,
   liveBrowser: liveBrowserRouter,
   metaChannels: metaChannelsRouter,

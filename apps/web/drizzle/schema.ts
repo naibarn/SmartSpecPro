@@ -2803,6 +2803,41 @@ export const miniAppResearchNotes = pgTable(
   ],
 );
 
+/** Project Wiki Pages CRUD Mini App content, isolated by tenant/project/App authority. */
+export const miniAppProjectWikiPages = pgTable(
+  "mini_app_project_wiki_pages",
+  {
+    pageId: varchar("page_id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    stableId: varchar("stable_id", { length: 36 }).notNull().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    projectId: varchar("project_id", { length: 36 }).notNull(),
+    appId: varchar("app_id", { length: 128 }).notNull(),
+    ownerPrincipalId: varchar("owner_principal_id", { length: 160 }).notNull(),
+    path: varchar("path", { length: 512 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    content: text("content").notNull().default(""),
+    contentHash: varchar("content_hash", { length: 64 }).notNull(),
+    lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("mini_app_project_wiki_pages_tenant_page_unique").on(t.tenantId, t.pageId),
+    uniqueIndex("mini_app_project_wiki_pages_stable_id_unique").on(t.tenantId, t.projectId, t.stableId),
+    uniqueIndex("mini_app_project_wiki_pages_active_path_unique").on(t.tenantId, t.projectId, t.path).where(sql`${t.lifecycle} = 'ACTIVE'`),
+    foreignKey({ name: "mini_app_project_wiki_pages_project_fk", columns: [t.tenantId, t.projectId], foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId] }).onDelete("cascade"),
+    foreignKey({ name: "mini_app_project_wiki_pages_app_fk", columns: [t.tenantId, t.appId], foreignColumns: [appIdentities.tenantId, appIdentities.appId] }).onDelete("cascade"),
+    index("mini_app_project_wiki_pages_updated_idx").on(t.tenantId, t.projectId, t.updatedAt.desc(), t.pageId),
+    check("mini_app_project_wiki_pages_lifecycle_check", sql`${t.lifecycle} IN ('ACTIVE', 'ARCHIVED')`),
+    check("mini_app_project_wiki_pages_path_nonempty_check", sql`length(btrim(${t.path})) > 0`),
+    check("mini_app_project_wiki_pages_path_lowercase_check", sql`${t.path} = lower(${t.path})`),
+    check("mini_app_project_wiki_pages_title_nonempty_check", sql`length(btrim(${t.title})) > 0`),
+    check("mini_app_project_wiki_pages_owner_nonempty_check", sql`length(btrim(${t.ownerPrincipalId})) > 0`),
+    check("mini_app_project_wiki_pages_content_hash_check", sql`${t.contentHash} ~ '^[0-9a-f]{64}$'`),
+    check("mini_app_project_wiki_pages_content_size_check", sql`octet_length(${t.content}) <= 262144`),
+  ],
+);
+
 /**
  * Chat Conversations - Multi-chat support with settings
  * Each conversation belongs to a user and can have custom settings

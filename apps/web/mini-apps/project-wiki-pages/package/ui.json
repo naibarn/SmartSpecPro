@@ -3,6 +3,7 @@
   "renderingMode": "hosted-route",
   "routeTemplate": "/apps/{publicAppId}",
   "host": "smartspec-web",
+  "hostSourcePath": "apps/web/client/src/pages/ProjectWikiPagesPage.tsx",
   "authContext": "authenticated-platform-principal",
   "projectSelection": "authorized-projects-only",
   "actions": "actions.json",

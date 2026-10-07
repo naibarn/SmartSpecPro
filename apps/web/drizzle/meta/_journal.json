@@ -2661,6 +2661,13 @@
       "when": 1791400000003,
       "tag": "0393_spec302_canonical_project_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 380,
+      "version": "7",
+      "when": 1791400000004,
+      "tag": "0394_project_wiki_pages_mini_app",
+      "breakpoints": true
     }
   ]
 }
