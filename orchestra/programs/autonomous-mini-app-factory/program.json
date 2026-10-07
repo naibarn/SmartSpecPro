@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+    "sha": "315e98c9efbb35699f97652d54e131974c66b862",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
@@ -78,7 +78,8 @@
       "On source SHA 763e9392afb147ed8574edc0d3e637ec2adad630, `pnpm --filter @smartspec/web run test:research-notes-migration` initialized a disposable local PostgreSQL 17 cluster, applied migration 0393, inserted/read one synthetic tenant/project/App/note fixture, and confirmed cross-tenant project FK, >262144-byte note content, and invalid membership role are rejected. The cluster was stopped and removed; no shared/staging/production DB was touched.",
       "The same source passed 9 focused Vitest files/33 tests plus 4 GitHub outage retry tests. Portable tar.gz digest/archive are stable across two builds; SPAAS V5/V6 remain needs_context.",
       "On checkpoint cce47ae20bce00795f00995d4d7e821537db233a, disposable PostgreSQL 17 applied migration 0393 then actual researchNotesService authorization checks passed: owner CRUD, viewer read/editor-write denial, cross-tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation, and archive lifecycle. No production database touched. Focused Vitest: 9 files/33 tests passed; GitHub retry regression: 4 passed; Python syntax and git diff --check passed. Deterministic package rebuilt with digest spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; validator remains needs_context for runtime/migration rollback evidence.",
-      "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at origin/main SHA 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248; the registered user workspace /home/dev/projects/SmartSpecPro converged cleanly to that SHA. Disposable migration and service-authorization evidence is recorded in SPEC-302 handoff generation 17; live non-production deployment/UAT remains pending."
+      "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at origin/main SHA 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248; the registered user workspace /home/dev/projects/SmartSpecPro converged cleanly to that SHA. Disposable migration and service-authorization evidence is recorded in SPEC-302 handoff generation 17; live non-production deployment/UAT remains pending.",
+      "PR #250 source 2f623d9b2826d60dccbfd35d1d74e3aa59c31cdb merged normally at origin/main SHA 315e98c9efbb35699f97652d54e131974c66b862. SPEC-302 handoff and requirement-ledger updates validated; completion remains false with deployment/UAT and other normative requirements still open."
     ],
     "pending": [
       "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
@@ -192,6 +193,14 @@
       "evidence": "Disposable PostgreSQL 17 applied migration 0393; migration constraints and 8 service authorization/lifecycle checks passed; 9 focused Vitest files/33 tests; retry regression 4 tests. PR #249 merged normally and the canonical user workspace converged; migration deployment/rollback and runtime/UAT remain pending.",
       "sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/249"
+    },
+    {
+      "id": "SPEC302_HANDOFF_MIGRATION_EVIDENCE_UPDATE",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "2f623d9b2826d60dccbfd35d1d74e3aa59c31cdb",
+      "sha": "315e98c9efbb35699f97652d54e131974c66b862",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/250",
+      "evidence": "Shared Spec handoff writer recorded exact-SHA disposable migration and authorization evidence. Handoff validates with no errors; requirements remain PARTIAL and live deployment/UAT remain pending."
     }
   ],
   "completedWorkunits": [],
@@ -339,8 +348,8 @@
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
       "lastScenario": "Retryable GitHub integration completed without a user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/249",
-      "integratedSha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248"
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/250",
+      "integratedSha": "315e98c9efbb35699f97652d54e131974c66b862"
     }
   },
   "deferredInfrastructure": [
@@ -348,5 +357,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T17:07:14Z"
+  "updatedAt": "2026-10-07T17:09:14Z"
 }
