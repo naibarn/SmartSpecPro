@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "smartaihub.mini-app-actions/v1",
+  "appId": "app_research_notes",
+  "transport": {
+    "protocol": "tRPC",
+    "basePath": "/api/trpc/researchNotes",
+    "authentication": "authenticated-platform-session",
+    "tenantAuthority": "derived-from-authenticated-principal",
+    "callerMaySetTenantOrUserId": false
+  },
+  "actions": [
+    { "id": "projects.list", "procedure": "listProjects", "kind": "query", "input": ["appId"], "effects": ["project_membership_check"] },
+    { "id": "projects.create", "procedure": "createProject", "kind": "mutation", "input": ["appId", "title"], "effects": ["project_create", "editor_or_owner_required"] },
+    { "id": "notes.list", "procedure": "listNotes", "kind": "query", "input": ["appId", "projectId"], "effects": ["tenant_project_app_scope_check"] },
+    { "id": "notes.create", "procedure": "createNote", "kind": "mutation", "input": ["appId", "projectId", "title", "content"], "effects": ["note_create", "editor_or_owner_required"] },
+    { "id": "notes.update", "procedure": "updateNote", "kind": "mutation", "input": ["appId", "projectId", "noteId", "title", "content"], "effects": ["note_update", "summary_invalidation", "editor_or_owner_required"] },
+    { "id": "notes.archive", "procedure": "archiveNote", "kind": "mutation", "input": ["appId", "projectId", "noteId"], "effects": ["note_archive", "editor_or_owner_required"] },
+    { "id": "notes.summary.request", "procedure": "requestSummary", "kind": "mutation", "input": ["appId", "projectId", "noteId"], "effects": ["worker_jobs_outbox_enqueue", "editor_or_owner_required"] },
+    { "id": "notes.summary.status", "procedure": "summaryJob", "kind": "query", "input": ["appId", "projectId", "noteId", "jobId"], "effects": ["tenant_project_app_scope_check"] }
+  ]
+}

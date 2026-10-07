@@ -1,0 +1,54 @@
+apiVersion: spaas.smartaihub.app/v1
+kind: AIApplication
+metadata:
+  id: app_research_notes
+  name: Research Notes
+  slug: research-notes
+  version: 1.0.0
+  description: Project-scoped research notes with reusable authenticated UI and machine-callable actions.
+ownership:
+  ownerType: platform
+  ownerId: smartaihub
+compatibility:
+  minimumPlatformVersion: "2026.10"
+  manifestSchema: "1.0"
+application:
+  kind: mini_app
+  experience: hybrid
+  primarySurface: web
+components:
+  - id: research-notes-ui
+    type: ui
+    source: README.md
+    dependsOn: []
+    sideEffects: [persistent_read, persistent_write]
+    capabilities: [research_notes.read, research_notes.write]
+  - id: research-notes-actions
+    type: api-function
+    source: actions.json
+    dependsOn: []
+    sideEffects: [persistent_read, persistent_write, background_job_enqueue]
+    capabilities: [research_notes.read, research_notes.write, research_notes.summarize]
+sections:
+  - name: actions
+    path: actions.json
+    required: true
+requires:
+  capabilities: [research_notes.read, research_notes.write, research_notes.summarize]
+  secrets: []
+  storage: [postgresql]
+  network: [authenticated_platform_api]
+security:
+  authentication: required
+  tenantIsolation: required
+  projectMembership: required
+  appBinding: required
+  callerSuppliesTenantIdentity: false
+privacy:
+  noteContent: tenant_project_scoped
+  aiSummary: user_requested_background_job
+operations:
+  migrations:
+    - id: 0393_spec302_canonical_project_identity
+      platformMigrationId: apps/web/drizzle/0393_spec302_canonical_project_identity.sql
+      status: required_not_applied_by_package_build
