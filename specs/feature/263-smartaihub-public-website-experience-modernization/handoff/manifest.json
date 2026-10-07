@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
       },
@@ -117,7 +117,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53"
+    "expected_spec_digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6"
   },
   "continuation": {
     "next_action": null,
@@ -131,7 +131,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
       },
@@ -260,7 +260,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
       },
@@ -363,18 +363,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
-    "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+    "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.649376Z",
+      "last_evidence_at": "2026-10-07T04:14:02.236062Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:30:27+07:00",
       "spec_last_changed_at": "2026-10-06T05:05:14+07:00"
     },
-    "revision": "263.8",
+    "revision": "263.9",
     "slug": "263-smartaihub-public-website-experience-modernization",
     "spec_id": "263",
     "title": "Spec 263 — SmartAIHub Public Website Experience Modernization"
@@ -393,10 +393,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.649376Z"
+    "updated_at": "2026-10-07T04:14:02.236062Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -406,10 +406,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.649376Z",
+    "reconciled_at": "2026-10-07T04:14:02.236062Z",
     "sources": [
       {
-        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
       },
@@ -594,15 +594,20 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.",
+        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.9; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
-        "source_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-        "value": "IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open."
+        "source_digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
+        "value": "IMPLEMENTATION IN PROGRESS — REVISION 263.9; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open."
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -694,17 +699,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.",
+        "excerpt": "**Status:** IMPLEMENTATION IN PROGRESS — REVISION 263.9; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open.",
         "line": 3,
         "source": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
-        "source_digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
-        "value": "IMPLEMENTATION IN PROGRESS — REVISION 263.8; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open."
+        "source_digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
+        "value": "IMPLEMENTATION IN PROGRESS — REVISION 263.9; partial implementation is integrated and static frontend is deployed, while complete production acceptance remains open."
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53",
+        "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md"
       },
@@ -820,11 +825,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 431,
-    "unresolved": 431
+    "total": 434,
+    "unresolved": 434
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.649376Z",
+  "updated_at": "2026-10-07T04:14:02.236062Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

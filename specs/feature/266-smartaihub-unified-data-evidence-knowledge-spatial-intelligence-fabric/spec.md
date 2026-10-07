@@ -1,13 +1,13 @@
 # Spec 266 — SmartAIHub Unified Data, Evidence, Knowledge & Spatial Intelligence Fabric
 
 **Short name:** SmartAIHub Intelligence Fabric (SIF)  
-**Revision:** R1.2 — Portable Knowledge Interoperability + Autonomous Research Hardened / Canonical Shared Foundation
+**Revision:** R1.3 — additive Portable Mini App Knowledge authority erratum
 **Date:** 2026-10-04
 **Status:** Proposed — Canonical Shared Foundation / Implementation-Ready Design
 **Scope:** Platform-wide data-source discovery, autonomous research enrichment, registry, semantic catalog, rights, provenance, evidence, entity resolution, spatial/temporal intelligence, retrieval/index projections, portable knowledge exchange semantics and reusable intelligence profiles
 **Supersession:** Supersedes Spec 264 as a separately implemented subsystem; absorbs the generic data/evidence/source foundation previously defined inside Spec 265 R1.1  
 **Compatibility:** MUST preserve implemented contracts in Spec 260 and Spec 262 through additive adapters/projections
-**Primary consumers:** Spec 260 Emergency, Spec 265 Decision Intelligence, Spec 278 Portable Knowledge Runtime, Skills, Agents, Mini Apps, Chat, Task Control, future verticals
+**Primary consumers:** Spec 260 Emergency, Spec 265 Decision Intelligence, SPEC-281 Portable Knowledge Runtime, Skills, Agents, Mini Apps, Chat, Task Control, future verticals
 
 ---
 
@@ -46,6 +46,7 @@ R1.2 adds the canonical knowledge portability boundary required by Mini Apps tha
 The new invariant is:
 
 > **Spec 266 defines what governed knowledge/evidence means and how it is exchanged; Spec 278 defines how a Mini App runs that knowledge capability across managed, portable, connected and external providers.**
+> **R1.2 wording retained as a historical quotation; the current ownership is SPEC-281 per the R1.3 erratum below.**
 
 R1.2 therefore adds:
 
@@ -53,7 +54,7 @@ R1.2 therefore adds:
 - stable source anchors for citation-preserving migration;
 - portable knowledge exchange semantics and rights-gated export/import;
 - explicit separation of canonical knowledge from derived embeddings/search indexes;
-- provider-neutral managed/portable interoperability with Spec 278;
+- provider-neutral managed/portable interoperability with SPEC-281;
 - vector metadata needed to map search projections back to portable canonical objects;
 - a `Knowledge Pack` marketplace artifact for redistributable curated knowledge;
 - acceptance criteria proving provider migration without treating vectors as source of truth.
@@ -122,11 +123,11 @@ Spec 265 R2 owns Decision Intelligence methodology:
 
 Spec 266 supplies the data/evidence foundation used by those workflows.
 
-## 2.4 Spec 261 / Mini Apps / Spec 278 Portable Knowledge Runtime
+## 2.4 Spec 261 / Mini Apps / SPEC-281 Portable Knowledge Runtime
 
 Spec 261 SPAAS remains the portable application/package authority.
 
-Spec 278 Portable Mini App Knowledge Runtime & Wiki RAG owns the **Mini App knowledge provider/runtime portability layer**, including managed/portable/connected/external adapters, the local SQLite/FTS5 reference provider, Portable Knowledge Bundle mechanics and provider capability negotiation.
+SPEC-281 Portable Mini App Knowledge Runtime & Wiki RAG owns the **Mini App knowledge provider/runtime portability layer**, including managed/portable/connected/external adapters, the local SQLite/FTS5 reference provider, Portable Knowledge Bundle mechanics and provider capability negotiation.
 
 Spec 266 remains the canonical semantic authority for knowledge/evidence objects, provenance, rights, verification/admission and portable exchange semantics.
 
@@ -135,7 +136,7 @@ The ownership rule is:
 ```text
 Spec 261 = portable application/product contract
 Spec 266 = canonical knowledge/evidence semantics + governance
-Spec 278 = portable Mini App knowledge runtime/provider contract
+SPEC-281 = portable Mini App knowledge runtime/provider contract
 Spec 229 = SmartAIHub-managed retrieval implementation boundary
 ```
 
@@ -1841,14 +1842,14 @@ For SmartAIHub-managed knowledge retrieval, Spec 229 Retrieval Broker remains ma
 
 ```text
 Mini App / Agent / Chat
-  → Spec 278 SmartAIHub Adapter when applicable
+  → SPEC-281 SmartAIHub Adapter when applicable
   → Spec 229 Retrieval Broker
   → Spec 266 governed knowledge/evidence
 ```
 
 Spec 266 MUST NOT prescribe a second SmartAIHub ranking formula.
 
-Portable/external Mini App runtimes MAY use a different retrieval engine outside the managed boundary, but MUST preserve canonical source/citation/rights identities and SHOULD return a normalized evidence receipt compatible with Spec 278.
+Portable/external Mini App runtimes MAY use a different retrieval engine outside the managed boundary, but MUST preserve canonical source/citation/rights identities and SHOULD return a normalized evidence receipt compatible with SPEC-281.
 
 ## 23.2 Search Projection Rebuildability
 
@@ -2784,7 +2785,7 @@ Once Spec 266 owns a concern, new writes MUST NOT create a parallel source/right
 
 ## Phase G — Portable Knowledge Interoperability Contract
 
-Spec 266 work in this phase is limited to canonical interoperability; Spec 278 owns the portable runtime implementation.
+Spec 266 work in this phase is limited to canonical interoperability; SPEC-281 owns the portable runtime implementation.
 
 - KnowledgeSpace/Document/Page/Chunk/Source/Claim/Citation contracts;
 - stable IDs/content hashes/source anchors;
@@ -2953,7 +2954,7 @@ The first production slice MUST NOT be promoted until:
 20. research spend/fan-out caps and stale-candidate revalidation are observable.
 21. managed knowledge objects can produce an authorized portable exchange fixture whose canonical hashes/citations verify after import;
 22. incompatible destination embedding/index profiles trigger rebuild rather than canonical-data failure;
-23. Spec 278 integration proves a Mini App can change knowledge provider without introducing a parallel Spec 266 source/provenance authority.
+23. SPEC-281 integration proves a Mini App can change knowledge provider without introducing a parallel Spec 266 source/provenance authority.
 
 ---
 
@@ -2971,7 +2972,7 @@ Spec 266 does NOT require SmartAIHub to:
 - create a second job/queue authority;
 - create a second Chat/Task Control;
 - create a second Mini App runtime;
-- implement the Spec 278 SQLite/FTS5 portable runtime inside Spec 266;
+- implement the SPEC-281 SQLite/FTS5 portable runtime inside SPEC-266;
 - require every externally deployed Mini App to remain connected to SmartAIHub;
 - require Vectorize/Cloudflare as the storage/search implementation outside SmartAIHub;
 - treat embeddings/search indexes as the only portable representation of knowledge;
@@ -3058,7 +3059,7 @@ All twelve concerns are CLOSED IN DESIGN in R1.1; implementation evidence remain
 | Decision Watches | Spec 265 R2 |
 | Vertical Decision Packs | Spec 265 R2 |
 
-## Appendix C — Spec 278 Portable Knowledge Ownership Mapping
+## Appendix C — SPEC-281 Portable Knowledge Ownership Mapping
 
 | Concern | Canonical owner |
 |---|---|
@@ -3066,18 +3067,18 @@ All twelve concerns are CLOSED IN DESIGN in R1.1; implementation evidence remain
 | rights/admission/verification | Spec 266 |
 | SmartAIHub managed retrieval/ranking | Spec 229 |
 | Mini App package/deployment | Spec 261 |
-| portable knowledge provider/runtime adapters | Spec 278 |
-| SQLite/FTS5 local reference provider | Spec 278 |
-| Portable Knowledge Bundle mechanics | Spec 278, constrained by Spec 266 rights semantics |
+| portable knowledge provider/runtime adapters | SPEC-281 |
+| SQLite/FTS5 local reference provider | SPEC-281 |
+| Portable Knowledge Bundle mechanics | SPEC-281, constrained by Spec 266 rights semantics |
 | user/app/agent memory | Spec 268 |
 | canonical source/document/page/chunk/claim identities | Spec 266 |
-| local/external index implementation | Spec 278 provider adapter |
+| local/external index implementation | SPEC-281 provider adapter |
 
 The cross-spec rule is:
 
 ```text
 Spec 266 defines portable semantic truth
-Spec 278 materializes that truth in different runtimes
+SPEC-281 materializes that truth in different runtimes
 Spec 229 remains the managed retrieval authority
 Spec 261 packages/deploys the application
 ```
@@ -3134,3 +3135,7 @@ Spec 265 R2 = ACTIVE Decision Intelligence
 Spec 266 R1.2 = ACTIVE shared data/evidence/knowledge foundation
 Spec 260/262 = implemented upstream consumers/authorities
 ```
+
+## R1.3 Additive Portable Mini App Knowledge authority erratum — 2026-10-07
+
+The current normative owner of Portable Mini App Knowledge Runtime/Wiki RAG is **SPEC-281**, at `specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md`. `SPEC-278` is SmartAIHub Durable Runner Execution Sessions & Recovery Fabric and MUST NOT be cited as the Portable Mini App Knowledge authority. This erratum supersedes current ownership mappings in this Spec (including §2.4 and Appendix C) while preserving the original R1.2 wording, historical quotations, implementation notes, and receipts. Current normative consumers MUST use SPEC-281 for portable knowledge runtime/provider mechanics, SPEC-266 for canonical knowledge/evidence semantics, and SPEC-229 for managed retrieval. No implementation parity is asserted by this authority correction.

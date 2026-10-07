@@ -1,6 +1,6 @@
 # Spec 292 — SmartAIHub Adaptive Work Context, Organizational Collaboration & Federated Work Exchange
 
-**Revision:** R1.0  
+**Revision:** R1.1 — additive SPEC-302 Project identity alignment
 **Date:** 2026-10-05  
 **Status:** Proposed / Additive / Implementation-Ready  
 **Scope:** Platform-wide Work Context, multi-human/multi-assistant collaboration, responsibility routing, multi-session project communication, durable handoff and cross-tenant work exchange  
@@ -588,3 +588,7 @@ Cross-tenant exchange, explicit disclosure and trust relationship.
 | 12 | Operability | Incremental checkpoints, stale-source detection, idempotency, cost budgets, mobile UX and rollback are testable |
 
 A release candidate FAILS if any pass is unresolved without an explicit owner, blocker and rollback-safe mitigation.
+
+## R1.1 Additive SPEC-302 Project identity alignment — 2026-10-07
+
+SPEC-302 defines the canonical cross-domain Project identity and explicit domain/App bindings. `WorkContext` and its collaboration/profile projections remain owned by SPEC-292 and MUST NOT become the global Project identity, ACL, or domain lifecycle authority. WorkContext MAY reference `canonicalProjectId` and `ProjectAppBinding`; the reference is valid only with tenant scope, current authorization, and a binding receipt. Cross-app navigation MUST preserve the canonical project reference while rechecking app and project permissions. A project switch creates a new effective context/conversation segment; it MUST NOT rewrite prior messages, handoffs, or memory. `No Project`, ambiguous, and pending scope remain valid states. This amendment supersedes the earlier instruction to discover an unspecified Project authority at G0, without rewriting historical citations or evidence.

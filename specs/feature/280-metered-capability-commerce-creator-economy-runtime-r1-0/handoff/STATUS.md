@@ -2,11 +2,11 @@
 # 280 — Spec 280 — SmartAIHub Metered Capability Commerce & Creator Economy Runtime
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 142 unresolved of 142
+- Requirements: 0 pass / 144 unresolved of 144
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

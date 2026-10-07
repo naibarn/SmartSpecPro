@@ -15,7 +15,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md#L446",
-        "source_digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "source_digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "successor_spec_id": "280"
       },
       {
@@ -47,7 +47,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -59,7 +59,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30"
+    "expected_spec_digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e"
   },
   "continuation": {
     "next_action": null,
@@ -73,7 +73,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -100,7 +100,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -108,18 +108,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-    "digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+    "digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.881058Z",
+      "last_evidence_at": "2026-10-07T04:14:02.599747Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
     },
-    "revision": "1.1",
+    "revision": "1.2",
     "slug": "280-metered-capability-commerce-creator-economy-runtime-r1-0",
     "spec_id": "280",
     "title": "Spec 280 — SmartAIHub Metered Capability Commerce & Creator Economy Runtime"
@@ -138,10 +138,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.881058Z"
+    "updated_at": "2026-10-07T04:14:02.599747Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -151,10 +151,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.881058Z",
+    "reconciled_at": "2026-10-07T04:14:02.599747Z",
     "sources": [
       {
-        "digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       },
@@ -166,11 +166,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-        "source_digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "source_digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -192,14 +197,14 @@
         "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
         "line": 4,
         "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-        "source_digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "source_digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -215,11 +220,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 142,
-    "unresolved": 142
+    "total": 144,
+    "unresolved": 144
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.881058Z",
+  "updated_at": "2026-10-07T04:14:02.599747Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

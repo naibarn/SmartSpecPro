@@ -1,6 +1,6 @@
 # Spec 284 — SmartAIHub Project Evidence Retrieval, Artifact Continuity & Source Preservation Runtime
 
-**Revision:** R1.0  
+**Revision:** R1.1 — additive SPEC-302 project identity alignment
 **Date:** 2026-10-05  
 **Status:** Proposed / Additive / Implementation-Ready  
 **Scope:** Project Source Graph, multi-need query planning, structured/semantic/temporal/graph/live retrieval composition, artifact identity/version/occurrence, expiring-source preservation, evidence reconciliation and grounded answer/artifact delivery  
@@ -771,3 +771,7 @@ As of 2026-10-05, LINE Messaging API documentation states that retrieved message
 | 12 | Operability | Incremental checkpoints, stale-source detection, idempotency, cost budgets, mobile UX and rollback are testable |
 
 A release candidate FAILS if any pass is unresolved without an explicit owner, blocker and rollback-safe mitigation.
+
+## R1.1 Additive canonical project identity and query binding — 2026-10-07
+
+Project-scoped evidence plans MUST consume an authorized `ResolvedProjectContext` and canonical `projectId` from SPEC-302 when a binding exists. A domain identifier or legacy `projectId` string is usable only through a verified, tenant-scoped binding; this contract does not re-key domain rows. Semantic/vector similarity MAY retrieve and rank evidence candidates but MUST NOT choose the durable canonical project. Query plans and receipts MUST retain tenant/project ACL, membership/policy epoch, source namespace, and revocation checks. Ambiguous or unresolved identity returns an explicit no-durable-project result and cannot broaden retrieval across projects or tenants. SPEC-284 remains evidence/artifact continuity and retrieval authority, not global Project identity.

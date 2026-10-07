@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "cfbd2e3933ac198483b3d0d4b10827f557d5bad9bbfa3201406712bc289dae8b",
       "requirement_id": "REQ-1ACCE5121C2D",
       "requirement_text": "They must never maintain a second balance, independently debit credits, or",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "2976c34d18670c7e69208691a36fd4e1738a574bf69c29f1acd1d9f26a0ccdec",
       "requirement_id": "REQ-DDC5F6934CE5",
       "requirement_text": "must remain unattributed?",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "244cd555560c9e46c770317c2c0e0bf7aba0d4ac98cc648ed0440aa3d5255f11",
       "requirement_id": "REQ-CD8278F11492",
       "requirement_text": "The solution must preserve existing balances, fixed Skill settlement, LLM",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "0b92d1b4e444bec45e77726cb6f5dd8c797403f25fdb2c0afc7d8343e6f013c6",
       "requirement_id": "REQ-BE31C2DEE0C9",
       "requirement_text": "1. Create a normalized, reusable polymorphic context registry for Series, Job,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "92775db069cce34d6631818dc5c1537df8e7525209d40586199436e63a64926b",
       "requirement_id": "REQ-7DB2983CF3CF",
       "requirement_text": "2. Link every new actual billable Skill/LLM credit debit and its refund or",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "16be7de9de02596da68a584e95fe6724d911cdcee58bb8fb08f81209e080bd13",
       "requirement_id": "REQ-01287EFEBA50",
       "requirement_text": "3. Preserve a parent/root hierarchy so one transaction can be reported by",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "dde8046a446a0d1d793a545b057e689d73ece1ad8708da326e51ef2719fd25d0",
       "requirement_id": "REQ-64EB1D7D5FC8",
       "requirement_text": "4. Make actual credit reports queryable by work without searching descriptions,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "56036a9bb2680f10c8581c053da54f2d99e8c4fdccb02739b14c1dd040ffb485",
       "requirement_id": "REQ-A0847AE3A4C2",
       "requirement_text": "5. Display a human-readable title or work label on the user Credits page.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "1faff8386db3ac88faf26bba39f5d470624a392ee00b6d0196da19161677e05c",
       "requirement_id": "REQ-AF61CF7813E6",
       "requirement_text": "6. Keep technical IDs available for authorized audit detail without exposing",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "6058e72bfe1c2e178e577c339aa9e1d222aa8f7069eb25c4f231c51b925322a9",
       "requirement_id": "REQ-F532CB9CD4E1",
       "requirement_text": "7. Backfill historical lineage only when the relationship can be verified from",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "f4ac6f56a9c7864494a4076455ed0c3d1abd93a4f548b3abf44ca20f80eadff0",
       "requirement_id": "REQ-B89C7256166E",
       "requirement_text": "8. Make missing or ambiguous historical lineage visible as an explicit",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "afe2fbb696c2a029ac572f2ff4c0e0143c672a1b71f46bcafc6825c119533d85",
       "requirement_id": "REQ-7330FC03D698",
       "requirement_text": "9. Support retry, duplicate delivery, fixed Skill revenue settlement, refund,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "341f8292f1f7c5b49c8db6607855953bc0a090364fe8f2eb8ec259c013383cf2",
       "requirement_id": "REQ-5D34BB159BFA",
       "requirement_text": "10. Provide a report API and UI that calculate actual credits from the existing",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "d1e2e081293e209862add2a6aa09b7f0d4982f2260ee4ead828b00f2269d19f9",
       "requirement_id": "REQ-6B5E806F1CB3",
       "requirement_text": "11. Keep the layer tenant-safe, bounded, idempotent, observable, and usable at",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "1815378c87014c5a9af0abf2087948c2731a459d07f9b3080aabcc1b8b978fb1",
       "requirement_id": "REQ-5186DD200F60",
       "requirement_text": "The implementation must extend existing seams rather than create parallel",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "ab8a48f98aafb78c7ec977df3fbfa221ea26d3e76048ee894a65297d27baa4d9",
       "requirement_id": "REQ-6C6F00F3088B",
       "requirement_text": "| Existing seam | Current contract | Required integration |",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "5125c5b2c01465df2b3410c73a6de49c7b573aa278d5830b60e41e672c5d6345",
       "requirement_id": "REQ-45CCBE48564B",
       "requirement_text": "must stage and modify only owned paths and must not reset, clean, or rewrite",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "f1306d9a3eff0885953fd5d757ef9abf040d8309ca99b6da5a798218a5d9ce92",
       "requirement_id": "REQ-BB1CA0E21092",
       "requirement_text": "Each registered resolver must expose a server-owned registration containing",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "b1abcdd1fd36d56e9ffc76ad7260e764c7f9f694061ac100d7ebfc5638f4ad3c",
       "requirement_id": "REQ-83B2B153A583",
       "requirement_text": "required ancestry policy for a fully linked report row. The registration must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "2dac72dc35309a9c5f76fa500074b0f2d25be74474ec145d06af260ead137d08",
       "requirement_id": "REQ-F3BA9461131A",
       "requirement_text": "A resolver result must identify whether the source is active, archived,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "3185bcc3f128e932d495c2bf96225e5e3b52a36bca695156d77b9691ca6e4f4c",
       "requirement_id": "REQ-02A8D6B7853C",
       "requirement_text": "for an existing ledger row; it must not create a new amount. If a financial",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "c3bb1ac181645552647f742fe1c0def217f738743caa5ac84165770888327fd2",
       "requirement_id": "REQ-1E40DF042867",
       "requirement_text": "allow-listed `work_adjustment` policy and link. The implementation must not",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "f0d535f4193cbe00a19d662072b3c3ab905967dbad3e516b4350870151501f86",
       "requirement_id": "REQ-9C85D544019A",
       "requirement_text": "must be a refundable usage/work-adjustment row owned by the same user and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "553e435e95e78918e980ca88fbf47ab08c5923a381a0fccda2670a76b8834347",
       "requirement_id": "REQ-2295357725C7",
       "requirement_text": "tenant, and the cumulative accepted refunds for that original must not exceed",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "dd1c7e48f1b03849a5982332f0107e0bcd0c7cf79476363e4e08c1e8fe2bf17c",
       "requirement_id": "REQ-E7331CE79BDE",
       "requirement_text": "reported in a separate data-quality bucket. The report must never clamp an",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -570,7 +570,7 @@
       "requirement_digest": "1a13b48fcd8d1c814722ca72f9789f1ed13890cebdc76bb5a363e8a162444dca",
       "requirement_id": "REQ-D4134C0FB8B2",
       "requirement_text": "Required columns:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -592,7 +592,7 @@
       "requirement_digest": "535311212407b70cd3fc23c9d37413e941e365d7640c1fd7a9b3998dea8dec52",
       "requirement_id": "REQ-D4114B432E3E",
       "requirement_text": "| `tenantId` | varchar(36) not null FK to `tenants` | Required for all work contexts; `ON DELETE RESTRICT` |",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -615,7 +615,7 @@
       "requirement_digest": "d674e394b186e8d09913a504b789ade207f266ce64a34c2c2b0403a803a36610",
       "requirement_id": "REQ-14AD0B721410",
       "requirement_text": "Required constraints/indexes:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -637,7 +637,7 @@
       "requirement_digest": "85e6aa9d0940b653188dbbe5d6806c1d54f778bae24a2ce167025c77b4fe5ae2",
       "requirement_id": "REQ-5AC277A9A10C",
       "requirement_text": "`contextKey` must be normalized and length-limited before insertion. It must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -659,7 +659,7 @@
       "requirement_digest": "d4bae17a6439f13eee6bbcf6db176a9a8464e8345ec91401686234e066b59a54",
       "requirement_id": "REQ-A0B55272C58B",
       "requirement_text": "The database must enforce non-empty/length bounds for required string fields.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -681,7 +681,7 @@
       "requirement_digest": "43baad97510306c05671bad4fcd6a1ead38e3f3753ea2b1208e1b8813fdf3892",
       "requirement_id": "REQ-0C684B357E78",
       "requirement_text": "The application must enforce a maximum serialized `snapshotJson` size and an",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -703,7 +703,7 @@
       "requirement_digest": "5211e51cfc42f65bb1ed05993bc99ae746ae0ee34c9e527c5c2ced1ca4809f52",
       "requirement_id": "REQ-579736B9588C",
       "requirement_text": "allow-list of snapshot keys. `rootContextId` must point to an existing context",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -725,7 +725,7 @@
       "requirement_digest": "d097ab54bad3b29628cd90dcc259c269e723178b6464d19f1c94c3b98b167482",
       "requirement_id": "REQ-DB362FCE92D6",
       "requirement_text": "in the same tenant, must be the root itself when `contextType` is a root type,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -747,7 +747,7 @@
       "requirement_digest": "f8d3187a91326859d6927219e3da2469f920dfb2e024b0ad75b6ee8bae3dfe7c",
       "requirement_id": "REQ-A96EE35AD71B",
       "requirement_text": "and must never form a cycle. These hierarchy invariants require a transactional",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -769,7 +769,7 @@
       "requirement_digest": "250c78103296186d3583d14cf82da3d32e6a0d83453badc907f79b5d05a29fea",
       "requirement_id": "REQ-20573753DDDD",
       "requirement_text": "At minimum, the writer/audit must enforce: a root context points to itself, a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -791,7 +791,7 @@
       "requirement_digest": "ed112e0658fe11ae583a7c3832d4b13eb5ce1b86a1480b583bb6f53145908ca4",
       "requirement_id": "REQ-B89CD31DDA46",
       "requirement_text": "reconciliation, and manual correction must emit a bounded event through the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -813,7 +813,7 @@
       "requirement_digest": "343574affd71526369c5cff780593145e322c9d97549ddef3cafbd4f27c78154",
       "requirement_id": "REQ-73921EFB03EF",
       "requirement_text": "resolver version, actor/service identity, and trace ID where available. It must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -835,7 +835,7 @@
       "requirement_digest": "d38a7ba430044e4077b6b7942bbb846f061ec4b00f7d88402be6fd72c059099f",
       "requirement_id": "REQ-C8A9F689ACD4",
       "requirement_text": "title must not rewrite historical snapshots.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -857,7 +857,7 @@
       "requirement_digest": "4ce9126f2465eefac90f744c4c4b63315122d173ceff1d29ccac060c1b1831a6",
       "requirement_id": "REQ-55ED9D36BE0F",
       "requirement_text": "the UI must use a localized safe fallback and must not manufacture a title from",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -879,7 +879,7 @@
       "requirement_digest": "3ca9c0b268a15c26e5c4e6ce708ac68ed309e100ed2826760c1386bca62c3063",
       "requirement_id": "REQ-0002D7F1599D",
       "requirement_text": "context must have a non-null safe snapshot before it can be used as a named",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -901,7 +901,7 @@
       "requirement_digest": "e33c448f00ea232c2b89c0eee0fb75fba11ff23bd2807fa518c62c6f222915f6",
       "requirement_id": "REQ-53CA70A40AC8",
       "requirement_text": "| `transactionId` | integer FK to `credit_transactions` | `ON DELETE RESTRICT`; financial history is append-only and a transaction must not be deleted while context links exist |",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -923,7 +923,7 @@
       "requirement_digest": "b4cc51dbc03fb35f9171a8a2128b6ddf714485344ce26a57a84037a042262ae5",
       "requirement_id": "REQ-FDC054800F23",
       "requirement_text": "other top-level work used for rollups. Parent links are explanatory and must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -945,7 +945,7 @@
       "requirement_digest": "c0b27f65484169bda2911e4f79ee0cdfefae3253edde56aff3318e1cea10578d",
       "requirement_id": "REQ-E2B404EEFA57",
       "requirement_text": "`relationType = \"primary_work\"` is required when `attributionMode` is",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -967,7 +967,7 @@
       "requirement_digest": "da30952b80db5ff4d61606de123fc1bba616fa00711c447a2178e1fe14b99d81",
       "requirement_id": "REQ-DF831E4873B3",
       "requirement_text": "`required`. For a refund, exactly one primary link to the original work is",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -989,7 +989,7 @@
       "requirement_digest": "8fda711c04f5cd05466dd1b58fca721931d331fa0d612c0e45bdb42d4659b268",
       "requirement_id": "REQ-19926C5567B3",
       "requirement_text": "required when the original transaction is known; it uses",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1011,7 +1011,7 @@
       "requirement_digest": "3f5fa5502260692f37d3b8c82959dde832836827fc6bb44b1df158cc8c2c9eaf",
       "requirement_id": "REQ-16BA8A3852E8",
       "requirement_text": "The writer must reject a `reversal` link on a non-refund transaction, a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1033,7 +1033,7 @@
       "requirement_digest": "87b2725779dd43cbfe3ae5ff19f60a4fe7fb1016c7f0f639ea5b9bedceeb29f3",
       "requirement_id": "REQ-69C5C7A905DD",
       "requirement_text": "derived from `credit_transactions.userId`. The transaction-bound writer must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1055,7 +1055,7 @@
       "requirement_digest": "7f8a6e1b7dc85042beaa196cb3e707cdfddd84aef71f046e45b87e220108cd12",
       "requirement_id": "REQ-FBD96760F393",
       "requirement_text": "a link; report queries must apply both joins explicitly. This avoids two",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1077,7 +1077,7 @@
       "requirement_digest": "e1f0e4e0a818c468ced5c8c6dfff0c0ec2db0e46952a39aab3761f65b555a4a9",
       "requirement_id": "REQ-BB4F25940474",
       "requirement_text": "must detect tenant mismatch, null tenant on a new required row, and a context",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1099,7 +1099,7 @@
       "requirement_digest": "ed41331efed08fde983bca059ca77aaee1808b4ba03999dc3fdaf4f2da66b414",
       "requirement_id": "REQ-BAB59CB2F2BB",
       "requirement_text": "| `tenantId` | varchar(36) nullable FK to `tenants.id` | Required for every new user-owned debit/refund/adjustment; nullable only for legacy rows that cannot be proven and system rows such as `userId = 0`; `ON DELETE RESTRICT` |",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1121,7 +1121,7 @@
       "requirement_digest": "d8066999a33b3ddef5f94d2ddc75a92098f3d418723238524b1fb4f370e3c60a",
       "requirement_id": "REQ-E49956DF713A",
       "requirement_text": "`tenantId` is the transaction-time tenant provenance and must never be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1143,7 +1143,7 @@
       "requirement_digest": "f8b134823aa33080da37bc8b9ccba99df742d6330a506662ce0239ec8883a700",
       "requirement_id": "REQ-8D56C2943F0A",
       "requirement_text": "backward compatibility. The new refund writer must populate the structured",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1165,7 +1165,7 @@
       "requirement_digest": "721756fd7eacc4df9acc20f5c673a7988ce4898633b2dfd561eeb077ade35fda",
       "requirement_id": "REQ-8CFEA121CEAD",
       "requirement_text": "must never mutate the original transaction amount.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1187,7 +1187,7 @@
       "requirement_digest": "8b66bdbcd6845f06f69861da119e0dd74dcc81db1895670027d870a54f77c122",
       "requirement_id": "REQ-75EA613C5C8E",
       "requirement_text": "The migration must add indexes on `tenantId` and `reversalOfTransactionId`.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1209,7 +1209,7 @@
       "requirement_digest": "b906855657a65f2cbb7ae74080bc1d43dcf67c1a888a39ebaedca4ab242e0db6",
       "requirement_id": "REQ-E0BA3B8D76A5",
       "requirement_text": "It must also add report-path indexes equivalent to",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1231,7 +1231,7 @@
       "requirement_digest": "6c54ef7f2458b34f8fc575112c8c384737f85227ac757084234bb0c3417b7dfe",
       "requirement_id": "REQ-B24196609CD9",
       "requirement_text": "compatibility. Index names must follow the repository naming convention.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1253,7 +1253,7 @@
       "requirement_digest": "cd4f474c6d048f051c3231f309aa0c8cd589ca5481f506d0cf6e370b097368a1",
       "requirement_id": "REQ-9AAFFA58D0FF",
       "requirement_text": "It must backfill `tenantId` only from a verified context link, an immutable",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1275,7 +1275,7 @@
       "requirement_digest": "82c691be518b616e4f295cfb83d46cf3ca5e4a10a40c291b15ae0b5559a3f715",
       "requirement_id": "REQ-B325E6280416",
       "requirement_text": "single unambiguous tenant. It must never copy the current tenant blindly.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1297,7 +1297,7 @@
       "requirement_digest": "59aadc3f8814d6f8f77e9d5e5825b26e5502729da1c1ec8781f76a185f08b85d",
       "requirement_id": "REQ-D6756765EDBF",
       "requirement_text": "It must backfill `reversalOfTransactionId` only when the existing",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1319,7 +1319,7 @@
       "requirement_digest": "42f026b27e143f31800a0bdd73d17476fdc1f04c80bde18d8054c3360096f25f",
       "requirement_id": "REQ-5D9E9FCDEF32",
       "requirement_text": "The first implementation must provide resolvers for:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1341,7 +1341,7 @@
       "requirement_digest": "a9b673231a17859e907fcb6a9a29c48659354002446e445158ad8ed4d51d3302",
       "requirement_id": "REQ-DB6C92C629B6",
       "requirement_text": "tenant/user validation. It must not be silently treated as a valid Series.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1363,7 +1363,7 @@
       "requirement_digest": "56bdc29c37f81ed65d5aedc89f0ffadfc262a7be75b5022ce08ac24d322d61c8",
       "requirement_id": "REQ-CB636FD0C9CE",
       "requirement_text": "appear as a fully attributed named rollup until its required ancestry is",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1385,7 +1385,7 @@
       "requirement_digest": "40ececa37d8ceb1313f37da7b2616d6655e661d6d61a3fadce8cb9deb455f322",
       "requirement_id": "REQ-3E536A38C2C4",
       "requirement_text": "purge must be an explicitly authorized ledger-retention operation that purges",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1407,7 +1407,7 @@
       "requirement_digest": "fb41961a505ba2fc9abfebe98bab9837190fe2f4d32df9774b7fc90d2ec82354",
       "requirement_id": "REQ-317D4C4E0713",
       "requirement_text": "not part of this feature. The implementation must make this transition",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1429,7 +1429,7 @@
       "requirement_digest": "fd17dc80d00b70b0820df7fad5cf03d6cc834755978a3f3e1dfacb67fe62f465",
       "requirement_id": "REQ-F35F02F5F401",
       "requirement_text": "handler or a scheduled reconciliation worker; the selected mechanism must be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1451,7 +1451,7 @@
       "requirement_digest": "ee9b256171553708e5da4bf3caaa36ec903983785d45c499237ae3a39cab444b",
       "requirement_id": "REQ-F02A84A98C12",
       "requirement_text": "documented in the rollout runbook. It must be idempotent, tenant-scoped, and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1473,7 +1473,7 @@
       "requirement_digest": "4c1f9b37e1cc0ba5160722620c70c4234f751e09a7fe1bee66ac5959f50d5a1d",
       "requirement_id": "REQ-1A1969550D34",
       "requirement_text": "must not archive a context merely because a transient source lookup failed.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1495,7 +1495,7 @@
       "requirement_digest": "77b1252f5611ce60c65235053eca6e217b6479d5db2092c96d52c9b42651be6c",
       "requirement_id": "REQ-115213E75BF6",
       "requirement_text": "Repeated reconciliation must not rewrite `displayNameSnapshot`, transaction",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1517,7 +1517,7 @@
       "requirement_digest": "9c63c47a013b2723c0152c321bd738d4e4aab1eb5497635373e459638475e126",
       "requirement_id": "REQ-A28CFCE7ABD4",
       "requirement_text": "balance or amount columns. It must contain at least:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1539,7 +1539,7 @@
       "requirement_digest": "8ab7d13cf488e8c808d29d06e30a105e5d6e26cbb74dd4dc9f8e2b25e8597294",
       "requirement_id": "REQ-4C46AC7D6517",
       "requirement_text": "Required run-metadata indexes are `(status, mode, updatedAt)` and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1561,7 +1561,7 @@
       "requirement_digest": "8d6248027f683ceb51104b074566c358e83d90beb624574b5fd8b73acf8a1d56",
       "requirement_id": "REQ-40418EAFAA52",
       "requirement_text": "The tool must acquire a database/advisory lock or equivalent lease and release",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1583,7 +1583,7 @@
       "requirement_digest": "b9aa0036e204c94e1ebf81e15457ac539b489021e0a465f78b79d027737a937b",
       "requirement_id": "REQ-839289F093E5",
       "requirement_text": "it on completion, pause, failure, or cancellation. A stale lease must be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1605,7 +1605,7 @@
       "requirement_digest": "ad956a1615a1cae34dad63ce774ff4130dfb35fb59f4b7e740da7fa10c7c9305",
       "requirement_id": "REQ-4F3C14C31FB6",
       "requirement_text": "existing import conventions. Callers must not directly insert rows into either",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1627,7 +1627,7 @@
       "requirement_digest": "50961d3b44dcc9777a8ffc9aa60a8c6a9fbddc8abcab9a865d24bf137959fb52",
       "requirement_id": "REQ-7D087E83BD68",
       "requirement_text": "`attributionMode = \"required\"` means the referenced context must resolve and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1649,7 +1649,7 @@
       "requirement_digest": "fde6be3dfb74a3568de8214f8860fb13acfb05f7111af25bb0131ab4b34d0e8e",
       "requirement_id": "REQ-C3E514714C2C",
       "requirement_text": "the primary link must be written before the billable debit/provider dispatch is",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1671,7 +1671,7 @@
       "requirement_digest": "c9e2d19e0f0cceadc1eb9d3db68a9c27ea7b3aef0116bb631e4afdadfb489b9f",
       "requirement_id": "REQ-7326DD081162",
       "requirement_text": "allowed. A missing, invalid, cross-tenant, or ambiguous required context is a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1693,7 +1693,7 @@
       "requirement_digest": "2c7344e482452aa2464bc75aeef7fd6175d0b1cd58e07f986539918037c259cb",
       "requirement_id": "REQ-20A720FC46E4",
       "requirement_text": "precondition failure and must not result in a provider call or credit debit.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1715,7 +1715,7 @@
       "requirement_digest": "972865a686388b6974c04c0a31398f27b150e784ed9d27b3af3b68eb2824c2d7",
       "requirement_id": "REQ-F483A73F44A5",
       "requirement_text": "unattributed transaction and must emit a metric. A path must not use",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1737,7 +1737,7 @@
       "requirement_digest": "1002f6c39000b8da926318e6942b6bdc1eca9bea85cb8ad725261e004f439eb8",
       "requirement_id": "REQ-433AC11CEFE2",
       "requirement_text": "All new user Skill/LLM entrypoints default to `required`; the rollout may",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1759,7 +1759,7 @@
       "requirement_digest": "ddf9e1b9790911b50933d8014a15aace6628823a04ef9287b1640ec3cf0a8114",
       "requirement_id": "REQ-970DA30EA780",
       "requirement_text": "`ensureCreditContext` must:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1781,7 +1781,7 @@
       "requirement_digest": "a9f1a5334518a9d070706ac8515241cefaebdd13b1d04cefbf57e60f30e2b07c",
       "requirement_id": "REQ-F71286EBA0F1",
       "requirement_text": "sourceType)` namespace. A source system that can reuse provider/job IDs must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1803,7 +1803,7 @@
       "requirement_digest": "298ca066408240969e91545141f01a98577e3b67bed0631a29fcb3e6b2e915f1",
       "requirement_id": "REQ-CE82D01ACA1E",
       "requirement_text": "registered `sourceRevision` identity rule); the resolver must reject an",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1825,7 +1825,7 @@
       "requirement_digest": "210e991d82cca45191cc80a9c5e75efdf26a403882bb935e59456e61377f7247",
       "requirement_id": "REQ-5C28FA63A82F",
       "requirement_text": "change is not an identity change. The implementation must document the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1847,7 +1847,7 @@
       "requirement_digest": "e8ea33966c51e1b49aa1c546d95972c4d55c4e12d381c5ee748bb187389c880b",
       "requirement_id": "REQ-557E68561415",
       "requirement_text": "it must not truncate the chain and report it as complete. A `partial` context",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1869,7 +1869,7 @@
       "requirement_digest": "79699aef9eccd9436ce8da2a6186e9a4107760ea2c50ab590a682d8a0a3af075",
       "requirement_id": "REQ-68934177446F",
       "requirement_text": "repairable. `unresolved` and `ambiguous` contexts never satisfy a required",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1891,7 +1891,7 @@
       "requirement_digest": "cea838751526a357805a297eea5b3ccfef0bdc25cf06a79b02c0aa09cb2186d0",
       "requirement_id": "REQ-BCF8DD8962C3",
       "requirement_text": "1. Resolve and authorize the required context in a preflight transaction",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1913,7 +1913,7 @@
       "requirement_digest": "1401c9e9d089bf9edfbada7bbae3024c3bd3f37d0f4de07a213edd54716c9b15",
       "requirement_id": "REQ-A8EE3BC98203",
       "requirement_text": "2. Dispatch the provider only after required preflight succeeds.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1935,7 +1935,7 @@
       "requirement_digest": "d4048fdab0e8c9079b992b38b2593dc4dbbafdc97594c4ad3e79bdb04f9168b0",
       "requirement_id": "REQ-EC43459B8C23",
       "requirement_text": "The central writer must serialize idempotency-key handling and link creation",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1957,7 +1957,7 @@
       "requirement_digest": "00409c7dd1e41c92e54fc64883946c721a67766d3ca18303db605417f2305fca",
       "requirement_id": "REQ-60A613178E30",
       "requirement_text": "inside the same database transaction as the ledger operation. It must lock the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1979,7 +1979,7 @@
       "requirement_digest": "67560b3fe6f193e9f25519e45b5bdbbf93b0a58a334fb5d266ad14444108a1d5",
       "requirement_id": "REQ-AAA4B8A1A35F",
       "requirement_text": "key must converge to one ledger row and one compatible link set; a concurrent",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2001,7 +2001,7 @@
       "requirement_digest": "2fb4c81a6162b0f2d0771404efcac81819d0549d8926a850e4134624f907dcb5",
       "requirement_id": "REQ-FA402A1097EE",
       "requirement_text": "request with different tenant, primary context, or accounting role must fail",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2023,7 +2023,7 @@
       "requirement_digest": "19bacff6f60ef88d1b9f9cff32365483d98c44f8acf9fc282d51c07369dd56ea",
       "requirement_id": "REQ-7D4A3455C03F",
       "requirement_text": "Before dispatch, the caller must persist or update a durable charge intent in",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2045,7 +2045,7 @@
       "requirement_digest": "dfd7eec8513a6505102253c7a19ce43a2c0c51f7cfc5bbad96b7054fcbbee6d9",
       "requirement_id": "REQ-199397FF3ECF",
       "requirement_text": "version. The intent is not a financial ledger and must not contain raw",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2067,7 +2067,7 @@
       "requirement_digest": "908b5f4e2442f920e2263b4eaaecef59d925657f760f32267f6d0c3f6dd8437d",
       "requirement_id": "REQ-4573B4BAF6C4",
       "requirement_text": "must not create a second provider call or a guessed context. A provider result",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2089,7 +2089,7 @@
       "requirement_digest": "3371b231854731d9fda17dc3cfc8172539d9a90e6b1f1aa09170379b1396075e",
       "requirement_id": "REQ-7E94DC436C74",
       "requirement_text": "create/reuse it in the same database transaction as the ledger insert. It must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2111,7 +2111,7 @@
       "requirement_digest": "3f5e7409f5922339513fa6e083e46ed392f97055fbac344d1af1b112c5fd237e",
       "requirement_id": "REQ-FF03D219C393",
       "requirement_text": "for a required attribution.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2133,7 +2133,7 @@
       "requirement_digest": "91343295b60e7f13643f6f923fab785aa4f0b26bcf41959f77d3e52cdae6f0e0",
       "requirement_id": "REQ-A00ECBED52D8",
       "requirement_text": "If the debit succeeds but context linking cannot complete, the operation must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2155,7 +2155,7 @@
       "requirement_digest": "a97a93722547d30ebbdf486d6cff47835aef4cce61e59bccb1d5e6c4d9ef897a",
       "requirement_id": "REQ-FE247A68FA72",
       "requirement_text": "not issue a second debit. The recovery path must locate the ledger row by",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2177,7 +2177,7 @@
       "requirement_digest": "aef431a0d8adc454a1efd3b707876c7376cfc2874947952b5d61a99ef362bdab",
       "requirement_id": "REQ-E38A557CA263",
       "requirement_text": "operation must be a named service boundary (for example",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2199,7 +2199,7 @@
       "requirement_digest": "89fd74d0916b6373f04575df04956ed25fe45bf6b0385c5e92a0ac4adea98efd",
       "requirement_id": "REQ-EA126BD69610",
       "requirement_text": "`repairCreditTransactionContext`) and must be safe to run from a retry job,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2221,7 +2221,7 @@
       "requirement_digest": "749b2e8da90371bf490bc7206874c64339ddf3f2c08c5dc3b71415363af840fa",
       "requirement_id": "REQ-0C1EACE9E68A",
       "requirement_text": "The adapter must use the same resolver and ownership checks as explicit",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2243,7 +2243,7 @@
       "requirement_digest": "f275ad077df4c86983beeb8c22e6d1269cff7dc5ac7c8380651ecb1874e298a8",
       "requirement_id": "REQ-255459A1D013",
       "requirement_text": "contract. New callers must pass explicit `CreditAttribution`.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2265,7 +2265,7 @@
       "requirement_digest": "4a83092e766732e571d1f63cc22eb75b69882930be1919fcd0afdc8a3cb1264d",
       "requirement_id": "REQ-AF919E21BA0C",
       "requirement_text": "database, the central writer must still reconcile the requested context links",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2287,7 +2287,7 @@
       "requirement_digest": "9b7300aba736c9132cc6857cc065b04147323df33d712b4e0cd86c7befaf9753",
       "requirement_id": "REQ-24772B7AC2AA",
       "requirement_text": "proof that its context links exist. Reconciliation must be idempotent and must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2309,7 +2309,7 @@
       "requirement_digest": "95f5efb76f33fd5fa26f0eb7342845c6e2b267df29b63c5cf588eaed99bf5675",
       "requirement_id": "REQ-A4ECEAEB8855",
       "requirement_text": "existing transaction, the writer must return an idempotency-conflict error and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2331,7 +2331,7 @@
       "requirement_digest": "fbac53f872eacce4d303d757f9cbf016491c763b01154016f8fb04e2fd30d821",
       "requirement_id": "REQ-399A1440DF70",
       "requirement_text": "create an audit/metric event; it must not attach the new context to the old",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2353,7 +2353,7 @@
       "requirement_digest": "e4eb12429fc50155da7d208adaf034bd56165cc8b4dfdc3b1352d47dd507e3f7",
       "requirement_id": "REQ-0AF1398F6824",
       "requirement_text": "maintenance service using a named correction operation. It must require a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2375,7 +2375,7 @@
       "requirement_digest": "05d2757dcf68c5dd55568160f20f6408c15cf3328b013c248c8a54b5d788123f",
       "requirement_id": "REQ-77B73F1A37F0",
       "requirement_text": "provided; it must never change `amount`, `type`, `balanceAfter`, or the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2397,7 +2397,7 @@
       "requirement_digest": "307e4e98a92c44a34231b0723da8fe8634c59b454879de2a65d047505e81832e",
       "requirement_id": "REQ-731E90E94489",
       "requirement_text": "Every actual Skill charge must retain:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2419,7 +2419,7 @@
       "requirement_digest": "2b2eca68d00d52aa72965ce70c05246e61162a479520e68a536740ab893f6530",
       "requirement_id": "REQ-AA0C649B84C6",
       "requirement_text": "Job/Task/Run, the writer must create a `skill_execution` context keyed by the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2441,7 +2441,7 @@
       "requirement_digest": "a45bfbe4749ef81449e0f3f73db308e5878893577b2d2c7d50bd0f5391aab391",
       "requirement_id": "REQ-F7A4486B6F2F",
       "requirement_text": "identity remains an error. The existing Skill billing invariant must continue",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2463,7 +2463,7 @@
       "requirement_digest": "930d479b820796b4a6bc265468e9b1900d6aab40118741be388ec45d5b686331",
       "requirement_id": "REQ-4B05A3AEDCAE",
       "requirement_text": "registered; it must not be the fallback for a new Skill caller that merely",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2485,7 +2485,7 @@
       "requirement_digest": "8ca2d42d8e92176d5553c5a55044a86586c6d37297986097dc6df41f34d278ff",
       "requirement_id": "REQ-91B49D6B97D5",
       "requirement_text": "Every actual billable LLM charge for a user account must attach the most",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2507,7 +2507,7 @@
       "requirement_digest": "c33559096d2b6df9fb196d23fc5d00099a2baf7a83c9a2bc0479a1f6ff910f06",
       "requirement_id": "REQ-DBA30DACD15E",
       "requirement_text": "user debit (for example `userId = 0`); such a call must not fabricate a user",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2529,7 +2529,7 @@
       "requirement_digest": "8c05efa9be67de32ac65776188d162004d118c971d414abb586e00e7a3972601",
       "requirement_id": "REQ-D3619174DBCE",
       "requirement_text": "fields; a new call must fail preflight if it cannot resolve a primary",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2551,7 +2551,7 @@
       "requirement_digest": "0a89e2c4838cf688e0907ff59152a2a369948da38457ddbaf4dc150e4539980c",
       "requirement_id": "REQ-AA6A1034BD0C",
       "requirement_text": "new user Skill/LLM path without a work entity must fail the required",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2573,7 +2573,7 @@
       "requirement_digest": "1ac99d044a2a9c54ddea26fdfafb6cf564732c2fd2fedabbdf948cda25f52180",
       "requirement_id": "REQ-A85B8CCA9D73",
       "requirement_text": "context metric and caller inventory must identify whether the caller was",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2595,7 +2595,7 @@
       "requirement_digest": "fc767c63916c3a3fc7f133e52e27d32de2f686fcd297171d0260da7e1d90006a",
       "requirement_id": "REQ-8A4565F379EE",
       "requirement_text": "a user charge must serialize a bounded `CreditAttribution` envelope with a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2617,7 +2617,7 @@
       "requirement_digest": "aa0c83182865f907681d167eea4ed0e6d19a72d7c763b8d6c6c44b4756d17714",
       "requirement_id": "REQ-98AD1CD09AB3",
       "requirement_text": "process must re-resolve and re-authorize the envelope; it must not trust a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2639,7 +2639,7 @@
       "requirement_digest": "fe3d44b0a5a138ad845fbd4f3a5092618fb6e0a434c41f6f9e9771feb3b7edfd",
       "requirement_id": "REQ-DF3BE95CA1FA",
       "requirement_text": "untrusted payload. Missing/unknown envelope versions or missing required",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2661,7 +2661,7 @@
       "requirement_digest": "cf6310cbcce306d0f5b1685651dcee0a374f006f0c135ed3a1837c18215ed0ee",
       "requirement_id": "REQ-78DFD9C5F93D",
       "requirement_text": "context fail before provider dispatch and debit. The envelope must not include",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2683,7 +2683,7 @@
       "requirement_digest": "7b92c0151db864fbb7437f01fce45d79a024728d82b5439195bb5fe3363f69a2",
       "requirement_id": "REQ-29FF4853104C",
       "requirement_text": "The model recorded in metadata must remain the actual effective model that",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2705,7 +2705,7 @@
       "requirement_digest": "ceb9eccdca25c9b2c98d4cf9d15ca98e03c037290571df1a6f2fa98a3323e1c2",
       "requirement_id": "REQ-C0E2B5147AA7",
       "requirement_text": "context. A reservation must carry the same attribution through:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2727,7 +2727,7 @@
       "requirement_digest": "3e46fb871be9cbe28102b70957e37aae266aa38f1a4e3507f27a831d378b3fbc",
       "requirement_id": "REQ-07348C5AFA12",
       "requirement_text": "The durable reservation state (currently Redis-backed) must store the resolved",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2749,7 +2749,7 @@
       "requirement_digest": "47e8590effecdbfc6cae1ca6d131b5a6ebe2000beb9c319110047c983942f85c",
       "requirement_id": "REQ-D4C8F1EB4D76",
       "requirement_text": "applicable. It must not depend on re-parsing arbitrary metadata after the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2771,7 +2771,7 @@
       "requirement_digest": "90b0cafcd664d545c0eb6ede9fdacc52561fcea61b6e3bbf7eaada07bd70bcbe",
       "requirement_id": "REQ-0116B047D59F",
       "requirement_text": "must recover the attribution from the reservation transaction and its links or",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2793,7 +2793,7 @@
       "requirement_digest": "6b2d6997e40855b8c24db5bfe60726cd718836304b2ad38b72001f02e49bddf5",
       "requirement_id": "REQ-316A0FFD5D85",
       "requirement_text": "enter explicit reconciliation; it must never create a context by guessing from",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2815,7 +2815,7 @@
       "requirement_digest": "231de889f35abbbbfb52692471104c2e5a8d59e892377d8d4b7cd6a86137d539",
       "requirement_id": "REQ-CAEBDC579F08",
       "requirement_text": "linked refund. This feature must not add a per-draw usage debit, or the report",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2837,7 +2837,7 @@
       "requirement_digest": "466c673382ee59b689672359069f484eb7da64340727fe53ae20a5b8dd7dfbe4",
       "requirement_id": "REQ-B6BF08332B68",
       "requirement_text": "ledger rows, it must first define an explicit reclassification/hold contract",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2859,7 +2859,7 @@
       "requirement_digest": "2205e4ade4f6a06e7a1930da77e7fcc85e77168f9d4060bcad9318f8c808ff6a",
       "requirement_id": "REQ-FBB181203778",
       "requirement_text": "the same attempt remains idempotent and must not create another transaction or",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2881,7 +2881,7 @@
       "requirement_digest": "80593f92ee1d1a44816a6c109940c89f453b2c639175505e55d9ff58f634d176",
       "requirement_id": "REQ-5BC96899C447",
       "requirement_text": "Refund rows must link to the original transaction's context and populate the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2903,7 +2903,7 @@
       "requirement_digest": "138243447e224928fcae54f98a68e2f215146583b2b03f6060a0700080595a47",
       "requirement_id": "REQ-3C9416A5E21A",
       "requirement_text": "original transaction. The refund writer must derive the refund tenant from the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2925,7 +2925,7 @@
       "requirement_digest": "0be8f910b28629ee5dff895fffd8b443b9a255b02fd7cc3de037cb91be0bbc5f",
       "requirement_id": "REQ-3A30A0120CD2",
       "requirement_text": "new required named attribution.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2947,7 +2947,7 @@
       "requirement_digest": "2c67b56c14424204782dacb7063ef5112a96086aa3a19cae6a5038d0f37ca969",
       "requirement_id": "REQ-2CE6F97A5B51",
       "requirement_text": "run. The implementation must link them all without multiplying user cost:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2969,7 +2969,7 @@
       "requirement_digest": "d61cdf3a96aaef09c5deadeee9d602b7463b963ecaf3785d9128d7451d08ea40",
       "requirement_id": "REQ-C14C6D23C9CF",
       "requirement_text": "Before enabling the write flag, implementation must inventory every production",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2991,7 +2991,7 @@
       "requirement_digest": "5e7a280b6698076649e8eaa156c2f1ee2571a5ce36bae875e1d2cf906d13df02",
       "requirement_id": "REQ-FD981CB7AEDA",
       "requirement_text": "path that can create a user Skill/LLM debit. The inventory must include direct",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3013,7 +3013,7 @@
       "requirement_digest": "0898f5dec5f779204a73a41933dd2f3c7533cb82eb678510824d51f283a6dc48",
       "requirement_id": "REQ-A2878C9BCBC2",
       "requirement_text": "other billing service. Every such insert must be removed or routed through",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3035,7 +3035,7 @@
       "requirement_digest": "3922e6123086dde1fb2ce3e38d26741d086b43feba9decfa53af5f4fd18ad261",
       "requirement_id": "REQ-8DF28F0527C4",
       "requirement_text": "The implementation report must list each path, its primary context source,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3057,7 +3057,7 @@
       "requirement_digest": "aa4a870d51cd0b2d7ae5ea5c114591d8ec2fcfe112db24df5ce29a7fb730cc36",
       "requirement_id": "REQ-7078C2D01417",
       "requirement_text": "must prevent a new `sourceType = \"skill\"` path from omitting the canonical",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3079,7 +3079,7 @@
       "requirement_digest": "7df9635fdd019c33aac4e52eb31530c73f478d03f4e919e4e9c174cc39969418",
       "requirement_id": "REQ-4A6FF40B0C09",
       "requirement_text": "Skill slug and must flag a new user Skill/LLM debit that bypasses the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3101,7 +3101,7 @@
       "requirement_digest": "6da8abd7dcffe56b2d115986c4d5167574e9b7323a47ef48712ccd0e5c57629a",
       "requirement_id": "REQ-4CC24485687E",
       "requirement_text": "Every discovered caller must be classified as one of `user_skill_llm_charge`,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3123,7 +3123,7 @@
       "requirement_digest": "72e380a461223c69c86b4c48053cb8ab178cf506e1f0ed8eb304d6bf0d8203af",
       "requirement_id": "REQ-045E1FEE088D",
       "requirement_text": "settlement and generic database import helpers must be explicitly classified,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3145,7 +3145,7 @@
       "requirement_digest": "051267c0d67dea2daca31010b14e0a1c896d57f0e7007ae7e54f5c261a825339",
       "requirement_id": "REQ-FC4456DD8578",
       "requirement_text": "The inventory must be reproducible through a read-only command at",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3167,7 +3167,7 @@
       "requirement_digest": "37d51e489316a55f9b3529c5e4d7071bc42004d50a96c37ab2b11c7264a48cc0",
       "requirement_id": "REQ-F5A79992FDD8",
       "requirement_text": "non-zero `--fail-on-unclassified` mode for CI. Each record must contain the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3189,7 +3189,7 @@
       "requirement_digest": "ad741bda9da06499892855f63e233bd79357ad47cb4777245a57619d8b657358",
       "requirement_id": "REQ-BFCFE1C9BBCC",
       "requirement_text": "reference. The report must include production callers and separately label",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3211,7 +3211,7 @@
       "requirement_digest": "a0b9d706efb2ade7d826680c226be8340dcca4e4d1b788e63d87a5c28007a690",
       "requirement_id": "REQ-FA634EC63263",
       "requirement_text": "tests/examples; it must detect aliases and wrapper calls rather than relying on",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3233,7 +3233,7 @@
       "requirement_digest": "15860ae237743b46db6d99bcc01c5a07d601209ed4c913adfeb08e4bccc7875f",
       "requirement_id": "REQ-E15D45DFC8F1",
       "requirement_text": "one literal function name. A release artifact must record the commit/schema",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3255,7 +3255,7 @@
       "requirement_digest": "dfb32a67a108038d2fbacac8a651d4a4c867648bbb1e01da53adf11438db0dce",
       "requirement_id": "REQ-E12BAB7A366E",
       "requirement_text": "`apps/web/client/src/pages/Credits.tsx`. Operational documentation must be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3277,7 +3277,7 @@
       "requirement_digest": "f891fcd351550b6c8722d8a065336a17f6830661bd844eda3dca9459caecfc36",
       "requirement_id": "REQ-39BC16553F88",
       "requirement_text": "implementation report must identify the existing audit/metrics integration",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3299,7 +3299,7 @@
       "requirement_digest": "6df0e8b547dc184d1a552d547ad1ceb03418e1873be2c9927f1260938c709eec",
       "requirement_id": "REQ-3C792CF8E954",
       "requirement_text": "JSON evidence must be retained with the implementation report. Focused tests",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3321,7 +3321,7 @@
       "requirement_digest": "eea1ab662c4f9ac9ccdf65bdc3da610d6b274fb72f46610a2e98fe3b33e9069f",
       "requirement_id": "REQ-73B375BFD791",
       "requirement_text": "must include resolver,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3343,7 +3343,7 @@
       "requirement_digest": "113e9957afbb27c52e8ad832eff1c8b6add6833b33f1e075e2e1246bee75635d",
       "requirement_id": "REQ-1B29D1502CC2",
       "requirement_text": "The exact sequence must be checked against the migration journal immediately",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3365,7 +3365,7 @@
       "requirement_digest": "679cffedcfc2825923a9a8cd18c0c8fc8cb252fc88a16e4fd38db1ae2e74ab0e",
       "requirement_id": "REQ-D2B3FEC138DD",
       "requirement_text": "before implementation. The migration must be additive and idempotent where",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3387,7 +3387,7 @@
       "requirement_digest": "36d36659d22de5ec7033cbe66c7791428c0df81ffc92d636fab972d40a1ecd9c",
       "requirement_id": "REQ-D66E2398884C",
       "requirement_text": "Each DDL step must be safe to re-enter after an interrupted deployment:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3409,7 +3409,7 @@
       "requirement_digest": "e05cca1587072d366ef4c57c3c4331ea7207f4eea6463a49fca6160387eb5c45",
       "requirement_id": "REQ-A1FC811303D7",
       "requirement_text": "object has the required type and constraint semantics. A pre-existing object",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3431,7 +3431,7 @@
       "requirement_digest": "ebb21d8cd76085a2916adfe09529d24bf0105cce54ea82a0b155ed67c3bd6fdb",
       "requirement_id": "REQ-AA33A00C9337",
       "requirement_text": "repair, not a reason to silently continue. The migration must record/verify",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3453,7 +3453,7 @@
       "requirement_digest": "3be302512221b0afdbb7cd2ea756550c0d05437cfc84b3c307e1e0eb725501c0",
       "requirement_id": "REQ-B5EB86F6C401",
       "requirement_text": "5. required indexes, constraints, and bounded check constraints",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3475,7 +3475,7 @@
       "requirement_digest": "60b5d45a27ab473222a8c9a355e79d89c27fcbd1cfb29d5ce141d63bca8b2b60",
       "requirement_id": "REQ-D1D70C41DA51",
       "requirement_text": "All context IDs and context self/link foreign keys must use the same",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3497,7 +3497,7 @@
       "requirement_digest": "4537bf8eb1d795aba8fcc00983193a52cf498523356ba35a75ba5687a8045a97",
       "requirement_id": "REQ-F245C0E1035D",
       "requirement_text": "migration must verify the `pg_type`/constraint shape before treating an",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3519,7 +3519,7 @@
       "requirement_digest": "1ab8152f4fc243b98beef8e2436c94a0ae46ffa01a5ba04e2783cd2413479aab",
       "requirement_id": "REQ-2B697C6F3727",
       "requirement_text": "existing object as compatible; it must not mix `varchar(36)` and `uuid` across",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3541,7 +3541,7 @@
       "requirement_digest": "a873645ff8f66850362089ab47624e07deba904b9c268af352df54a021bb4ace",
       "requirement_id": "REQ-42E454463855",
       "requirement_text": "It must not update `users.credits`, delete credit transactions, change",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3563,7 +3563,7 @@
       "requirement_digest": "5e4144e284afe2a8a53eb4b4f87abc103923d03da2030d6315fceda923ce04a5",
       "requirement_id": "REQ-BDF72EC16FCB",
       "requirement_text": "Indexes added to the existing `credit_transactions` table must use the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3585,7 +3585,7 @@
       "requirement_digest": "71de1df9d8601adbe19181a6b214427f260082a2cbdccb179bf9a1f882c55759",
       "requirement_id": "REQ-38B6BCEA3279",
       "requirement_text": "create them concurrently, they must be a separate additive pre-report step",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3607,7 +3607,7 @@
       "requirement_digest": "edda2333fff2278652b8ce88e270e41446aa75aece91a15359dc1b76e2585cee",
       "requirement_id": "REQ-A983639330CF",
       "requirement_text": "until all required indexes exist and are valid.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3629,7 +3629,7 @@
       "requirement_digest": "e7f6edb9c5872f2339b443da084f358912fb7c9fd004dc16a817cc376cc23baf",
       "requirement_id": "REQ-E483F1375B00",
       "requirement_text": "The database migration is schema-only. It must not scan or backfill the entire",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3651,7 +3651,7 @@
       "requirement_digest": "8e513fababda7263fb2a7227939dca55639b33e83ae9dd8da126ad734200dac6",
       "requirement_id": "REQ-CDD007873BA2",
       "requirement_text": "Backfill must require:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3673,7 +3673,7 @@
       "requirement_digest": "5a03af144c18f974bf61431ecbc9a2f291fece60ed342d37e2ad872118d38c25",
       "requirement_id": "REQ-6CC42BA4F184",
       "requirement_text": "The backfill must run in bounded batches and be restartable. Before and after",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3695,7 +3695,7 @@
       "requirement_digest": "df296a683ee5430f7a52bce5fbafdfa7f48173dedf7d5b3a1e1e8afac0953426",
       "requirement_id": "REQ-F76A8A1EB289",
       "requirement_text": "counts must be recorded:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3717,7 +3717,7 @@
       "requirement_digest": "f14107fd0b650d7cfa0367435d783baaad430a7a5682161e2c91a6740d70f7e6",
       "requirement_id": "REQ-CB3FF964D6EE",
       "requirement_text": "Checkpoint and counters must be persisted in",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3739,7 +3739,7 @@
       "requirement_digest": "8462fe902044e903170f7c5fcaff4eda07bf14cb1e2fde7f186006c50ea5f033",
       "requirement_id": "REQ-F42B176C608F",
       "requirement_text": "The migration verification must prove:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3761,7 +3761,7 @@
       "requirement_digest": "9e0672c455106d1025c11b20edade789d826d20a6975f362c6f780bf160873a4",
       "requirement_id": "REQ-3E7362A9B452",
       "requirement_text": "The backfill operation must have an explicit dry-run mode and a stable",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3783,7 +3783,7 @@
       "requirement_digest": "80243c277425fc28b2523ed4d70837fd9a83a45b47d48dc8413b5d672f5b7639",
       "requirement_id": "REQ-A832FB59E009",
       "requirement_text": "checkpoint (keyset by transaction ID, not offset). It must support pause,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3805,7 +3805,7 @@
       "requirement_digest": "8cdde8d9703632bb8d924bd661aff9b603119d7762cef220830fd65fba0f8340",
       "requirement_id": "REQ-DE738ECD8334",
       "requirement_text": "resume, retry, and a final integrity audit. Metadata values must be validated",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3827,7 +3827,7 @@
       "requirement_digest": "ecf5f206b5affd67fbd1e480d6599fb95adfc674edb59a724e5cb22c6feb2096",
       "requirement_id": "REQ-95E74F84CDC5",
       "requirement_text": "oversized IDs, and invalid timestamps must be skipped and counted rather than",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3849,7 +3849,7 @@
       "requirement_digest": "408353bb159b22f4bd480ef4ef0d0b8c52ff94914cf9aec6ea8b107c8d49a41c",
       "requirement_id": "REQ-377E29B17FBE",
       "requirement_text": "Each apply batch must use one database transaction for its verified",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3871,7 +3871,7 @@
       "requirement_digest": "ac440dd87160a37a08240081adfff72f7719d044c2560eaf83920a2cf1c28072",
       "requirement_id": "REQ-7F4E87B9A009",
       "requirement_text": "serialization rule plus idempotent `ON CONFLICT` behavior; the backfill must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3893,7 +3893,7 @@
       "requirement_digest": "f280ab0f1cc3b33a7a9ec7e02c90e0b4717825b3c5a5c1c20486d8d7734b9a2a",
       "requirement_id": "REQ-70C40C1E7800",
       "requirement_text": "Dry-run and apply must share the same candidate-resolution code path, with",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3915,7 +3915,7 @@
       "requirement_digest": "16e569b617b30def09865d7fb7701a495beb5dfdeec7760d792577b13a4bab1d",
       "requirement_id": "REQ-851AD64B67DC",
       "requirement_text": "must end in exactly one disposition: `linked`, `already_linked`,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3937,7 +3937,7 @@
       "requirement_digest": "25facf4a66d7c56f180ede63f325a6edb901bc2fc47824d8820146f58d876a8b",
       "requirement_id": "REQ-E490E477F464",
       "requirement_text": "`database_timeout`, and `lease_conflict`. A retryable candidate must not be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3959,7 +3959,7 @@
       "requirement_digest": "903e62ca3a7af6636fed4a5fc55c34d1c17908ae80e4ec562a0aebd2f253231e",
       "requirement_id": "REQ-E27BBD1CA99A",
       "requirement_text": "The run counters and audit output must aggregate both disposition and reason",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3981,7 +3981,7 @@
       "requirement_digest": "46e17fbeda7e8cacfc07b415519fa90fa5262308aaf8e044bd7265a9cfe6b795",
       "requirement_id": "REQ-C3592C0F1926",
       "requirement_text": "code, and a resume must retry only retryable candidates without re-writing",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4003,7 +4003,7 @@
       "requirement_digest": "ddf33825c8136a32417aaf9b73da6a0f14eb1ffe8820085746edd3d7358a52f5",
       "requirement_id": "REQ-CFF0D3A99E30",
       "requirement_text": "verified links. The backfill must never",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4025,7 +4025,7 @@
       "requirement_digest": "45bf7c2822b84fcd1dbdc0f0b45f60d8999212ab6052166aaa0ec7d9b5c0f239",
       "requirement_id": "REQ-EBC44D6AD953",
       "requirement_text": "Before production backfill, operators must capture a recoverable database",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4047,7 +4047,7 @@
       "requirement_digest": "0340400ace8f97ab958bf6ab9b7d5074b2d3e806a7e57359ac9c2cdff00a80b1",
       "requirement_id": "REQ-80A84F478A26",
       "requirement_text": "required for the production migration runbook.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4069,7 +4069,7 @@
       "requirement_digest": "c659a4366262fb9560ad23343e45298104397805210ddd6b5c1466c3c03f0120",
       "requirement_id": "REQ-F1B68DE68B0E",
       "requirement_text": "must expose `--dry-run` by default, `--apply`, `--batch-size`, `--start-id`,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4091,7 +4091,7 @@
       "requirement_digest": "53f39c5a3fd0ecd95e12042c3cceffd33ea113d8e361a1d58374c86f3604225d",
       "requirement_id": "REQ-123B7EA156D6",
       "requirement_text": "must print the run ID, immutable scan-through transaction ID, and resumable",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4113,7 +4113,7 @@
       "requirement_digest": "d44a3c4a417a5a550004ff742f705a988ae36ab5c3c38d3dd08f557dc9fc8f32",
       "requirement_id": "REQ-B5C791DF18B7",
       "requirement_text": "Normal history responses must not use `SeriesID` as the primary label. Source",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4135,7 +4135,7 @@
       "requirement_digest": "c865c80b6fd689634179949ba4de7e458086d07c655f1ddfb6d8ec0112da4f05",
       "requirement_id": "REQ-6F305C29418B",
       "requirement_text": "detail. They must never be rendered as the normal label and must still be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4157,7 +4157,7 @@
       "requirement_digest": "ffd9de397bc1aa0dc3e0a38ccc4958b88d35ea758c87c7760ca017b6d772b036",
       "requirement_id": "REQ-4E03B8B9BD1C",
       "requirement_text": "unattributed context object; the server must not leak the context title, ID, or",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4179,7 +4179,7 @@
       "requirement_digest": "9a081c6f44901fc6a9698dfc73293ef3a8c23b259e5f93758e2b7d6e008bc5b0",
       "requirement_id": "REQ-B70D2A4B5C39",
       "requirement_text": "metadata and must not silently move the transaction to another tenant. The",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4201,7 +4201,7 @@
       "requirement_digest": "6384de89d67bbec1065d79f2f91e698547ef7f123f8a747cb72fee7226cf7038",
       "requirement_id": "REQ-C9478237AF8C",
       "requirement_text": "tenant; it must reject a context from another tenant even when the same user",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4223,7 +4223,7 @@
       "requirement_digest": "94a9a3e9fbac343028b02d4857132ba6c0c2c5f58b1665eb73534a18483e139d",
       "requirement_id": "REQ-FDAC596C334D",
       "requirement_text": "surface must be explicit rather than overloading the self-service input: use",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4245,7 +4245,7 @@
       "requirement_digest": "365ccd22e371499201f323c74d2f0c9a5b019de39d2218cae49a49ff165f01f4",
       "requirement_id": "REQ-FA198DEBB98D",
       "requirement_text": "`asOfTransactionId`. The server must apply the target tenant predicate to both",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4267,7 +4267,7 @@
       "requirement_digest": "9873f930233f92513d59cf1ea8571514f8252001ee830ad97b9948c0110b1c49",
       "requirement_id": "REQ-9C923A298CAD",
       "requirement_text": "narrowing filter and must never broaden access across tenants.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4289,7 +4289,7 @@
       "requirement_digest": "74ce777eee27d40bbec74082e876d3a699c79f1ab9471b149615fddbcde0a321",
       "requirement_id": "REQ-A8C4B44E6937",
       "requirement_text": "The implementation must use the repository's existing `auditLogger.log`",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4311,7 +4311,7 @@
       "requirement_digest": "9a9013006ac70dadeb8bb9769eb2ab6ef5cfbaaf28bd77ce86deb4361afb6a3c",
       "requirement_id": "REQ-709D7C2649BB",
       "requirement_text": "policy but must emit an operational error metric.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4333,7 +4333,7 @@
       "requirement_digest": "c19fe6139d845b370a84d5fa7e2c00ea73ad02e4664f430cd15a07c072c2c858",
       "requirement_id": "REQ-4BDC854D032B",
       "requirement_text": "caller explicitly requests `includeUnattributed = true`; it must never be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4355,7 +4355,7 @@
       "requirement_digest": "be9f66758efcaaaadeb9c91b8b3f11f849efda86c4d8501083566e83558ef79c",
       "requirement_id": "REQ-F2D49E79325D",
       "requirement_text": "visible rows whose sum is lower than `totals`; the UI must show the data-quality",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4377,7 +4377,7 @@
       "requirement_digest": "84846aad69ea9677d66312fe57d53c904e880acc80f8d1c4cdf1afe87c96b992",
       "requirement_id": "REQ-8EF8ABCEBB45",
       "requirement_text": "`pagination` fields describe only `rows`; a client must not recalculate global",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4399,7 +4399,7 @@
       "requirement_digest": "f2fb9b14e724101bbece700b7edc3a5f3993a02bec4400e995d5dfbd777ad0e4",
       "requirement_id": "REQ-D33176771EA5",
       "requirement_text": "page, detail request, and export derived from that report must reuse the same",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4421,7 +4421,7 @@
       "requirement_digest": "deec0badc87719f5891c1f4981d88e5d03091efee9f6aad834f87c06e7693295",
       "requirement_id": "REQ-65C400596527",
       "requirement_text": "to keep the interactive query bounded; an explicit date range is required for",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4443,7 +4443,7 @@
       "requirement_digest": "f390c4c8ee62df50acf9409197374cd510ba43334c1fffa7f54ba4b120c30117",
       "requirement_id": "REQ-C4FD0CAFB55A",
       "requirement_text": "The query must count distinct financial transaction IDs and aggregate through",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4465,7 +4465,7 @@
       "requirement_digest": "1c6d155bd26411b4650fd3c17cfddd8dc91ec4f05b0d0f1d7cb1aa3213b5a05d",
       "requirement_id": "REQ-A713569A3994",
       "requirement_text": "detail query for one root context must use the same UTC date semantics and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4487,7 +4487,7 @@
       "requirement_digest": "d0d337a398c6c992c8b5fd3fe171c85ab60337289fac333262037246a4a576fa",
       "requirement_id": "REQ-13A8101E0347",
       "requirement_text": "must return stable transaction ordering by `createdAt DESC, id DESC`.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4509,7 +4509,7 @@
       "requirement_digest": "904d9006c1de8710397911c5c1719a1803b96aa85f5f6c68e42a53117b390774",
       "requirement_id": "REQ-95E6C4732A89",
       "requirement_text": "metadata but must not create additional amount-bearing `byWork` entries. Every",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4531,7 +4531,7 @@
       "requirement_digest": "477cbc2b530530bed68b76a3695f3fdb47e2a38fb4ad31babe3a1b1183c5044a",
       "requirement_id": "REQ-FC3B85C69C55",
       "requirement_text": "`includeUnattributed` is false. The server must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4553,7 +4553,7 @@
       "requirement_digest": "b4b3e51b0ea4dc342c5112e5966496d4f997fa58385e551bce3f87b77396f186",
       "requirement_id": "REQ-E31C98DA07CE",
       "requirement_text": "read the source before returning any row or label. The report must support a",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4575,7 +4575,7 @@
       "requirement_digest": "d21c0357dc9d4e57f4b8035c3663f74e7482cb7259e776953d5b5c2a41c430c4",
       "requirement_id": "REQ-7039131E9C3F",
       "requirement_text": "The report must state that it is actual platform credit usage, not provider USD",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4597,7 +4597,7 @@
       "requirement_digest": "018ee1a664f3bbbe9ac8491706096c617dfc106b3f5aacf932730b84ad1427fc",
       "requirement_id": "REQ-B2F3A064B060",
       "requirement_text": "Tenant-admin detail must use a separate explicit",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4619,7 +4619,7 @@
       "requirement_digest": "649fc8e9cebb2a692a40703953a23ba76d8507914fd7252963a5bc785fbff4cb",
       "requirement_id": "REQ-8B8A49E35AC8",
       "requirement_text": "`credits.adminUsageByContext`, and a required audit event. The server must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4641,7 +4641,7 @@
       "requirement_digest": "404a22450698f14f6b929a55d4018e8f708c929993178c4daeef5dc6813f7960",
       "requirement_id": "REQ-CAD1A0BDC689",
       "requirement_text": "scope and watermark must be returned with the detail response.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4663,7 +4663,7 @@
       "requirement_digest": "767840b22c6ae606b581c0053d1b598ddf86022beaf5ed50d187aa50393558eb",
       "requirement_id": "REQ-C0FE0E0A2D9D",
       "requirement_text": "or must be handed to an explicitly authorized asynchronous export job. Export",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4685,7 +4685,7 @@
       "requirement_digest": "c5b6f281aae147bcd8ba8634bc6d1fae85c1ae5f5dc1d69a961b2cdfdd4ea02e",
       "requirement_id": "REQ-03FF8571FCE6",
       "requirement_text": "permission. Export totals must be generated from the same query service as the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4707,7 +4707,7 @@
       "requirement_digest": "a400c20fa5e9ef4b2b84a6fc7cf53446ddf9bac1f822245c3ff333f2fe574dfd",
       "requirement_id": "REQ-A60D04AD2D19",
       "requirement_text": "asynchronous export is authorized, the export job must persist only a bounded",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4729,7 +4729,7 @@
       "requirement_digest": "75d1b285066d3e0aec27a90400e742abcd80e15a1505ecee970cb16c107b07e6",
       "requirement_id": "REQ-31D5A27E8F9D",
       "requirement_text": "artifact after expiry or download. Job status and download errors must not",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4751,7 +4751,7 @@
       "requirement_digest": "76dd5c2be9fc332b9f91499f4a3baf0d7845c108a234da8704a2bb80dc680492",
       "requirement_id": "REQ-346D10DDAA3B",
       "requirement_text": "summary/detail surfaces; a self-service export must never accept an admin",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4773,7 +4773,7 @@
       "requirement_digest": "2c0de40e8232d87efd09f46a4a49741fb4b346b72589168f6c86754d62e5fb90",
       "requirement_id": "REQ-ADDDAC2F8E89",
       "requirement_text": "Raw IDs must not replace the display label. The audit dialog may show",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4795,7 +4795,7 @@
       "requirement_digest": "90d65843b89fdde684318984c8bf0020b9938aa347ca4b68562a2856732afc8c",
       "requirement_id": "REQ-9D3242E6DE7A",
       "requirement_text": "It must show:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4817,7 +4817,7 @@
       "requirement_digest": "7deca85e62d295527ffcf141a1980a5f8251f0a70b2e272cd45cc115bbf3e961",
       "requirement_id": "REQ-3123686176EE",
       "requirement_text": "list, the UI must label whether each total is `all matching transactions` or",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4839,7 +4839,7 @@
       "requirement_digest": "f9deb178dec06795209debe7b8b3a66adcd8faa5ba43b783de6db29231a64f1f",
       "requirement_id": "REQ-CF87220CC0D1",
       "requirement_text": "`named work only`. It must show unattributed and ambiguous credits separately",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4861,7 +4861,7 @@
       "requirement_digest": "9267d9425326512cfffc4f420f84f30d9cf83516ecab6b82b23987434c7a551a",
       "requirement_id": "REQ-34F2EAA4DC20",
       "requirement_text": "when they are non-zero; it must never imply that the visible top-work rows",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4883,7 +4883,7 @@
       "requirement_digest": "1d57a9237424adc0c95534f66c0322d4ceee9b4f92eb0e08080c9bc53c4663ba",
       "requirement_id": "REQ-8ACB199322D0",
       "requirement_text": "The report controls must bind directly to the report input contract: UTC start",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4905,7 +4905,7 @@
       "requirement_digest": "15fdd1c00f4717692ca1340ca54ee1bf2bc7ae7174703a14055ad2e197e28808",
       "requirement_id": "REQ-063A78F7E742",
       "requirement_text": "view reuse the captured `asOfTransactionId`. A named work row must provide an",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4927,7 +4927,7 @@
       "requirement_digest": "b093161ea25141564a00e47941a88c8d640c9e9a15a20448102cecbf4bdb7c44",
       "requirement_id": "REQ-9FF11A4BC53F",
       "requirement_text": "authorized path to `credits.contextUsageDetail`; the detail view must preserve",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4949,7 +4949,7 @@
       "requirement_digest": "df637319251b73835fdd5bc0c5a051715be8008882c1d35157345d58fa89a163",
       "requirement_id": "REQ-EF717EA40960",
       "requirement_text": "the selected filters/watermark and provide a clear return path. Export must be",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4971,7 +4971,7 @@
       "requirement_digest": "45484d8c7dca36705297f98aceb3201b37cdc74395d1f3c18c8ab8c5f9d38957",
       "requirement_id": "REQ-060520225DC6",
       "requirement_text": "disabled until an explicit valid date range is selected and must surface the",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4993,7 +4993,7 @@
       "requirement_digest": "5b0d6b36468b914f776941871e9a842f9e38d2643747fb4783bd89f1cb11c876",
       "requirement_id": "REQ-7049FC70F632",
       "requirement_text": "The summary must not imply that a positive purchase or Skill-owner revenue row",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5015,7 +5015,7 @@
       "requirement_digest": "9ad21e47da23028566e898655ee6bd8073d26452bac276f6f3dfcaf7a23af8e1",
       "requirement_id": "REQ-7FA837DDAAF9",
       "requirement_text": "If the current tenant cannot be resolved, the work summary must fail closed",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5037,7 +5037,7 @@
       "requirement_digest": "9e0065737efdfa8ee4a8fea4605e00ac1af2783a959b1a0f3b04c70561ec5165",
       "requirement_id": "REQ-9708843CA624",
       "requirement_text": "continues to follow its existing behavior. The UI must never fall back to",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5059,7 +5059,7 @@
       "requirement_digest": "d4813aee292a247839cd3f13b44bdb1e0dabd53f5aed867237422aa94b707e18",
       "requirement_id": "REQ-930D2E875C74",
       "requirement_text": "Tables and cards must retain keyboard access, readable labels, loading state,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5081,7 +5081,7 @@
       "requirement_digest": "e62fa0092794ead0815bbbbc75ad9f6b3cbb45fed3ec40973920d5f25d8e37f4",
       "requirement_id": "REQ-B5D1A051805B",
       "requirement_text": "3. A transaction link must satisfy `credit_transactions.tenantId =",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5103,7 +5103,7 @@
       "requirement_digest": "54b5cf497b018bcc96e32b25875ab0759c33a374b5b89230a5ff5b6b436d9ce9",
       "requirement_id": "REQ-251BC37F3ECA",
       "requirement_text": "transaction with null tenant cannot be used for a new required charge.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5125,7 +5125,7 @@
       "requirement_digest": "737b8f2a416f5eec0136b3b865d25eac41ae558f979fb9d67676afc7384eb7f2",
       "requirement_id": "REQ-01EAE40A44F9",
       "requirement_text": "5. Source resolvers must verify the source entity's tenant and ownership before",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5147,7 +5147,7 @@
       "requirement_digest": "c2079e8b4875b3fbaca771072106cacb75470f016fcd95a4e8c0d977d15b4a4e",
       "requirement_id": "REQ-89F8CABA878B",
       "requirement_text": "to satisfy a required attribution; unresolved contexts are diagnostic",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5169,7 +5169,7 @@
       "requirement_digest": "d203494e5e6d9424a23ce0b665e1a927ae373521551a6d85fffb2cb5db540ab3",
       "requirement_id": "REQ-49ED9235CAC3",
       "requirement_text": "| Failure | Required behavior |",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5191,7 +5191,7 @@
       "requirement_digest": "10d28caae06352923d19d4f702cefcd66930bee48cb5e5a30336eaf794f29454",
       "requirement_id": "REQ-A35CE8CF3AEB",
       "requirement_text": "| Context source missing during a new charge | A `required` path fails before provider/debit work; an explicitly audited `best_effort` path may charge, marks the row unattributed, emits a metric, and never guesses a Series |",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5213,7 +5213,7 @@
       "requirement_digest": "3ded9788a5b30fcff26d8765fcca9a732e11696068d814153cad0919097e5497",
       "requirement_id": "REQ-1D46C71EE68D",
       "requirement_text": "but it must be rebuildable from `credit_transactions` and context links and",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5235,7 +5235,7 @@
       "requirement_digest": "a70899b3be89b27ba0fa89a866d57cfe3a03bb89d37242da6cff067d47598e21",
       "requirement_id": "REQ-0BF750DA51EE",
       "requirement_text": "must never become the financial authority.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5257,7 +5257,7 @@
       "requirement_digest": "f12bbc45f6d23af380c96a4ec04e74ea5f6f9d23fd48687755f84548471a8ff8",
       "requirement_id": "REQ-5240802CFC92",
       "requirement_text": "The implementation must capture `EXPLAIN (ANALYZE, BUFFERS)` for the default",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5279,7 +5279,7 @@
       "requirement_digest": "a45e6f2772ad1ce33d8364f9d0f43ca4b923672a2e69a807072a073f5c9a6ba6",
       "requirement_id": "REQ-72E85E2F97FB",
       "requirement_text": "10x fixture. Interactive report queries must meet the named",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5301,7 +5301,7 @@
       "requirement_digest": "5cc26c566cb52b6daa29a3aaffac34b20bd503b7df98d87bb6a4eb885aff326c",
       "requirement_id": "REQ-FA8D5B6A312B",
       "requirement_text": "is corrected. Export jobs use a separate bounded-job budget and must not block",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5323,7 +5323,7 @@
       "requirement_digest": "a1d15ee6dc7b39e7fb513b6b3077f9479e191492e116487745a9ae507dadf81f",
       "requirement_id": "REQ-0ACC3F7CE3E4",
       "requirement_text": "`CREDIT_CONTEXT_STRICT_REQUIRED=false`; these flags must not change",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5345,7 +5345,7 @@
       "requirement_digest": "b7c80a7bc275bd63fc29e30401c68c51c2dd89c110eeb0e6e7e49a2a19c8d2f8",
       "requirement_id": "REQ-418EAF38DFE9",
       "requirement_text": "1. Alert on missing context for new required Skill/LLM paths.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5367,7 +5367,7 @@
       "requirement_digest": "45c470919cc6f77dfe8da878ba6fb6adb2d3261e248e130df22365e9648c9582",
       "requirement_id": "REQ-873F60A15009",
       "requirement_text": "local implementation unless separately approved. A production rollout must",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5389,7 +5389,7 @@
       "requirement_digest": "92cd8a2c31d663a740c02d2a3814436839b5e2899c343acf73c48b64484254d4",
       "requirement_id": "REQ-B40146F3F5A3",
       "requirement_text": "satisfy a new required attribution.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5411,7 +5411,7 @@
       "requirement_digest": "9737755cc332839860170c94831e91b31366d387f8d3b10008026e5782357f61",
       "requirement_id": "REQ-553CC60FCD2E",
       "requirement_text": "and required report indexes are valid before report rollout.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5433,7 +5433,7 @@
       "requirement_digest": "ea975fa940feb27b1955f05ae261186c8b0b0b75e5c8fbe18fc63a3c9077c960",
       "requirement_id": "REQ-F1CF61419C72",
       "requirement_text": "11. Each registered resolver declares one deterministic root/parent/required",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5455,7 +5455,7 @@
       "requirement_digest": "bdf58c247d31a25ef35d780521288c7a97b8c2052e88b176c39f962c117bad5c",
       "requirement_id": "REQ-76C660A51EDD",
       "requirement_text": "11. A required invalid/foreign context fails before provider/debit work, while",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5477,7 +5477,7 @@
       "requirement_digest": "dbc95a5e96545dd49c88160be54073389a537593bddb6dec81ae1da3e4785a0e",
       "requirement_id": "REQ-388BF9301D41",
       "requirement_text": "emits the required JSON fields and commit/schema provenance, and fails CI",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5499,7 +5499,7 @@
       "requirement_digest": "dd12d7a041d9e46481d46eec4c05614f68581cdd6deb5a69e1f0b00be29a23a0",
       "requirement_id": "REQ-00D7C7666BF4",
       "requirement_text": "Focused automated tests must run from the repository's actual workspace",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5521,7 +5521,7 @@
       "requirement_digest": "d91426bacf3d0c0e5f8c19ca1b82afd783fc50a00b74e8bada6a46e51634090e",
       "requirement_id": "REQ-13F7564851D7",
       "requirement_text": "must be reported as such.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5543,7 +5543,7 @@
       "requirement_digest": "5fade14aaed8a2d9649a2168f07a586ba16d57b4e8f7eada2720bf1571da1ac4",
       "requirement_id": "REQ-87087C0FC11E",
       "requirement_text": "Required dashboards or audit queries:",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5565,7 +5565,7 @@
       "requirement_digest": "7aed0b122c8435e17b89ec2d2b5b560926b0e065616710c2412efdf578146de9",
       "requirement_id": "REQ-29030E6E5404",
       "requirement_text": "1. New Skill/LLM usage rows without a required context.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5587,7 +5587,7 @@
       "requirement_digest": "0c783a703a0b387c418ab1190443fb06c8576155af08744706d44f6ea8fd7918",
       "requirement_id": "REQ-13DC63EC8A57",
       "requirement_text": "transaction is a critical integrity alert and must be zero after repair.",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5609,7 +5609,7 @@
       "requirement_digest": "e95daee193d5cd6b75549ca858bdc31368818457a526cacfb9e2f77a800bd274",
       "requirement_id": "REQ-BD7A9B8371FC",
       "requirement_text": "2. Any new `required` Skill/LLM debit that becomes unattributed is a high",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5631,7 +5631,7 @@
       "requirement_digest": "7943d536e6810f299dbd61c66cc718cd9e2d7a7f0757c03abcc711e32897a0b7",
       "requirement_id": "REQ-916E4DB81900",
       "requirement_text": "The rollout must add or update the operational runbook at",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5653,7 +5653,7 @@
       "requirement_digest": "ad1b229f1750cbd687d17bf714679dec06b6af733a833b65269c820fb3fd89f5",
       "requirement_id": "REQ-34E26469FB2F",
       "requirement_text": "commands. The runbook must identify which checks are local evidence and which",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5675,7 +5675,7 @@
       "requirement_digest": "82ddb7f5d7b8887072a45f3a931974a10504e75d11a5e23bb2ee2ed145d3df4e",
       "requirement_id": "REQ-2E38DA4353D4",
       "requirement_text": "Logs must contain IDs needed for correlation but must not contain raw prompts,",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5697,7 +5697,7 @@
       "requirement_digest": "849454ee49bd1570d41bea6b3c48fa97c934d685a1dfa83ef213b08f0fd118ee",
       "requirement_id": "REQ-9F0FEBB5FABD",
       "requirement_text": "Series detail card for internal cost evaluation, but it must be labelled as",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5719,13 +5719,35 @@
       "requirement_digest": "3e36d6b2432913864217f454b568aa57122563485560803748c1676c8f408e15",
       "requirement_id": "REQ-E492C37FA430",
       "requirement_text": "an estimate and must never be presented as provider-reported USD or an",
-      "source_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/166-credit-context-polymorphic-lineage/spec.md#L1971"
+      ],
+      "authority_source": "specs/feature/166-credit-context-polymorphic-lineage/spec.md#L1971",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "efc471b49ea1ba3d0463ccef214f981d9651f08b7e4a335aec3665e936f7c928",
+      "requirement_id": "REQ-4D8768BE4214",
+      "requirement_text": "Without creating another ledger, a charged-work lineage MAY add nullable, versioned references for `ecosystemId`, `channelId`, `partnerId`, `tenantId`, `canonicalProjectId`, `appId`, `assetId`, `skillId/capabilityId`, `deploymentId`, `conversationId`, `traceId`, `pricingPolicyVersionId`, `revenuePolicyVersionId`, `promotionPolicyVersionId`, and `referralPolicyVersionId`, in addition to the existing payer/user and credit context. A charged credit MUST be traceable from payer through tenant/channel, App/Asset, Skill/Capability, Runtime/Deployment, and settlement allocation. These are provenance dimensions, not a new charge, balance, wallet, revenue-allocation, or settlement authority. SPEC-303 supplies asset/party identity; SPEC-280 supplies revenue attribution policy; SPEC-207 supplies settlement infrastructure. Existing `credit_transactions` and `creditService` remain the charge/refund authority. Backfill is additive, nullable, idempotent, and evidence-backed; do not infer historical owner or policy from current email/login data.",
+      "source_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+  "spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
   "spec_id": "166"
 }

@@ -1,5 +1,5 @@
 {
-  "generation": 1,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "e59029ec1d4e415081510a9d318284e69e1be0967dc6cfcac12fae1db9826951",
       "requirement_id": "REQ-6FA1CC7A0DC1",
       "requirement_text": "**Implementation rule:** ADDITIVE ONLY. This spec MUST NOT create a second deployment executor, second queue, second resource provisioner, second migration engine, second secret store, or second application lifecycle authority.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "dfc809bd0e5b02fd51515cca8ba95172d0f48c0df92fb2d50e47d553b825d4a2",
       "requirement_id": "REQ-F2FCE98D01F9",
       "requirement_text": "> **Numbering / G0 verification:** The canonical `naibarn/SmartSpecPro/specs/feature` inventory checked on 2026-10-06 had no `293-*`, `294-*`, or `295-*` directory at that observation time. Because parallel sessions may allocate numbers after that observation, implementation MUST re-run G0 immediately before commit. Stable semantic identity `smartaihub.production-release-deployment-runtime-migration-operations` is the durable dependency key; numeric ID 295 is accepted only when the current canonical inventory remains collision-free.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "c1e525dbe6a25c800dc3eb3f49bccc08161080ab79d57981e10aa44f0beaae11",
       "requirement_id": "REQ-63BA230D1348",
       "requirement_text": "Before creating schema/code or provider mutations, implementation SHALL:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "a6a6678ac5f5c7c43a96cc799ce1cf5bd337f16030df11ecc74584e118009607",
       "requirement_id": "REQ-E584D9EB22AA",
       "requirement_text": "SmartAIHub SHALL add a unified **Production Operations Fabric** that can answer, for every production or staging environment:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "e2c791731a5aee1ce7df30cf56f9f691b0db0904c8b5ffee805884765124299c",
       "requirement_id": "REQ-B128D92941D4",
       "requirement_text": "11. What must happen next to safely promote, finish, rollback, or repair a release?",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "b3a8e63cf55b8999261350e61711d88199cdd9692d95428f929927958ce44db4",
       "requirement_id": "REQ-7598E04F393C",
       "requirement_text": "It MUST be possible to compare two revisions and explain every changed service, schema, binding, route, artifact or traffic allocation.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "fe684495c1cc860b690279dbc23b3f7e580479444058d65d7a63b417f09f8e02",
       "requirement_id": "REQ-AEA69E73134D",
       "requirement_text": "A ReleaseSet is not necessarily one Git commit; multi-repo releases must pin every input revision.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "8fd93b14e0271c1fb19523e527a9b6854f1f7423171e0fde0e2d2db7bb526ad3",
       "requirement_id": "REQ-48E3EDDA1B4A",
       "requirement_text": "Topology SHALL be queryable by project, App, environment, release, tenant, repository and Cloudflare account.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "afdd62feeebf3657d6b8203fe5350adf8db083272d459d1078c6ceaf692883d9",
       "requirement_id": "REQ-AE36EB83D7D3",
       "requirement_text": "Cloudflare Workers versions and deployments MUST be modeled separately.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "2e710c7221f317d4dac626867c3f9c302972d985fb1a2042c94d6fd514a38e4c",
       "requirement_id": "REQ-AE6F20EC31FF",
       "requirement_text": "Gradual deployment compatibility SHALL account for version skew across Worker-to-Worker service bindings.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "c65542e217f0671aa93a87de4f526560093d9b9896e864875019e2af14394d03",
       "requirement_id": "REQ-ACED56808DA6",
       "requirement_text": "Cloudflare Worker invocations scale as a serverless runtime; SmartAIHub SHALL NOT invent a replica count for normal Workers.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "f2c8f71d8a317f13ef7d672c778dd248e4d8f9d86837ad57dea5e4e5c771e99a",
       "requirement_id": "REQ-CC48883D7A3B",
       "requirement_text": "If architecture uses several logical Worker services for load/domain/functional partitioning, topology SHALL show all services and edges.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "c8cba57bd67aa13c8be111cf2ff926f957c3e8c3a9b07ad20511a48b31f562a4",
       "requirement_id": "REQ-E8BAAA90EE9A",
       "requirement_text": "For Queue consumers, concurrency SHALL be shown as provider/runtime concurrency, not as persistent Worker replica count.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "7a3eb8a52031668a1fdaae671f1526d970ce5b058c4d3503f223dbe5b633835a",
       "requirement_id": "REQ-0AE8B5FB5BA6",
       "requirement_text": "Current Cloudflare Container behavior MUST be represented by a capability manifest because scheduling, autoscaling, rollout and routing semantics evolve. The UI MUST distinguish provider-managed autoscaling, full/manual strategies, Durable-Object-controlled scheduling and any future strategies by capability; it MUST NOT assume autoscaling is future-only or equate any strategy with a fixed replica set.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "630d2502378c2900f731eddba6cd4a30456e196e70cefa74f2f85bcee39daeef",
       "requirement_id": "REQ-CF877B0D3F99",
       "requirement_text": "Queue state SHALL distinguish realtime point observations from analytics windows. A provider adapter MUST NOT populate an exact-looking field from an averaged/time-bucket metric without its observation semantics.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "28553673545596d5aa8bb2839792a31658a59bca4aa808b257ed4c1df02918b4",
       "requirement_id": "REQ-F64E10465839",
       "requirement_text": "Mission Control MUST be able to correlate queue pressure with affected jobs/specs/services while preserving whether the pressure value is realtime or windowed.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "b5e2157e7a147c91c28e65bc51c0634d02e8f3a33237787a39788445234ae44d",
       "requirement_id": "REQ-809ACB228B1C",
       "requirement_text": "Normalized instance states SHALL preserve provider distinctions including queued, running, paused, waiting, errored, terminated, complete and rollback outcome.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "6d236062c9062480d4e674460eb584a1339c0cbf955d58b7bec7ecf05a4fc282",
       "requirement_id": "REQ-EBED29EA1268",
       "requirement_text": "DO state MUST NOT be inferred from Worker version alone. Durable Object migrations are a separate migration class.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "5624ccb49a7950a911cf3ee2236700b1a34d27e48158b07c55e939056fe968ca",
       "requirement_id": "REQ-773EABC6094F",
       "requirement_text": "Hyperdrive telemetry SHALL preserve metric-window/sample semantics rather than presenting analytics summaries as exact instantaneous pool state.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "9c85ef22134a62d91c12a4ef9804d34b41d19dff4bd7cc3c70ba20fe03ed82e9",
       "requirement_id": "REQ-A0352EA22937",
       "requirement_text": "A destructive/contract migration MUST NOT proceed while an incompatible old Worker or Container version can still receive traffic.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "ba163bf07f348bdc98773fbde640b3396488571b0a1a513e2e70c71f03b5b595",
       "requirement_id": "REQ-1933B29ECF4A",
       "requirement_text": "SPEC-295 does not mandate one migration tool. The registered adapter SHALL expose:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "3e5206d8730ec424adfcc6ccef6bbf2611f5680df0e951d96c2adc1477925d3d",
       "requirement_id": "REQ-32B324B4BD10",
       "requirement_text": "File timestamp or filename order alone MUST NOT establish migration authority.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "fe7de73125dfdf89b21c80c90c5bd062e982e3ee430de476cb4f2809c7df9692",
       "requirement_id": "REQ-B0B0B65EE1B6",
       "requirement_text": "D1 adapters SHALL correlate source migration files with the provider database migration history. D1 migration identity SHOULD use stable database identity rather than mutable binding names.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "2cb1e716a6bddb9a91eff96feccece207f9e07048a3f1952901ea484bb9f0c40",
       "requirement_id": "REQ-C599F54FC193",
       "requirement_text": "The production projection SHALL show:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "15ed9a93aa6de1d50d5a1151d34b55ab16c649176522f671d251b6d1bb8fd335",
       "requirement_id": "REQ-91A1F0BD89D2",
       "requirement_text": "Durable Object class/storage migrations MUST be represented separately from ordinary Worker version traffic because provider deployment semantics differ.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "a57c880f359fa21c133749afb9266b968b8a8a40e29c8039e4124430c3a0f888",
       "requirement_id": "REQ-AD6BA8947560",
       "requirement_text": "Release planning SHALL identify:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "a7924ce9ec0942f27e44873d1affaf934ff79dd28addf080c0a451b668969094",
       "requirement_id": "REQ-47E8BDE74349",
       "requirement_text": "Track index identity, dimensions/metric/config, namespaces where applicable, index availability, ingestion job freshness, last successful mutation/backfill and application-level coverage. Native provider events/metrics MAY be consumed, but ingestion completeness is an application-level fact and MUST NOT be inferred from index existence.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "87fec5d6afb94152223482a18ee9bb8496ebf1bf91542fe95e9d1ec156d0f864",
       "requirement_id": "REQ-C5E7805F0334",
       "requirement_text": "Projection SHALL include:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "1759b4aefbcd4d6e2fa5cd08113006632d826b7f9e33e1c33411d51cd67b115a",
       "requirement_id": "REQ-75407F8370BA",
       "requirement_text": "Every drift finding SHALL include:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "3d17e956b9a5f80f7c958b1c2b05ae556c684bb5e931749a51e5127dd74c9591",
       "requirement_id": "REQ-DCAF062071AA",
       "requirement_text": "A ReleaseSet SHALL express prerequisites such as:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "185db0614bf84b00b4b8102664ca6a24ba54237cef74c85d96de3f42a83237be",
       "requirement_id": "REQ-77F5ECE0E831",
       "requirement_text": "Provider capabilities determine available strategies. Unsupported strategies MUST fail capability resolution, not silently degrade to another strategy.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "e5ddf1e2d44f4e92d9cef169818d2f3dadfcb9690c02110ce8dee311620e974b",
       "requirement_id": "REQ-B836EDF2DC54",
       "requirement_text": "Rollback planning MUST distinguish:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "cf7a6ccdd485fe8f2a48ed489f7a1ac81992cd79050213374870437597e586d5",
       "requirement_id": "REQ-B0748A3A0E9E",
       "requirement_text": "Schema/data rollback may be irreversible even when code rollback is easy. The UI MUST NOT display a generic “Rollback available” unless the relevant dimensions are actually recoverable.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "eec2ddf5e67f171bd3a9aa5a384e9209f453f7a2df627e9b23143e786a6ca7e8",
       "requirement_id": "REQ-FDFC88FBFE3D",
       "requirement_text": "Backfills SHALL show progress, rate, ETA only when measurable, and invariant/error counts.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "ef2f33fd2d8532053826c268e62600afaa4bb831f99096304f17f17d5ab35ec4",
       "requirement_id": "REQ-7649EAFE36A9",
       "requirement_text": "A queue backlog may explain a Spec/Job wait, but queue pressure MUST NOT automatically classify source code as failed.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "0a3dc9a96e49eec0e51cb9e563efde02727c5401d27bd27caeab5feeeb48a2e6",
       "requirement_id": "REQ-FE695BC3F10F",
       "requirement_text": "Mutation requests such as deploy, promote traffic, retry workflow, restart container, apply migration or rollback MUST route through SPEC-279 and the canonical owner with approval/fencing/idempotency.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "7bbc82f142ce8a495c494d70967e83e508347dae94da7cd00cc8b67b3fa3b9a1",
       "requirement_id": "REQ-3E2CE39790A5",
       "requirement_text": "Before production promotion, the registered policy SHALL evaluate applicable gates:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "cc668bd04b9b19775aed9cd4c4fc8ac0cec2401a7093f5b14707fd78489cbc2f",
       "requirement_id": "REQ-925B02F07C70",
       "requirement_text": "Not every release requires every gate; applicability must be explicit.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "5e49c41fa96d8a964659e0fbe89556fe06299c29d4fa90a45a5670d2e70bb994",
       "requirement_id": "REQ-A2349A6F1F37",
       "requirement_text": "Cross-service release is not an atomic transaction. SPEC-295 SHALL model:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "8d9d2d1c37d51c5d92ca5c828f173bc0f3dde657b346b5eaac4ee6d3ceb215f6",
       "requirement_id": "REQ-8D46315F4028",
       "requirement_text": "Failure of one service MUST NOT falsely imply that already-applied database migrations or other service changes were automatically undone.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "c6f12430804671ed1cc27800321061f9e367f3188349225cad695b532ae729b5",
       "requirement_id": "REQ-8EB75D00D007",
       "requirement_text": "SPEC-295 SHALL define bounded retention tiers:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "2d249fd8853a2343d59ef4008990a2ba2b8795b83315079a3f31bb6d4a729325",
       "requirement_id": "REQ-04876FF734BB",
       "requirement_text": "Each adapter SHALL declare capabilities and limitations dynamically.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "bb6b22bb23f61a253429100494da29210dd876d32c3a6e726ab2221900d162c4",
       "requirement_id": "REQ-BE913D459FB1",
       "requirement_text": "Product evolution MUST NOT require rewriting core state semantics when provider capabilities change.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "7755118bf0924986ef7564c4446eb0301a29a6b857884b0ac6904f2fc9c38cc8",
       "requirement_id": "REQ-C3E5DD9D8099",
       "requirement_text": "Read-only projection MUST precede mutation capability.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "d2624fb4b4617fea88cb5414818fef96f68bd7977eeb7a1b0f760b5447d59e20",
       "requirement_id": "REQ-28720A405C6A",
       "requirement_text": "Implementation MUST prove at least:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "651c7f8467085a960fc957d93b8ac0c0553a4b5146df61f69def75da79c06066",
       "requirement_id": "REQ-061E6EE5DF6E",
       "requirement_text": "1. Git main can be newer than production without being mislabeled deployed.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "719e40fab44bbb62a25d724a618cef4924dbb7cb6551b9505dc25e7a258da537",
       "requirement_id": "REQ-552ACAA4A59A",
       "requirement_text": "2. One Worker deployment can show two active versions and correct traffic percentages.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "dba217a42b77ab634986753308447846a9748897f40db6d62e27b25766814420",
       "requirement_id": "REQ-91B21A2CABFA",
       "requirement_text": "3. A 0%-traffic version can be smoke-tested and remains distinct from active user traffic.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "450c44917841954cef25b9e95c46b0efa35463e52c0d056d561b258033956422",
       "requirement_id": "REQ-A66828255C44",
       "requirement_text": "4. Service-binding version skew is represented as compatibility risk.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "aa47bb840d71b353bae2fa50fa1c4b7d87d848f6220da211d2777d6d9868e6c4",
       "requirement_id": "REQ-E821BFD88F17",
       "requirement_text": "5. Worker invocations are not represented as replica counts.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "3dfb8199a7fa07d2aa705bc56b363c386c9948f55d1ef3a7ea2810107b8a13d7",
       "requirement_id": "REQ-3A8DF236147D",
       "requirement_text": "6. Queue consumer concurrency is represented independently from Worker instances.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "70e5a4bc02a7bd56d784a34094c8dbef66c2d73b642636fd47c321e4cb880119",
       "requirement_id": "REQ-195723B70643",
       "requirement_text": "7. Container app lists multiple logical instances and preserves ready/unhealthy/inactive distinctions.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "7ed84973f9f2751c923fa1cb3dec15c2db17de1141e9aee129e41d2ae48f6f22",
       "requirement_id": "REQ-236C1729932F",
       "requirement_text": "8. Container rollout/image change cannot hide an old still-running image.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "69ac222a43862f02b3c85af1a1375b9dd4cd8f72dddeace97bd9a69654d5e426",
       "requirement_id": "REQ-064DBC127E25",
       "requirement_text": "9. Queue backlog rise links to affected jobs/services without marking code failed.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "c9fa64a168e23eb984aa560aedc3d9a97f83c5c214f4cc149a328874b6ef3e11",
       "requirement_id": "REQ-CE138D596004",
       "requirement_text": "10. Workflow queued/running/waiting/errored/rollback outcomes remain distinguishable.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "19830488a67cadf58dfa2560ff615b1f99a2f5516a2d2a645499c27ae9b5dbab",
       "requirement_id": "REQ-D5233590D8B3",
       "requirement_text": "11. Hyperdrive waiting-client pressure becomes a health signal.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "72ada47c6882eb2638813a81608ac1cf7277aaf6b06a641d849b7543eb06366f",
       "requirement_id": "REQ-6644862F8E4D",
       "requirement_text": "12. D1/Postgres schema revision is compared with expected release schema.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "4212886fc37a5d191340a38d2f5825b674297e4f80d3ec3273438374376f60c7",
       "requirement_id": "REQ-BB9A2174F72B",
       "requirement_text": "13. `APPLIED_UNVERIFIED` migration never appears as verified.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "a47d100f26af960dc2a11d37f971dc6ec32ccefa8e68fb74e7d2e546b3cfc2af",
       "requirement_id": "REQ-04B08369F497",
       "requirement_text": "14. Contract migration is blocked while incompatible old code serves traffic.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "4481abe27526a8d0a4b3e588aa5e67dd6a6a5e8d157dbd8a9ab80ebb8bb4cb5f",
       "requirement_id": "REQ-4E1EF00C94CE",
       "requirement_text": "15. Backfill progress and failure are persisted without claiming schema completion.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "ee3c57c3d65a6168410889d9721c150f591ccd416fee56b8c0e5e85a56205b3a",
       "requirement_id": "REQ-F8F051456C2B",
       "requirement_text": "16. Multi-repo release pins every source revision.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "471134287470da3c30450fbe44507636f707f2fd352a8f4ba8555477dfe67541",
       "requirement_id": "REQ-2BB9196EB599",
       "requirement_text": "17. Partial cross-service deployment remains partial; no fake transaction rollback.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "8abe60c2ba06fb04cc2df9f1a1d8a50a2f4939c2a029dd2612704a4af5085333",
       "requirement_id": "REQ-95D2DE8558B1",
       "requirement_text": "18. Out-of-band provider deploy is detected as drift.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "fd0ec2d28e3a5c2f012f1e8f5607bece93610d3e40e0b18985492320313d0806",
       "requirement_id": "REQ-DEF60577E36F",
       "requirement_text": "19. Out-of-band schema change/checksum mismatch is detected.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "9457b442a72eb2f48af977f0f2fb6331a283339f4a552ed84d9b9b7741318d7c",
       "requirement_id": "REQ-91496A741758",
       "requirement_text": "20. Secret values never enter projections/logging.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "0efb2e7364ae2a0f8a35f693d1648337f4f44269b57ab6869ac277b55e85a386",
       "requirement_id": "REQ-57F27BB8A993",
       "requirement_text": "21. Production permissions are independent from Git repo read access.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "967264a5b902c73548519fc2f7309ef9b52082cf55e39467aad46475e54f6d9a",
       "requirement_id": "REQ-5C0C93B820CE",
       "requirement_text": "22. Provider outage produces stale/unknown, not healthy.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "576aea96414d18d20106254cb4143872b96b1192fd17e61c46622b354a3cd7f6",
       "requirement_id": "REQ-B9493A5028F1",
       "requirement_text": "23. Reconciliation can rebuild projection from receipts/provider state.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "2a8a9309a29dd7fd3b62a6c29134d4bfcb8b4f726be3f68e0f21f9fe786227c7",
       "requirement_id": "REQ-7B3A6A9D38AE",
       "requirement_text": "24. Rollback availability is dimension-specific; code rollback does not imply DB rollback.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "b080c84f0eeba67b53edfe1ead71647f84c9e86759eaaa41db7fd9dfaca983f8",
       "requirement_id": "REQ-CD7526EE1B2C",
       "requirement_text": "25. SPEC-294 UI and Chat return the same production snapshot token.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "b24f5e0e32190fbe86d7a09e9c0d1546185140d084848569a9f84193704bd6bc",
       "requirement_id": "REQ-9E04C87EA0C9",
       "requirement_text": "26. User/Tenant App view cannot enumerate platform-global Cloudflare resources.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "e88c73708f4d505a2e842de99adf0e61718693795c17973c92fbd51eb658f1ef",
       "requirement_id": "REQ-3A1187652C57",
       "requirement_text": "27. Resource Fabric remains provisioning authority and is not duplicated.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,7 +1603,7 @@
       "requirement_digest": "cee6e7c65d8049cf621d4e586b2916e5001e2e5df055a578a6c91b58d9763310",
       "requirement_id": "REQ-F02CFFBBA237",
       "requirement_text": "28. SPEC-267 remains SmartAIHub Cloudflare production/control-plane deployment authority.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1625,7 +1625,7 @@
       "requirement_digest": "5c9fefb2805b307a4cb1104feb2f8b87a9fbe4673644d48f6ad8029b8c4c15fa",
       "requirement_id": "REQ-A33CB9C1F216",
       "requirement_text": "29. SPAAS remains App lifecycle authority.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1647,7 +1647,7 @@
       "requirement_digest": "1f4ec9bcbb7aa389baf2fc1fd9db294a4456372f0539d563b6d9ff5a4e2c2ebc",
       "requirement_id": "REQ-B672BE6BFEDB",
       "requirement_text": "30. All mutations route through SPEC-279 and produce provenance/audit evidence.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1669,7 +1669,7 @@
       "requirement_digest": "a80784c64b389f6d556b0ce5ce3d9ee62c33dfb341606ffaa53e47f5a3b166bd",
       "requirement_id": "REQ-EC0AB80CCDF9",
       "requirement_text": "- Container instances expose lifecycle/health states; current scaling/routing capabilities are provider-version dependent and must be capability-discovered.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1691,7 +1691,7 @@
       "requirement_digest": "c124c6bf19638352a429bb69689c2ee66869f9c289f0ecc5ef9ba54facdbe515",
       "requirement_id": "REQ-30128343B4D9",
       "requirement_text": "The adapter capability manifest SHALL be refreshed as Cloudflare evolves.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1713,7 +1713,7 @@
       "requirement_digest": "aae7be64834fce60484ba3c9e851e259a3a44e319bdf80aad04a38968d6f99e4",
       "requirement_id": "REQ-7BCEAED20F8E",
       "requirement_text": "When architecture intentionally distributes load across multiple logical services, SPEC-295 SHALL represent an explicit `TrafficGroup` rather than pretending the services are replicas of one Worker.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1735,7 +1735,7 @@
       "requirement_digest": "76df03ebbdbec264d21e81f43a1654ecbacbaf9fe1bce2a26f656dbe7f09c719",
       "requirement_id": "REQ-1A0A8FD0F04F",
       "requirement_text": "The UI MUST show the actual load-sharing primitive. It MUST NOT display one generic \"replica count\" across Workers, Queues and Containers.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1757,7 +1757,7 @@
       "requirement_digest": "f9177ee79992910b47dd85e8ce4be7b848803ff2262c0f5390d3334acc9ea9b4",
       "requirement_id": "REQ-E5D64EF7EFA9",
       "requirement_text": "The Fabric SHALL discover and project only resources actually bound to the environment, while supporting these adapter classes:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1779,7 +1779,7 @@
       "requirement_digest": "4da228a89824c0c4779b9d007164bdf99595ae3427018bdc2c89c8b01f1c09d0",
       "requirement_id": "REQ-F142CFFE22FF",
       "requirement_text": "Platform-wide capacity, account IDs, internal DB topology and unrelated service health MUST NOT leak into ordinary App views.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1801,7 +1801,7 @@
       "requirement_digest": "05013909c1e212a4962f55cc4a2deedc2b4bf078d71bfa76f245678587030597",
       "requirement_id": "REQ-28969917B3C2",
       "requirement_text": "> **A release is safe only when code, schema, configuration, traffic, runtime health and required evidence are mutually compatible.**",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1823,7 +1823,7 @@
       "requirement_digest": "8952797db2f6eabe245b58b0f5b570bff53f2f3f32aa1375e8ea6335f7559656",
       "requirement_id": "REQ-62263C94413D",
       "requirement_text": "`WAITING_LOCK` is not sufficient by itself. Every database adapter that can execute or assess migrations SHALL publish execution-safety capability/facts appropriate to its engine.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1845,7 +1845,7 @@
       "requirement_digest": "072813c964528f203320d5f0bfdb01821308b17b580c992b82099479c0d9b0f5",
       "requirement_id": "REQ-A10C6BB82B2C",
       "requirement_text": "- the spec MUST NOT assume every DDL statement is transactional or online;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1867,7 +1867,7 @@
       "requirement_digest": "1d1cf3d3de9c576972c0f8b4832876b8256faac65fb82a3e982fd9f8b7a6879a",
       "requirement_id": "REQ-C26F569EC6B2",
       "requirement_text": "- an executor timeout MUST NOT be interpreted as proof that the database rolled back safely;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1889,7 +1889,7 @@
       "requirement_digest": "100b4cba5e8e55c5871b2f8a040a3f93c5f010bf64486ba41db01cd51852b299",
       "requirement_id": "REQ-3F1C7879028C",
       "requirement_text": "- concurrent-index/online-DDL capabilities are engine/tool-specific and must be capability-discovered;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1911,7 +1911,7 @@
       "requirement_digest": "a93079ab02f4dfec2380ee1791cef333f95493e3d88fc67ac5f0c7a01d39e36b",
       "requirement_id": "REQ-4F43FFFDC962",
       "requirement_text": "Schema compatibility MUST model readers and writers, not only “old/new version compatible”.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1933,7 +1933,7 @@
       "requirement_digest": "036fa55afc89c0106306da422b32702326c88463c921936e3baa7ecb31359904",
       "requirement_id": "REQ-B52F336B0D55",
       "requirement_text": "- backfill progress MUST have a durable cursor/checkpoint where feasible;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1955,7 +1955,7 @@
       "requirement_digest": "5b8373c775e1b923f1a21282c53a157fd6bad4ff3e31b479fd3c4604f7f1614a",
       "requirement_id": "REQ-F267FC477C46",
       "requirement_text": "- failure in one independent cohort MUST NOT falsely mark every cohort applied or failed;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1977,7 +1977,7 @@
       "requirement_digest": "274a93a75c60332576b5e1cf2d115c5ccb206631ba8a8922abaf74119e41fe3f",
       "requirement_id": "REQ-5FFD3B12B669",
       "requirement_text": "- overall state derives from required cohort applicability/policy;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1999,7 +1999,7 @@
       "requirement_digest": "ae24ea6ddda09bb69ebdd6d1af854d048a28ac90ccfb675d8ac25fdccc9eb3b6",
       "requirement_id": "REQ-D8C39D66ED3A",
       "requirement_text": "- per-tenant/customer migrations MUST not leak identifiers through operational summaries;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2021,7 +2021,7 @@
       "requirement_digest": "27cfe1b6248cfae5ed2a17b8593ec05d0b351ebf7483bf1e0dd93362c84a8c3a",
       "requirement_id": "REQ-A25541F0CA51",
       "requirement_text": "Drift handling MUST NOT auto-repair a resource when another declared authority owns desired state.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2043,7 +2043,7 @@
       "requirement_digest": "050d9f7e142dad5e5bb37738be5089063b8ddcd0219f80cf7164d1b56918a478",
       "requirement_id": "REQ-F859296142B0",
       "requirement_text": "A drift finding SHALL distinguish:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2065,7 +2065,7 @@
       "requirement_digest": "7eac2d2d857dc4e843842fe1a81bfd4f3ae92678e1dcbf5b0f36d446198dd698",
       "requirement_id": "REQ-6520F08AF69E",
       "requirement_text": "Required findings include:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2087,7 +2087,7 @@
       "requirement_digest": "2304e1402ad12bee9ac4ee19f0780e389769608a358d29d3972120c386bdf678",
       "requirement_id": "REQ-F2C1AC2934EC",
       "requirement_text": "A release that changes cached/static behavior MAY declare cache invalidation as an applicable release step. “Deployment complete” MUST NOT imply caches are coherent when invalidation is required and pending.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2109,7 +2109,7 @@
       "requirement_digest": "0a57e995cdd209429bafce6072cf58af73ca4e4b2dd8e26ec263d04aa4c1df32",
       "requirement_id": "REQ-FFC140EC4E30",
       "requirement_text": "Cloudflare/platform incidents SHALL be modeled separately from application health.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2131,7 +2131,7 @@
       "requirement_digest": "286a738d980ad10a397dc16d78b92301b6d122d343c22eb16d8b12c24c3c2517",
       "requirement_id": "REQ-C0692D769DAF",
       "requirement_text": "- an unrelated global incident MUST NOT mark every environment unhealthy;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2153,7 +2153,7 @@
       "requirement_digest": "b8aafb4d204e658491ecd2e512c367d7b98e5b803697fc77d8802e8d3433a636",
       "requirement_id": "REQ-6318FA633F38",
       "requirement_text": "UI/Chat MUST NOT convert:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2175,7 +2175,7 @@
       "requirement_digest": "f456b7f38470462f69b5e0d45f9fff4041e2c4aaae8b864cf035168fa96f61f4",
       "requirement_id": "REQ-FEF004148834",
       "requirement_text": "Container projection SHALL model scheduling policy because rollout/instance semantics differ.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2197,7 +2197,7 @@
       "requirement_digest": "fd85d59284f78baee26f0b90dba5170274d5e43a86db0e9240a67fc9f9989689",
       "requirement_id": "REQ-E07814A78A92",
       "requirement_text": "- `running` MUST remain distinct from application readiness;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2219,7 +2219,7 @@
       "requirement_digest": "b913bd32d39a01242da56396958951bd1d7786404702a7d052bceb5f8a69f1ca",
       "requirement_id": "REQ-C069252AF2D8",
       "requirement_text": "- provider rollout summaries based on samples MUST NOT be presented as exact all-instance truth;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2241,7 +2241,7 @@
       "requirement_digest": "f508fe525c83375d83cfecb820dd54ad1539a8d655ff3a0121a7999e145efad6",
       "requirement_id": "REQ-8D81A5730663",
       "requirement_text": "- adapter MAY expose provider semantics such as active/assigned counts, but normalized UI SHALL explain what they mean instead of equating them to a fixed replica set;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2263,7 +2263,7 @@
       "requirement_digest": "53bf0ad6b495ab3bf2e9b7ae0b865f9e160cc3876c244b0e85646a3026e926af",
       "requirement_id": "REQ-3B4FC13FEF41",
       "requirement_text": "Projection SHALL record the metric window and distinguish:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2285,7 +2285,7 @@
       "requirement_digest": "127775e03a74191a385bf18f3a705e75764b5c55f4fd8329c88b483197b52dad",
       "requirement_id": "REQ-C49E8F01F181",
       "requirement_text": "Where a provider API reports the main execution as `running` while rollback handlers execute, adapters SHALL preserve the rollback dimension rather than replacing the execution status with a fabricated generic `ROLLING_BACK` state.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2307,7 +2307,7 @@
       "requirement_digest": "7f84703ea7515167debaa10a6b20108b104eb54157e8190b2cbe5395421f0448",
       "requirement_id": "REQ-71C33D8EEF74",
       "requirement_text": "Durable Object lifecycle MUST be capability/version aware.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2329,7 +2329,7 @@
       "requirement_digest": "ea345a445c608b91abe5f61a33c2b333604ea9fc4bd11d510808666aa4854237",
       "requirement_id": "REQ-4641E83A2545",
       "requirement_text": "Cloudflare adapters SHALL support the provider's current declarative class lifecycle model where available and legacy migration declarations where still supported, without treating them as ordinary SQL migration files.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2351,7 +2351,7 @@
       "requirement_digest": "e6ad0a057e0b52c40dbc4061e33f38f4623a5025c92432083070fe333aebecdd",
       "requirement_id": "REQ-346411C9C714",
       "requirement_text": "- delete MUST be blocked when provider reports external bindings that prevent safe deletion;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2373,7 +2373,7 @@
       "requirement_digest": "e305ba6b50ab415b924152cbb78596b3d80508163cda98989ee9e356aadd6394",
       "requirement_id": "REQ-1F81DF5256D7",
       "requirement_text": "- tombstone/declarative reconciliation state MUST remain visible until provider reconciliation proves completion;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2395,7 +2395,7 @@
       "requirement_digest": "1298f9a4339c672664b5be718177c80051d4ad373e7c44034e314f31eb3a1d10",
       "requirement_id": "R1.1",
       "requirement_text": "The implementation SHALL capability-discover rather than freeze documentation assumptions. The following current Cloudflare semantics motivated R1.1:",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2417,7 +2417,7 @@
       "requirement_digest": "a37146b9101cecea58c1a7004479723955eeab5ca3b1efe1f7a77a2d0202c494",
       "requirement_id": "REQ-E748E5BE1B18",
       "requirement_text": "- Durable Object class lifecycle now has a declarative class export/lifecycle model in addition to legacy migration flows; adapter behavior must be provider-version aware.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2439,7 +2439,7 @@
       "requirement_digest": "2dab6a77eadef3328b7cf17e5743e8b71e6371227ef10a70507777087335d3f4",
       "requirement_id": "REQ-8ACD3E81C5CB",
       "requirement_text": "**Authority correction:** Provider-status feeds and production telemetry are observation sources only. Incident declaration/command/problem/change records remain with the current canonical Reliability/Incident authority (Spec 228 where active), and user-configurable monitor/alert policies remain with the current Monitoring/Alert authority (Spec 238 where active). SPEC-295 may project/link those records but MUST NOT create a competing incident state machine, alert evaluator or notification provider.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2461,7 +2461,7 @@
       "requirement_digest": "3f9b84b701110de4bcda90826c2f84bb3cb22b85152c4d05e089c83ae55ce693",
       "requirement_id": "R1.1-1816",
       "requirement_text": "**Container baseline correction:** Any predecessor wording that implied Cloudflare Container autoscaling was merely a future capability is superseded by R1.1. Adapters SHALL discover current scheduling strategy/capabilities (including provider-managed or Durable-Object-controlled strategies where exposed) and preserve readiness separately from process-running state.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2483,7 +2483,7 @@
       "requirement_digest": "e6b2eeac6bf391e16f2252044fa239a277e1c91068a792b9f16f666eacc2341a",
       "requirement_id": "REQ-B350260A7DC0",
       "requirement_text": "1. High-lock PostgreSQL migration cannot be labeled safe when lock/transaction capability is unknown.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2505,7 +2505,7 @@
       "requirement_digest": "5e9f4e463a75f27ccfa8f6d3487410c05c06fa32546f25a889da75f79998aaa3",
       "requirement_id": "REQ-AF3A5AB3EB20",
       "requirement_text": "2. Timed-out migration reconciles actual schema/ledger state before retry.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2527,7 +2527,7 @@
       "requirement_digest": "12f3635da48a9e7da21764e3cb24aec442b01d08af3f1c311cef2a86fdb072cc",
       "requirement_id": "REQ-6C4001CC1B5D",
       "requirement_text": "3. Dual-write transition records writer/read compatibility and cannot switch reads blindly.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2549,7 +2549,7 @@
       "requirement_digest": "888e9adaedd83ce572afaef94c7b4ca42c93d2716bcf9064b7757b22f7bf4be0",
       "requirement_id": "REQ-3668583A43CB",
       "requirement_text": "4. Backfill completion without invariant verification remains unverified.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2571,7 +2571,7 @@
       "requirement_digest": "dad1264b5281e9ec25feedd7ba1d51f8e34aa32c24adc9b5f81a9c33a140400e",
       "requirement_id": "REQ-507EE8425D14",
       "requirement_text": "5. Per-tenant/cohort migration failure does not falsely mark unrelated cohorts failed/applied.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2593,7 +2593,7 @@
       "requirement_digest": "99153fa19c3744b1f11d4e1dd8f46841f01799bfd5fb995dacb8e1a64908d570",
       "requirement_id": "REQ-EA7891C440B2",
       "requirement_text": "6. Drift on Terraform/GitOps-owned resource is reported without SmartAIHub auto-repair fighting the declared authority.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2615,7 +2615,7 @@
       "requirement_digest": "d86c081b592542bda95e8da56451f965cb5e42ae089f7c5de8e74396d0b64d2c",
       "requirement_id": "REQ-086518AB8418",
       "requirement_text": "7. Route overlap/shadowing is visible before traffic promotion.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2637,7 +2637,7 @@
       "requirement_digest": "25b85332f824474b962deec8ee1384fa04e89fff7586b1aae0aba04116cfa734",
       "requirement_id": "REQ-06FE167DDDAE",
       "requirement_text": "8. Required cache invalidation pending prevents “release fully verified” when policy marks it applicable.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2659,7 +2659,7 @@
       "requirement_digest": "2f65f8b3d716261cbc7618a819c5bbb35ff37b322ca10f069ad86aec376024d5",
       "requirement_id": "REQ-B89FCA714AA0",
       "requirement_text": "9. Provider incident overlay does not automatically mark unrelated SmartAIHub services failed.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2681,7 +2681,7 @@
       "requirement_digest": "9d78e431cba3faa1092479d192b5038130bed0c714a36addbe06de931e89da10",
       "requirement_id": "REQ-991F447601F3",
       "requirement_text": "10. Sampled Container rollout health is not presented as a full exact instance count.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2703,7 +2703,7 @@
       "requirement_digest": "5f305aa05818b843abcd74324ded0fe22f56257a043b31824b093a9ab403ce72",
       "requirement_id": "REQ-36CCE71BE8F3",
       "requirement_text": "11. Container process `running` without readiness proof is not rendered `READY`.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2725,7 +2725,7 @@
       "requirement_digest": "81c5eacd30a37219de2b36823bea42656109484310d98324ef821b6913059de4",
       "requirement_id": "REQ-3A8731511F7F",
       "requirement_text": "12. Queue backlog analytics includes observation window and is not phrased as exact instantaneous depth.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2747,7 +2747,7 @@
       "requirement_digest": "1c0c1593aca4ba92486d710448563fb259a5fdc7f65bab90fa0b23d24222a55f",
       "requirement_id": "REQ-87324C898091",
       "requirement_text": "13. Workflow rollback outcome remains visible while provider execution status remains running.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2769,7 +2769,7 @@
       "requirement_digest": "704d910a56b50923eac1bfad5a8755d7226cb2aa5ff943a9c012f3ddb90b04e0",
       "requirement_id": "REQ-69FF0AC25B9F",
       "requirement_text": "14. Durable Object delete is blocked/reconciled when external bindings still reference the class/namespace.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2791,7 +2791,7 @@
       "requirement_digest": "38bd4e5a7ef86029f63fea01b6d85e29ff2dd95cf814ddcdbd13defc23364d62",
       "requirement_id": "REQ-423BE4797748",
       "requirement_text": "15. Legacy→declarative Durable Object lifecycle transition is explicit and not silently mixed.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2813,7 +2813,7 @@
       "requirement_digest": "52c9b2cfef50cde4230ef578a452f82fe405efb21241827336ad5eb34e8a9da5",
       "requirement_id": "REQ-71C9EB060B07",
       "requirement_text": "16. Secret rotation/config/feature-flag/manual repair creates an EnvironmentRevision even without source SHA change.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2835,7 +2835,7 @@
       "requirement_digest": "1b9754791dc9329a8820c44166cda4bb1a2465cf44f0d23615f4be0a9ff3a4a4",
       "requirement_id": "REQ-DCF5732C3497",
       "requirement_text": "17. Production can be `SOURCE_MATCHES + CONFIG_CHANGED_AFTER_RELEASE`.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2857,7 +2857,7 @@
       "requirement_digest": "7cb7b50d228383fb68196b5d6c775d0f4695de6adc746a5723ddf0eda3404f32",
       "requirement_id": "REQ-5F181BFBAC5F",
       "requirement_text": "18. TLS/certificate/DNS/WAF health can degrade an environment independently of code health.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2879,7 +2879,7 @@
       "requirement_digest": "7345cc471fff0bc5ccb053a7f5818d3d10c2ea04a9c756497942a98f6b5fa0e4",
       "requirement_id": "REQ-05763F09E239",
       "requirement_text": "19. Migration cohort summaries authorize before aggregate.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2901,7 +2901,7 @@
       "requirement_digest": "697a962655e9ba32485a277282fee358410829838f0de45c6d96daca85ef6bf0",
       "requirement_id": "REQ-0E0A9D77300A",
       "requirement_text": "20. Provider/analytics telemetry outage yields stale/unknown with preserved last observation.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2923,7 +2923,7 @@
       "requirement_digest": "19de6e2c98b061c91fcb0f3b9976d5844c5903cfcedb27f3030489e81f02e28b",
       "requirement_id": "REQ-D958D35834AE",
       "requirement_text": "> **Production truth is a versioned graph of source, artifacts, traffic, schema/data contracts, runtime resources, configuration, health observations and operational changes — not a single “deployed” flag.** SPEC-295 must preserve uncertainty, provider-specific semantics and desired-state ownership so safe next actions can be explained without creating a competing executor.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2945,7 +2945,7 @@
       "requirement_digest": "c50fa4d469a693146b3197d112df1e19be89dda1fedffb841b00d4d8ad482cbb",
       "requirement_id": "REQ-760830F3294E",
       "requirement_text": "`PAGES` is a first-class `ServiceNodeKind` and SHALL have an explicit projection.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2967,7 +2967,7 @@
       "requirement_digest": "dd7def07107ee38f677460ef7d23a738357ab6d0318da9fbac431a6373b8da91",
       "requirement_id": "REQ-8B0524495B1C",
       "requirement_text": "A Pages deployment SHALL NOT be inferred from Git branch state alone. Direct Upload deployments may lack normal Git provenance and therefore require artifact/manifest evidence instead.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2989,7 +2989,7 @@
       "requirement_digest": "b2df97134b16a500dd93891f9b0dcbbcce3d651c65fc736167a8e19d68c9d64e",
       "requirement_id": "REQ-ABD64D72B74A",
       "requirement_text": "Deployments SHALL pin immutable artifact identity whenever the runtime/provider supports it.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3011,7 +3011,7 @@
       "requirement_digest": "d57c0fa1eac9ec5e20de7b00dec6148f2475ecde91bb85b718ecacfef075c472",
       "requirement_id": "REQ-9915F0260D75",
       "requirement_text": "- provider-managed aliases MAY be shown for usability but never replace immutable digest/provenance where required;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3033,7 +3033,7 @@
       "requirement_digest": "71f1d7b0975b3dda39c2ed375d1438c28ba5c25e79cc14381c65724c9200b900",
       "requirement_id": "REQ-85B8083E025F",
       "requirement_text": "- rollback recommendations SHALL consider whether data/schema changes make code rollback insufficient or unsafe;",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3055,7 +3055,7 @@
       "requirement_digest": "eda87cf9cacd00a7e05f1e3291fab3bd891ff791e8f9032ad1990e4a0d6b5c3f",
       "requirement_id": "REQ-3938663DEBF4",
       "requirement_text": "- DR environment health MUST remain separate from primary environment health.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3077,7 +3077,7 @@
       "requirement_digest": "d73d3c2fcc4253afcec8884b9ea8b2b2a02644ae6e7ce7a460c55128033c9a43",
       "requirement_id": "REQ-EF5AFFC9556C",
       "requirement_text": "The system MUST NOT represent a non-atomic multi-target migration as one atomic transaction. Partial application requires explicit affected-target inventory and safe next action.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3099,7 +3099,7 @@
       "requirement_digest": "6832c66e0e5d2cecaedaf1337376c6b39a5016fce1cf5e54b9fc659dfda2c706",
       "requirement_id": "REQ-27DABB05EA1E",
       "requirement_text": "Secret rotation/config changes MUST NOT assume all active Worker/Container versions read identical keys/formats. Retiring an old credential epoch requires proof that no authorized active runtime still depends on it.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3121,7 +3121,7 @@
       "requirement_digest": "57478edc19b194bff5a8b6f5489dee9e5e94e090bea24276b303ad435042c060",
       "requirement_id": "REQ-3A4198F0A9EB",
       "requirement_text": "Release safety SHALL consume change-governance facts without creating a second change-management system.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3143,7 +3143,7 @@
       "requirement_digest": "3eab0a6e55108bd6462a8c71cd436fe0593ae367efe1d90b7c2a1b19c829bfd6",
       "requirement_id": "REQ-385E20214872",
       "requirement_text": "Promotion comparison SHALL use immutable artifacts + configuration/environment generations, not branch/version/image display labels.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3165,7 +3165,7 @@
       "requirement_digest": "2f3c3ae9dbefca3db8cf3c21281775ac4e68e2ef1a8cb3fcae27c7e1dcfb49f5",
       "requirement_id": "REQ-BAA6C6A093E9",
       "requirement_text": "Typed `EXTERNAL_SERVICE` nodes SHALL expose bounded operational facts when authorized.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3187,7 +3187,7 @@
       "requirement_digest": "88c36e2d696425d82170922ea51fb4c324f92947bbf2ea5b216a3f8001c6b041",
       "requirement_id": "REQ-F3C55E401C5B",
       "requirement_text": "1. Queue realtime backlog and analytics backlog are represented with different observation semantics; averaged metrics never populate an exact-looking point field.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3209,7 +3209,7 @@
       "requirement_digest": "c721f76c4930ec18f2a5a7a3ed7552413b0311142c037768b17009a70c2fdaa8",
       "requirement_id": "REQ-B70A8BC340AB",
       "requirement_text": "2. Hyperdrive windowed metrics are not rendered as exact instantaneous open/waiting-client counts unless the provider exposes point state.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3231,7 +3231,7 @@
       "requirement_digest": "0e444ce8e3390ac991e48c5c264c3f32a7670c51d687e304f5fcb9c4cf3e98a3",
       "requirement_id": "REQ-7A52D1DE9B2B",
       "requirement_text": "3. Git-connected Pages production branch can advance without a successful Pages deployment and therefore remains `SOURCE_AHEAD_OF_PRODUCTION`.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3253,7 +3253,7 @@
       "requirement_digest": "7d099f937a5ea923e3ae06e2b096bccfde534e27fa8a93c3f9c98ff8bd58bc1c",
       "requirement_id": "REQ-B0BEA1BA49F7",
       "requirement_text": "4. Direct Upload Pages deployment can be proven through artifact/manifest evidence without inventing a Git commit.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3275,7 +3275,7 @@
       "requirement_digest": "80358d6ab14a70ee2eff1e657bb1684917df7717d052954d356e79681e072449",
       "requirement_id": "REQ-5446E5E9AF83",
       "requirement_text": "5. Container production identity pins immutable image digest when available; mutable tag alone is insufficient.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3297,7 +3297,7 @@
       "requirement_digest": "9ad96ac8dfa026c8b968c11ec7d5d073d380f02075e1c801aa4810d9022991ad",
       "requirement_id": "REQ-1F105D2E0DD4",
       "requirement_text": "6. Same release label with different artifact digest is detected as different production content.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3319,7 +3319,7 @@
       "requirement_digest": "c2b8cc660417f92e427281711947c86cc6b14576a4795995ccaf453e4c29e4eb",
       "requirement_id": "REQ-6BA719A6C1B9",
       "requirement_text": "7. Backup/bookmark existence without restore rehearsal/policy evidence is not labeled “recovery verified”.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3341,7 +3341,7 @@
       "requirement_digest": "68ca43789277e8718d65d853afa38793910790e49bdb9b73faeffaaf931029d5",
       "requirement_id": "REQ-39250E3EB8F0",
       "requirement_text": "8. D1/PostgreSQL restore/PITR capability is projected separately from normal deployment and requires authorization for destructive restore.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3363,7 +3363,7 @@
       "requirement_digest": "03c433729d896dffda1a3927d29ee9eb0177a57c87403378563fbd3a0803dbdc",
       "requirement_id": "REQ-669D34008636",
       "requirement_text": "9. Non-atomic migration across PostgreSQL + D1/DO can reach `PARTIALLY_APPLIED` and cannot be reported atomically complete.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3385,7 +3385,7 @@
       "requirement_digest": "687439195f8be979f563a3448030df55580993c06f8a4899eb7b5b825e02dfbf",
       "requirement_id": "REQ-30046A985820",
       "requirement_text": "10. Backfill/reindex job exit without declared invariant verification does not complete its DataChangeSet.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3407,7 +3407,7 @@
       "requirement_digest": "77ea86390334f5b8e213b74a2eb1bc7669a4a2f810310fa25486cb5e493cc698",
       "requirement_id": "REQ-DDD2F5FA36B0",
       "requirement_text": "11. Old runtime version depending on an old secret/config epoch blocks unsafe credential retirement.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3429,7 +3429,7 @@
       "requirement_digest": "998d12a504a05113a995843548244a2eec3fc3288e7648bf901e0fcc5a5fb540",
       "requirement_id": "REQ-CA049E2C95BE",
       "requirement_text": "12. Provider quota/throttling can degrade release/runtime readiness independently of source health.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3451,7 +3451,7 @@
       "requirement_digest": "aed75a5ec8e2016e4284bc997d84f917940e895dc28ca436b7a122149d1ad581",
       "requirement_id": "REQ-2B2087FA7C50",
       "requirement_text": "13. Production freeze/change-window policy can block promotion without changing build correctness.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3473,7 +3473,7 @@
       "requirement_digest": "0559b5e2805460301e9fad00ed98b3f45784deba86d516b5ec43f93424ce027c",
       "requirement_id": "REQ-64EC2A0942E0",
       "requirement_text": "14. Emergency change retains incident/change authority links and cannot bypass audit.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3495,7 +3495,7 @@
       "requirement_digest": "563b8fc90351e6378ba07b6efbc79f9e9f894ede4b5ae2c1caf534b0a1bc830e",
       "requirement_id": "REQ-883C6E21946E",
       "requirement_text": "15. Staging/production comparison uses immutable artifacts/config/migration identity, not display labels.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3517,7 +3517,7 @@
       "requirement_digest": "4f446ea29c67a148a66063a4e56bdb960e63e9e2335b42b4bd926fb54c76bccf",
       "requirement_id": "REQ-3E0BB15A1579",
       "requirement_text": "16. External dependency degradation is correlated but does not establish root cause automatically.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3539,7 +3539,7 @@
       "requirement_digest": "65f31fe6f7076beec6d72e7fdae91e38c8acb1862c43d4cc44255b674b7eb652",
       "requirement_id": "REQ-8E771B83AF27",
       "requirement_text": "> **Production safety depends on immutable artifact identity, recoverable state, compatible configuration/data evolution and truthful telemetry semantics — not merely successful deploy commands.** SPEC-295 must be able to explain what is running, what data/config it expects, how it can be recovered, and which external/provider constraints still make promotion unsafe.",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3561,7 +3561,7 @@
       "requirement_digest": "78f2b26c145ead0143f9f011b6f662984a8fd52826d88c5a3cca67764934a7f4",
       "requirement_id": "REQ-8A66550B8C25",
       "requirement_text": "`SOURCE_SHA` → immutable `BUILD_ARTIFACT_DIGEST` → required/applied migration",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3583,7 +3583,7 @@
       "requirement_digest": "688fd1ca747ffa0bab343402e6e8d409889f0b3f65ab8a1f51473e5a3fa4bd71",
       "requirement_id": "REQ-289E741CA161",
       "requirement_text": "rollback. Every required instance and migration target must reach the intended",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3605,7 +3605,7 @@
       "requirement_digest": "a52cd32bcb9b978bdd82c02754854554ad83d43fee0f1c06c9d81ce881df3925",
       "requirement_id": "REQ-0FC45C88EE18",
       "requirement_text": "convergence, settled worktrees and required checks. `RELEASE_COMPLETE` requires",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3627,13 +3627,35 @@
       "requirement_digest": "babd8e5ac5aaf2d891ad9df2ce85183aa9918186018b9f9ad1003ed1ffd077cb",
       "requirement_id": "REQ-A045F9189BD3",
       "requirement_text": "artifact provenance, migrations settled, deployment and all required runtime",
-      "source_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md#L2209"
+      ],
+      "authority_source": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md#L2209",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "e378aee3d42ec4f149d00c8272967958fc27839e937c8ed8e1e663b32492e02a",
+      "requirement_id": "REQ-253CBC2B31E7",
+      "requirement_text": "SPEC-304 owns stable `AppIdentity`/`publicAppId`, canonical app route and mutable aliases, App Shell/startup semantics, runtime requirement declarations, and app/channel-to-release/deployment references. SPEC-295 remains sole authority for release sets, migration execution, deployment lifecycle, desired/observed state, health, rollback, and production operations. A route resolution or App identity receipt MUST NOT imply deployment health, rollout completion, or acceptance. A domain/slug/owner change MUST NOT mutate historical deployment or release identity. Runtime requirements declared by SPEC-304 are inputs to SPEC-295's existing target/capacity/security gates, not a second provisioner or deployment executor. This is a contract alignment only; no production migration or deployment is authorized.",
+      "source_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
+  "spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
   "spec_id": "295"
 }

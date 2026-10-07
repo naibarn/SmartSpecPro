@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
       },
@@ -92,7 +92,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505"
+    "expected_spec_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009"
   },
   "continuation": {
     "next_action": null,
@@ -106,7 +106,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
       },
@@ -203,7 +203,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
       },
@@ -281,18 +281,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
-    "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+    "digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:16.473463Z",
+      "last_evidence_at": "2026-10-07T04:14:00.453166Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-08-30T21:05:27+07:00",
       "spec_last_changed_at": "2026-08-30T21:05:27+07:00"
     },
-    "revision": "1.10.0",
+    "revision": "1.11.0",
     "slug": "166-credit-context-polymorphic-lineage",
     "spec_id": "166",
     "title": "Feature 166: Polymorphic Credit Context and Work Lineage"
@@ -311,10 +311,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:16.473463Z"
+    "updated_at": "2026-10-07T04:14:00.453166Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,10 +324,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:16.473463Z",
+    "reconciled_at": "2026-10-07T04:14:00.453166Z",
     "sources": [
       {
-        "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
       },
@@ -409,11 +409,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
-        "source_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "source_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "value": "SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -435,14 +440,14 @@
         "excerpt": "**Status:** SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending",
         "line": 3,
         "source": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
-        "source_digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "source_digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "value": "SPEC REVIEW PASSED (59 rounds) — deep-plan complete; deep-implement complete locally; external migration/backfill/browser/staging/production proof pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505",
+        "digest": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md"
       },
@@ -528,11 +533,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 260,
-    "unresolved": 260
+    "total": 261,
+    "unresolved": 261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:16.473463Z",
+  "updated_at": "2026-10-07T04:14:00.453166Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

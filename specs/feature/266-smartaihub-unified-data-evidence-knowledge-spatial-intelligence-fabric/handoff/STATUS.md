@@ -2,11 +2,11 @@
 # 266 — Spec 266 — SmartAIHub Unified Data, Evidence, Knowledge & Spatial Intelligence Fabric
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 206 unresolved of 206
+- Requirements: 0 pass / 207 unresolved of 207
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 9
+- Manifest generation: 14
 
 ## Source-declared status and relationship claims
 

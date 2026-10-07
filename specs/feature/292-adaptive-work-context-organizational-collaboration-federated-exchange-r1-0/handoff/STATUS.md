@@ -2,11 +2,11 @@
 # 292 — Spec 292 — SmartAIHub Adaptive Work Context, Organizational Collaboration & Federated Work Exchange
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 32 unresolved of 32
+- Requirements: 0 pass / 33 unresolved of 33
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

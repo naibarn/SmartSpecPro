@@ -3436,6 +3436,21 @@
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "269"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
@@ -3770,7 +3785,7 @@
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
+        "DOCUMENTATION_OR_CONFIG": 4,
         "SOURCE": 0,
         "TEST": 0
       },
@@ -3805,6 +3820,51 @@
         "TEST": 0
       },
       "spec_id": "301"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "302"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "303"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "304"
     },
     {
       "authority": "UNRESOLVED",
