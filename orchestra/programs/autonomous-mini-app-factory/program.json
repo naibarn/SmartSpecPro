@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+    "sha": "1f898eb5f4e00b7befd026e8cbf551bc524a5ae8",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:e38de0a3-6ed9-4458-92ef-7e674c1f700d"
+    "convergenceReceipt": "workspace-convergence:69e48748-ed66-426a-86f0-c667122c980a"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -42,7 +42,7 @@
   },
   "currentWorkunit": {
     "id": "SPEC304_REFERENCE_APP_UI_AI_BACKGROUND",
-    "state": "WAITING_EXTERNAL",
+    "state": "WORKING",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -50,16 +50,15 @@
       "apps/web/server/services/"
     ],
     "evidence": [
+      "PR #238 integrated the Research Notes UI and tenant-bound public App resolution at origin/main SHA 1f898eb5f4e00b7befd026e8cbf551bc524a5ae8; 12 focused UI/router/service tests passed on source 1b008107.",
       "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE integrated at 3ad161e36132db51d7a9260a20d07e362ac8b2cd; 21 focused tests passed on that exact SHA.",
-      "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence.",
-      "Research Notes UI and authenticated public App resolution committed locally as 1b008107c; focused UI/router/service tests passed 12/12 on that commit. This checkpoint is not integrated because GitHub rejected normal pushes with Internal Server Error."
+      "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence."
     ],
     "pending": [
-      "Promotion of 1b008107c is pending GitHub write-path recovery; origin/main remains 3ad161e36132db51d7a9260a20d07e362ac8b2cd.",
-      "Migration 0393 has not been applied; no DATABASE_URL is configured, so PostgreSQL integration evidence is pending.",
-      "AI summary, durable worker_jobs-backed action, package/deployment and runtime acceptance remain open."
+      "Migration 0393 is present in main; local PostgreSQL connection lacks credentials, so DB application/integration evidence is pending. No migration was run against an unknown target.",
+      "AI-backed summary execution, background status UI, portable manifest/package path, deployment descriptor and runtime acceptance remain open."
     ],
-    "nextAction": "Retry non-force promotion of local checkpoint 1b008107c when GitHub accepts ref writes; after integration and workspace convergence, continue AI summary and durable background work through worker_jobs plus outbox."
+    "nextAction": "Validate migration 0393 structurally and with a safe local test target if available; then implement the tenant/project-bound canonical summary worker and continue through package and deployment evidence."
   },
   "checkpoints": [
     {
@@ -91,18 +90,18 @@
       "state": "PARTIAL_INTEGRATED",
       "sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
       "evidence": "21 focused tests and schema module import passed on the integrated SHA; SPEC-302 handoff records partial identity and authorization evidence."
+    },
+    {
+      "id": "SPEC304_REFERENCE_RESEARCH_NOTES_UI",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "69bc7a04c62334e2910cf1429fea07dc68a48987",
+      "sha": "1f898eb5f4e00b7befd026e8cbf551bc524a5ae8",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/238",
+      "evidence": "12 focused UI/router/service tests passed on source 1b008107. PR #238 merged normally; source is reachable from origin/main and the registered canonical workspace converged cleanly."
     }
   ],
   "completedWorkunits": [],
-  "blockedWorkunits": [
-    {
-      "id": "PROMOTE_RESEARCH_NOTES_UI_CHECKPOINT",
-      "state": "WAITING_EXTERNAL",
-      "rootCause": "GitHub rejected push/ref creation with HTTP Internal Server Error across SSH, HTTPS and GitHub API attempts.",
-      "satisfactionPredicate": "A normal non-force push or GitHub API ref creation succeeds and PR merge SHA is reachable from origin/main.",
-      "nextAction": "Retry promotion, refresh origin/main, open/merge normal PR, then converge canonical user workspace."
-    }
-  ],
+  "blockedWorkunits": [],
   "criticalPath": [
     {
       "order": 1,
@@ -233,12 +232,25 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "PROMOTE_RESEARCH_NOTES_UI_CHECKPOINT"
+    "nextEligibleWorkunit": "RESEARCH_NOTES_MIGRATION_AND_AI_BACKGROUND",
+    "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE applies only to integration workunits; independent implementation continues.",
+    "githubRetryPolicy": {
+      "state": "IDLE_AFTER_SUCCESS",
+      "lastScenario": "GitHub returned Internal Server Error; bounded retry recovered, pushed a normal PR, and integrated it without user input.",
+      "regressionTest": "orchestra/programs/autonomous-mini-app-factory/test_retry_github_integration.py",
+      "backoff": {
+        "attempts": 10,
+        "baseDelaySeconds": 5,
+        "multiplier": 2,
+        "capSeconds": 300
+      },
+      "mergePolicy": "normal PR merge; auto-merge is not enabled on this repository"
+    }
   },
   "deferredInfrastructure": [
     "Full reconciliation of unrelated dormant Specs not needed by Mini App Factory MVP",
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T15:12:00Z"
+  "updatedAt": "2026-10-07T15:48:00Z"
 }
