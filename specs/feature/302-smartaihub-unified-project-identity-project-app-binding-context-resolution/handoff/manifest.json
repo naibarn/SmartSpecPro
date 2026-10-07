@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "expected_canonical_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 10,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -154,9 +154,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "canonical_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:22:30Z"
+    "integrated_at": "2026-10-07T14:49:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -238,6 +238,66 @@
     "reconciliation_confidence": {
       "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "value": "HIGH"
+    },
+    "requirements": {
+      "REQ-6B4D8C8FA775": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24"
+        ],
+        "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "CANONICAL_PROJECT_IDENTITY",
+            "path": "apps/web/drizzle/schema.ts",
+            "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+            "summary": "Adds separate canonical_projects identity plus tenant-scoped membership and many-to-many App binding; project identity is independent from App identity."
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Apply migration 0393 to a verified non-production database, then add domain-record bindings and cross-App acceptance.",
+        "requirement_digest": "fc5f2f9e5a37dd3bab9030f9ec03a4a914a49d0d022910cd234b5aa8f94b6c53",
+        "requirement_id": "REQ-6B4D8C8FA775",
+        "requirement_text": "1. A Project MUST NOT be a child of one App; an App MUST NOT own global Project identity.",
+        "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      },
+      "REQ-8D8136DAE54F": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28"
+        ],
+        "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "TENANT_PROJECT_APP_AUTHORIZATION",
+            "path": "apps/web/server/services/researchNotesService.ts",
+            "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+            "summary": "Research Notes operations scope by tenant, active project membership, project-App binding, active App state and note identity; writes require a non-viewer membership."
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Verify query authorization against PostgreSQL and add revocation/cross-tenant integration tests.",
+        "requirement_digest": "b5baa588f3c5a664edf7f53d2dd7ee415d5888a05ff60c4071259e144b76f496",
+        "requirement_id": "REQ-8D8136DAE54F",
+        "requirement_text": "5. Identity resolution is distinct from authorization. Every read/write MUST re-check tenant, membership, ACL, and current revocation state.",
+        "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      }
     }
   },
   "reconciliation": {
@@ -321,7 +381,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:25:29.837227Z",
+  "updated_at": "2026-10-07T14:51:34.159085Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

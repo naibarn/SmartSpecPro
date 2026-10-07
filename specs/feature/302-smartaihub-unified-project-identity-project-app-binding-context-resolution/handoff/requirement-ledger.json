@@ -1,5 +1,5 @@
 {
-  "generation": 2,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -32,12 +32,19 @@
       "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24",
       "blocker": null,
       "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "CANONICAL_PROJECT_IDENTITY",
+          "path": "apps/web/drizzle/schema.ts",
+          "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+          "summary": "Adds separate canonical_projects identity plus tenant-scoped membership and many-to-many App binding; project identity is independent from App identity."
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Apply migration 0393 to a verified non-production database, then add domain-record bindings and cross-App acceptance.",
       "requirement_digest": "fc5f2f9e5a37dd3bab9030f9ec03a4a914a49d0d022910cd234b5aa8f94b6c53",
       "requirement_id": "REQ-6B4D8C8FA775",
       "requirement_text": "1. A Project MUST NOT be a child of one App; an App MUST NOT own global Project identity.",
@@ -54,12 +61,19 @@
       "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28",
       "blocker": null,
       "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "TENANT_PROJECT_APP_AUTHORIZATION",
+          "path": "apps/web/server/services/researchNotesService.ts",
+          "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+          "summary": "Research Notes operations scope by tenant, active project membership, project-App binding, active App state and note identity; writes require a non-viewer membership."
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify query authorization against PostgreSQL and add revocation/cross-tenant integration tests.",
       "requirement_digest": "b5baa588f3c5a664edf7f53d2dd7ee415d5888a05ff60c4071259e144b76f496",
       "requirement_id": "REQ-8D8136DAE54F",
       "requirement_text": "5. Identity resolution is distinct from authorization. Every read/write MUST re-check tenant, membership, ACL, and current revocation state.",
