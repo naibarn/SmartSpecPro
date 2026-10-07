@@ -24,3 +24,5 @@ printf 'workspace_authority=%s\n' "$workspace_authority"
 printf 'mem_available_mb=%s\n' "$mem_available_mb"
 echo '--- status --porcelain ---'
 git status --porcelain=v1
+echo '--- git capabilities and integration state ---'
+python3 "$root/skills/development-lifecycle/git_capabilities.py" inspect --repo "$root"

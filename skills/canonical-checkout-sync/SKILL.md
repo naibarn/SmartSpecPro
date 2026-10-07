@@ -9,6 +9,16 @@ Follow the shared [development lifecycle contract](../development-lifecycle/SKIL
 
 Use this after a requested revision is integrated into the repository's canonical history and before build, test, package, deploy, or verification work. It prepares an isolated Git worktree and a fenced source lease. It does not align, reset, clean, or switch the developer checkout.
 
+Before synchronization or preparation, inspect branch/worktree, staged,
+unstaged, untracked, and active merge/rebase/cherry-pick state with
+`python3 skills/development-lifecycle/git_capabilities.py inspect` plus
+`git status --porcelain=v1 --untracked-files=all`. Report clean, dirty-owned,
+dirty-other-session, staged-uncommitted, integration-in-progress, behind,
+ahead, or diverged distinctly. Do not call a dirty worktree clean or absorb its
+index into the synchronization operation. If sync itself produces conflicts,
+resolve only owned paths through the shared conflict policy and retain the
+staged-set gate.
+
 ## Repository policy
 
 Each repository configures its source authority in `.development-repository.toml`:

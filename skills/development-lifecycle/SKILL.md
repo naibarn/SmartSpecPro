@@ -16,6 +16,15 @@ This contract is the shared semantic source for lifecycle skills and orchestrati
 
 ## Workspace authority and freshness
 
+`git_capabilities.py` is the shared Git capability and conflict-resolution
+policy for lifecycle skills. It reports the effective Git version, merge /
+rebase / cherry-pick state, staged and unstaged paths, and unmerged paths.
+Conflict resolution must declare owned paths plus any expected remaining
+unmerged paths; it uses native `git add --resolved -- <paths>` on Git 2.56+
+and a marker-checked explicit-path fallback on older runners. It rejects
+pre-staged or newly staged paths outside operation ownership. This index guard
+does not establish semantic correctness.
+
 Canonical history and the directory open in an editor/SSH session are separate
 facts. `scripts/development-lifecycle/workspace_authority.py` is the shared
 resolver for project/repository identity, explicit workspace roles, owners,

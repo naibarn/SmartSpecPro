@@ -281,6 +281,11 @@ Maintain list of all files created during implementation.
 
 ### Step 5: Stage Changes
 
+Ordinary task staging below must remain explicit. For merge/rebase/cherry-pick
+conflicts, use the shared lifecycle Git policy instead; broad staging is never
+a conflict-resolution shortcut. Resolve only owned paths and verify the full
+remaining-unmerged inventory and staged ownership before commit.
+
 ```bash
 # Stage new files
 git add {created_files...}
