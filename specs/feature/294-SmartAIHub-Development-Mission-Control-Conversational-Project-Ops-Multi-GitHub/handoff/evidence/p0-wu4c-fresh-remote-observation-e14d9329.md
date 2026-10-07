@@ -1,0 +1,10 @@
+# P0-WU-4C Fresh Remote Head Observation Checkpoint
+
+- Requirement scope: bind Mission Control canonical, push, and integration facts to fresh remote heads while expiring stale evidence; distinguish patch-equivalent integration from exact integration.
+- Change: `294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub` now uses read-only `git ls-remote --heads`, a 60-second freshness TTL, explicit `UNPUSHED` / `PUSHED_UNINTEGRATED` / `INTEGRATED` / `PATCH_EQUIVALENT` facts, and stale projection downgrade.
+- Focused evidence: `python3 -m unittest scripts.development-lifecycle.test_workspace_authority` — 45 tests passed; `pnpm --dir apps/web exec vitest run server/services/workspaceAuthorityProjectReadModel.test.ts` — 11 tests passed; `python3 -m py_compile scripts/development-lifecycle/workspace_authority.py` — passed; `git diff --check` — passed.
+- CLI evidence: local Mission Control observed configured `origin/main` at `851e4c02be042ba8e2f0c72f0139fba75a719baf`, 81 remote heads, 8 integrated workspace facts, 0 pushed-unintegrated, and 0 unpushed. 38 workspace rows remain UNKNOWN because detached/no-upstream identity cannot be inferred. The registered canonical user workspace at `/home/dev/projects/SmartSpecPro` remains dirty and stale; it was preserved.
+- Candidate source SHA: `d70d14aa97a7aefc4e6751e62379999ae5a87702`.
+- Integrated SHA: `e14d9329f6a0cd62c84532146f2eb606f4a8636e` via [PR #191](https://github.com/naibarn/SmartSpecPro/pull/191), merged 2026-10-07 06:27:10 UTC; source SHA is reachable from `origin/main`.
+- CI: `build-preview` was `SKIPPED`; no CI pass is claimed. Targeted ESLint could not run because this checkout resolved ESLint 6.4.0 and no ESLint configuration was found.
+- Residuals: P0 implementation remains PARTIAL. Explicit provider/task identity mapping, authoritative migration failed-attempt source discovery, unknown detached/no-upstream workspace handling, remaining regression/acceptance evidence, and external production runtime verification remain open. External production verification was not attempted.
