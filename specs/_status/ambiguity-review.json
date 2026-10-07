@@ -113458,7 +113458,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
+      "canonical_sha": "8b6e23602de8341593586e6e25beb554443287b7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -113742,7 +113742,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: add a genuine handoff lifecycle producer; resolve authority precedence for conflicting facts from distinct trusted hosts; complete Mission Control push/integration/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish the WU-4C internal regression and acceptance gates.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -113806,7 +113806,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
+      "canonical_sha": "8b6e23602de8341593586e6e25beb554443287b7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114347,7 +114347,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: add a genuine handoff lifecycle producer; resolve authority precedence for conflicting facts from distinct trusted hosts; complete Mission Control push/integration/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish the WU-4C internal regression and acceptance gates.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -114411,7 +114411,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
+      "canonical_sha": "8b6e23602de8341593586e6e25beb554443287b7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114626,7 +114626,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:18:10.947322Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: add a genuine handoff lifecycle producer; resolve authority precedence for conflicting facts from distinct trusted hosts; complete Mission Control push/integration/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish the WU-4C internal regression and acceptance gates.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
