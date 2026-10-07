@@ -9,7 +9,7 @@ import { getDb, type DrizzleDB } from "../db";
 export type MigrationEvidenceStatus = "OBSERVED" | "NOT_CONFIGURED" | "UNAVAILABLE" | "PERMISSION_DENIED" | "ERROR";
 export type MigrationEvidence = {
   status: MigrationEvidenceStatus;
-  source: "drizzle.__drizzle_migrations";
+  source: string;
   observedAt: string;
   value: {
     environment: string;
@@ -27,6 +27,11 @@ export type MigrationEvidence = {
 type MigrationJournal = { entries?: Array<{ tag?: unknown }> };
 type AppliedMigration = { hash: string; created_at: number | string | null };
 type DbExecutor = Pick<DrizzleDB, "execute">;
+
+/** Provider-neutral normalized migration source consumed by internal runtime evidence. */
+export type MigrationEvidenceSource = {
+  observe(input?: { db?: DbExecutor; now?: Date }): Promise<MigrationEvidence>;
+};
 
 const MIGRATION_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../drizzle");
 
@@ -107,3 +112,7 @@ export async function getDrizzleMigrationEvidence(input: {
     };
   }
 }
+
+export const drizzleMigrationEvidenceSource: MigrationEvidenceSource = {
+  observe: getDrizzleMigrationEvidence,
+};
