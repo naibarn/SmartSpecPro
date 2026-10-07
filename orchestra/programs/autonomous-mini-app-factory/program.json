@@ -5,20 +5,32 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "9ad92c4437443690679e334d5f886048f5d9518f",
+    "sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
-    "userWorkspaceClean": true,
+    "userWorkspaceClean": false,
     "convergenceReceipt": {
-      "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
-      "canonical_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
-      "canonical_user_workspace_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
-      "canonical_user_workspace_dirty": false,
+      "status": "USER_WORKSPACE_CONVERGED",
+      "integrated_sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+      "canonical_sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+      "canonical_user_workspace_sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+      "canonical_user_workspace_dirty": true,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:a2478299-a447-40f6-82af-c070fa71e691",
-      "verified_at": "2026-10-07T17:59:44.114+00:00"
+      "receipt_id": "workspace-convergence:b07726d8-a098-47dd-8447-716fe3fd7387",
+      "verified_at": "2026-10-07T18:42:15.174+00:00"
     },
-    "observedAt": "2026-10-08T01:37:04+07:00"
+    "observedAt": "2026-10-08T01:42:35+07:00",
+    "latestVerify": {
+      "status": "CONVERGENCE_PENDING",
+      "integrated_sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+      "canonical_user_workspace_sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+      "dirty": true,
+      "reasons": [
+        "USER_WORKSPACE_DIRTY"
+      ],
+      "preservedBranch": "codex/import-spec-307-20261008",
+      "preservedStagedPath": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+      "verified_at": "2026-10-07T18:42:35.515+00:00"
+    }
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -52,7 +64,7 @@
   },
   "currentWorkunit": {
     "id": "FACTORY_DEPENDENCY_READY_SELECTOR_AND_SECOND_APP_PACKAGE",
-    "state": "CHECKPOINT_READY_PENDING_PR",
+    "state": "CHECKPOINT_PROMOTED_PARTIAL",
     "objective": "Make the existing Factory contract dependency-executable through DevelopmentWorkUnit and prove app-neutral package generation with a second app descriptor.",
     "implementation": [
       "apps/web/server/services/miniAppFactoryPipeline.ts",
@@ -89,14 +101,15 @@
       "Generic pipeline contract persisted at factory-pipeline.v1.json. It is a contract only; no generic executable pipeline or second Mini App reuse run has yet passed.",
       "A temporary app process bound only to 127.0.0.1:43301 on source SHA 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. /healthz and /readyz returned HTTP 200. Research Notes API/UI probes returned HTTP 500 because the disposable database lacks current tenant columns and the full schema could not be provisioned without PostgreSQL vector extension. Process stopped; production untouched.",
       "The disposable PostgreSQL and loopback app processes were stopped after capturing receipts and HTTP evidence. Temporary data and receipts remain under /tmp/research-notes-nonprod-v7e5fmbp for safe retry/recovery.",
-      "Source SHA 03166177e5ce094940b7ff2265837e1083954436: the DevelopmentWorkUnit-backed DAG selector passes 3 focused tests, including missing dependency/cycle rejection and continuing independent scopes while runtime stages wait. The shared deterministic SPAAS builder produced Research Notes digest spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17 and Project Wiki Pages digest spaas-package-v1:sha256:c59f0fd8053b058869092e01ad4e442006bc4e0c429b645ebabc51d9fe0fca1a; both validation states are needs_context. Project Wiki Pages is a Spec 281-derived package descriptor only; backend/UI implementation, app-specific tests, deployment, and UAT remain open."
+      "Source SHA 03166177e5ce094940b7ff2265837e1083954436: the DevelopmentWorkUnit-backed DAG selector passes 3 focused tests, including missing dependency/cycle rejection and continuing independent scopes while runtime stages wait. The shared deterministic SPAAS builder produced Research Notes digest spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17 and Project Wiki Pages digest spaas-package-v1:sha256:c59f0fd8053b058869092e01ad4e442006bc4e0c429b645ebabc51d9fe0fca1a; both validation states are needs_context. Project Wiki Pages is a Spec 281-derived package descriptor only; backend/UI implementation, app-specific tests, deployment, and UAT remain open.",
+      "PR #257 merged normally; source ec70d3cb7b31a6f82746eda1a5b720bac89405e2 is integrated at origin/main 1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74. Workspace authority convergence receipt b07726d8-a098-47dd-8447-716fe3fd7387 reached that SHA. Subsequent verify found a staged unrelated Spec 307 file on branch codex/import-spec-307-20261008, so the workspace is preserved and reported dirty; no checkout/reset/stash was performed."
     ],
     "pending": [
       "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
       "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed.",
       "Migration runner clean-database recovery is under repair; the target database remains empty, disposable, loopback-only, and no migration receipt exists yet."
     ],
-    "nextAction": "Push this safe checkpoint through a normal PR, integrate and converge the canonical workspace, then implement authenticated Project Wiki Pages persistence/actions/UI using the same pipeline; keep Research Notes runtime/UAT waiting for a supported non-production PostgreSQL+pgvector target."
+    "nextAction": "Continue from current origin/main in a task worktree. Implement Project Wiki Pages persistence, authenticated headless actions, UI, generated tests, and package through the existing Factory; wire durable continuation through DevelopmentRun/worker_jobs and add a safe resume regression. Keep deployment/UAT pending until a supported non-production PostgreSQL+pgvector target exists."
   },
   "checkpoints": [
     {
@@ -368,8 +381,8 @@
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
       "lastScenario": "GitHub recovered and two normal checkpoint PRs merged without user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/255",
-      "integratedSha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1"
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/257",
+      "integratedSha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74"
     }
   },
   "deferredInfrastructure": [
@@ -377,7 +390,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T01:37:04+07:00",
+  "updatedAt": "2026-10-08T01:42:35+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -386,9 +399,9 @@
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_PACKAGE_ONLY",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
-    "M6_FACTORY_EXECUTABLE": "PARTIAL_DEPENDENCY_READY_SELECTOR_ONLY",
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_DEPENDENCY_READY_SELECTOR_INTEGRATED",
     "M7_FACTORY_AUTO_RESUME_PASS": "NOT_RUN",
-    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_PACKAGE_ONLY"
+    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_PACKAGE_ONLY_INTEGRATED"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
@@ -398,7 +411,7 @@
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "DEPENDENCY_READY_SELECTOR_IMPLEMENTED_PENDING_INTEGRATION_AND_EXECUTOR_WIRING",
+    "state": "DEPENDENCY_READY_SELECTOR_INTEGRATED_EXECUTOR_WIRING_PENDING",
     "secondMiniApp": "SPEC281_SCOPED_PACKAGE_BUILT_IMPLEMENTATION_PENDING"
   },
   "executionCheckpoint": {
@@ -409,8 +422,10 @@
     ],
     "intendedRemoteBranch": "codex/mini-app-factory-runtime-20261007",
     "pendingPullRequest": {
-      "state": "NOT_OPENED_YET",
-      "integration": "PENDING_NORMAL_PR"
+      "state": "MERGED",
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/257",
+      "sourceSha": "ec70d3cb7b31a6f82746eda1a5b720bac89405e2",
+      "integratedSha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74"
     },
     "testEvidence": [
       {
@@ -438,6 +453,13 @@
       "githubIntegration": "IDLE_AFTER_SUCCESS; retry on normal continuation if a push or PR request transiently fails",
       "backoff": "bounded exponential backoff per existing GitHub retry contract"
     },
-    "canonicalAtCheckpoint": "9ad92c4437443690679e334d5f886048f5d9518f"
+    "canonicalAtCheckpoint": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+    "canonicalWorkspace": {
+      "path": "/home/dev/projects/SmartSpecPro",
+      "sha": "1eb4e5c7ed5da96fb724821f2dadb815a5ae3e74",
+      "clean": false,
+      "preservedStagedPath": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+      "verifyState": "CONVERGENCE_PENDING"
+    }
   }
 }
