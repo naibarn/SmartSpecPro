@@ -226,6 +226,13 @@
       "proof_kind": "LOCAL_EXECUTABLE",
       "assert": "default collector classifies clean task as retireable, preserves canonical workspace, and performs no deletion",
       "test_name": "test_periodic_audit_is_conservative_and_never_classifies_canonical_as_retireable"
+    },
+    {
+      "number": 32,
+      "name": "collector-cli-success-after-completed-report-only-audit",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "completed read-only collector run exits successfully for callers and schedulers",
+      "test_name": "test_collector_cli_reports_success_for_completed_report_only_audit"
     }
   ]
 }

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
+import io
 import importlib.util
 import os
 import subprocess
 import sys
 import tempfile
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -660,6 +662,15 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(retired["previous_path"], str(task))
         self.assertEqual(retired["workspace_id"], registered_task["workspace_id"])
 
+    def test_collector_cli_reports_success_for_completed_report_only_audit(self) -> None:
+        arguments = [
+            "workspace_authority.py", "collect", "--repository", str(self.canonical),
+            "--policy", str(self.policy), "--mode", "REPORT_ONLY",
+        ]
+        with patch.object(authority.sys, "argv", arguments), redirect_stdout(io.StringIO()):
+            result = authority._cli()
+        self.assertEqual(result, 0)
+
     def test_registration_racing_retirement_cannot_resurrect_removed_worktree(self) -> None:
         task = self.root / "retirement-registration-race"
         git(self.canonical, "worktree", "add", "-b", "task/retirement-race", str(task), "HEAD")
@@ -737,8 +748,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         scenarios_path = Path(__file__).with_name("workspace_authority_scenarios.json")
         matrix = json.loads(scenarios_path.read_text(encoding="utf-8"))
         scenarios = matrix["scenarios"]
-        self.assertEqual(len(scenarios), 31)
-        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 32)))
+        self.assertEqual(len(scenarios), 32)
+        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 33)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
@@ -748,7 +759,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
             {row["number"] for row in scenarios if row.get("test_name")},
-            set(range(1, 32)),
+            set(range(1, 33)),
         )
 
 
