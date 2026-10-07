@@ -1,8 +1,8 @@
 import type { DrizzleDB } from "../db";
-import { withCloudflareCredential } from "./cloudflareCredentialCenter";
+import { withCloudflareCredential, withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget } from "./providerDeploymentTargetAuthority";
 
-export type RuntimeEvidenceStatus = "OBSERVED" | "UNAVAILABLE" | "NOT_CONFIGURED" | "INVALID_TARGET_CONFIGURATION" | "PERMISSION_DENIED" | "STALE" | "ERROR";
+export type RuntimeEvidenceStatus = "OBSERVED" | "UNAVAILABLE" | "NOT_CONFIGURED" | "INVALID_TARGET_CONFIGURATION" | "PERMISSION_DENIED" | "REVOKED" | "STALE" | "ERROR";
 export type RuntimeEvidence<T> = { status: RuntimeEvidenceStatus; observedAt: string; source: string; value: T | null; diagnostic?: string };
 
 /** A target record supplied by the trusted SPEC-288/provider-resource authority. */
@@ -101,6 +101,8 @@ export async function getAuthorizedCloudflareWorkerDeploymentEvidence(input: {
   const result = await getCloudflareWorkerDeploymentEvidence({
     db: input.db, accountId: input.target.accountRef, scriptName: input.target.workerRef,
     fetchImpl: input.fetchImpl, now: input.now,
+    credentialBinding: { identity: { tenantId: input.target.tenantId, projectId: input.target.projectId,
+      environment: input.target.environment, provider: "cloudflare" }, credentialRef: input.target.credentialRef },
   });
   return { ...result, value: result.value ? { targetId: input.target.targetId, tenantId: input.target.tenantId,
     projectId: input.target.projectId, environment: input.target.environment, ...result.value } : null };
@@ -126,6 +128,8 @@ export async function getAuthorizedCloudflareContainerEvidence(input: {
   const result = await getCloudflareContainerInstanceEvidence({
     db: input.db, accountId: input.target.accountRef, applicationId: input.target.containerApplicationRef,
     fetchImpl: input.fetchImpl, now: input.now,
+    credentialBinding: { identity: { tenantId: input.target.tenantId, projectId: input.target.projectId,
+      environment: input.target.environment, provider: "cloudflare" }, credentialRef: input.target.credentialRef },
   });
   return { ...result, value: result.value ? { targetId: input.target.targetId, tenantId: input.target.tenantId,
     projectId: input.target.projectId, environment: input.target.environment, ...result.value } : null };
@@ -154,6 +158,7 @@ export async function getPersistedCloudflareContainerEvidence(input: {
 
 type CloudflareFetch = (url: string, init: RequestInit) => Promise<Response>;
 type JsonResponse = { response: Response; body: Record<string, unknown> | null };
+type CredentialBinding = { identity: { tenantId: string; projectId: string; environment: string; provider: string }; credentialRef: string };
 
 async function requestJson(fetchImpl: CloudflareFetch, url: string, token: string): Promise<JsonResponse> {
   const response = await fetchImpl(url, { method: "GET", headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, signal: AbortSignal.timeout(8_000) });
@@ -170,16 +175,23 @@ function failureStatus(response: Response): RuntimeEvidenceStatus {
 async function cloudflareQuery<T>(input: {
   db: DrizzleDB; profile: "audit" | "deployment"; path: string; source: string;
   normalize: (body: Record<string, unknown>, observedAt: string) => T | null; fetchImpl?: CloudflareFetch; now?: Date;
+  credentialBinding?: CredentialBinding;
 }): Promise<RuntimeEvidence<T>> {
   const observedAt = (input.now ?? new Date()).toISOString();
   try {
-    const resolved = await withCloudflareCredential(input.db, input.profile, async token => {
+    const operation = async (token: string) => {
       const { response, body } = await requestJson(input.fetchImpl ?? fetch, `https://api.cloudflare.com/client/v4${input.path}`, token);
       if (!response.ok) return { status: failureStatus(response), value: null } as const;
       if (body?.success !== true) return { status: "ERROR", value: null } as const;
       const value = input.normalize(body, observedAt);
       return value === null ? { status: "UNAVAILABLE", value: null } as const : { status: "OBSERVED", value } as const;
-    });
+    };
+    if (input.credentialBinding) {
+      const resolved = await withCloudflareDeploymentCredential(input.db, input.credentialBinding, operation);
+      if (resolved.status !== "CONFIGURED") return { status: resolved.status, observedAt, source: input.source, value: null };
+      return { ...resolved.value!, observedAt, source: input.source };
+    }
+    const resolved = await withCloudflareCredential(input.db, input.profile, operation);
     if (!resolved.configured) return { status: "NOT_CONFIGURED", observedAt, source: input.source, value: null };
     return { ...resolved.value, observedAt, source: input.source };
   } catch (error) {
@@ -188,11 +200,11 @@ async function cloudflareQuery<T>(input: {
 }
 
 export function getCloudflareWorkerDeploymentEvidence(input: {
-  db: DrizzleDB; accountId: string; scriptName: string; fetchImpl?: CloudflareFetch; now?: Date;
+  db: DrizzleDB; accountId: string; scriptName: string; fetchImpl?: CloudflareFetch; now?: Date; credentialBinding?: CredentialBinding;
 }) {
   const path = `/accounts/${encodeURIComponent(input.accountId)}/workers/scripts/${encodeURIComponent(input.scriptName)}/deployments`;
   return cloudflareQuery({
-    db: input.db, profile: "deployment", path, source: "cloudflare_workers_api", fetchImpl: input.fetchImpl, now: input.now,
+    db: input.db, profile: "deployment", path, source: "cloudflare_workers_api", fetchImpl: input.fetchImpl, now: input.now, credentialBinding: input.credentialBinding,
     normalize: body => {
       const result = body.result as Record<string, unknown> | null;
       const deployments = result?.deployments;
@@ -207,11 +219,11 @@ export function getCloudflareWorkerDeploymentEvidence(input: {
 }
 
 export function getCloudflareContainerInstanceEvidence(input: {
-  db: DrizzleDB; accountId: string; applicationId: string; fetchImpl?: CloudflareFetch; now?: Date;
+  db: DrizzleDB; accountId: string; applicationId: string; fetchImpl?: CloudflareFetch; now?: Date; credentialBinding?: CredentialBinding;
 }) {
   const path = `/accounts/${encodeURIComponent(input.accountId)}/containers/applications/${encodeURIComponent(input.applicationId)}/instances-v2`;
   return cloudflareQuery({
-    db: input.db, profile: "deployment", path, source: "cloudflare_containers_api", fetchImpl: input.fetchImpl, now: input.now,
+    db: input.db, profile: "deployment", path, source: "cloudflare_containers_api", fetchImpl: input.fetchImpl, now: input.now, credentialBinding: input.credentialBinding,
     normalize: body => {
       const instances = body.result;
       if (!Array.isArray(instances)) return null;
