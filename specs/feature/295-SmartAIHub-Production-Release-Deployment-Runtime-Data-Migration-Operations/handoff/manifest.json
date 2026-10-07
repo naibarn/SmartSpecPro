@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
+    "expected_canonical_sha": "00e840b514c598e8b0864a694246702feb694a3a",
     "expected_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814"
   },
   "continuation": {
@@ -80,7 +80,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 20,
+  "generation": 22,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
@@ -105,7 +105,9 @@
       "52fe0fead65f8d3542d73f21e0abbf24ce70fb2f",
       "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
       "b350f013bbcd4ea299961f982f8c59c323e5add3",
-      "2a5660ebc88ee3bcc435b0452b4d68359fd18ace"
+      "2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
+      "27092cfda7f1bf651a44f6894b2b0cc87ecf0b11",
+      "00e840b514c598e8b0864a694246702feb694a3a"
     ],
     "mapping": [],
     "source_paths": [
@@ -116,16 +118,24 @@
       "scripts/development-lifecycle/convergence_contract.py",
       "scripts/development-lifecycle/runtime_authority.py",
       "apps/web/server/services/__tests__/runnerGateway.test.ts",
-      "scripts/development-lifecycle/workspace_authority.py"
+      "scripts/development-lifecycle/workspace_authority.py",
+      "apps/web/server/services/drizzleMigrationEvidence.ts",
+      "apps/web/server/services/drizzleMigrationEvidence.test.ts",
+      "apps/web/server/services/runtimeHealthMonitor.ts",
+      "apps/web/server/services/__tests__/runtimeHealthMonitor.test.ts",
+      "apps/web/server/services/cloudflareRuntimeEvidence.test.ts",
+      "apps/web/server/routers/infrastructure.ts",
+      "apps/web/server/services/internalRuntimeEvidence.ts",
+      "apps/web/server/services/internalRuntimeEvidence.test.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
+    "canonical_sha": "00e840b514c598e8b0864a694246702feb694a3a",
     "integrated": true,
-    "integrated_at": "2026-10-07T03:50:23Z"
+    "integrated_at": "2026-10-07T04:03:18Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -134,7 +144,12 @@
       "https://github.com/naibarn/SmartSpecPro/pull/120",
       "git:b350f013bbcd4ea299961f982f8c59c323e5add3",
       "https://github.com/naibarn/SmartSpecPro/pull/122",
-      "git:2a5660ebc88ee3bcc435b0452b4d68359fd18ace"
+      "git:2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
+      "https://github.com/naibarn/SmartSpecPro/pull/124",
+      "git:27092cfda7f1bf651a44f6894b2b0cc87ecf0b11",
+      "https://github.com/naibarn/SmartSpecPro/pull/125",
+      "https://github.com/naibarn/SmartSpecPro/pull/126",
+      "git:00e840b514c598e8b0864a694246702feb694a3a"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -169,7 +184,12 @@
         "https://github.com/naibarn/SmartSpecPro/pull/120",
         "git:b350f013bbcd4ea299961f982f8c59c323e5add3",
         "https://github.com/naibarn/SmartSpecPro/pull/122",
-        "git:2a5660ebc88ee3bcc435b0452b4d68359fd18ace"
+        "git:2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
+        "https://github.com/naibarn/SmartSpecPro/pull/124",
+        "git:27092cfda7f1bf651a44f6894b2b0cc87ecf0b11",
+        "https://github.com/naibarn/SmartSpecPro/pull/125",
+        "https://github.com/naibarn/SmartSpecPro/pull/126",
+        "git:00e840b514c598e8b0864a694246702feb694a3a"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -255,7 +275,7 @@
     "unresolved": 165
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T03:53:09.009948Z",
+  "updated_at": "2026-10-07T04:03:17.167478Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
