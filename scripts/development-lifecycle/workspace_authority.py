@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
@@ -40,6 +41,15 @@ RETIRABLE_ROLES = {"TASK_WORKTREE", "SESSION_WORKTREE", "INTEGRATION_WORKTREE"}
 
 class WorkspaceAuthorityError(RuntimeError):
     pass
+
+
+_CONVERGENCE_CONTRACT_SPEC = importlib.util.spec_from_file_location(
+    "workspace_authority_convergence_contract", Path(__file__).with_name("convergence_contract.py")
+)
+if _CONVERGENCE_CONTRACT_SPEC is None or _CONVERGENCE_CONTRACT_SPEC.loader is None:
+    raise ImportError("convergence contract module is unavailable")
+_CONVERGENCE_CONTRACT = importlib.util.module_from_spec(_CONVERGENCE_CONTRACT_SPEC)
+_CONVERGENCE_CONTRACT_SPEC.loader.exec_module(_CONVERGENCE_CONTRACT)
 
 
 def _git(repo: Path, *args: str, check: bool = True, binary: bool = False) -> str | bytes:
@@ -460,6 +470,10 @@ def resolve_project_authority(repo: Path, policy_path: Path | None = None) -> di
             "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? ORDER BY created_at,workspace_id",
             (policy["project_id"], policy["repository_id"]),
         ).fetchall()
+        convergence_row = db.execute(
+            "SELECT result_json FROM receipts WHERE project_id=? AND repository_id=? AND kind='CANONICAL_CONVERGENCE' ORDER BY created_at DESC LIMIT 1",
+            (policy["project_id"], policy["repository_id"]),
+        ).fetchone()
         project_data = dict(zip(keys, project))
         workspaces = []
         for row in rows:
@@ -470,7 +484,100 @@ def resolve_project_authority(repo: Path, policy_path: Path | None = None) -> di
     project_data["workspaces"] = workspaces
     project_data["workspace_count"] = len(workspaces)
     project_data["active_sessions"] = sum(row["session_state"] == "ACTIVE_SESSION" for row in workspaces)
+    project_data["convergence_receipt"] = json.loads(convergence_row[0]) if convergence_row else None
     return project_data
+
+
+def build_project_mission_control_read_model(
+    authority_snapshot: dict[str, Any],
+    *,
+    production_evidence: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Project-level operational projection from explicit authority records only."""
+    workspaces = authority_snapshot.get("workspaces") or []
+    canonical_sha = authority_snapshot.get("canonical_sha")
+    canonical_id = authority_snapshot.get("canonical_workspace_id")
+    canonical_branch = str(authority_snapshot.get("canonical_ref") or "").removeprefix("refs/heads/") or None
+    canonical_workspace = next((row for row in workspaces if row.get("workspace_id") == canonical_id), None)
+    if canonical_workspace:
+        if canonical_workspace.get("dirty"):
+            workspace_state = "DIRTY"
+        elif not canonical_sha or not canonical_workspace.get("head_sha"):
+            workspace_state = "UNKNOWN"
+        elif canonical_workspace["head_sha"] == canonical_sha:
+            workspace_state = "SYNCED"
+        else:
+            workspace_state = "BEHIND_OR_DIVERGED"
+        user_workspace = {
+            "workspace_id": canonical_id,
+            "role": canonical_workspace.get("role"),
+            "sha": canonical_workspace.get("head_sha"),
+            "state": workspace_state,
+            "dirty": bool(canonical_workspace.get("dirty")),
+            "convergence_receipt": authority_snapshot.get("convergence_receipt"),
+        }
+    else:
+        user_workspace = {"workspace_id": canonical_id, "role": "CANONICAL_USER_WORKSPACE", "sha": None, "state": "UNKNOWN", "dirty": None, "convergence_receipt": authority_snapshot.get("convergence_receipt")}
+
+    sessions = [
+        {
+            "session_id": row.get("owner_session_id"),
+            "owner_host": row.get("owner_host"),
+            "agent_identity": None,
+            "provider": None,
+            "workspace_id": row.get("workspace_id"),
+            "execution_state": row.get("owner_state") or row.get("session_state"),
+        }
+        for row in workspaces
+        if row.get("session_state") == "ACTIVE_SESSION" and (row.get("owner_session_id") or row.get("owner_pid"))
+    ]
+    temporary = [row for row in workspaces if row.get("role") in RETIRABLE_ROLES]
+    worktree_groups: dict[str, list[dict[str, Any]]] = {key: [] for key in ("active", "integrating", "retireable", "stale_or_unknown", "recovery")}
+    for row in workspaces:
+        role = row.get("role")
+        lifecycle = row.get("lifecycle_state")
+        item = {"workspace_id": row.get("workspace_id"), "role": role, "sha": row.get("head_sha"), "path": row.get("location"), "dirty": bool(row.get("dirty"))}
+        if role == "RECOVERY_WORKSPACE" or row.get("recovery_linkage"):
+            worktree_groups["recovery"].append(item)
+        elif role in {"UNKNOWN_WORKSPACE", "EXTERNAL_WORKSPACE"} or lifecycle in {"MISSING", "UNKNOWN"} or row.get("session_state") == "STALE_CLOSED_SESSION":
+            worktree_groups["stale_or_unknown"].append(item)
+        elif lifecycle == "INTEGRATING":
+            worktree_groups["integrating"].append(item)
+        elif lifecycle == "RETIREABLE":
+            worktree_groups["retireable"].append(item)
+        elif role in RETIRABLE_ROLES:
+            worktree_groups["active"].append(item)
+
+    dirty_work = [
+        {"workspace_id": row.get("workspace_id"), "dirty_path_count": row.get("dirty_path_count"), "state": "PRESERVED_DIRTY"}
+        for row in temporary if row.get("dirty")
+    ]
+    production = (
+        _CONVERGENCE_CONTRACT.evaluate_production_convergence(production_evidence)
+        if production_evidence is not None
+        else {"status": "UNKNOWN", "reason": "SPEC-295 runtime evidence was not supplied"}
+    )
+    return {
+        "project_id": authority_snapshot.get("project_id"),
+        "repository": {
+            "repository_id": authority_snapshot.get("repository_id"),
+            "canonical_ref": authority_snapshot.get("canonical_ref"),
+            "canonical_branch": canonical_branch,
+            "canonical_sha": canonical_sha,
+            "verification_state": authority_snapshot.get("convergence_state", "UNKNOWN"),
+        },
+        "user_workspace": user_workspace,
+        "sessions": {"active_count": len(sessions), "active": sessions},
+        "development_state": {
+            "uncommitted_intended_work": dirty_work,
+            "unpushed_intended_commits": {"state": "UNKNOWN", "count": None},
+            "pushed_unintegrated_work": {"state": "UNKNOWN", "count": None},
+            "open_integration": worktree_groups["integrating"],
+            "recovery_pending": worktree_groups["recovery"],
+        },
+        "worktrees": worktree_groups,
+        "production": production,
+    }
 
 
 def get_canonical_user_workspace(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
@@ -1118,7 +1225,7 @@ def collect_worktrees(
 
 def _cli() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("resolve", "inspect", "register", "converge", "verify", "preserve", "retire", "collect"))
+    parser.add_argument("action", choices=("resolve", "inspect", "register", "converge", "verify", "preserve", "retire", "collect", "mission-control"))
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--policy", type=Path)
     parser.add_argument("--workspace", type=Path)
@@ -1131,6 +1238,7 @@ def _cli() -> int:
     parser.add_argument("--workspace-id")
     parser.add_argument("--apply", action="store_true", help="apply a retirement; default is dry-run")
     parser.add_argument("--mode", choices=("AUDIT_ONLY", "RETIRE_SAFE", "REPORT_ONLY"), default="AUDIT_ONLY")
+    parser.add_argument("--production-evidence", type=Path, help="SPEC-295 evidence JSON for Mission Control projection")
     args = parser.parse_args()
     repo = _repo_root(args.repository)
     try:
@@ -1150,6 +1258,11 @@ def _cli() -> int:
             result = preserve_dirty_workspace(repo, args.policy, args.workspace)
         elif args.action == "collect":
             result = collect_worktrees(repo, args.policy, mode=args.mode)
+        elif args.action == "mission-control":
+            snapshot = resolve_project_authority(repo, args.policy)
+            production_evidence = json.loads(args.production_evidence.read_text(encoding="utf-8")) if args.production_evidence else None
+            result = build_project_mission_control_read_model(snapshot, production_evidence=production_evidence)
+            result["status"] = "MISSION_CONTROL_SNAPSHOT_READY"
         else:
             if not args.workspace_id:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")

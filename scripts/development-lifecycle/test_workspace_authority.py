@@ -702,6 +702,38 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(resumed_item["classification"], "RETIRED")
         self.assertFalse(task.exists())
 
+    def test_project_mission_control_read_model_uses_authority_sessions_and_unknown_production(self) -> None:
+        snapshot = {
+            "project_id": "project-a",
+            "repository_id": "repo-a",
+            "canonical_ref": "refs/heads/main",
+            "canonical_sha": "a" * 40,
+            "canonical_workspace_id": "canonical",
+            "convergence_state": "CANONICAL_VERIFIED",
+            "convergence_receipt": {"receipt_id": "receipt-1"},
+            "workspaces": [
+                {"workspace_id": "canonical", "role": "CANONICAL_USER_WORKSPACE", "location": "/project", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "ACTIVE"},
+                {"workspace_id": "task-dirty", "role": "TASK_WORKTREE", "location": "/task", "head_sha": "b" * 40, "dirty": True, "dirty_path_count": 2, "session_state": "ACTIVE_SESSION", "owner_session_id": "session-1", "owner_host": "host-a", "owner_state": "LEASED", "lifecycle_state": "ACTIVE"},
+                {"workspace_id": "stale-task", "role": "TASK_WORKTREE", "location": "/stale", "head_sha": "a" * 40, "dirty": False, "session_state": "STALE_CLOSED_SESSION", "owner_session_id": "old-session", "lifecycle_state": "ACTIVE"},
+                {"workspace_id": "integrating", "role": "INTEGRATION_WORKTREE", "location": "/integration", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "INTEGRATING"},
+                {"workspace_id": "recovery", "role": "RECOVERY_WORKSPACE", "location": "/recovery", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "ACTIVE"},
+                {"workspace_id": "unknown", "role": "UNKNOWN_WORKSPACE", "location": "/unknown", "head_sha": "a" * 40, "dirty": False, "session_state": "NO_ACTIVE_SESSION", "lifecycle_state": "ACTIVE"},
+            ],
+        }
+
+        result = authority.build_project_mission_control_read_model(snapshot)
+
+        self.assertEqual(result["user_workspace"]["state"], "SYNCED")
+        self.assertEqual(result["user_workspace"]["convergence_receipt"]["receipt_id"], "receipt-1")
+        self.assertEqual(result["sessions"]["active_count"], 1)
+        self.assertEqual(result["sessions"]["active"][0]["session_id"], "session-1")
+        self.assertEqual(result["development_state"]["uncommitted_intended_work"][0]["workspace_id"], "task-dirty")
+        self.assertEqual(result["development_state"]["unpushed_intended_commits"]["state"], "UNKNOWN")
+        self.assertEqual(result["worktrees"]["integrating"][0]["workspace_id"], "integrating")
+        self.assertEqual(result["worktrees"]["recovery"][0]["workspace_id"], "recovery")
+        self.assertEqual({row["workspace_id"] for row in result["worktrees"]["stale_or_unknown"]}, {"stale-task", "unknown"})
+        self.assertEqual(result["production"]["status"], "UNKNOWN")
+
     def test_registration_racing_retirement_cannot_resurrect_removed_worktree(self) -> None:
         task = self.root / "retirement-registration-race"
         git(self.canonical, "worktree", "add", "-b", "task/retirement-race", str(task), "HEAD")
@@ -779,8 +811,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         scenarios_path = Path(__file__).with_name("workspace_authority_scenarios.json")
         matrix = json.loads(scenarios_path.read_text(encoding="utf-8"))
         scenarios = matrix["scenarios"]
-        self.assertEqual(len(scenarios), 33)
-        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 34)))
+        self.assertEqual(len(scenarios), 34)
+        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 35)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
@@ -790,7 +822,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
             {row["number"] for row in scenarios if row.get("test_name")},
-            set(range(1, 34)),
+            set(range(1, 35)),
         )
 
 
