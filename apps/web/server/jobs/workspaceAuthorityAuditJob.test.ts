@@ -100,13 +100,20 @@ describe("workspace authority audit triggers", () => {
         result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [] },
         missionControl: { status: "OBSERVED", result: { user_workspace: { convergence_receipt: {
           receipt_id: "workspace-convergence:receipt-1", result: "USER_WORKSPACE_CONVERGED",
+          integrated_sha: "a".repeat(40), canonical_sha: "a".repeat(40),
+          workspace_role: "CANONICAL_USER_WORKSPACE", dirty: false,
         } } } },
       }),
     });
     expect(result.canonicalConvergenceSuccessEventCount).toBe(1);
+    expect(result.integrationFinishEventCount).toBe(1);
     expect(mockCreateJob).toHaveBeenCalledWith(expect.objectContaining({
       context: expect.objectContaining({ idempotencyKey: "workspace-authority:CANONICAL_CONVERGENCE_SUCCESS:workspace-convergence:receipt-1" }),
       definition: expect.objectContaining({ input: { tenantId: "tenant-a", mode: "AUDIT_ONLY", trigger: "CANONICAL_CONVERGENCE_SUCCESS" } }),
+    }));
+    expect(mockCreateJob).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({ idempotencyKey: `workspace-authority:INTEGRATION_FINISH:workspace-convergence:receipt-1:${"a".repeat(40)}` }),
+      definition: expect.objectContaining({ input: { tenantId: "tenant-a", mode: "AUDIT_ONLY", trigger: "INTEGRATION_FINISH" } }),
     }));
   });
 });
