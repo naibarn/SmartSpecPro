@@ -47,6 +47,70 @@ function activeSessionProvider(snapshot: unknown, activeSession: boolean, now: D
     : { provider: "UNKNOWN", source: activeAgents.length ? "ambiguous_active_provider_facts" : "no_active_session_provider_fact" };
 }
 
+function freshEvidenceProjection(value: unknown, now: Date): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const fact = value as Record<string, unknown>;
+  const freshness = fact.freshness && typeof fact.freshness === "object"
+    ? fact.freshness as Record<string, unknown> : null;
+  const remote = fact.remote_observation && typeof fact.remote_observation === "object"
+    ? fact.remote_observation as Record<string, unknown> : null;
+  const remoteObservedAt = remote && typeof remote.observed_at === "string" ? Date.parse(remote.observed_at) : Number.NaN;
+  const remoteTtl = remote && typeof remote.freshness_ttl_seconds === "number" ? remote.freshness_ttl_seconds : Number.NaN;
+  const nestedRemoteStale = Boolean(remote && remote.status === "OBSERVED" &&
+    (!Number.isFinite(remoteObservedAt) || !Number.isFinite(remoteTtl) || remoteTtl < 0 ||
+      now.getTime() < remoteObservedAt || now.getTime() - remoteObservedAt > remoteTtl * 1000));
+  if (!freshness && !remote) return fact;
+  const observedAt = freshness && typeof freshness.observed_at === "string" ? Date.parse(freshness.observed_at) : Number.NaN;
+  const ttl = freshness && typeof freshness.ttl_seconds === "number" ? freshness.ttl_seconds : Number.NaN;
+  const directStale = Boolean(freshness && (!Number.isFinite(observedAt) || !Number.isFinite(ttl) || ttl < 0 ||
+    now.getTime() < observedAt || now.getTime() - observedAt > ttl * 1000));
+  if (nestedRemoteStale) {
+    const aheadBehind = fact.ahead_behind && typeof fact.ahead_behind === "object"
+      ? fact.ahead_behind as Record<string, unknown> : null;
+    return { ...fact,
+      ahead_behind: aheadBehind ? { ...aheadBehind, state: "STALE", ahead: null, behind: null,
+        freshness: { state: "STALE", observed_at: remote?.observed_at, ttl_seconds: remote?.freshness_ttl_seconds } } : aheadBehind,
+      remote_observation: { ...(remote ?? {}), status: "STALE", reason: "remote_observation_expired" } };
+  }
+  if (directStale) {
+    return { ...fact, state: "STALE", count: null,
+      freshness: { ...freshness, state: "STALE" }, reason: "remote_observation_expired" };
+  }
+  return fact;
+}
+
+function freshCanonicalProjection(value: unknown, now: Date): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const fact = value as Record<string, unknown>;
+  const remote = fact.remote_observation && typeof fact.remote_observation === "object"
+    ? fact.remote_observation as Record<string, unknown> : null;
+  if (!remote || remote.status !== "OBSERVED") return fact;
+  const observedAt = typeof remote.observed_at === "string" ? Date.parse(remote.observed_at) : Number.NaN;
+  const ttl = typeof remote.freshness_ttl_seconds === "number" ? remote.freshness_ttl_seconds : Number.NaN;
+  if (!Number.isFinite(observedAt) || !Number.isFinite(ttl) || ttl < 0 || now.getTime() < observedAt || now.getTime() - observedAt > ttl * 1000) {
+    return { ...fact, verification_state: "STALE",
+      remote_observation: { ...remote, status: "STALE", reason: "remote_observation_expired" } };
+  }
+  return fact;
+}
+
+function freshRemoteWorkspaceStates(value: unknown, now: Date): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const row = value as Record<string, unknown>;
+    if (typeof row.remote_observed_at !== "string") return row;
+    const observedAt = Date.parse(row.remote_observed_at);
+    const ttl = typeof row.freshness_ttl_seconds === "number" ? row.freshness_ttl_seconds : Number.NaN;
+    if (!Number.isFinite(observedAt) || !Number.isFinite(ttl) || ttl < 0 ||
+        now.getTime() < observedAt || now.getTime() - observedAt > ttl * 1000) {
+      return { ...row, push_state: "STALE", integration_state: "STALE", unpushed_commit_count: null,
+        unintegrated_commit_count: null, patch_equivalent_commit_count: null, freshness: "STALE" };
+    }
+    return row;
+  });
+}
+
 export function projectRunnerWorkspaceAuthority(input: {
   tenantId: string;
   actorId: number;
@@ -191,15 +255,28 @@ export function projectRunnerWorkspaceAuthority(input: {
     ? local.development_state as Record<string, unknown> : null;
   const localUserWorkspace = local?.user_workspace && typeof local.user_workspace === "object"
     ? local.user_workspace as Record<string, unknown> : null;
+  const canonical = freshCanonicalProjection(local?.repository, now) ?? { status: "UNKNOWN", reason: "local_authority_snapshot_unavailable" };
+  const userWorkspace = freshEvidenceProjection(localUserWorkspace, now) ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" };
+  const unpushed = freshEvidenceProjection(localDevelopment?.unpushed_intended_commits, now) ?? { state: "UNKNOWN", count: null };
+  const pushed = freshEvidenceProjection(localDevelopment?.pushed_unintegrated_work, now) ?? { state: "UNKNOWN", count: null };
+  const integrated = freshEvidenceProjection(localDevelopment?.integrated_work, now) ?? { state: "UNKNOWN", count: null };
+  const patchEquivalent = freshEvidenceProjection(localDevelopment?.semantic_equivalent_integration, now) ?? { state: "UNKNOWN", count: null };
+  const developmentIntegration = localDevelopment ? { ...localDevelopment,
+    unpushed_intended_commits: unpushed,
+    pushed_unintegrated_work: pushed,
+    integrated_work: integrated,
+    semantic_equivalent_integration: patchEquivalent,
+    remote_workspace_states: freshRemoteWorkspaceStates(localDevelopment.remote_workspace_states, now),
+  } : { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" };
   return {
     tenantId,
     generatedAt: now.toISOString(),
     authority: "runner-control-plane",
     workspaces: { count: workspaceRows.length, observed: workspaceRows },
     workspaceGroups: { count: workspaces.length, observed: workspaces },
-    canonical: local?.repository ?? { status: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
-    userWorkspace: local?.user_workspace ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
-    developmentIntegration: local?.development_state ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
+    canonical,
+    userWorkspace,
+    developmentIntegration,
     worktreeLifecycle: local?.worktrees ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
     production: local?.production ?? { status: "UNKNOWN", reason: "SPEC-295 normalized evidence unavailable" },
     localAuthorityStatus: input.localAuthorityStatus ?? "UNAVAILABLE",
@@ -217,8 +294,9 @@ export function projectRunnerWorkspaceAuthority(input: {
     })) },
     sessions: { activeCount: activeSessions.length, active: activeSessions },
     workspaceConflicts: workspaces.filter((row) => row.state === "CONFLICT"),
-    pushState: localDevelopment?.pushed_unintegrated_work ?? { state: "UNKNOWN", reason: "No authoritative push parity evidence is available" },
-    integrationState: localDevelopment?.integrated_work ?? { state: "UNKNOWN", reason: "No authoritative integration classification is available" },
+    pushState: pushed,
+    integrationState: integrated,
+    semanticEquivalentIntegration: patchEquivalent,
     convergenceReceipt: localUserWorkspace?.convergence_receipt ?? null,
     recoveryState: localDevelopment?.recovery_pending ?? { state: "UNKNOWN", reason: "Recovery receipts are stored by the local Workspace Authority registry" },
   };
