@@ -289,6 +289,19 @@ export class DrizzleRunnerRepository implements RunnerRepository {
           "Runner is not enrolled"
         );
       }
+      const [priorIdempotency] = await tx.select({ snapshotJson: runnerCapabilitySnapshots.snapshotJson })
+        .from(runnerCapabilitySnapshots)
+        .where(and(
+          eq(runnerCapabilitySnapshots.runnerId, node.runnerId),
+          eq(runnerCapabilitySnapshots.idempotencyKey, idempotencyKey),
+        ))
+        .for("update")
+        .limit(1);
+      if (priorIdempotency) {
+        if (!sameSnapshot(priorIdempotency.snapshotJson as RunnerCapabilitySnapshot, snapshot))
+          throw new RunnerGatewayError("RUNNER_SNAPSHOT_IDEMPOTENCY_CONFLICT", "Snapshot idempotency key was reused with different facts");
+        return;
+      }
       if (
         current.currentSnapshotRevision &&
         compareRevisions(snapshot.revision, current.currentSnapshotRevision) < 0
@@ -450,6 +463,8 @@ export class RunnerGateway {
       input.auth.runnerId,
       input.idempotencyKey
     );
+    if (duplicate && !sameSnapshot(duplicate, snapshot))
+      throw new RunnerGatewayError("RUNNER_SNAPSHOT_IDEMPOTENCY_CONFLICT", "Snapshot idempotency key was reused with different facts");
     if (duplicate)
       return {
         status: "duplicate",
