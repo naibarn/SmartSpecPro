@@ -28,6 +28,25 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.hosts.observed[0]).toMatchObject({ hostId: "runner-a", provider: "UNKNOWN", providerResolutionSource: "no_active_session_provider_fact" });
   });
 
+  it("uses a provider confirmed by the matching live owner session when Runner tool inventory is absent", () => {
+    const current = runner({ currentSnapshotJson: { runnerSessionId: "session-a", workspaces: runner().currentSnapshotJson.workspaces } });
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [current] as never[], now,
+      localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: now,
+      localMissionControl: { sessions: { active_count: 1, active: [{ session_id: "session-a", runner_id: "runner-a", provider: "claude" }] } },
+    });
+
+    expect(result.hosts.observed[0]).toMatchObject({ hostId: "runner-a", provider: "claude", providerResolutionSource: "registered_owner_session_fact" });
+  });
+
+  it("surfaces provider conflicts on hosts instead of preferring Runner inventory", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now,
+      localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: now,
+      localMissionControl: { sessions: { active_count: 1, active: [{ session_id: "session-a", runner_id: "runner-a", provider: "claude" }] } },
+    });
+
+    expect(result.hosts.observed[0]).toMatchObject({ hostId: "runner-a", provider: "UNKNOWN", providerResolutionSource: "conflicting_authoritative_provider_facts" });
+  });
+
   it("does not project a Runner-reported task when its session is no longer current", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
       runner({ activeSessionId: "new-session" }),
