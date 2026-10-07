@@ -69,3 +69,19 @@ export async function resolveAppRouteForTenant(input: {
 
   return resolveAppRouteAlias({ alias, app, tenantId: input.tenantId });
 }
+
+export async function resolveActiveAppByPublicId(input: {
+  tenantId: string;
+  publicAppId: string;
+}) {
+  const [app] = await getDb()
+    .select({ appId: appIdentities.appId, publicAppId: appIdentities.publicAppId, tenantId: appIdentities.tenantId })
+    .from(appIdentities)
+    .where(and(
+      eq(appIdentities.tenantId, input.tenantId),
+      eq(appIdentities.publicAppId, input.publicAppId),
+      eq(appIdentities.lifecycle, "active"),
+    ))
+    .limit(1);
+  return app ?? null;
+}
