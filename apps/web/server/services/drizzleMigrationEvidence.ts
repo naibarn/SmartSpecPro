@@ -25,11 +25,11 @@ export type MigrationEvidence = {
     environment: string;
     databaseIdentity: string;
     expectedMigrationHead: { tag: string; hash: string } | null;
-    observedAppliedHead: { hash: string; appliedAt: number | null } | null;
+    observedAppliedHead: { tag: string | null; hash: string; appliedAt: number | null } | null;
     pendingMigrations: Array<{ tag: string; hash: string }>;
     failedMigration: MigrationFailureEvidence;
     failureTracking: "TRACKED" | "NOT_TRACKED";
-    latestExecution: { hash: string; result: "APPLIED" | "FAILED" | "UNKNOWN"; executedAt: number | null } | null;
+    latestExecution: { tag: string | null; hash: string; result: "APPLIED" | "FAILED" | "UNKNOWN"; executedAt: number | null } | null;
   } | null;
   reason?: string;
 };
@@ -62,6 +62,8 @@ export function projectDrizzleMigrationEvidence(input: {
   const applied = [...input.applied].sort((a, b) => Number(a.created_at ?? 0) - Number(b.created_at ?? 0));
   const appliedHashes = new Set(applied.map(row => row.hash));
   const latest = applied.at(-1) ?? null;
+  const migrationTagByHash = new Map(input.expected.map(migration => [migration.hash, migration.tag]));
+  const latestTag = latest ? migrationTagByHash.get(latest.hash) ?? null : null;
   const expectedHead = input.expected.at(-1) ?? null;
   return {
     status: "OBSERVED",
@@ -71,7 +73,7 @@ export function projectDrizzleMigrationEvidence(input: {
       environment: input.environment,
       databaseIdentity: input.databaseIdentity,
       expectedMigrationHead: expectedHead,
-      observedAppliedHead: latest ? { hash: latest.hash, appliedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
+      observedAppliedHead: latest ? { tag: latestTag, hash: latest.hash, appliedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
       pendingMigrations: input.expected.filter(migration => !appliedHashes.has(migration.hash)),
       failedMigration: {
         state: "UNKNOWN",
@@ -81,7 +83,7 @@ export function projectDrizzleMigrationEvidence(input: {
         reason: "failed_attempts_not_recorded_by_source",
       },
       failureTracking: "NOT_TRACKED",
-      latestExecution: latest ? { hash: latest.hash, result: "APPLIED", executedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
+      latestExecution: latest ? { tag: latestTag, hash: latest.hash, result: "APPLIED", executedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
     },
   };
 }
