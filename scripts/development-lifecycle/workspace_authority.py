@@ -1227,6 +1227,17 @@ def collect_worktrees(
                 results.append({"workspace_id": wid, "classification": "RETIREABLE", "result": preview})
         else:
             results.append({"workspace_id": wid, "classification": "BLOCKED", "result": preview})
+    audit_epoch = time.time()
+    with _db(repo) as db:
+        for result in results:
+            workspace = _workspace_by_id(db, result["workspace_id"])
+            if not workspace:
+                continue
+            expires = workspace.get("owner_lease_expires_at")
+            owned = bool(workspace.get("owner_session_id") or workspace.get("owner_pid"))
+            result["owner_state"] = _owner_state(workspace)
+            result["owner_lease_expired"] = bool(owned and expires is not None and float(expires) <= audit_epoch)
+            result["owner_lease_expires_at"] = float(expires) if expires is not None else None
     audited_at = _now()
     report = {"status": "WORKTREE_AUDIT_COMPLETE", "mode": mode, "audited_at": audited_at, "workspaces": results}
     with _db(repo) as db:

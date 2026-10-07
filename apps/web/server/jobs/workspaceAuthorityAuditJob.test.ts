@@ -70,4 +70,22 @@ describe("workspace authority audit triggers", () => {
     });
     expect(result).toMatchObject({ mode: "AUDIT_ONLY", runnerCount: 0, localWorkspaceAudit: { status: "OBSERVED", result: { mode: "AUDIT_ONLY" } } });
   });
+
+  it("enqueues an idempotent owner-lease-expired event from the local audit receipt", async () => {
+    mockCreateJob.mockResolvedValue({ jobId: "job-expired-owner" });
+    const { executeWorkspaceAuthorityAudit } = await import("./workspaceAuthorityAuditJob");
+    const result = await executeWorkspaceAuthorityAudit({
+      tenantId: "tenant-a",
+      now: new Date("2026-10-07T12:00:00.000Z"),
+      collectLocal: async () => ({ status: "OBSERVED", result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [
+        { workspace_id: "workspace-1", owner_lease_expired: true, owner_lease_expires_at: 1791374399 },
+        { workspace_id: "workspace-2", owner_lease_expired: false, owner_lease_expires_at: 1791374399 },
+      ] } }),
+    });
+    expect(result.ownerLeaseExpirationEventCount).toBe(1);
+    expect(mockCreateJob).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({ idempotencyKey: "workspace-authority:OWNER_LEASE_EXPIRED:workspace-1:1791374399" }),
+      definition: expect.objectContaining({ input: { tenantId: "tenant-a", mode: "AUDIT_ONLY", trigger: "OWNER_LEASE_EXPIRED" } }),
+    }));
+  });
 });

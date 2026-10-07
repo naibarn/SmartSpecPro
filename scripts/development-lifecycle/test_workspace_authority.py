@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from contextlib import contextmanager, redirect_stdout
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -655,6 +656,21 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertTrue(task.exists())
         self.assertTrue(self.canonical.exists())
 
+    def test_periodic_audit_marks_expired_known_owner_lease_without_retiring_workspace(self) -> None:
+        task = self.root / "collector-expired-owner"
+        git(self.canonical, "worktree", "add", "-b", "task/collector-expired-owner", str(task), "HEAD")
+        registered = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE", task_id="task-expired", owner_session_id="session-expired", owner_pid=os.getpid(), owner_lease_seconds=300)
+        with authority._db(self.canonical) as db:
+            db.execute("UPDATE workspaces SET owner_lease_expires_at=? WHERE workspace_id=?", (time.time() - 1, registered["workspace_id"]))
+
+        report = authority.collect_worktrees(self.canonical, self.policy, mode="AUDIT_ONLY")
+
+        audited = next(item for item in report["workspaces"] if item["workspace_id"] == registered["workspace_id"])
+        self.assertTrue(audited["owner_lease_expired"])
+        self.assertEqual(audited["owner_state"], "STALE_CLOSED_SESSION")
+        self.assertLessEqual(audited["owner_lease_expires_at"], time.time())
+        self.assertTrue(task.exists())
+
     def test_collector_preserves_unknown_owner_and_retires_only_in_explicit_safe_mode(self) -> None:
         task = self.root / "collector-safe-task"
         unknown = self.root / "collector-unknown-owner"
@@ -832,8 +848,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         scenarios_path = Path(__file__).with_name("workspace_authority_scenarios.json")
         matrix = json.loads(scenarios_path.read_text(encoding="utf-8"))
         scenarios = matrix["scenarios"]
-        self.assertEqual(len(scenarios), 67)
-        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 68)))
+        self.assertEqual(len(scenarios), 68)
+        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 69)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
@@ -845,7 +861,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
             {row["number"] for row in scenarios if row.get("test_name")},
-            set(range(1, 68)),
+            set(range(1, 69)),
         )
 
 
