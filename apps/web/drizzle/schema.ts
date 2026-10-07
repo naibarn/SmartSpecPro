@@ -2651,6 +2651,60 @@ export const tenantPages = pgTable("tenant_pages", {
 export type TenantPage = typeof tenantPages.$inferSelect;
 export type InsertTenantPage = typeof tenantPages.$inferInsert;
 
+/** Stable Mini App identity; mutable names and domains are separate aliases. */
+export const appIdentities = pgTable(
+  "app_identities",
+  {
+    appId: varchar("app_id", { length: 128 }).primaryKey(),
+    publicAppId: varchar("public_app_id", { length: 128 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    publisherRef: varchar("publisher_ref", { length: 128 }).notNull(),
+    canonicalProductId: varchar("canonical_product_id", { length: 128 }).notNull(),
+    lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("draft"),
+    policyRefs: jsonb("policy_refs").$type<string[]>().notNull().default([]),
+    parentAppId: varchar("parent_app_id", { length: 128 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("app_identities_public_app_id_unique").on(t.publicAppId),
+    check("app_identities_lifecycle_check", sql`${t.lifecycle} IN ('draft', 'active', 'suspended', 'archived')`),
+    check("app_identities_parent_not_self_check", sql`${t.parentAppId} IS NULL OR ${t.parentAppId} <> ${t.appId}`),
+  ],
+);
+export type AppIdentityRow = typeof appIdentities.$inferSelect;
+export type InsertAppIdentityRow = typeof appIdentities.$inferInsert;
+
+/** Route aliases are tenant-bound and never serve as canonical App identity. */
+export const appRouteAliases = pgTable(
+  "app_route_aliases",
+  {
+    aliasId: varchar("alias_id", { length: 128 }).primaryKey(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    appId: varchar("app_id", { length: 128 })
+      .notNull()
+      .references(() => appIdentities.appId, { onDelete: "restrict" }),
+    kind: varchar("kind", { length: 16 }).notNull(),
+    value: varchar("value", { length: 253 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("app_route_aliases_tenant_kind_value_unique").on(t.tenantId, t.kind, t.value),
+    uniqueIndex("app_route_aliases_custom_domain_unique").on(t.value).where(sql`${t.kind} = 'custom-domain'`),
+    check("app_route_aliases_kind_check", sql`${t.kind} IN ('slug', 'custom-domain')`),
+    check("app_route_aliases_status_check", sql`${t.status} IN ('PLATFORM_SUBDOMAIN', 'CUSTOM_DOMAIN_REQUESTED', 'DNS_VERIFICATION_PENDING', 'CERTIFICATE_PENDING', 'ACTIVE')`),
+    check("app_route_aliases_value_lowercase_check", sql`${t.value} = lower(${t.value})`),
+  ],
+);
+export type AppRouteAliasRow = typeof appRouteAliases.$inferSelect;
+export type InsertAppRouteAliasRow = typeof appRouteAliases.$inferInsert;
+
 /**
  * Chat Conversations - Multi-chat support with settings
  * Each conversation belongs to a user and can have custom settings
