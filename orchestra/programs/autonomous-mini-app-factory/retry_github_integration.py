@@ -65,6 +65,32 @@ def persist_retryable_state(
     program_path.write_text(json.dumps(program, indent=2) + "\n")
 
 
+def record_integration_success(*, repo_dir: Path, integrated_sha: str, pr_url: str | None = None) -> None:
+    program_path = repo_dir / "orchestra/programs/autonomous-mini-app-factory/program.json"
+    if not program_path.exists():
+        return
+    program = json.loads(program_path.read_text())
+    program["blockedWorkunits"] = [
+        item for item in program.get("blockedWorkunits", [])
+        if not isinstance(item, dict) or item.get("id") != "INTEGRATE_RESEARCH_NOTES_UI_CHECKPOINT"
+    ]
+    autonomy = program.setdefault("autonomy", {})
+    if isinstance(autonomy, dict):
+        previous = autonomy.get("githubRetryPolicy", {})
+        autonomy["githubRetryPolicy"] = {
+            "state": "IDLE_AFTER_SUCCESS",
+            "lastScenario": "Retryable GitHub integration completed without a user prompt.",
+            "lastPr": pr_url or (previous.get("lastPr") if isinstance(previous, dict) else None),
+            "integratedSha": integrated_sha,
+        }
+    program["canonical"] = {
+        **program.get("canonical", {}),
+        "sha": integrated_sha,
+    }
+    program["updatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    program_path.write_text(json.dumps(program, indent=2) + "\n")
+
+
 def _run(command: list[str], *, cwd: Path, capture: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, cwd=cwd, text=True, capture_output=capture, check=False)
 
@@ -117,6 +143,7 @@ def retry_checkpoint(
                         "verify", "--repository", str(repo_dir), "--integrated-sha", integrated_sha,
                     ], cwd=repo_dir)
                     if verify.returncode == 0:
+                        record_integration_success(repo_dir=repo_dir, integrated_sha=integrated_sha)
                         print(json.dumps({"status": "INTEGRATED", "sha": integrated_sha, "workspace": verify.stdout.strip()}))
                         return 0
                     last_error = (verify.stderr or verify.stdout or "workspace verification pending").strip()
@@ -182,27 +209,7 @@ def retry_checkpoint(
                             ], cwd=repo_dir)
                         if verify.returncode:
                             raise RuntimeError((verify.stderr or verify.stdout or "workspace verification pending").strip())
-                        program_path = repo_dir / "orchestra/programs/autonomous-mini-app-factory/program.json"
-                        if program_path.exists():
-                            program = json.loads(program_path.read_text())
-                            program["blockedWorkunits"] = [
-                                item for item in program.get("blockedWorkunits", [])
-                                if not isinstance(item, dict) or item.get("id") != "INTEGRATE_RESEARCH_NOTES_UI_CHECKPOINT"
-                            ]
-                            autonomy = program.setdefault("autonomy", {})
-                            if isinstance(autonomy, dict):
-                                autonomy["githubRetryPolicy"] = {
-                                    "state": "IDLE_AFTER_SUCCESS",
-                                    "lastScenario": "Retryable GitHub integration completed without a user prompt.",
-                                    "lastPr": pr_url,
-                                    "integratedSha": integrated_sha,
-                                }
-                            program["canonical"] = {
-                                **program.get("canonical", {}),
-                                "sha": integrated_sha,
-                            }
-                            program["updatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                            program_path.write_text(json.dumps(program, indent=2) + "\n")
+                        record_integration_success(repo_dir=repo_dir, integrated_sha=integrated_sha, pr_url=pr_url)
                         print(json.dumps({"status": "INTEGRATED", "pr": pr_url, "sha": integrated_sha, "workspace": verify.stdout.strip()}))
                         return 0
                         if merge.returncode:
