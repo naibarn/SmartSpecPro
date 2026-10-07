@@ -27,6 +27,26 @@ type RunnerAuthorityRow = {
   activeSessionId: string | null;
 };
 
+function activeSessionProvider(snapshot: unknown, activeSession: boolean, now: Date): { provider: string; source: string } {
+  if (!activeSession || !snapshot || typeof snapshot !== "object") return { provider: "UNKNOWN", source: "no_active_session_provider_fact" };
+  const tools = (snapshot as { toolInventory?: unknown }).toolInventory;
+  if (!Array.isArray(tools)) return { provider: "UNKNOWN", source: "no_active_session_provider_fact" };
+  const activeAgents = tools.flatMap((tool) => {
+    if (!tool || typeof tool !== "object") return [];
+    const record = tool as Record<string, unknown>;
+    if (!(["agent_cli", "agent_harness", "agent_runtime"].includes(String(record.kind)) &&
+      ["codex", "claude"].includes(String(record.toolId).toLowerCase()) &&
+      ["ready", "busy"].includes(String(record.trustState)) &&
+      ["authenticated", "not_required"].includes(String(record.authState)) &&
+      record.availabilityState === "busy" && typeof record.expiresAt === "string" &&
+      Date.parse(record.expiresAt) > now.getTime())) return [];
+    return [String(record.toolId).toLowerCase()];
+  });
+  return activeAgents.length === 1
+    ? { provider: activeAgents[0], source: "trusted_runner_active_tool_inventory" }
+    : { provider: "UNKNOWN", source: activeAgents.length ? "ambiguous_active_provider_facts" : "no_active_session_provider_fact" };
+}
+
 export function projectRunnerWorkspaceAuthority(input: {
   tenantId: string;
   actorId: number;
@@ -42,6 +62,7 @@ export function projectRunnerWorkspaceAuthority(input: {
     const hostState = trust === "REVOKED" ? "REVOKED" : !snapshotFresh ? "STALE" : runner.status === "online" ? "ONLINE" : runner.status.toUpperCase();
     const activeSession = snapshotFresh && runner.status === "online" && runner.trustState === "trusted" &&
       Boolean(runner.activeSessionId && snapshot?.runnerSessionId === runner.activeSessionId);
+    const providerFact = activeSessionProvider(snapshot, activeSession, now);
     return workspaceFactsFromSnapshot(snapshot).map((workspace) => ({
       authorityId: "runner-control-plane",
       tenantId: runner.tenantId,
@@ -49,8 +70,10 @@ export function projectRunnerWorkspaceAuthority(input: {
       repositoryId: workspace.repositoryId,
       hostId: runner.runnerId,
       runnerId: runner.runnerId,
-      agentIdentity: runner.runnerId,
-      provider: runner.profile,
+      agentIdentity: activeSession ? providerFact.provider : "UNKNOWN",
+      provider: activeSession ? providerFact.provider : "UNKNOWN",
+      providerResolutionSource: providerFact.source,
+      runnerProfile: runner.profile,
       workspaceId: workspace.workspaceId,
       displayName: workspace.displayName ?? runner.displayName,
       observedSha: workspace.gitHead,
@@ -90,7 +113,8 @@ export function projectRunnerWorkspaceAuthority(input: {
     hosts: { count: rows.length, observed: rows.map((row) => ({
       hostId: row.runnerId,
       agentIdentity: row.runnerId,
-      provider: row.profile,
+      provider: "UNKNOWN",
+      runnerProfile: row.profile,
       ownerUserId: row.ownerUserId,
       trust: row.revokedAt ? "REVOKED" : row.trustState === "trusted" ? "TRUSTED" : "UNTRUSTED",
       status: row.status,
