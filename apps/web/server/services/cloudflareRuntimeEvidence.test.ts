@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { encrypt } from "./crypto";
-import { getCloudflareContainerInstanceEvidence, getCloudflareWorkerDeploymentEvidence } from "./cloudflareRuntimeEvidence";
+import { getAuthorizedCloudflareContainerEvidence, getAuthorizedCloudflareWorkerDeploymentEvidence, getCloudflareContainerInstanceEvidence, getCloudflareWorkerDeploymentEvidence, resolveCloudflareDeploymentTarget } from "./cloudflareRuntimeEvidence";
 
 const encryptionKey = "wu4c-cloudflare-test-encryption-key";
 const previousKey = process.env.LLM_ENCRYPTION_KEY;
@@ -18,9 +18,36 @@ function credentialDb(token?: string) {
 }
 
 describe("Cloudflare runtime evidence adapters", () => {
+  const target = {
+    targetId: "target-1", tenantId: "tenant-a", projectId: "project-a", environment: "production",
+    provider: "cloudflare" as const, accountRef: "acct-1", workerRef: "worker-a", containerApplicationRef: null,
+    credentialRef: "cloudflare:deployment" as const, enabled: true, provenance: "provider-resource-registry",
+    lastVerifiedAt: "2026-10-07T11:00:00.000Z",
+  };
+
   afterEach(() => {
     if (previousKey === undefined) delete process.env.LLM_ENCRYPTION_KEY;
     else process.env.LLM_ENCRYPTION_KEY = previousKey;
+  });
+
+  it("resolves only exact tenant/project/environment target identity and rejects disabled or stale targets", () => {
+    expect(resolveCloudflareDeploymentTarget({ targets: [target], tenantId: "tenant-a", projectId: "project-a", environment: "production", now: new Date("2026-10-07T12:00:00Z") })).toMatchObject({ status: "CONFIGURED", target });
+    expect(resolveCloudflareDeploymentTarget({ targets: [target], tenantId: "tenant-a", projectId: "project-b", environment: "production" }).status).toBe("NOT_CONFIGURED");
+    expect(resolveCloudflareDeploymentTarget({ targets: [{ ...target, enabled: false }], tenantId: "tenant-a", projectId: "project-a", environment: "production" })).toMatchObject({ status: "PERMISSION_DENIED", target: null });
+    expect(resolveCloudflareDeploymentTarget({ targets: [{ ...target, lastVerifiedAt: "2026-10-01T00:00:00Z" }], tenantId: "tenant-a", projectId: "project-a", environment: "production", now: new Date("2026-10-07T12:00:00Z") })).toMatchObject({ status: "STALE", target: null });
+  });
+
+  it("does not query Cloudflare when an authorized Worker target is absent", async () => {
+    const fetchImpl = vi.fn();
+    await expect(getAuthorizedCloudflareWorkerDeploymentEvidence({ db: credentialDb(), target: null, fetchImpl })).resolves.toMatchObject({ status: "NOT_CONFIGURED", value: null });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("reports an absent Container application target without inventing an identifier", async () => {
+    process.env.LLM_ENCRYPTION_KEY = encryptionKey;
+    const fetchImpl = vi.fn();
+    await expect(getAuthorizedCloudflareContainerEvidence({ db: credentialDb(), target, fetchImpl })).resolves.toMatchObject({ status: "NOT_CONFIGURED", value: null });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("reports missing encrypted provider configuration without claiming health", async () => {
