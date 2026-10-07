@@ -1036,6 +1036,7 @@ def retire_completed_worktree(
                 "project_id": policy["project_id"],
                 "repository_id": policy["repository_id"],
                 "workspace_id": workspace_id,
+                "previous_path": str(path),
                 "workspace_role": latest["role"],
                 "task_id": latest.get("task_id"),
                 "workspace_sha": final_facts["head_sha"],
@@ -1060,9 +1061,64 @@ def retire_completed_worktree(
     return candidate
 
 
+def collect_worktrees(
+    repo: Path,
+    policy_path: Path | None = None,
+    *,
+    mode: str = "AUDIT_ONLY",
+) -> dict[str, Any]:
+    """Conservatively audit registered temporary worktrees; retirement is opt-in."""
+    if mode not in {"AUDIT_ONLY", "RETIRE_SAFE", "REPORT_ONLY"}:
+        raise WorkspaceAuthorityError("WORKTREE_COLLECTOR_MODE_INVALID")
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    with _db(repo) as db:
+        rows = db.execute(
+            "SELECT workspace_id FROM workspaces WHERE project_id=? AND repository_id=? ORDER BY workspace_id",
+            (policy["project_id"], policy["repository_id"]),
+        ).fetchall()
+        workspaces = [_workspace_by_id(db, row[0]) for row in rows]
+    results: list[dict[str, Any]] = []
+    for workspace in workspaces:
+        if not workspace:
+            continue
+        wid = workspace["workspace_id"]
+        if workspace["lifecycle_state"] == "RETIRED":
+            results.append({"workspace_id": wid, "classification": "RETIRED"})
+            continue
+        if workspace["role"] == "UNKNOWN_WORKSPACE" or workspace["role"] == "EXTERNAL_WORKSPACE":
+            results.append({"workspace_id": wid, "classification": "UNKNOWN_OWNER", "path": workspace["location"]})
+            continue
+        if workspace["role"] == "RECOVERY_WORKSPACE":
+            results.append({"workspace_id": wid, "classification": "RECOVERY_REQUIRED", "path": workspace["location"]})
+            continue
+        if workspace["role"] not in RETIRABLE_ROLES:
+            results.append({"workspace_id": wid, "classification": "ACTIVE", "role": workspace["role"]})
+            continue
+        if workspace["lifecycle_state"] == "INTEGRATING":
+            results.append({"workspace_id": wid, "classification": "INTEGRATING"})
+            continue
+        if workspace["session_state"] == "ACTIVE_SESSION":
+            results.append({"workspace_id": wid, "classification": "ACTIVE", "reason": "LIVE_OWNER_OR_LEASE"})
+            continue
+        if mode == "REPORT_ONLY":
+            results.append({"workspace_id": wid, "classification": "BLOCKED", "reason": "NOT_AUDITED"})
+            continue
+        preview = retire_completed_worktree(repo, policy_path, wid)
+        if preview.get("status") == "RETIREMENT_DRY_RUN":
+            if mode == "RETIRE_SAFE":
+                final = retire_completed_worktree(repo, policy_path, wid, apply=True)
+                results.append({"workspace_id": wid, "classification": "RETIRED" if final.get("status") == "WORKTREE_RETIRED" else "BLOCKED", "result": final})
+            else:
+                results.append({"workspace_id": wid, "classification": "RETIREABLE", "result": preview})
+        else:
+            results.append({"workspace_id": wid, "classification": "BLOCKED", "result": preview})
+    return {"status": "WORKTREE_AUDIT_COMPLETE", "mode": mode, "audited_at": _now(), "workspaces": results}
+
+
 def _cli() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("resolve", "inspect", "register", "converge", "verify", "preserve", "retire"))
+    parser.add_argument("action", choices=("resolve", "inspect", "register", "converge", "verify", "preserve", "retire", "collect"))
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--policy", type=Path)
     parser.add_argument("--workspace", type=Path)
@@ -1074,6 +1130,7 @@ def _cli() -> int:
     parser.add_argument("--integrated-sha")
     parser.add_argument("--workspace-id")
     parser.add_argument("--apply", action="store_true", help="apply a retirement; default is dry-run")
+    parser.add_argument("--mode", choices=("AUDIT_ONLY", "RETIRE_SAFE", "REPORT_ONLY"), default="AUDIT_ONLY")
     args = parser.parse_args()
     repo = _repo_root(args.repository)
     try:
@@ -1091,6 +1148,8 @@ def _cli() -> int:
             result = verify_canonical_convergence(repo, args.policy, integrated_sha=args.integrated_sha, task_workspace_id=args.workspace_id)
         elif args.action == "preserve":
             result = preserve_dirty_workspace(repo, args.policy, args.workspace)
+        elif args.action == "collect":
+            result = collect_worktrees(repo, args.policy, mode=args.mode)
         else:
             if not args.workspace_id:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")

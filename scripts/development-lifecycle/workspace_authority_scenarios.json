@@ -219,6 +219,13 @@
       "repetitions": 3,
       "assert": "zero sessions does not imply zero dirty worktrees; each dimension is reported separately",
       "test_name": "test_zero_session_closeout_keeps_dirty_workspaces_visible"
+    },
+    {
+      "number": 31,
+      "name": "periodic-audit-only-never-retires-canonical-workspace",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "default collector classifies clean task as retireable, preserves canonical workspace, and performs no deletion",
+      "test_name": "test_periodic_audit_is_conservative_and_never_classifies_canonical_as_retireable"
     }
   ]
 }
