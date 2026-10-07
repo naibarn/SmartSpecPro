@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
-    "state": "CHECKPOINT_READY",
+    "state": "PR_PENDING",
     "objective": "Provide a deterministic loopback-only fresh schema baseline for the Research Notes and Project Wiki Pages acceptance slice using the existing worker_jobs/outbox authority while excluding retired systems.",
     "implementation": [
       "apps/web/drizzle.mini-app-baseline.config.ts",
@@ -75,7 +75,9 @@
       "The existing full-schema migration chain still fails at 0015 due to missing workflow_templates. The Mini App projection avoids that historical legacy assumption without creating compatibility schema.",
       "No authenticated web session, app process, deployment, or UAT was run."
     ],
-    "nextAction": "Integrate this baseline, then wire an authenticated non-production app process/fixture to it and continue API/UI smoke acceptance."
+    "nextAction": "Integrate this baseline, then wire an authenticated non-production app process/fixture to it and continue API/UI smoke acceptance.",
+    "sourceSha": "88a7870c90e4abcba214b6d55d5cf56c8bfeb831",
+    "pullRequest": "PENDING_PR_URL"
   },
   "checkpoints": [
     {
@@ -221,7 +223,7 @@
     {
       "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
       "state": "SCHEMA_BOOTSTRAP_AND_DB_CONTRACTS_PASS",
-      "sourceSha": "PENDING_COMMIT",
+      "sourceSha": "88a7870c90e4abcba214b6d55d5cf56c8bfeb831",
       "evidence": "Isolated schema projection migrated on fresh PostgreSQL 17 without vector; required active Mini App and worker_jobs/outbox tables present; retired tables absent; fixture contract script passed; app runtime/auth/UAT still pending."
     }
   ],
@@ -397,10 +399,12 @@
   "executionCheckpoint": {
     "taskWorktree": "/home/dev/worktrees/mini-app-factory-resume-test-20261008",
     "sourceBranch": "codex/mini-app-runtime-schema-baseline-20261008",
-    "localCommits": [],
+    "localCommits": [
+      "88a7870c90e4abcba214b6d55d5cf56c8bfeb831"
+    ],
     "intendedRemoteBranch": "codex/mini-app-runtime-schema-baseline-20261008",
     "pendingPullRequest": {
-      "state": "PREPARING_NORMAL_PR",
+      "state": "OPENING_NORMAL_PR",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
