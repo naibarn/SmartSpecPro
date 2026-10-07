@@ -16,7 +16,14 @@ describe("Drizzle migration evidence", () => {
       expectedMigrationHead: { tag: "0002_second", hash: "b" },
       observedAppliedHead: { hash: "a", appliedAt: 100 },
       pendingMigrations: [{ tag: "0002_second", hash: "b" }],
-      failedMigration: null,
+      failedMigration: {
+        state: "UNKNOWN",
+        source: "drizzle.__drizzle_migrations",
+        migration: null,
+        observedAt: null,
+        reason: "failed_attempts_not_recorded_by_source",
+      },
+      failureTracking: "NOT_TRACKED",
       latestExecution: { hash: "a", result: "APPLIED", executedAt: 100 },
     } });
   });

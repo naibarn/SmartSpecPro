@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { MigrationEvidence, MigrationEvidenceSource } from "./drizzleMigrationEvidence";
 
 const migration = { status: "OBSERVED", source: "drizzle.__drizzle_migrations", observedAt: "2026-10-07T12:00:00.000Z", value: { databaseIdentity: "db/public" } };
 const credentialState = {
@@ -30,10 +31,58 @@ describe("internal runtime evidence aggregation", () => {
   });
 
   it("accepts another normalized migration source through the provider boundary", async () => {
-    const alternateMigration = { status: "OBSERVED", source: "alternate-migration-provider", observedAt: "2026-10-07T12:01:00.000Z", value: { databaseIdentity: "d1/app" } };
-    const migrationSource = { observe: vi.fn(async () => alternateMigration) };
-    const result = await getInternalRuntimeEvidence({ db: {} as never, migrationSource: migrationSource as never });
+    const alternateMigration: MigrationEvidence = {
+      status: "OBSERVED",
+      source: "alternate-migration-provider",
+      observedAt: "2026-10-07T12:01:00.000Z",
+      value: {
+        environment: "staging",
+        databaseIdentity: "d1/app",
+        expectedMigrationHead: { tag: "0012_add_index", hash: "expected-hash" },
+        observedAppliedHead: { hash: "previous-hash", appliedAt: 1_791_360_000_000 },
+        pendingMigrations: [{ tag: "0012_add_index", hash: "expected-hash" }],
+        failedMigration: {
+          state: "FAILED",
+          source: "deployment_migration_events",
+          migration: { tag: "0012_add_index", hash: "expected-hash" },
+          observedAt: "2026-10-07T12:00:30.000Z",
+          reason: "execution_failed",
+        },
+        failureTracking: "TRACKED",
+        latestExecution: { hash: "expected-hash", result: "FAILED", executedAt: 1_791_360_030_000 },
+      },
+    };
+    const migrationSource: MigrationEvidenceSource = { observe: vi.fn(async () => alternateMigration) };
+    const result = await getInternalRuntimeEvidence({ db: {} as never, migrationSource });
     expect(migrationSource.observe).toHaveBeenCalledOnce();
     expect(result.migration).toEqual(alternateMigration);
+    expect(result.migration.value?.failedMigration).toMatchObject({ state: "FAILED", migration: { tag: "0012_add_index" } });
+  });
+
+  it("keeps known absence distinct from an untracked failure history", async () => {
+    const knownNoFailure: MigrationEvidence = {
+      status: "OBSERVED",
+      source: "deployment_migration_events",
+      observedAt: "2026-10-07T12:01:00.000Z",
+      value: {
+        environment: "staging",
+        databaseIdentity: "postgres/staging",
+        expectedMigrationHead: { tag: "0012_add_index", hash: "expected-hash" },
+        observedAppliedHead: { hash: "expected-hash", appliedAt: 1_791_360_030_000 },
+        pendingMigrations: [],
+        failedMigration: {
+          state: "NONE",
+          source: "deployment_migration_events",
+          migration: null,
+          observedAt: "2026-10-07T12:01:00.000Z",
+        },
+        failureTracking: "TRACKED",
+        latestExecution: { hash: "expected-hash", result: "APPLIED", executedAt: 1_791_360_030_000 },
+      },
+    };
+    const migrationSource: MigrationEvidenceSource = { observe: vi.fn(async () => knownNoFailure) };
+    const result = await getInternalRuntimeEvidence({ db: {} as never, migrationSource });
+    expect(result.migration.value?.failedMigration).toMatchObject({ state: "NONE", source: "deployment_migration_events" });
+    expect(result.migration.value?.failureTracking).toBe("TRACKED");
   });
 });
