@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "expected_canonical_sha": "28d8a2864335b02524b60943498006cb2929d60c",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
@@ -130,7 +130,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 9,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -155,9 +155,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "canonical_sha": "28d8a2864335b02524b60943498006cb2929d60c",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:22:30Z"
+    "integrated_at": "2026-10-07T14:00:33Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -239,6 +239,45 @@
     "reconciliation_confidence": {
       "source_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
       "value": "HIGH"
+    },
+    "requirements": {
+      "REQ-8267DE389563": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md#L20"
+        ],
+        "authority_source": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md#L20",
+        "blocker": null,
+        "current_relevance": "RELEVANT",
+        "evidence_freshness": "CURRENT",
+        "evidence_sha": "28d8a2864335b02524b60943498006cb2929d60c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "SOURCE_CONTRACT",
+            "path": "apps/web/server/services/tenantProductIdentityContracts.ts",
+            "source_sha": "28d8a2864335b02524b60943498006cb2929d60c",
+            "summary": "Adds stable App/publicApp identifiers and separate route alias contracts; persistence and runtime host integration remain open."
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Persist App identity and route aliases, add authorized runtime routing, and verify the required SPEC-304 acceptance scenarios.",
+        "requirement_digest": "860a0105aee860bc035dc55b3b4893d093312ac13cd89fffbef97e31f0e11081",
+        "requirement_id": "REQ-8267DE389563",
+        "requirement_text": "`AppIdentity` has stable opaque `appId` and `publicAppId`, tenant/publisher relationships, lifecycle, canonical product identity, policy references, creation time, and aliases. Listing, Release, Deployment, and channel records reference it; none becomes its identity. The canonical SmartAIHub route is `https://smartaihub.app/apps/{publicAppId}`. URL/slug/domain is mutable alias data and MUST NOT be used as canonical identity.",
+        "source_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "FOCUSED_TEST",
+            "path": "apps/web/server/services/__tests__/tenantProductIdentityContracts.test.ts",
+            "result": "PASS",
+            "source_sha": "28d8a2864335b02524b60943498006cb2929d60c",
+            "summary": "9 tests passed on the exact integrated tree."
+          }
+        ],
+        "verification_method": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/tenantProductIdentityContracts.test.ts"
+      }
     }
   },
   "reconciliation": {
@@ -308,7 +347,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -317,7 +356,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:25:29.916627Z",
+  "updated_at": "2026-10-07T14:09:58.342592Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

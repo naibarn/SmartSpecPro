@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "e85d40c5b4fea951f40a2b2c54661957a2f725a5",
+    "sha": "28d8a2864335b02524b60943498006cb2929d60c",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:db10e955-1f93-4fc8-accb-b8b255f60d65"
+    "convergenceReceipt": "workspace-convergence:cd95c5fd-f678-4d54-b74b-c6cde139f30c"
   },
   "inventory": {
     "canonicalSpecCount": 311,
@@ -19,13 +19,17 @@
     "outsideMainSources": "not fully audited yet"
   },
   "currentWorkunit": {
-    "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS",
+    "id": "SPEC304_PERSISTED_IDENTITY_AND_ROUTE_RESOLUTION",
     "state": "WORKING",
-    "objective": "Add a stable App identity contract and separately mutable, tenant-bound route aliases, with fail-closed resolution.",
-    "implementation": "apps/web/server/services/tenantProductIdentityContracts.ts",
-    "evidence": ["apps/web/server/services/__tests__/tenantProductIdentityContracts.test.ts: 9 tests passed"],
-    "nextAction": "Integrate the identity contract with persisted App identity and authorized runtime routing under SPEC-304, then implement SPEC-302 project context resolution."
+    "objective": "Persist the stable App identity and route aliases, then bind them to authorized runtime routing.",
+    "implementation": ["apps/web/drizzle/schema.ts", "apps/web/drizzle/0392_spec304_app_identity_and_route_aliases.sql"],
+    "evidence": ["Schema module import succeeded in the uncommitted candidate based on 28d8a2864335b02524b60943498006cb2929d60c", "tenantProductIdentityContracts.test.ts: 9 tests passed at the exact 28d8a2864335b02524b60943498006cb2929d60c base SHA"],
+    "pending": ["No DATABASE_URL is configured in the implementation workspace; migration application and database integration evidence are pending."],
+    "nextAction": "Add repository/service and authenticated route binding; apply migration only against a verified non-production target."
   },
+  "checkpoints": [
+    { "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS", "state": "PARTIAL_INTEGRATED", "sha": "28d8a2864335b02524b60943498006cb2929d60c", "evidence": "tenantProductIdentityContracts.test.ts: 9 passed" }
+  ],
   "completedWorkunits": [],
   "blockedWorkunits": [],
   "criticalPath": [

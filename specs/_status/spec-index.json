@@ -134297,12 +134297,12 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+      "canonical_sha": "28d8a2864335b02524b60943498006cb2929d60c",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
         "requirement REQ-50CB8DEEFBA8 is OPEN",
-        "requirement REQ-8267DE389563 is OPEN",
+        "requirement REQ-8267DE389563 is PARTIAL",
         "requirement REQ-CF618C4C4A3D is OPEN",
         "requirement REQ-F24EEC954686 is OPEN",
         "requirement REQ-E4663270E06A is OPEN",

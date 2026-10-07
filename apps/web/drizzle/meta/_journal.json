@@ -2647,6 +2647,13 @@
       "when": 1791400000001,
       "tag": "0391_tenant_deployment_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 378,
+      "version": "7",
+      "when": 1791400000002,
+      "tag": "0392_spec304_app_identity_and_route_aliases",
+      "breakpoints": true
     }
   ]
 }
