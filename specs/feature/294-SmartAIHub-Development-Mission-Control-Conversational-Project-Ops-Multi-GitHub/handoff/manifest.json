@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "25f4804ac572bf6fda6b87a1bd3f2d344833e230",
+    "expected_canonical_sha": "4d4d46259099721e088b9b9b47e452225426fb2c",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: identify an approved durable source for failed Drizzle migration attempts (the current Drizzle ledger records applied migrations only); preserve the 47 UNKNOWN_OWNER workspaces until explicit provenance supports classification; complete any remaining applicable local acceptance. Keep the dirty canonical user workspace preserved and external runtime verification separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind any approved durable failed-migration-attempt source if one exists; current Drizzle ledger has no such history, so do not infer failures or create a competing migration authority. Preserve the remaining 46 UNKNOWN_OWNER workspaces until per-workspace provenance exists; keep all destructive automation disabled for unknown owners. External production verification remains a separate gate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0_INTERNAL_GAP_CLOSURE: failed Drizzle migration attempt source and UNKNOWN_OWNER provenance classification",
+    "resume_point": "P0_INTERNAL_GAP_CLOSURE: migration failure evidence source; per-workspace UNKNOWN_OWNER provenance.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 54,
+  "generation": 55,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -243,9 +243,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "25f4804ac572bf6fda6b87a1bd3f2d344833e230",
+    "canonical_sha": "4d4d46259099721e088b9b9b47e452225426fb2c",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:57:58Z"
+    "integrated_at": "2026-10-07T07:01:27Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -570,7 +570,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:00:46.284191Z",
+  "updated_at": "2026-10-07T07:05:19.767609Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -754,6 +754,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-workspace-provenance-20261007.md",
         "scope": "Explicit project/repository identity, active Runner task and convergence facts; 10 focused Vitest files (82 passed), Runner Rust tests/check/format passed; clean canonical checkout remains blocked by preserved dirty user work.",
         "source_sha": "25f4804ac572bf6fda6b87a1bd3f2d344833e230",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_AUTHORITY_AUDIT_REFRESH",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-authority-audit-refresh-20261007.md",
+        "scope": "Current-main Python Workspace Authority/Runtime Authority suites (88 passed); fresh 51-row AUDIT_ONLY and explicit registration of the task-owned worktree; 46 unknown-owner workspaces remain preserved.",
+        "source_sha": "4d4d46259099721e088b9b9b47e452225426fb2c",
         "status": "PASS"
       }
     ],
