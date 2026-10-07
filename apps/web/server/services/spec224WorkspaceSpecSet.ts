@@ -12,6 +12,7 @@ import {
 import { getDb } from "../db";
 import { compileSpec224IncrementalSpecSet } from "./spec224IncrementalSpecCompiler";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
+import { isRunnerWorkspaceConvergenceState } from "./runnerContracts";
 
 const MAX_ARTIFACTS = 64;
 const MAX_RAW_BYTES = 2 * 1024 * 1024;
@@ -90,29 +91,34 @@ function normalizeFile(path: string, bytes: Buffer): Spec224WorkspaceSpecFile {
 }
 
 /** Selects only the Runner's opaque, sanitized workspace identity/display facts. */
-export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }> {
+export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null; taskId: string | null; convergenceState: string; convergenceCanonicalSha: string | null }> {
   if (!snapshot || typeof snapshot !== "object") return [];
   const source = snapshot as { workspaceIds?: unknown; workspaces?: unknown };
-  const facts = new Map<string, { projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }>();
+  const facts = new Map<string, { projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null; taskId: string | null; convergenceState: string; convergenceCanonicalSha: string | null }>();
   if (Array.isArray(source.workspaces)) {
     for (const candidate of source.workspaces) {
       if (!candidate || typeof candidate !== "object") continue;
-      const record = candidate as { workspaceId?: unknown; projectId?: unknown; repositoryId?: unknown; displayName?: unknown; gitHead?: unknown; gitBranch?: unknown; dirty?: unknown; contentFingerprint?: unknown };
+      const record = candidate as { workspaceId?: unknown; projectId?: unknown; repositoryId?: unknown; displayName?: unknown; gitHead?: unknown; gitBranch?: unknown; dirty?: unknown; contentFingerprint?: unknown; taskId?: unknown; convergenceState?: unknown; convergenceCanonicalSha?: unknown };
       if (typeof record.workspaceId !== "string" || !record.workspaceId.trim() || record.workspaceId.length > 200) continue;
       const displayName = typeof record.displayName === "string" && record.displayName.trim() ? record.displayName.trim() : null;
       const gitHead = typeof record.gitHead === "string" && /^[a-f0-9]{40,64}$/.test(record.gitHead) ? record.gitHead : null;
       const gitBranch = typeof record.gitBranch === "string" && /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(record.gitBranch) && !record.gitBranch.includes("..") && !record.gitBranch.includes("//") ? record.gitBranch : null;
       const dirty = typeof record.dirty === "boolean" ? record.dirty : null;
       const contentFingerprint = typeof record.contentFingerprint === "string" && /^[a-f0-9]{64}$/.test(record.contentFingerprint) ? record.contentFingerprint : null;
+      const taskId = typeof record.taskId === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(record.taskId) ? record.taskId : null;
+      const convergenceCanonicalSha = typeof record.convergenceCanonicalSha === "string" && /^[a-f0-9]{40,64}$/.test(record.convergenceCanonicalSha) ? record.convergenceCanonicalSha : null;
+      const candidateConvergenceState = isRunnerWorkspaceConvergenceState(record.convergenceState) ? record.convergenceState : "NOT_REPORTED";
+      const convergenceState = candidateConvergenceState === "USER_WORKSPACE_CONVERGED" && !convergenceCanonicalSha ? "NOT_REPORTED" : candidateConvergenceState;
       const current = facts.get(record.workspaceId);
-      const projectId = typeof record.projectId === "string" && record.projectId.trim() && record.projectId.length <= 200 ? record.projectId.trim() : null;
-      const repositoryId = typeof record.repositoryId === "string" && record.repositoryId.trim() && record.repositoryId.length <= 200 ? record.repositoryId.trim() : null;
-      if (!current || (current.displayName === null && displayName)) facts.set(record.workspaceId, { projectId, repositoryId, displayName, gitHead, gitBranch, dirty, contentFingerprint });
+      const safeIdentity = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(value.trim()) && !value.includes("://") && !value.includes("@") && !value.includes("//") && !value.includes("..") ? value.trim() : null;
+      const projectId = safeIdentity(record.projectId);
+      const repositoryId = safeIdentity(record.repositoryId);
+      if (!current || (current.displayName === null && displayName)) facts.set(record.workspaceId, { projectId, repositoryId, displayName, gitHead, gitBranch, dirty, contentFingerprint, taskId, convergenceState, convergenceCanonicalSha });
     }
   }
   if (Array.isArray(source.workspaceIds)) {
     for (const workspaceId of source.workspaceIds) {
-      if (typeof workspaceId === "string" && workspaceId.trim() && workspaceId.length <= 200 && !facts.has(workspaceId)) facts.set(workspaceId, { projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null });
+      if (typeof workspaceId === "string" && workspaceId.trim() && workspaceId.length <= 200 && !facts.has(workspaceId)) facts.set(workspaceId, { projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null });
     }
   }
   return [...facts.entries()].map(([workspaceId, facts]) => ({ workspaceId, ...facts })).sort((left, right) => left.workspaceId.localeCompare(right.workspaceId));

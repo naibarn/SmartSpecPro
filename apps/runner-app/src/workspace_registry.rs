@@ -35,6 +35,91 @@ mod tests {
     }
 
     #[test]
+    fn publishes_only_explicit_project_repository_and_current_task_identity() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("private-project-folder");
+        let data_root = temp.path().join("runner-data");
+        fs::create_dir_all(&project).unwrap();
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        let registered = workspace_registry::register(&config, &project).unwrap();
+        let bound = workspace_registry::bind_identity(
+            &config,
+            &registered.workspace_id,
+            Some("project-a"),
+            Some("github.com/org/repository"),
+        )
+        .unwrap();
+        assert_eq!(bound.project_id.as_deref(), Some("project-a"));
+        assert_eq!(
+            bound.repository_id.as_deref(),
+            Some("github.com/org/repository")
+        );
+
+        let facts = workspace_registry::snapshot_facts(&config).unwrap();
+        assert_eq!(facts[0].project_id.as_deref(), Some("project-a"));
+        assert_eq!(
+            facts[0].repository_id.as_deref(),
+            Some("github.com/org/repository")
+        );
+        assert_eq!(facts[0].task_id, None);
+        assert_eq!(facts[0].convergence_state, "NOT_REPORTED");
+        let serialized = serde_json::to_string(&facts).unwrap();
+        assert!(serialized.contains("\"projectId\":\"project-a\""));
+        assert!(serialized.contains("\"repositoryId\":\"github.com/org/repository\""));
+        assert!(!serialized.contains(&project.to_string_lossy().to_string()));
+
+        assert_eq!(
+            workspace_registry::bind_identity(
+                &config,
+                &registered.workspace_id,
+                Some("https://token@github.com/org/repository"),
+                None,
+            )
+            .unwrap_err(),
+            "RUNNER_WORKSPACE_IDENTITY_INVALID"
+        );
+    }
+
+    #[test]
+    fn loads_legacy_workspace_records_without_identity_metadata() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("legacy-project");
+        fs::create_dir_all(&project).unwrap();
+        let config = RunnerConfig {
+            data_root: temp
+                .path()
+                .join("runner-data")
+                .to_string_lossy()
+                .into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        fs::create_dir_all(&config.data_root).unwrap();
+        let legacy = serde_json::json!([{
+            "workspace_id": "workspace-legacy",
+            "display_name": "Legacy",
+            "local_path": project.canonicalize().unwrap(),
+        }]);
+        fs::write(
+            workspace_registry::registry_file(&config),
+            serde_json::to_vec(&legacy).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            workspace_registry::list(&config).unwrap(),
+            vec![workspace_registry::RegisteredWorkspace {
+                workspace_id: "workspace-legacy".into(),
+                display_name: "Legacy".into(),
+                project_id: None,
+                repository_id: None,
+            }]
+        );
+    }
+
+    #[test]
     fn rejects_unregistered_workspace_ids_and_non_directories() {
         let temp = tempfile::tempdir().unwrap();
         let config = RunnerConfig {
@@ -225,6 +310,8 @@ use std::process::Command;
 pub struct RegisteredWorkspace {
     pub workspace_id: String,
     pub display_name: String,
+    pub project_id: Option<String>,
+    pub repository_id: Option<String>,
 }
 
 /// Redacted, read-only facts that a Runner may include in its capability
@@ -233,11 +320,16 @@ pub struct RegisteredWorkspace {
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceSnapshotFacts {
     pub workspace_id: String,
+    pub project_id: Option<String>,
+    pub repository_id: Option<String>,
     pub display_name: String,
     pub git_head: Option<String>,
     pub git_branch: Option<String>,
     pub dirty: bool,
     pub content_fingerprint: Option<String>,
+    pub task_id: Option<String>,
+    pub convergence_state: String,
+    pub convergence_canonical_sha: Option<String>,
 }
 
 /// Local-only workspace details for the Runner desktop UI. Never include this
@@ -254,6 +346,10 @@ struct WorkspaceRecord {
     workspace_id: String,
     display_name: String,
     local_path: PathBuf,
+    #[serde(default)]
+    project_id: Option<String>,
+    #[serde(default)]
+    repository_id: Option<String>,
 }
 
 pub fn registry_file(config: &RunnerConfig) -> PathBuf {
@@ -266,6 +362,8 @@ pub fn list(config: &RunnerConfig) -> Result<Vec<RegisteredWorkspace>, String> {
         .map(|record| RegisteredWorkspace {
             workspace_id: record.workspace_id,
             display_name: record.display_name,
+            project_id: record.project_id,
+            repository_id: record.repository_id,
         })
         .collect())
 }
@@ -291,11 +389,16 @@ pub fn snapshot_facts(config: &RunnerConfig) -> Result<Vec<WorkspaceSnapshotFact
             let inspection = inspect_git_workspace(&record.local_path);
             WorkspaceSnapshotFacts {
                 workspace_id: record.workspace_id,
+                project_id: record.project_id,
+                repository_id: record.repository_id,
                 display_name: record.display_name,
                 git_head: inspection.git_head,
                 git_branch: inspection.git_branch,
                 dirty: inspection.dirty,
                 content_fingerprint: fingerprint_workspace(&record.local_path),
+                task_id: None,
+                convergence_state: "NOT_REPORTED".into(),
+                convergence_canonical_sha: None,
             }
         })
         .collect())
@@ -536,6 +639,8 @@ pub fn register(config: &RunnerConfig, path: &Path) -> Result<RegisteredWorkspac
     let workspace = RegisteredWorkspace {
         workspace_id: format!("ws-{}-{}", slug.trim_matches('-'), &digest[..12]),
         display_name: name.chars().take(80).collect(),
+        project_id: None,
+        repository_id: None,
     };
 
     let mut records = load_records(config)?;
@@ -551,10 +656,59 @@ pub fn register(config: &RunnerConfig, path: &Path) -> Result<RegisteredWorkspac
             workspace_id: workspace.workspace_id.clone(),
             display_name: workspace.display_name.clone(),
             local_path: canonical_path,
+            project_id: None,
+            repository_id: None,
         });
         save_records(config, &records)?;
     }
-    Ok(workspace)
+    let record = records
+        .iter()
+        .find(|record| record.workspace_id == workspace.workspace_id);
+    Ok(RegisteredWorkspace {
+        project_id: record.and_then(|record| record.project_id.clone()),
+        repository_id: record.and_then(|record| record.repository_id.clone()),
+        ..workspace
+    })
+}
+
+pub fn bind_identity(
+    config: &RunnerConfig,
+    workspace_id: &str,
+    project_id: Option<&str>,
+    repository_id: Option<&str>,
+) -> Result<RegisteredWorkspace, String> {
+    fn valid_identity(value: &str) -> bool {
+        !value.is_empty()
+            && value.len() <= 200
+            && value.bytes().all(|byte| {
+                byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'.' | b':' | b'/' | b'-')
+            })
+            && !value.contains("://")
+            && !value.contains('@')
+            && !value.contains("//")
+            && !value.contains("..")
+            && value.as_bytes()[0].is_ascii_alphanumeric()
+    }
+    if project_id.is_some_and(|value| !valid_identity(value))
+        || repository_id.is_some_and(|value| !valid_identity(value))
+    {
+        return Err("RUNNER_WORKSPACE_IDENTITY_INVALID".into());
+    }
+    let mut records = load_records(config)?;
+    let record = records
+        .iter_mut()
+        .find(|record| record.workspace_id == workspace_id)
+        .ok_or_else(|| "RUNNER_WORKSPACE_NOT_REGISTERED".to_string())?;
+    record.project_id = project_id.map(str::to_string);
+    record.repository_id = repository_id.map(str::to_string);
+    let result = RegisteredWorkspace {
+        workspace_id: record.workspace_id.clone(),
+        display_name: record.display_name.clone(),
+        project_id: record.project_id.clone(),
+        repository_id: record.repository_id.clone(),
+    };
+    save_records(config, &records)?;
+    Ok(result)
 }
 
 pub fn remove(config: &RunnerConfig, workspace_id: &str) -> Result<bool, String> {

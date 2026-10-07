@@ -407,6 +407,36 @@ describe("RunnerGateway", () => {
     });
   });
 
+  it("persists and replay-fences the authenticated Runner workspace task and convergence facts", async () => {
+    const repository = new InMemoryRunnerRepository();
+    const gateway = new RunnerGateway(repository);
+    const auth = await verifyRunnerControlToken(createRunnerControlToken({
+      runnerId: "runner-workspace-facts", tenantId: "tenant-a", profile: "local_device",
+      nodeKind: "local_device", deviceBinding: localDeviceBinding,
+    }));
+    await gateway.enroll({ auth, deviceId: "device-1", displayName: "Workspace facts runner" });
+    const workspace = {
+      workspaceId: "workspace-1", projectId: "project-a", repositoryId: "github.com/org/repository",
+      displayName: "SmartSpecPro", gitHead: "a".repeat(40), gitBranch: "main", dirty: false,
+      taskId: "job-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40),
+    };
+    const request = {
+      auth,
+      snapshot: { ...snapshot("1", auth.runnerId), runnerSessionId: auth.runnerSessionId, workspaces: [workspace] },
+      idempotencyKey: "workspace-facts-1",
+    };
+
+    await expect(gateway.publishCapabilities(request)).resolves.toMatchObject({ status: "accepted" });
+    await expect(repository.getNode(auth.runnerId, auth.tenantId)).resolves.toMatchObject({
+      currentSnapshot: { workspaces: [workspace] },
+    });
+    await expect(gateway.publishCapabilities(request)).resolves.toMatchObject({ status: "duplicate" });
+    await expect(gateway.publishCapabilities({
+      ...request,
+      snapshot: { ...request.snapshot, workspaces: [{ ...workspace, taskId: "job-43" }] },
+    })).rejects.toMatchObject({ code: "RUNNER_SNAPSHOT_IDEMPOTENCY_CONFLICT" });
+  });
+
   it("does not allow a shared Container to become a device", async () => {
     const gateway = new RunnerGateway(new InMemoryRunnerRepository());
     const auth = await verifyRunnerControlToken(

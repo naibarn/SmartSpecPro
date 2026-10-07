@@ -6,7 +6,7 @@ function runner(overrides: Record<string, unknown> = {}) {
   return {
     runnerId: "runner-a", tenantId: "tenant-a", ownerUserId: 7, profile: "local_device", displayName: "Dev host",
     trustState: "trusted", status: "online", currentSnapshotRevision: "snapshot-1",
-    currentSnapshotJson: { runnerSessionId: "session-a", toolInventory: [{ toolId: "codex", kind: "agent_cli", trustState: "busy", authState: "authenticated", availabilityState: "busy", expiresAt: "2026-10-07T12:01:00.000Z" }], workspaces: [{ workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false }] },
+    currentSnapshotJson: { runnerSessionId: "session-a", toolInventory: [{ toolId: "codex", kind: "agent_cli", trustState: "busy", authState: "authenticated", availabilityState: "busy", expiresAt: "2026-10-07T12:01:00.000Z" }], workspaces: [{ workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40) }] },
     snapshotObservedAt: new Date("2026-10-07T11:59:00.000Z"), snapshotExpiresAt: new Date("2026-10-07T12:01:00.000Z"),
     lastSeenAt: new Date("2026-10-07T11:59:00.000Z"), revokedAt: null, activeSessionId: "session-a", ...overrides,
   };
@@ -15,8 +15,21 @@ function runner(overrides: Record<string, unknown> = {}) {
 describe("projectRunnerWorkspaceAuthority", () => {
   it("projects trusted fresh host identity and preserves project and repository identities", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now });
-    expect(result.workspaces.observed[0]).toMatchObject({ projectId: "project-a", repositoryId: "repo-a", hostId: "runner-a", provider: "codex", providerResolutionSource: "trusted_runner_active_tool_inventory", runnerProfile: "local_device", trust: "TRUSTED", sessionId: "session-a", observedSha: "a".repeat(40) });
+    expect(result.workspaces.observed[0]).toMatchObject({ projectId: "project-a", repositoryId: "repo-a", hostId: "runner-a", provider: "codex", providerResolutionSource: "trusted_runner_active_tool_inventory", runnerProfile: "local_device", trust: "TRUSTED", ownerUserId: 7, sessionId: "session-a", sessionState: "ACTIVE", taskId: "task-42", taskIdSource: "trusted_runner_snapshot_active_session", observedSha: "a".repeat(40), convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), observedAt: "2026-10-07T11:59:00.000Z" });
     expect(result.pushState.state).toBe("UNKNOWN");
+  });
+
+  it("does not project a Runner-reported task when its session is no longer current", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner({ activeSessionId: "new-session" }),
+    ] as never[], now });
+    expect(result.workspaces.observed[0]).toMatchObject({
+      ownerUserId: 7,
+      sessionId: null,
+      sessionState: "STALE_OR_UNBOUND",
+      taskId: null,
+      taskIdSource: "UNKNOWN",
+    });
   });
 
   it("uses freshness to exclude expired facts while retaining them as ignored evidence", () => {
@@ -80,6 +93,45 @@ describe("projectRunnerWorkspaceAuthority", () => {
         reasons: ["TRUSTED_FACTS_DISAGREE_ON_PROJECT_OR_REPOSITORY", "TRUSTED_FACTS_DISAGREE_ON_WORKSPACE_STATE"],
         conflictingFields: ["dirty"],
         selectedFact: null,
+      },
+    });
+  });
+
+  it("surfaces conflicting trusted convergence observations without selecting a host", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner(),
+      runner({ runnerId: "runner-b", currentSnapshotJson: { workspaces: [{
+        workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a",
+        gitHead: "a".repeat(40), gitBranch: "main", dirty: false,
+        convergenceState: "CONVERGENCE_PENDING", convergenceCanonicalSha: "b".repeat(40),
+      }] } }),
+    ] as never[], now });
+    expect(result.workspaceConflicts[0]).toMatchObject({
+      state: "CONFLICT",
+      reconciliation: {
+        status: "CONFLICT",
+        conflictingFields: ["convergenceState", "convergenceCanonicalSha"],
+        selectedFact: null,
+      },
+    });
+  });
+
+  it("retains a single trusted convergence observation when another host has no report", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner(),
+      runner({ runnerId: "runner-b", currentSnapshotJson: { workspaces: [{
+        workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a",
+        gitHead: "a".repeat(40), gitBranch: "main", dirty: false,
+      }] } }),
+    ] as never[], now });
+    expect(result.workspaceGroups.observed[0]).toMatchObject({
+      state: "OBSERVED",
+      reconciliation: {
+        conflictingFields: [],
+        agreedWorkspaceState: {
+          convergenceState: "USER_WORKSPACE_CONVERGED",
+          convergenceCanonicalSha: "a".repeat(40),
+        },
       },
     });
   });
