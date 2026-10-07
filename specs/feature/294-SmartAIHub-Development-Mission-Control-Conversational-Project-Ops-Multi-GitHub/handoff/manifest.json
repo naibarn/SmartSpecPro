@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+    "expected_canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish integration and task/provider identity precedence in Mission Control; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; run remaining internal regression and acceptance gates. Keep P0 implementation PARTIAL.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -61,14 +61,21 @@
       "https://github.com/naibarn/SmartSpecPro/pull/162",
       "git:b6151bcd293015f2376ac003d07cb296daf8c139",
       "git:e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/166",
+      "https://github.com/naibarn/SmartSpecPro/pull/167",
+      "git:d7c2930c003bb5af2ec9739301e17839a9022759",
+      "git:420c9d80d4369800d6ab83c70e230c61b10ae689",
+      "git:02f4ae88f8dbdd5bafa693aefff3dc11b860dbd0",
+      "git:8884004059d061b0d19177c60f2916d1757dc975",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-fact-conflicts-integrated-8884004059d0.md"
     ],
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish integration and task/provider identity precedence in Mission Control; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; run remaining internal regression and acceptance gates. Keep P0 implementation PARTIAL.",
-    "rationale": "PR #162 now combines live local and trusted Runner sessions and uses local authority push/integration/convergence/recovery facts where present. The complete project read model and cross-host Runner action dispatch remain open; external verification remains separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
+    "rationale": "PRs #166/#167 harden trusted Runner cross-host fact ingestion against same-revision conflicts and conflicting idempotency replays, including transaction-level concurrency checks. This does not resolve authority-level precedence for facts from distinct trusted hosts or complete remaining P0 internal requirements.",
     "residual_requirements": [
-      "cross-host Runner action dispatch and durable authority fact conflict reconciliation",
-      "complete Mission Control integration, push parity and task/provider identity precedence",
-      "genuine handoff lifecycle producer",
+      "authority precedence and durable conflict resolution across distinct trusted Runner hosts",
+      "genuine handoff lifecycle event producer",
+      "complete Mission Control push/integration and task/provider identity precedence",
       "migration and runtime health bindings to internal sources",
       "Cloudflare credential-center integration path",
       "remaining WU-4C regression matrix and acceptance evidence"
@@ -100,7 +107,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 37,
+  "generation": 38,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -144,7 +151,11 @@
       "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
       "327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c",
       "b6151bcd293015f2376ac003d07cb296daf8c139",
-      "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a"
+      "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+      "d7c2930c003bb5af2ec9739301e17839a9022759",
+      "420c9d80d4369800d6ab83c70e230c61b10ae689",
+      "02f4ae88f8dbdd5bafa693aefff3dc11b860dbd0",
+      "8884004059d061b0d19177c60f2916d1757dc975"
     ],
     "mapping": [],
     "source_paths": [
@@ -175,16 +186,17 @@
       "apps/web/server/routers/spec226DevelopmentControl.ts",
       "apps/web/server/services/workspaceAuthoritySafeActions.ts",
       "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
-      "apps/web/server/services/jobExecutorRegistry.ts"
+      "apps/web/server/services/jobExecutorRegistry.ts",
+      "apps/web/server/services/runnerGateway.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+    "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:21:30Z"
+    "integrated_at": "2026-10-07T05:27:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -217,7 +229,12 @@
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md",
       "https://github.com/naibarn/SmartSpecPro/pull/162",
       "git:e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/166",
+      "https://github.com/naibarn/SmartSpecPro/pull/167",
+      "git:02f4ae88f8dbdd5bafa693aefff3dc11b860dbd0",
+      "git:8884004059d061b0d19177c60f2916d1757dc975",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-fact-conflicts-integrated-8884004059d0.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -252,14 +269,21 @@
         "https://github.com/naibarn/SmartSpecPro/pull/162",
         "git:b6151bcd293015f2376ac003d07cb296daf8c139",
         "git:e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/166",
+        "https://github.com/naibarn/SmartSpecPro/pull/167",
+        "git:d7c2930c003bb5af2ec9739301e17839a9022759",
+        "git:420c9d80d4369800d6ab83c70e230c61b10ae689",
+        "git:02f4ae88f8dbdd5bafa693aefff3dc11b860dbd0",
+        "git:8884004059d061b0d19177c60f2916d1757dc975",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-fact-conflicts-integrated-8884004059d0.md"
       ],
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish integration and task/provider identity precedence in Mission Control; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; run remaining internal regression and acceptance gates. Keep P0 implementation PARTIAL.",
-      "rationale": "PR #162 now combines live local and trusted Runner sessions and uses local authority push/integration/convergence/recovery facts where present. The complete project read model and cross-host Runner action dispatch remain open; external verification remains separate.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "rationale": "PRs #166/#167 harden trusted Runner cross-host fact ingestion against same-revision conflicts and conflicting idempotency replays, including transaction-level concurrency checks. This does not resolve authority-level precedence for facts from distinct trusted hosts or complete remaining P0 internal requirements.",
       "residual_requirements": [
-        "cross-host Runner action dispatch and durable authority fact conflict reconciliation",
-        "complete Mission Control integration, push parity and task/provider identity precedence",
-        "genuine handoff lifecycle producer",
+        "authority precedence and durable conflict resolution across distinct trusted Runner hosts",
+        "genuine handoff lifecycle event producer",
+        "complete Mission Control push/integration and task/provider identity precedence",
         "migration and runtime health bindings to internal sources",
         "Cloudflare credential-center integration path",
         "remaining WU-4C regression matrix and acceptance evidence"
@@ -296,7 +320,12 @@
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-mission-control-groups-integrated-f5b068f2e335.md",
         "https://github.com/naibarn/SmartSpecPro/pull/162",
         "git:e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/166",
+        "https://github.com/naibarn/SmartSpecPro/pull/167",
+        "git:02f4ae88f8dbdd5bafa693aefff3dc11b860dbd0",
+        "git:8884004059d061b0d19177c60f2916d1757dc975",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-fact-conflicts-integrated-8884004059d0.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -382,7 +411,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:22:24.186650Z",
+  "updated_at": "2026-10-07T05:29:18.997119Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -454,6 +483,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readmodel-integrated-b6151bcd2930.md",
         "scope": "local and Runner active-session aggregation, local push/integration/convergence/recovery projection",
         "source_sha": "b6151bcd293015f2376ac003d07cb296daf8c139",
+        "status": "PASS"
+      },
+      {
+        "kind": "CROSS_HOST_RUNNER_FACT_CONFLICT_REGRESSION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-fact-conflicts-integrated-8884004059d0.md",
+        "scope": "same-revision fact conflicts, idempotency replay conflicts, transaction recheck",
+        "source_sha": "420c9d80d4369800d6ab83c70e230c61b10ae689",
         "status": "PASS"
       }
     ],

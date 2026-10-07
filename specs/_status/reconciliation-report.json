@@ -139904,7 +139904,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+      "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -140188,7 +140188,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish integration and task/provider identity precedence in Mission Control; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; run remaining internal regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -140251,7 +140251,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+      "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -140792,7 +140792,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish integration and task/provider identity precedence in Mission Control; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; run remaining internal regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -140855,7 +140855,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+      "canonical_sha": "8884004059d061b0d19177c60f2916d1757dc975",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -141070,7 +141070,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:18:10.947322Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish integration and task/provider identity precedence in Mission Control; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; run remaining internal regression and acceptance gates. Keep P0 implementation PARTIAL.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement genuine handoff lifecycle producer; finish cross-host authority precedence beyond revision/idempotency fencing; close remaining Mission Control push/integration/provider identity facts; bind migration/runtime evidence and Cloudflare credential-center path; complete regression and acceptance gates. Keep P0 implementation PARTIAL.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
