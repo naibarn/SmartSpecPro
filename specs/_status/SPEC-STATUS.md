@@ -1,8 +1,8 @@
 <!-- GENERATED FROM spec-index.json; DO NOT EDIT -->
 # Repository Spec Status
 
-- Discovered records: 468
-- Canonical `spec.md` records: 311
+- Discovered records: 471
+- Canonical `spec.md` records: 313
 - Global index invariant: PASS
 - Declared status/relationship claims are evidence candidates; they do not set authority or continuation.
 
@@ -337,6 +337,9 @@
 | [302 SmartAIHub Unified Project Identity, Project-App Binding & Context Resolution Contract](specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution) | CANONICAL_SPEC | ACTIVE_CANONICAL | VALIDATION_PENDING | CONTINUE_REQUIRED | HIGH | PARTIAL | DESIGN_CONTRACT | Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates. |
 | [303 SmartAIHub Ecosystem Asset Registry, Ownership, Transfer, Distribution & Discover Contract](specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover) | CANONICAL_SPEC | ACTIVE_CANONICAL | VALIDATION_PENDING | CONTINUE_REQUIRED | HIGH | PARTIAL | DESIGN_CONTRACT | Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates. |
 | [304 SmartAIHub Application Identity, Universal Routing, Managed Hosting & Deployment Contract](specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment) | CANONICAL_SPEC | ACTIVE_CANONICAL | VALIDATION_PENDING | CONTINUE_REQUIRED | HIGH | PARTIAL | DESIGN_CONTRACT | Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates. |
+| [305 SPEC-305 --- SmartAIHub Artifact Intelligence, Semantic Mutation & Versioning Fabric](specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric) | CANONICAL_SPEC | INVALID_OR_UNKNOWN | DISCOVERING | RECONCILIATION_REQUIRED | UNRESOLVED | UNKNOWN |  | Initialize and reconcile canonical handoff. |
+| [306 SmartAIHub Omnichannel Growth, Messaging, Registration, Assistant & Command Ingress Fabric](specs/feature/306-omnichannel-growth-messaging-registration-command-ingress) | CANONICAL_SPEC | INVALID_OR_UNKNOWN | DISCOVERING | RECONCILIATION_REQUIRED | UNRESOLVED | UNKNOWN |  | Initialize and reconcile canonical handoff. |
+| [— _candidates](specs/feature/_candidates) | COLLECTION_ENTRY_NO_SPEC | INVALID_OR_UNKNOWN | NOT_A_CANONICAL_SPEC | NOT_APPLICABLE | NOT_APPLICABLE | UNKNOWN |  | This record is an inventory item, not a canonical Spec handoff. |
 | [012 012-chat-agency-control-plane](specs/project/012-chat-agency-control-plane) | PROJECT_REQUIREMENTS | INVALID_OR_UNKNOWN | NOT_A_CANONICAL_SPEC | NOT_APPLICABLE | NOT_APPLICABLE | UNKNOWN |  | This record is an inventory item, not a canonical Spec handoff. |
 | [01 Spec: Chat Intent Router](specs/project/012-chat-agency-control-plane/requirements.deep-project/01-chat-intent-router) | PROJECT_REQUIREMENTS | INVALID_OR_UNKNOWN | NOT_A_CANONICAL_SPEC | NOT_APPLICABLE | NOT_APPLICABLE | UNKNOWN |  | This record is an inventory item, not a canonical Spec handoff. |
 | [02 Spec: Agency Handoff Contract](specs/project/012-chat-agency-control-plane/requirements.deep-project/02-agency-handoff-contract) | PROJECT_REQUIREMENTS | INVALID_OR_UNKNOWN | NOT_A_CANONICAL_SPEC | NOT_APPLICABLE | NOT_APPLICABLE | UNKNOWN |  | This record is an inventory item, not a canonical Spec handoff. |
