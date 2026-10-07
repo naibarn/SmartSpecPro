@@ -2626,6 +2626,13 @@
       "when": 1790530000024,
       "tag": "0388_worker_job_event_context",
       "breakpoints": true
+    },
+    {
+      "idx": 375,
+      "version": "7",
+      "when": 1791374488774,
+      "tag": "0389_spec288_provider_deployment_target_authority",
+      "breakpoints": true
     }
   ]
 }
