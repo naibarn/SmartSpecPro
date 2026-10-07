@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 166 unresolved of 166
-- Next action: Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.
-- Manifest generation: 36
+- Next action: Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.
+- Manifest generation: 37
 
 ## Source-declared status and relationship claims
 

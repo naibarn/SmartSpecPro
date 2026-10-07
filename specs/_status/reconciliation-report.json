@@ -138682,7 +138682,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+      "canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -138966,7 +138966,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -139029,7 +139029,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+      "canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -139570,7 +139570,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -139633,7 +139633,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+      "canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -139848,7 +139848,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:18:10.947322Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
