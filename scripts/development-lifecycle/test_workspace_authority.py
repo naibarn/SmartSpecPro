@@ -626,6 +626,40 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(retired["receipt"]["result"], "WORKTREE_RETIRED")
         self.assertFalse(task.exists())
 
+    def test_periodic_audit_is_conservative_and_never_classifies_canonical_as_retireable(self) -> None:
+        task = self.root / "collector-clean-task"
+        git(self.canonical, "worktree", "add", "-b", "task/collector-clean", str(task), "HEAD")
+        registered_task = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        canonical = authority.register_workspace(self.canonical, self.policy, self.canonical, role="CANONICAL_USER_WORKSPACE")
+
+        report = authority.collect_worktrees(self.canonical, self.policy)
+
+        self.assertEqual(report["mode"], "AUDIT_ONLY")
+        classifications = {item["workspace_id"]: item["classification"] for item in report["workspaces"]}
+        self.assertEqual(classifications[registered_task["workspace_id"]], "RETIREABLE")
+        self.assertEqual(classifications[canonical["workspace_id"]], "ACTIVE")
+        self.assertTrue(task.exists())
+        self.assertTrue(self.canonical.exists())
+
+    def test_collector_preserves_unknown_owner_and_retires_only_in_explicit_safe_mode(self) -> None:
+        task = self.root / "collector-safe-task"
+        unknown = self.root / "collector-unknown-owner"
+        git(self.canonical, "worktree", "add", "-b", "task/collector-safe", str(task), "HEAD")
+        git(self.canonical, "worktree", "add", "-b", "task/collector-unknown", str(unknown), "HEAD")
+        registered_task = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        registered_unknown = authority.register_workspace(self.canonical, self.policy, unknown, role="UNKNOWN_WORKSPACE")
+
+        report = authority.collect_worktrees(self.canonical, self.policy, mode="RETIRE_SAFE")
+
+        classifications = {item["workspace_id"]: item["classification"] for item in report["workspaces"]}
+        self.assertEqual(classifications[registered_task["workspace_id"]], "RETIRED")
+        self.assertEqual(classifications[registered_unknown["workspace_id"]], "UNKNOWN_OWNER")
+        self.assertFalse(task.exists())
+        self.assertTrue(unknown.exists())
+        retired = next(item["result"]["receipt"] for item in report["workspaces"] if item["workspace_id"] == registered_task["workspace_id"])
+        self.assertEqual(retired["previous_path"], str(task))
+        self.assertEqual(retired["workspace_id"], registered_task["workspace_id"])
+
     def test_registration_racing_retirement_cannot_resurrect_removed_worktree(self) -> None:
         task = self.root / "retirement-registration-race"
         git(self.canonical, "worktree", "add", "-b", "task/retirement-race", str(task), "HEAD")
@@ -703,8 +737,8 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         scenarios_path = Path(__file__).with_name("workspace_authority_scenarios.json")
         matrix = json.loads(scenarios_path.read_text(encoding="utf-8"))
         scenarios = matrix["scenarios"]
-        self.assertEqual(len(scenarios), 30)
-        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 31)))
+        self.assertEqual(len(scenarios), 31)
+        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 32)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
@@ -714,7 +748,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
             {row["number"] for row in scenarios if row.get("test_name")},
-            set(range(1, 31)),
+            set(range(1, 32)),
         )
 
 
