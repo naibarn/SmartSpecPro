@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2753c74afbfeadd0f218d23367f7c61728602a0b",
+    "expected_canonical_sha": "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire authenticated seven-action tenant/project authorization and worker_jobs/Runner execution; finish integration/handoff/recovery event callsites and cross-host/runtime evidence bindings. Keep implementation PARTIAL and production verification separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire authenticated safe actions to worker_jobs/Runner, complete lifecycle producers for integration/handoff/recovery, and bind cross-host and production evidence to their internal sources. Keep implementation PARTIAL and production verification separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -89,7 +89,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 31,
+  "generation": 32,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -124,7 +124,8 @@
       "5928f373f7c395d1e0cf900615df3b116aae9fee",
       "26fd48168f44f31a6759c9264cfc5107445fe187",
       "33b833a1a78101be8f5f0386b2fb49677b3c57bd",
-      "2753c74afbfeadd0f218d23367f7c61728602a0b"
+      "2753c74afbfeadd0f218d23367f7c61728602a0b",
+      "ebabe0cab9805f7a26ba4b752e045db8fcf16608"
     ],
     "mapping": [],
     "source_paths": [
@@ -158,9 +159,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2753c74afbfeadd0f218d23367f7c61728602a0b",
+    "canonical_sha": "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:38:39Z"
+    "integrated_at": "2026-10-07T04:42:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -329,7 +330,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:39:57.444875Z",
+  "updated_at": "2026-10-07T04:41:57.478149Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -359,6 +360,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-convergence-event-2753c74afbfe.md",
         "scope": "Durable convergence receipt triggers an idempotent lifecycle job through the periodic AUDIT_ONLY audit; focused web regression passes; remaining internal WU-4C gaps remain open.",
         "source_sha": "2753c74afbfeadd0f218d23367f7c61728602a0b",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-scope-conflicts-ebabe0cab980.md",
+        "scope": "Workspace Authority conflict groups now distinguish reused opaque IDs across repositories while preserving contradictory project bindings as conflicts.",
+        "source_sha": "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
         "status": "PASS"
       }
     ],
