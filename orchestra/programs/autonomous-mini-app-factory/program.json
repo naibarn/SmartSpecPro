@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+    "sha": "9ad92c4437443690679e334d5f886048f5d9518f",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
@@ -17,7 +17,8 @@
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
       "receipt_id": "workspace-convergence:a2478299-a447-40f6-82af-c070fa71e691",
       "verified_at": "2026-10-07T17:59:44.114+00:00"
-    }
+    },
+    "observedAt": "2026-10-08T01:37:04+07:00"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -50,13 +51,14 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_NONPROD_RUNTIME_AND_FACTORY_PIPELINE",
-    "state": "MIGRATION_0393_PASS_RUNTIME_WAITING_ENVIRONMENT",
-    "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
+    "id": "FACTORY_DEPENDENCY_READY_SELECTOR_AND_SECOND_APP_PACKAGE",
+    "state": "CHECKPOINT_READY_PENDING_PR",
+    "objective": "Make the existing Factory contract dependency-executable through DevelopmentWorkUnit and prove app-neutral package generation with a second app descriptor.",
     "implementation": [
-      "apps/web/client/src/",
-      "apps/web/server/routers/researchNotes.ts",
-      "apps/web/server/services/"
+      "apps/web/server/services/miniAppFactoryPipeline.ts",
+      "apps/web/scripts/build-mini-app-package.ts",
+      "apps/web/mini-apps/project-wiki-pages/package/",
+      "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json"
     ],
     "evidence": [
       "PR #238 integrated the Research Notes UI and tenant-bound public App resolution at origin/main SHA 1f898eb5f4e00b7befd026e8cbf551bc524a5ae8; 12 focused UI/router/service tests passed on source 1b008107.",
@@ -86,14 +88,15 @@
       "Nonproduction runtime was not deployed: whole-schema Drizzle push stopped because PostgreSQL lacks the vector type/extension; app process could not start because cookie-parser is declared but absent from the task workspace node_modules links. Existing production service was not contacted or changed.",
       "Generic pipeline contract persisted at factory-pipeline.v1.json. It is a contract only; no generic executable pipeline or second Mini App reuse run has yet passed.",
       "A temporary app process bound only to 127.0.0.1:43301 on source SHA 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. /healthz and /readyz returned HTTP 200. Research Notes API/UI probes returned HTTP 500 because the disposable database lacks current tenant columns and the full schema could not be provisioned without PostgreSQL vector extension. Process stopped; production untouched.",
-      "The disposable PostgreSQL and loopback app processes were stopped after capturing receipts and HTTP evidence. Temporary data and receipts remain under /tmp/research-notes-nonprod-v7e5fmbp for safe retry/recovery."
+      "The disposable PostgreSQL and loopback app processes were stopped after capturing receipts and HTTP evidence. Temporary data and receipts remain under /tmp/research-notes-nonprod-v7e5fmbp for safe retry/recovery.",
+      "Source SHA 03166177e5ce094940b7ff2265837e1083954436: the DevelopmentWorkUnit-backed DAG selector passes 3 focused tests, including missing dependency/cycle rejection and continuing independent scopes while runtime stages wait. The shared deterministic SPAAS builder produced Research Notes digest spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17 and Project Wiki Pages digest spaas-package-v1:sha256:c59f0fd8053b058869092e01ad4e442006bc4e0c429b645ebabc51d9fe0fca1a; both validation states are needs_context. Project Wiki Pages is a Spec 281-derived package descriptor only; backend/UI implementation, app-specific tests, deployment, and UAT remain open."
     ],
     "pending": [
       "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
       "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed.",
       "Migration runner clean-database recovery is under repair; the target database remains empty, disposable, loopback-only, and no migration receipt exists yet."
     ],
-    "nextAction": "Integrate the wrapped PostgreSQL error-code fix, retry the full migration journal via the normal receipt path on local-disposable-research-notes-uat, then seed authenticated synthetic principals and verify the dev server is loopback-only."
+    "nextAction": "Push this safe checkpoint through a normal PR, integrate and converge the canonical workspace, then implement authenticated Project Wiki Pages persistence/actions/UI using the same pipeline; keep Research Notes runtime/UAT waiting for a supported non-production PostgreSQL+pgvector target."
   },
   "checkpoints": [
     {
@@ -355,12 +358,12 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_GIT_CHECKPOINT",
-    "autoNextWorkSelection": "NOT_IMPLEMENTED",
+    "autoNextWorkSelection": "PARTIAL_DEPENDENCY_READY_SELECTOR; CONTINUATION_EXECUTION_WIRING_PENDING",
     "autoResume": "PARTIAL_EXISTING_SPEC224_RUN_RESUME; PROGRAM_LEVEL_DISCOVERY_NOT_IMPLEMENTED",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "GENERIC_MINI_APP_FACTORY_PIPELINE_EXECUTION_CONTRACT",
+    "nextEligibleWorkunit": "PROJECT_WIKI_PAGES_BACKEND_SCHEMA_ACTIONS_UI",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -374,15 +377,18 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T18:00:00Z",
+  "updatedAt": "2026-10-08T01:37:04+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
     "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "WAITING_ENVIRONMENT",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
-    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "NOT_RUN",
-    "MINI_APP_FACTORY_MVP": "NOT_PASS"
+    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_PACKAGE_ONLY",
+    "MINI_APP_FACTORY_MVP": "NOT_PASS",
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_DEPENDENCY_READY_SELECTOR_ONLY",
+    "M7_FACTORY_AUTO_RESUME_PASS": "NOT_RUN",
+    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_PACKAGE_ONLY"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
@@ -392,7 +398,46 @@
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "CONTRACT_PERSISTED_EXECUTION_NOT_PROVEN",
-    "secondMiniApp": "NOT_RUN"
+    "state": "DEPENDENCY_READY_SELECTOR_IMPLEMENTED_PENDING_INTEGRATION_AND_EXECUTOR_WIRING",
+    "secondMiniApp": "SPEC281_SCOPED_PACKAGE_BUILT_IMPLEMENTATION_PENDING"
+  },
+  "executionCheckpoint": {
+    "taskWorktree": "/home/dev/worktrees/mini-app-factory-reset",
+    "sourceBranch": "codex/mini-app-factory-runtime-20261007",
+    "localCommits": [
+      "03166177e5ce094940b7ff2265837e1083954436"
+    ],
+    "intendedRemoteBranch": "codex/mini-app-factory-runtime-20261007",
+    "pendingPullRequest": {
+      "state": "NOT_OPENED_YET",
+      "integration": "PENDING_NORMAL_PR"
+    },
+    "testEvidence": [
+      {
+        "revision": "03166177e5ce094940b7ff2265837e1083954436",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryPipeline.test.ts",
+        "outcome": "PASS: 3 tests"
+      },
+      {
+        "revision": "03166177e5ce094940b7ff2265837e1083954436",
+        "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts",
+        "outcome": "PASS: Research Notes package built; SPAAS validation needs_context"
+      },
+      {
+        "revision": "03166177e5ce094940b7ff2265837e1083954436",
+        "command": "pnpm --filter @smartspec/web exec tsx scripts/build-mini-app-package.ts --package-root apps/web/mini-apps/project-wiki-pages/package --output-dir apps/web/.artifacts/project-wiki-pages",
+        "outcome": "PASS: Project Wiki Pages package built; SPAAS validation needs_context"
+      },
+      {
+        "revision": "03166177e5ce094940b7ff2265837e1083954436",
+        "command": "git diff --check",
+        "outcome": "PASS"
+      }
+    ],
+    "retrySchedule": {
+      "githubIntegration": "IDLE_AFTER_SUCCESS; retry on normal continuation if a push or PR request transiently fails",
+      "backoff": "bounded exponential backoff per existing GitHub retry contract"
+    },
+    "canonicalAtCheckpoint": "9ad92c4437443690679e334d5f886048f5d9518f"
   }
 }

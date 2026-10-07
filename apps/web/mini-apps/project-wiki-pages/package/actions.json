@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "smartaihub.mini-app-actions/v1",
+  "appId": "app_project_wiki_pages",
+  "transport": {
+    "protocol": "tRPC",
+    "basePath": "/api/trpc/projectWikiPages",
+    "authentication": "authenticated-platform-session-or-user-bearer",
+    "tenantAuthority": "derived-from-authenticated-principal",
+    "callerMaySetTenantOrUserId": false
+  },
+  "actions": [
+    { "id": "pages.list", "procedure": "listPages", "kind": "query", "input": ["appId", "projectId"], "effects": ["tenant_project_app_scope_check"] },
+    { "id": "pages.get", "procedure": "getPage", "kind": "query", "input": ["appId", "projectId", "pageId"], "effects": ["tenant_project_app_scope_check"] },
+    { "id": "pages.create", "procedure": "createPage", "kind": "mutation", "input": ["appId", "projectId", "title", "content"], "effects": ["tenant_project_app_scope_check", "editor_or_owner_required"] },
+    { "id": "pages.update", "procedure": "updatePage", "kind": "mutation", "input": ["appId", "projectId", "pageId", "title", "content"], "effects": ["tenant_project_app_scope_check", "editor_or_owner_required"] },
+    { "id": "pages.archive", "procedure": "archivePage", "kind": "mutation", "input": ["appId", "projectId", "pageId"], "effects": ["tenant_project_app_scope_check", "editor_or_owner_required"] }
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
