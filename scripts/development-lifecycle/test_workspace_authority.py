@@ -762,6 +762,27 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual({row["workspace_id"] for row in result["worktrees"]["stale_or_unknown"]}, {"stale-task", "unknown"})
         self.assertEqual(result["production"]["status"], "UNKNOWN")
 
+    def test_project_mission_control_derives_user_workspace_ahead_and_behind_from_git(self) -> None:
+        task = self.root / "mission-control-ahead"
+        git(self.canonical, "worktree", "add", "-b", "task/mission-control-ahead", str(task), "HEAD")
+        (task / "tracked.txt").write_text("ahead\n", encoding="utf-8")
+        git(task, "add", "tracked.txt")
+        git(task, "commit", "-m", "mission control ahead")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        canonical_sha = git(self.canonical, "rev-parse", "HEAD")
+        snapshot = {
+            "project_id": self.project_id,
+            "repository_id": self.repo_id,
+            "canonical_ref": "refs/heads/main",
+            "canonical_sha": canonical_sha,
+            "canonical_workspace_id": workspace["workspace_id"],
+            "workspaces": [workspace],
+        }
+
+        result = authority.build_project_mission_control_read_model(snapshot)
+
+        self.assertEqual(result["user_workspace"]["ahead_behind"], {"state": "OBSERVED", "ahead": 1, "behind": 0})
+
     def test_mission_control_cli_returns_success_for_authority_snapshot(self) -> None:
         arguments = [
             "workspace_authority.py", "mission-control", "--repository", str(self.canonical),
