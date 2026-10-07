@@ -128,6 +128,15 @@ async function integratePullRequest(
   });
   const integratedSha = merged.sha as string;
   const convergence = await executeAuthority(repository, env, ["converge", "--integrated-sha", integratedSha]);
+  if (convergence.status === "USER_WORKSPACE_CONVERGED" &&
+      convergence.receipt && typeof convergence.receipt === "object" &&
+      typeof (convergence.receipt as Record<string, unknown>).receipt_id === "string") {
+    await enqueueWorkspaceAuthorityAuditEvent({
+      tenantId: input.tenantId,
+      eventType: "HANDOFF_COMPLETE",
+      eventId: `pull-request:${number}:${integratedSha}:${(convergence.receipt as Record<string, unknown>).receipt_id}`,
+    });
+  }
   return { status: "INTEGRATION_RECORDED", pullRequestNumber: number, integratedSha, convergence };
 }
 

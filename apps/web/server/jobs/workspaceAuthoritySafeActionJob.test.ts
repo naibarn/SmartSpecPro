@@ -98,6 +98,10 @@ describe("workspace authority safe action executor", () => {
     expect(mocks.enqueueEvent).toHaveBeenCalledWith({
       tenantId: "tenant-a", eventType: "INTEGRATION_FINISH", eventId: `pull-request:42:${"d".repeat(40)}`,
     });
+    expect(mocks.enqueueEvent).toHaveBeenCalledWith({
+      tenantId: "tenant-a", eventType: "HANDOFF_COMPLETE",
+      eventId: `pull-request:42:${"d".repeat(40)}:workspace-convergence:r1`,
+    });
     expect(result.output.receipt.evidence).toMatchObject({ status: "INTEGRATION_RECORDED", integratedSha: "d".repeat(40) });
   });
 });
