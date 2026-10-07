@@ -2670,6 +2670,7 @@ export const appIdentities = pgTable(
   },
   t => [
     uniqueIndex("app_identities_public_app_id_unique").on(t.publicAppId),
+    uniqueIndex("app_identities_tenant_app_id_unique").on(t.tenantId, t.appId),
     check("app_identities_lifecycle_check", sql`${t.lifecycle} IN ('draft', 'active', 'suspended', 'archived')`),
     check("app_identities_parent_not_self_check", sql`${t.parentAppId} IS NULL OR ${t.parentAppId} <> ${t.appId}`),
   ],
@@ -2704,6 +2705,103 @@ export const appRouteAliases = pgTable(
 );
 export type AppRouteAliasRow = typeof appRouteAliases.$inferSelect;
 export type InsertAppRouteAliasRow = typeof appRouteAliases.$inferInsert;
+
+/** Stable cross-domain Project identity; domain tables remain lifecycle authorities. */
+export const canonicalProjects = pgTable(
+  "canonical_projects",
+  {
+    projectId: varchar("project_id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "restrict" }),
+    projectType: varchar("project_type", { length: 40 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    ownerPrincipalId: varchar("owner_principal_id", { length: 160 }).notNull(),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    lifecycle: varchar("lifecycle", { length: 24 }).notNull().default("ACTIVE"),
+    identityVersion: integer("identity_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("canonical_projects_tenant_project_unique").on(t.tenantId, t.projectId),
+    index("canonical_projects_owner_idx").on(t.tenantId, t.ownerPrincipalId, t.lifecycle, t.updatedAt.desc()),
+    check("canonical_projects_lifecycle_check", sql`${t.lifecycle} IN ('ACTIVE', 'ARCHIVED', 'DELETED_PENDING_RETENTION', 'RETIRED')`),
+    check("canonical_projects_title_nonempty_check", sql`length(btrim(${t.title})) > 0`),
+    check("canonical_projects_owner_nonempty_check", sql`length(btrim(${t.ownerPrincipalId})) > 0`),
+    check("canonical_projects_type_nonempty_check", sql`length(btrim(${t.projectType})) > 0`),
+  ],
+);
+export type CanonicalProjectRow = typeof canonicalProjects.$inferSelect;
+export type InsertCanonicalProjectRow = typeof canonicalProjects.$inferInsert;
+
+/** Tenant-scoped project ACL. Revocation changes authorization, not identity. */
+export const canonicalProjectMemberships = pgTable(
+  "canonical_project_memberships",
+  {
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    projectId: varchar("project_id", { length: 36 }).notNull(),
+    principalId: varchar("principal_id", { length: 160 }).notNull(),
+    role: varchar("role", { length: 16 }).notNull(),
+    lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  t => [
+    primaryKey({ name: "canonical_project_memberships_pk", columns: [t.tenantId, t.projectId, t.principalId] }),
+    foreignKey({ name: "canonical_project_memberships_project_fk", columns: [t.tenantId, t.projectId], foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId] }).onDelete("cascade"),
+    index("canonical_project_memberships_principal_idx").on(t.tenantId, t.principalId, t.lifecycle),
+    check("canonical_project_memberships_role_check", sql`${t.role} IN ('owner', 'editor', 'viewer')`),
+    check("canonical_project_memberships_lifecycle_check", sql`${t.lifecycle} IN ('ACTIVE', 'REVOKED')`),
+    check("canonical_project_memberships_revocation_check", sql`(${t.lifecycle} = 'ACTIVE' AND ${t.revokedAt} IS NULL) OR (${t.lifecycle} = 'REVOKED' AND ${t.revokedAt} IS NOT NULL)`),
+  ],
+);
+
+/** Many-to-many App binding; it never transfers project ownership or ACL. */
+export const canonicalProjectAppBindings = pgTable(
+  "canonical_project_app_bindings",
+  {
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    projectId: varchar("project_id", { length: 36 }).notNull(),
+    appId: varchar("app_id", { length: 128 }).notNull(),
+    relation: varchar("relation", { length: 32 }).notNull().default("USES"),
+    lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    primaryKey({ name: "canonical_project_app_bindings_pk", columns: [t.tenantId, t.projectId, t.appId] }),
+    foreignKey({ name: "canonical_project_app_bindings_project_fk", columns: [t.tenantId, t.projectId], foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId] }).onDelete("cascade"),
+    foreignKey({ name: "canonical_project_app_bindings_app_fk", columns: [t.tenantId, t.appId], foreignColumns: [appIdentities.tenantId, appIdentities.appId] }).onDelete("cascade"),
+    check("canonical_project_app_bindings_relation_check", sql`length(btrim(${t.relation})) > 0`),
+    check("canonical_project_app_bindings_lifecycle_check", sql`${t.lifecycle} IN ('ACTIVE', 'REVOKED')`),
+  ],
+);
+
+/** First SPEC-304 reference Mini App data resource; authority is tenant + Project ACL. */
+export const miniAppResearchNotes = pgTable(
+  "mini_app_research_notes",
+  {
+    noteId: varchar("note_id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    projectId: varchar("project_id", { length: 36 }).notNull(),
+    appId: varchar("app_id", { length: 128 }).notNull(),
+    ownerPrincipalId: varchar("owner_principal_id", { length: 160 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    content: text("content").notNull().default(""),
+    aiSummary: text("ai_summary"),
+    lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("mini_app_research_notes_tenant_note_unique").on(t.tenantId, t.noteId),
+    foreignKey({ name: "mini_app_research_notes_project_fk", columns: [t.tenantId, t.projectId], foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId] }).onDelete("cascade"),
+    foreignKey({ name: "mini_app_research_notes_app_fk", columns: [t.tenantId, t.appId], foreignColumns: [appIdentities.tenantId, appIdentities.appId] }).onDelete("cascade"),
+    index("mini_app_research_notes_project_updated_idx").on(t.tenantId, t.projectId, t.updatedAt.desc(), t.noteId),
+    check("mini_app_research_notes_lifecycle_check", sql`${t.lifecycle} IN ('ACTIVE', 'ARCHIVED')`),
+    check("mini_app_research_notes_title_nonempty_check", sql`length(btrim(${t.title})) > 0`),
+    check("mini_app_research_notes_owner_nonempty_check", sql`length(btrim(${t.ownerPrincipalId})) > 0`),
+    check("mini_app_research_notes_content_size_check", sql`octet_length(${t.content}) <= 262144`),
+  ],
+);
 
 /**
  * Chat Conversations - Multi-chat support with settings
