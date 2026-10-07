@@ -43,10 +43,11 @@ describe("Cloudflare runtime evidence adapters", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("reports an absent Container application target without inventing an identifier", async () => {
+  it("distinguishes absent Container authority from a target missing its application identity", async () => {
     process.env.LLM_ENCRYPTION_KEY = encryptionKey;
     const fetchImpl = vi.fn();
-    await expect(getAuthorizedCloudflareContainerEvidence({ db: credentialDb(), target, fetchImpl })).resolves.toMatchObject({ status: "NOT_CONFIGURED", value: null });
+    await expect(getAuthorizedCloudflareContainerEvidence({ db: credentialDb(), target: null, fetchImpl })).resolves.toMatchObject({ status: "NOT_CONFIGURED", value: null });
+    await expect(getAuthorizedCloudflareContainerEvidence({ db: credentialDb(), target, fetchImpl })).resolves.toMatchObject({ status: "INVALID_TARGET_CONFIGURATION", value: null });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
