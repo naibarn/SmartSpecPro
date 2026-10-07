@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 492 unresolved of 492
-- Next action: Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.
-- Manifest generation: 19
+- Next action: Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.
+- Manifest generation: 20
 
 ## Source-declared status and relationship claims
 
