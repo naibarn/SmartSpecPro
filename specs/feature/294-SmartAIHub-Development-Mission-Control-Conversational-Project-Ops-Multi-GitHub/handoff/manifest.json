@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+    "expected_canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
@@ -88,7 +88,10 @@
       "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
       "https://github.com/naibarn/SmartSpecPro/pull/180",
-      "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436"
+      "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+      "https://github.com/naibarn/SmartSpecPro/pull/182",
+      "git:55571e18378880a7058bde38548e8211aa280842",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
     ],
     "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
     "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -127,7 +130,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 44,
+  "generation": 45,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -183,7 +186,8 @@
       "46f17355679a746cd8637198e9af96ee807d20cc",
       "60678faa879d5cad0646275086a79760b4b6ba8a",
       "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
-      "a80ca95c3f7f34569f227ca9fb3d68656ab2b436"
+      "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+      "55571e18378880a7058bde38548e8211aa280842"
     ],
     "mapping": [],
     "source_paths": [
@@ -223,9 +227,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+    "canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:52:36Z"
+    "integrated_at": "2026-10-07T05:57:04Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -282,7 +286,10 @@
       "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
       "https://github.com/naibarn/SmartSpecPro/pull/180",
-      "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436"
+      "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+      "https://github.com/naibarn/SmartSpecPro/pull/182",
+      "git:55571e18378880a7058bde38548e8211aa280842",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -344,7 +351,10 @@
         "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
         "https://github.com/naibarn/SmartSpecPro/pull/180",
-        "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436"
+        "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+        "https://github.com/naibarn/SmartSpecPro/pull/182",
+        "git:55571e18378880a7058bde38548e8211aa280842",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
       ],
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
       "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -412,7 +422,10 @@
         "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
         "https://github.com/naibarn/SmartSpecPro/pull/180",
-        "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436"
+        "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+        "https://github.com/naibarn/SmartSpecPro/pull/182",
+        "git:55571e18378880a7058bde38548e8211aa280842",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -498,7 +511,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:54:23.438519Z",
+  "updated_at": "2026-10-07T05:57:32.793901Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -626,6 +639,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
         "scope": "9 focused test files, 70 passing tests across RunnerGateway, safe actions, periodic audit, project read model, application readiness, Cloudflare credential adapters, and permission catalog",
         "source_sha": "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+        "status": "PASS"
+      },
+      {
+        "kind": "MISSION_CONTROL_OWNER_IDENTITY",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md",
+        "scope": "Active registered owner session projects as agent_identity with authoritative source; provider remains unknown absent provider evidence",
+        "source_sha": "55571e18378880a7058bde38548e8211aa280842",
         "status": "PASS"
       }
     ],
