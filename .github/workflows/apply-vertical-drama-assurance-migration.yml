@@ -26,6 +26,11 @@ jobs:
       JOURNAL_FILE: ${{ github.workspace }}/apps/web/drizzle/meta/_journal.json
       PREDECESSOR_TAGS: "0232_media_task_artifacts 0233_infrastructure_capacity_advisor 0234_media_durability_provenance 0235_media_task_tenant_scope_repair 0236_tenant_id_varchar_alignment 0237_capacity_advisor_v2 0238_vertical_drama_story_generation_assurance 0239_vertical_drama_source_packs 0240_vertical_drama_draft_series_link 0241_admin_database_backups 0242_vertical_drama_story_ready_status 0243_vertical_drama_visual_sources 0244_vertical_drama_prompt_expansion"
       MIGRATION_TAG: 0245_vertical_drama_assurance_attempts_reconciliation
+      DEPLOY_ENVIRONMENT: staging
+      DATABASE_TARGET_ID: neon:staging
+      MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:0245_vertical_drama_assurance_attempts_reconciliation
+      MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/vertical-drama-0245-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
+      SOURCE_SHA: ${{ github.sha }}
 
     steps:
       - name: Checkout reviewed migration package
@@ -85,6 +90,7 @@ jobs:
             > "$RUNNER_TEMP/vd-assurance-0245/runs-before.count"
 
       - name: Preflight exact predecessor chain and migration state
+        id: preflight
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -121,7 +127,21 @@ jobs:
           psql "${psql_args[@]}" -c "select 1 from information_schema.tables where table_schema = 'public' and table_name = 'vertical_drama_story_generation_runs';" | grep -qx 1
           echo "Predecessor chain 0232-0244 is present and hash-verified."
 
+      - name: Record migration execution start
+        id: record_migration_start
+        if: steps.preflight.outcome == 'success' && env.MIGRATION_ALREADY_APPLIED != 'true'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source "$RUNNER_TEMP/vd-assurance-0245/migration.env"
+          mkdir -p "$(dirname "$MIGRATION_RECEIPT_FILE")"
+          receipt="$(jq -cn --arg key "$MIGRATION_IDEMPOTENCY_KEY" --arg sha "$SOURCE_SHA" --arg env "$DEPLOY_ENVIRONMENT" --arg target "$DATABASE_TARGET_ID" --arg tag "$MIGRATION_TAG" --arg hash "$migration_hash" --arg execution "${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" --arg actor "$GITHUB_ACTOR" --arg at "$(date -u +%FT%TZ)" '{schemaVersion:"migration-execution-receipt.v1",phase:"STARTED",idempotencyKey:$key,attemptNumber:1,tenantId:null,projectId:"SmartSpecPro",authorityScope:"PLATFORM_WIDE",environment:$env,databaseTargetId:$target,migrationProvider:"drizzle",migrationRange:{from:"0244_vertical_drama_prompt_expansion",to:$tag},expectedMigrationHead:$tag,expectedMigrationHash:$hash,sourceSha:$sha,executionId:$execution,startedAt:$at,actor:$actor}')"
+          printf '%s\n' "$receipt" >> "$MIGRATION_RECEIPT_FILE"
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -v receipt_json="$receipt" -c \
+            "INSERT INTO api_audit_events (\"traceId\",\"eventType\",provider,endpoint,metadata) VALUES (md5(random()::text || clock_timestamp()::text), 'migration_execution_receipt', 'drizzle', 'apply-vertical-drama-assurance-migration', :'receipt_json'::json)"
+
       - name: Apply 0245 atomically and verify before commit
+        id: apply_migration
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -203,6 +223,26 @@ jobs:
           COMMIT;
           SQL
 
+      - name: Record migration execution settlement
+        id: settle_migration
+        if: always() && steps.preflight.outcome == 'success' && env.MIGRATION_ALREADY_APPLIED != 'true' && steps.record_migration_start.outcome == 'success'
+        shell: bash
+        env:
+          APPLY_OUTCOME: ${{ steps.apply_migration.outcome }}
+        run: |
+          set -Eeuo pipefail
+          source "$RUNNER_TEMP/vd-assurance-0245/migration.env"
+          applied_hash="$(psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc "select hash from drizzle.__drizzle_migrations where created_at = $migration_created_at order by id desc limit 1;" || true)"
+          result=FAILED
+          category=EXECUTION_FAILED
+          if [ "$APPLY_OUTCOME" = "success" ]; then result=SUCCEEDED; category=null; fi
+          if [ "$APPLY_OUTCOME" = "cancelled" ]; then result=INTERRUPTED; category=INTERRUPTED; fi
+          receipt="$(jq -cn --arg key "$MIGRATION_IDEMPOTENCY_KEY" --arg sha "$SOURCE_SHA" --arg env "$DEPLOY_ENVIRONMENT" --arg target "$DATABASE_TARGET_ID" --arg tag "$MIGRATION_TAG" --arg hash "$migration_hash" --arg applied "$applied_hash" --arg result "$result" --arg category "$category" --arg execution "${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" --arg actor "$GITHUB_ACTOR" --arg at "$(date -u +%FT%TZ)" '{schemaVersion:"migration-execution-receipt.v1",phase:"SETTLED",result:$result,idempotencyKey:$key,attemptNumber:1,tenantId:null,projectId:"SmartSpecPro",authorityScope:"PLATFORM_WIDE",environment:$env,databaseTargetId:$target,migrationProvider:"drizzle",migrationRange:{from:"0244_vertical_drama_prompt_expansion",to:$tag},expectedMigrationHead:$tag,expectedMigrationHash:$hash,appliedHead:(if $applied == $hash then $tag else null end),appliedHash:(if $applied == "" then null else $applied end),sourceSha:$sha,executionId:$execution,completedAt:$at,actor:$actor,failureCategory:(if $category == "null" then null else $category end)}')"
+          printf '%s\n' "$receipt" >> "$MIGRATION_RECEIPT_FILE"
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -v receipt_json="$receipt" -c \
+            "INSERT INTO api_audit_events (\"traceId\",\"eventType\",provider,endpoint,statusCode,errorMessage,metadata) VALUES (md5(random()::text || clock_timestamp()::text), 'migration_execution_receipt', 'drizzle', 'apply-vertical-drama-assurance-migration', CASE WHEN :'receipt_json'::json->>'result' = 'SUCCEEDED' THEN 200 ELSE 500 END, :'receipt_json'::json->>'failureCategory', :'receipt_json'::json)"
+          if [ "$APPLY_OUTCOME" != "success" ]; then exit 1; fi
+
       - name: Independent post-migration verification and rollback-only rerun
         shell: bash
         run: |
@@ -251,3 +291,11 @@ jobs:
             ${{ runner.temp }}/vd-assurance-0245/backup-manifest.txt
             ${{ runner.temp }}/vd-assurance-0245/verification.txt
           retention-days: 7
+
+      - name: Upload migration execution receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-receipts-vertical-drama-0245-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/smartspecpro-migration-receipts/*.jsonl
+          if-no-files-found: ignore
