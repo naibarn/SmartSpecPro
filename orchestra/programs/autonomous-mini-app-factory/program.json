@@ -77,7 +77,7 @@
       "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched."
     ],
     "nextAction": "Integrate this focused API runtime slice, then investigate the smallest safe path to actual UI/runtime acceptance and worker execution. Deployment, provider summary execution, browser UAT, and full service boot remain separate pending evidence.",
-    "sourceSha": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
+    "sourceSha": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
     "integration": "PENDING_NORMAL_PR"
   },
   "checkpoints": [
@@ -404,7 +404,8 @@
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
       "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
-      "091a3b7f66fdaebbb5d4fdeec95b06fa3e5dfd17"
+      "091a3b7f66fdaebbb5d4fdeec95b06fa3e5dfd17",
+      "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
@@ -435,7 +436,7 @@
         "outcome": "PASS (rerun before merge): disposable PostgreSQL 17 loopback schema migration and contract fixture; no vector extension required by Mini App projection"
       },
       {
-        "revision": "3ae709d67481d82eba8b235608c2063a8fa6dc76 + authenticated runtime probe delta",
+        "revision": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727 (built from integrated baseline 3ae709d67481d82eba8b235608c2063a8fa6dc76)",
         "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
         "outcome": "PASS: disposable PostgreSQL 17; real signed session-cookie authentication; unauthenticated denial; cross-tenant and unmembered-project denial; project-scoped create/list/update/archive over loopback HTTP/tRPC"
       }
