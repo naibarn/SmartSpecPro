@@ -2,7 +2,7 @@ import type { DrizzleDB } from "../db";
 import { withCloudflareCredential } from "./cloudflareCredentialCenter";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget } from "./providerDeploymentTargetAuthority";
 
-export type RuntimeEvidenceStatus = "OBSERVED" | "UNAVAILABLE" | "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE" | "ERROR";
+export type RuntimeEvidenceStatus = "OBSERVED" | "UNAVAILABLE" | "NOT_CONFIGURED" | "INVALID_TARGET_CONFIGURATION" | "PERMISSION_DENIED" | "STALE" | "ERROR";
 export type RuntimeEvidence<T> = { status: RuntimeEvidenceStatus; observedAt: string; source: string; value: T | null; diagnostic?: string };
 
 /** A target record supplied by the trusted SPEC-288/provider-resource authority. */
@@ -25,7 +25,7 @@ export type CloudflareDeploymentTarget = {
 
 export type CloudflareTargetResolution =
   | { status: "CONFIGURED"; target: CloudflareDeploymentTarget }
-  | { status: "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE" | "TARGET_AUTHORITY_CONFLICT"; target: null; reason: string };
+  | { status: "NOT_CONFIGURED" | "INVALID_TARGET_CONFIGURATION" | "PERMISSION_DENIED" | "STALE" | "TARGET_AUTHORITY_CONFLICT"; target: null; reason: string };
 
 /** Match only exact tenant/project/environment identity; resource names never establish ownership. */
 export function resolveCloudflareDeploymentTarget(input: {
@@ -45,7 +45,7 @@ export function resolveCloudflareDeploymentTarget(input: {
   if (!target) return { status: "NOT_CONFIGURED", target: null, reason: "target_not_found" };
   if (!target.enabled) return { status: "PERMISSION_DENIED", target: null, reason: "target_disabled" };
   if (!target.targetId || !target.accountRef || !target.credentialRef || !target.provenance) {
-    return { status: "NOT_CONFIGURED", target: null, reason: "target_authority_incomplete" };
+    return { status: "INVALID_TARGET_CONFIGURATION", target: null, reason: "target_authority_incomplete" };
   }
   if (target.lastVerifiedAt) {
     const verifiedAt = Date.parse(target.lastVerifiedAt);
@@ -88,9 +88,16 @@ export async function getAuthorizedCloudflareWorkerDeploymentEvidence(input: {
   now?: Date;
 }): Promise<RuntimeEvidence<unknown>> {
   const observedAt = (input.now ?? new Date()).toISOString();
-  if (!input.target?.enabled || !input.target?.accountRef || !input.target.workerRef || !input.target.credentialRef) {
+  if (!input.target) {
     return { status: "NOT_CONFIGURED", observedAt, source: "cloudflare_workers_api", value: null };
   }
+  if (!input.target.enabled) return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_workers_api", value: null };
+  if (!input.target.accountRef || !input.target.workerRef || !input.target.credentialRef)
+    return { status: "INVALID_TARGET_CONFIGURATION", observedAt, source: "cloudflare_workers_api", value: null };
+  if (authorizeDeploymentTarget({ target: { ...input.target, id: input.target.targetId } as never,
+    callerTenantId: input.target.tenantId, projectId: input.target.projectId, environment: input.target.environment,
+    provider: "cloudflare", credentialRef: input.target.credentialRef }) !== "AUTHORIZED")
+    return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_workers_api", value: null };
   const result = await getCloudflareWorkerDeploymentEvidence({
     db: input.db, accountId: input.target.accountRef, scriptName: input.target.workerRef,
     fetchImpl: input.fetchImpl, now: input.now,
@@ -107,8 +114,14 @@ export async function getAuthorizedCloudflareContainerEvidence(input: {
   now?: Date;
 }): Promise<RuntimeEvidence<unknown>> {
   const observedAt = (input.now ?? new Date()).toISOString();
-  if (!input.target?.enabled || !input.target?.accountRef || !input.target.containerApplicationRef || !input.target.credentialRef) {
-    return { status: "NOT_CONFIGURED", observedAt, source: "cloudflare_containers_api", value: null };
+  if (!input.target) return { status: "NOT_CONFIGURED", observedAt, source: "cloudflare_containers_api", value: null };
+  if (!input.target.enabled) return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_containers_api", value: null };
+  if (!input.target.accountRef || !input.target.credentialRef || !input.target.containerApplicationRef)
+    return { status: "INVALID_TARGET_CONFIGURATION", observedAt, source: "cloudflare_containers_api", value: null };
+  if (authorizeDeploymentTarget({ target: { ...input.target, id: input.target.targetId } as never,
+    callerTenantId: input.target.tenantId, projectId: input.target.projectId, environment: input.target.environment,
+    provider: "cloudflare", credentialRef: input.target.credentialRef }) !== "AUTHORIZED") {
+    return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_containers_api", value: null };
   }
   const result = await getCloudflareContainerInstanceEvidence({
     db: input.db, accountId: input.target.accountRef, applicationId: input.target.containerApplicationRef,
@@ -116,6 +129,27 @@ export async function getAuthorizedCloudflareContainerEvidence(input: {
   });
   return { ...result, value: result.value ? { targetId: input.target.targetId, tenantId: input.target.tenantId,
     projectId: input.target.projectId, environment: input.target.environment, ...result.value } : null };
+}
+
+/** Persisted target path for Container evidence; resource identity must come from authority data. */
+export async function getPersistedCloudflareContainerEvidence(input: {
+  db: DrizzleDB; callerTenantId: string; projectId: string; environment: string; fetchImpl?: CloudflareFetch; now?: Date;
+}): Promise<RuntimeEvidence<unknown>> {
+  const observedAt = (input.now ?? new Date()).toISOString();
+  if (!input.callerTenantId || !input.projectId || !input.environment)
+    return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_containers_api", value: null };
+  const resolution = await resolveProviderDeploymentTarget(input.db, { tenantId: input.callerTenantId,
+    projectId: input.projectId, environment: input.environment, provider: "cloudflare" });
+  if (resolution.status !== "CONFIGURED") return { status: resolution.status === "TARGET_AUTHORITY_CONFLICT" ? "ERROR" : resolution.status,
+    observedAt, source: "cloudflare_containers_api", value: null, diagnostic: resolution.status };
+  const target: CloudflareDeploymentTarget = { targetId: resolution.target.deploymentTargetId,
+    tenantId: resolution.target.tenantId, projectId: resolution.target.projectId, environment: resolution.target.environment,
+    provider: "cloudflare", accountRef: resolution.target.accountRef ?? "", workerRef: resolution.target.workerRef,
+    containerApplicationRef: resolution.target.containerApplicationRef, credentialRef: resolution.target.credentialRef,
+    enabled: resolution.target.enabled, provenance: resolution.target.provenance,
+    lastVerifiedAt: resolution.target.lastVerifiedAt?.toISOString() ?? null, region: resolution.target.region,
+    runtimePolicy: resolution.target.runtimePolicy };
+  return getAuthorizedCloudflareContainerEvidence({ db: input.db, target, fetchImpl: input.fetchImpl, now: input.now });
 }
 
 type CloudflareFetch = (url: string, init: RequestInit) => Promise<Response>;
