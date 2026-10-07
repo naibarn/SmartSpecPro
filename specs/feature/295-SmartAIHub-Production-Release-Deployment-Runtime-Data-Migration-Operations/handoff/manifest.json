@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "4c5c43d52249ae767806947e9e6abe3222035542",
+    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
@@ -80,7 +80,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 28,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -142,9 +142,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4c5c43d52249ae767806947e9e6abe3222035542",
+    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:20:58Z"
+    "integrated_at": "2026-10-07T04:21:12Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -361,7 +361,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:22:35.184370Z",
+  "updated_at": "2026-10-07T04:24:33.797259Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

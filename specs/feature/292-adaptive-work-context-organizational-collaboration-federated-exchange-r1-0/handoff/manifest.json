@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
     "expected_spec_digest": "a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md",
     "digest": "a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "integrated": true,
+    "integrated_at": "2026-10-07T04:21:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -187,7 +187,7 @@
     "unresolved": 33
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:14:02.759503Z",
+  "updated_at": "2026-10-07T04:22:34.417448Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
