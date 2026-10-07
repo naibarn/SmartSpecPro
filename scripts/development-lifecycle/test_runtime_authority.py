@@ -156,20 +156,34 @@ class RuntimeAuthorityTests(unittest.TestCase):
         self.assertEqual(1, len(calls))
         self.assertEqual(receipt["receipt_id"], audits[-1]["receipt_id"])
 
-    def test_exact_action_replay_returns_same_receipt(self):
+    def test_exact_action_replay_returns_replay_safe_status_without_reexecution(self):
         dispatcher, _, calls = self.dispatcher()
         args = dict(actor_id="actor", tenant_id="tenant", project_id="project", action="VERIFY_PROJECT_CONVERGENCE", workspace_id=None, idempotency_key="key", payload={})
         first = dispatcher.dispatch(**args)
         second = dispatcher.dispatch(**args)
-        self.assertEqual(first, second)
+        self.assertEqual("COMPLETED", first["status"])
+        self.assertEqual({"status": "REPLAY_SAFE", "receipt": first}, second)
         self.assertEqual(1, len(calls))
 
     def test_conflicting_action_replay_is_rejected(self):
         dispatcher, _, _ = self.dispatcher()
         base = dict(actor_id="actor", tenant_id="tenant", project_id="project", action="VERIFY_PROJECT_CONVERGENCE", workspace_id=None, idempotency_key="key", payload={})
         dispatcher.dispatch(**base)
-        with self.assertRaisesRegex(ValueError, "ACTION_IDEMPOTENCY_CONFLICT"):
+        with self.assertRaisesRegex(ValueError, "IDEMPOTENCY_CONFLICT"):
             dispatcher.dispatch(**{**base, "action": "INSPECT_LOCAL_CHANGES"})
+
+    def test_idempotency_uses_normalized_key_and_canonical_json_payload(self):
+        dispatcher, _, calls = self.dispatcher()
+        first = dispatcher.dispatch(actor_id="actor", tenant_id="tenant", project_id="project", action="VERIFY_PROJECT_CONVERGENCE", workspace_id=None, idempotency_key=" key ", payload={"a": 1, "b": 2})
+        replay = dispatcher.dispatch(actor_id="actor", tenant_id="tenant", project_id="project", action="VERIFY_PROJECT_CONVERGENCE", workspace_id=None, idempotency_key="key", payload={"b": 2, "a": 1})
+        self.assertEqual({"status": "REPLAY_SAFE", "receipt": first}, replay)
+        self.assertEqual(1, len(calls))
+
+    def test_idempotency_rejects_non_json_numeric_values(self):
+        dispatcher, _, calls = self.dispatcher()
+        with self.assertRaisesRegex(ValueError, "ACTION_REQUEST_INVALID"):
+            dispatcher.dispatch(actor_id="actor", tenant_id="tenant", project_id="project", action="VERIFY_PROJECT_CONVERGENCE", workspace_id=None, idempotency_key="key", payload={"value": float("nan")})
+        self.assertEqual([], calls)
 
     def test_evidence_result_accepts_all_declared_provider_statuses(self):
         statuses = ["OBSERVED", "UNAVAILABLE", "NOT_CONFIGURED", "PERMISSION_DENIED", "STALE", "ERROR"]

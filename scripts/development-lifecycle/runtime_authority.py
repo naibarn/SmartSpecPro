@@ -395,11 +395,16 @@ class WorkspaceActionDispatcher:
                  workspace_id: str | None, idempotency_key: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         if not actor_id or not tenant_id:
             raise PermissionError("ACTOR_AUTHENTICATION_REQUIRED")
-        if action not in ACTION_NAMES or not idempotency_key.strip():
+        normalized_key = idempotency_key.strip() if isinstance(idempotency_key, str) else ""
+        if action not in ACTION_NAMES or not normalized_key or len(normalized_key) > 200 or not isinstance(payload, Mapping):
             raise ValueError("ACTION_REQUEST_INVALID")
         scope = (tenant_id, project_id, actor_id)
-        request_hash = hashlib.sha256(json.dumps({"action": action, "workspace_id": workspace_id,
-            "payload": payload}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        try:
+            normalized_request = json.dumps({"action": action, "workspace_id": workspace_id,
+                "payload": payload}, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        except (TypeError, ValueError):
+            raise ValueError("ACTION_REQUEST_INVALID") from None
+        request_hash = hashlib.sha256(normalized_request.encode()).hexdigest()
         project = self.resolve_project(tenant_id=tenant_id, project_id=project_id)
         if not project:
             raise LookupError("PROJECT_AUTHORITY_NOT_FOUND")
@@ -414,12 +419,12 @@ class WorkspaceActionDispatcher:
         receipt = {"receipt_id": hashlib.sha256(f"{tenant_id}:{project_id}:{idempotency_key}".encode()).hexdigest(),
                    "tenant_id": tenant_id, "project_id": project_id, "actor_id": actor_id,
                    "action": action, "workspace_id": workspace_id, "status": "STARTED", "created_at": self.now()}
-        reservation, previous = self.store.reserve(scope, idempotency_key, request_hash, receipt)
+        reservation, previous = self.store.reserve(scope, normalized_key, request_hash, receipt)
         if reservation == "CONFLICT":
-            raise ValueError("ACTION_IDEMPOTENCY_CONFLICT")
+            raise ValueError("IDEMPOTENCY_CONFLICT")
         if reservation == "REPLAY":
             self.audit(actor_id=actor_id, tenant_id=tenant_id, project_id=project_id, action=action, replay=True)
-            return previous
+            return {"status": "REPLAY_SAFE", "receipt": previous}
         if reservation != "CREATED":
             raise RuntimeError("ACTION_ALREADY_IN_PROGRESS")
         try:
@@ -427,11 +432,11 @@ class WorkspaceActionDispatcher:
             receipt.update({"status": "COMPLETED", "result": result})
         except Exception as error:
             receipt.update({"status": "ERROR", "error": type(error).__name__})
-            self.store.complete(scope, idempotency_key, request_hash, receipt)
+            self.store.complete(scope, normalized_key, request_hash, receipt)
             self.audit(actor_id=actor_id, tenant_id=tenant_id, project_id=project_id, action=action,
                        receipt_id=receipt["receipt_id"], status=receipt["status"])
             raise
-        self.store.complete(scope, idempotency_key, request_hash, receipt)
+        self.store.complete(scope, normalized_key, request_hash, receipt)
         self.audit(actor_id=actor_id, tenant_id=tenant_id, project_id=project_id, action=action,
                    receipt_id=receipt["receipt_id"], status=receipt["status"])
         return receipt
