@@ -74,13 +74,18 @@ export async function resolveOwnedWorkspaceAuthority(input: Pick<
       workspace: fact,
     })));
   if (!matches.length) throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_AUTHORITY_NOT_FOUND");
-  if (input.workspaceId && matches.length > 1) {
-    // Same opaque ID on multiple registered hosts is ambiguous until the caller
-    // supplies a host binding; never pick one based on recency alone.
-    const runnerIds = new Set(matches.map(match => match.runnerId));
-    if (runnerIds.size > 1) throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_AUTHORITY_CONFLICT");
-  }
-  return matches[0];
+  const now = Date.now();
+  const freshMatches = matches.filter(match => {
+    const observedAt = match.snapshotObservedAt ? Date.parse(match.snapshotObservedAt) : Number.NaN;
+    const expiresAt = match.snapshotExpiresAt ? Date.parse(match.snapshotExpiresAt) : Number.NaN;
+    return Number.isFinite(observedAt) && Number.isFinite(expiresAt) && observedAt <= now && expiresAt > now;
+  });
+  if (!freshMatches.length) throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_AUTHORITY_STALE");
+  // A project/repository can be registered on multiple hosts. The current
+  // request has no explicit host selector, so never choose a Runner by row order.
+  const runnerIds = new Set(freshMatches.map(match => match.runnerId));
+  if (runnerIds.size > 1) throw new WorkspaceAuthorityActionError("WORKSPACE_ACTION_AUTHORITY_CONFLICT");
+  return freshMatches[0];
 }
 
 export async function enqueueWorkspaceAuthorityAction(input: WorkspaceAuthorityActionRequest) {

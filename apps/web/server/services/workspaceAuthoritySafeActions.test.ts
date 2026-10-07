@@ -30,11 +30,12 @@ vi.mock("./jobControlPlaneGateway", () => ({ createControlPlaneJob: mocks.create
 import { enqueueWorkspaceAuthorityAction, resolveOwnedWorkspaceAuthority } from "./workspaceAuthoritySafeActions";
 
 function row(overrides: Record<string, unknown> = {}) {
+  const now = Date.now();
   return {
     runnerId: "runner-a", ownerUserId: 42, trustState: "trusted", status: "offline",
     activeSessionId: null, currentSnapshotRevision: "snapshot-1",
-    snapshotObservedAt: new Date("2026-10-07T11:00:00.000Z"),
-    snapshotExpiresAt: new Date("2026-10-07T10:00:00.000Z"),
+    snapshotObservedAt: new Date(now - 1_000),
+    snapshotExpiresAt: new Date(now + 60_000),
     currentSnapshotJson: { workspaceIds: ["ws-a"], workspaces: [{ workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false }] },
     ...overrides,
   };
@@ -73,6 +74,20 @@ describe("Workspace Authority safe-action dispatch", () => {
   it("rejects ambiguous workspace identities reported by more than one Runner", async () => {
     mocks.rows = [row(), row({ runnerId: "runner-b" })];
     await expect(resolveOwnedWorkspaceAuthority(base)).rejects.toMatchObject({ code: "WORKSPACE_ACTION_AUTHORITY_CONFLICT" });
+    await expect(resolveOwnedWorkspaceAuthority({ ...base, workspaceId: undefined }))
+      .rejects.toMatchObject({ code: "WORKSPACE_ACTION_AUTHORITY_CONFLICT" });
+  });
+
+  it("rejects expired or future-dated Runner snapshots before dispatch", async () => {
+    mocks.rows = [row({ snapshotExpiresAt: new Date(Date.now() - 1) })];
+    await expect(enqueueWorkspaceAuthorityAction({ ...base, idempotencyKey: "stale-key-1", payload: {} }))
+      .rejects.toMatchObject({ code: "WORKSPACE_ACTION_AUTHORITY_STALE" });
+    expect(mocks.createControlPlaneJob).not.toHaveBeenCalled();
+
+    mocks.rows = [row({ snapshotObservedAt: new Date(Date.now() + 60_000) })];
+    await expect(enqueueWorkspaceAuthorityAction({ ...base, idempotencyKey: "future-key-1", payload: {} }))
+      .rejects.toMatchObject({ code: "WORKSPACE_ACTION_AUTHORITY_STALE" });
+    expect(mocks.createControlPlaneJob).not.toHaveBeenCalled();
   });
 
   it("queues through worker_jobs and returns replay status for a repeated normalized request", async () => {
