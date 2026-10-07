@@ -3,8 +3,10 @@ import "dotenv/config";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import postgres from "postgres";
+import { evaluateMigrationAttempt } from "../server/services/migrationExecutionReceiptPolicy";
 
 const migrationNames = [
   "0157_library_md_knowledge_vault.sql",
@@ -223,12 +225,73 @@ async function repairKnowledgeSchema(
   }
 }
 
-function migrationHash(name: (typeof migrationNames)[number]): string {
-  const filePath = path.join(process.cwd(), "drizzle", name);
+function migrationHash(name: string): string {
+  const filePath = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../drizzle"), name);
   return crypto
     .createHash("sha256")
     .update(fs.readFileSync(filePath, "utf8"))
     .digest("hex");
+}
+
+async function allDrizzleMigrations(): Promise<Array<{ tag: string; hash: string }>> {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../drizzle");
+  const journal = JSON.parse(await fs.promises.readFile(path.join(root, "meta/_journal.json"), "utf8")) as { entries?: Array<{ tag?: unknown }> };
+  return Promise.all((journal.entries ?? []).flatMap(entry => typeof entry.tag === "string" ? [entry.tag] : []).map(async tag => ({
+    tag, hash: crypto.createHash("sha256").update(await fs.promises.readFile(path.join(root, `${tag}.sql`))).digest("hex"),
+  })));
+}
+
+function receiptFile(key: string): string {
+  const root = process.env.RUNNER_TEMP || path.join(process.env.HOME || ".", ".local", "state", "smartspecpro", "artifacts", "migration-receipts");
+  return process.env.MIGRATION_RECEIPT_FILE?.trim() || path.join(root, `library-knowledge-${key}.jsonl`);
+}
+
+function appendReceipt(file: string, receipt: Record<string, unknown>): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  try { fs.chmodSync(path.dirname(file), 0o700); } catch { /* best effort to keep the receipt directory private */ }
+  fs.appendFileSync(file, `${JSON.stringify(receipt)}\n`, { encoding: "utf8", mode: 0o600 });
+  try { fs.chmodSync(file, 0o600); } catch { /* best effort on non-POSIX filesystems */ }
+}
+
+function readReceiptFile(file: string, key: string): Array<Record<string, unknown>> {
+  if (!fs.existsSync(file)) return [];
+  return fs.readFileSync(file, "utf8").split("\n").filter(Boolean).flatMap(line => {
+    try { const value = JSON.parse(line); return value.idempotencyKey === key ? [value] : []; }
+    catch { return []; }
+  });
+}
+
+async function auditReceipts(sql: SqlClient, key: string): Promise<Array<Record<string, unknown>>> {
+  const available = await sql<{ available: boolean }[]>`select to_regclass('public.api_audit_events') is not null as available`;
+  if (!available[0]?.available) return [];
+  const rows = await sql<{ metadata: Record<string, unknown> | null }[]>`
+    select metadata from api_audit_events where "eventType" = 'migration_execution_receipt'
+      and metadata->>'idempotencyKey' = ${key} order by "createdAt", id
+  `;
+  return rows.flatMap(row => row.metadata ? [row.metadata] : []);
+}
+
+async function persistAuditReceipt(sql: SqlClient, receipt: Record<string, unknown>): Promise<void> {
+  const available = await sql<{ available: boolean }[]>`select to_regclass('public.api_audit_events') is not null as available`;
+  if (!available[0]?.available) return;
+  await sql`
+    insert into api_audit_events ("traceId", "eventType", provider, endpoint, statusCode, errorMessage, metadata)
+    values (${crypto.randomUUID().replaceAll("-", "").slice(0, 32)}, 'migration_execution_receipt', 'drizzle',
+      'repair:library-knowledge', ${receipt.phase === "SETTLED" && receipt.result === "FAILED" ? 500 : 200},
+      ${typeof receipt.failureCategory === "string" ? receipt.failureCategory : null}, ${JSON.stringify(receipt)}::json)
+    on conflict do nothing
+  `;
+}
+
+async function appliedHead(sql: SqlClient, migrations: Array<{ tag: string; hash: string }>): Promise<{ tag: string | null; hash: string | null }> {
+  try {
+    const rows = await sql<{ hash: string }[]>`select hash from drizzle.__drizzle_migrations order by created_at asc nulls first, id asc`;
+    const hash = rows.at(-1)?.hash ?? null;
+    return { tag: hash ? migrations.find(migration => migration.hash === hash)?.tag ?? null : null, hash };
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && String(error.code) === "42P01") return { tag: null, hash: null };
+    throw error;
+  }
 }
 
 async function main(): Promise<void> {
@@ -239,17 +302,60 @@ async function main(): Promise<void> {
 
   const repairLedger = hasFlag("--repair-ledger");
   const repairSchema = hasFlag("--repair-schema");
+  const repairRequested = repairLedger || repairSchema;
+  const allMigrations = await allDrizzleMigrations();
+  const expectedHead = allMigrations.at(-1) ?? null;
   const sql = postgres(databaseUrl, {
     max: 1,
   });
+  const idempotencyKey = process.env.MIGRATION_IDEMPOTENCY_KEY?.trim() || crypto.randomUUID();
+  const file = receiptFile(idempotencyKey);
+  const environment = process.env.DEPLOY_ENVIRONMENT ?? process.env.NODE_ENV ?? "unknown";
+  const sourceSha = process.env.GITHUB_SHA ?? process.env.SOURCE_SHA ?? "unknown";
+  let databaseTargetId = "database:unavailable";
+  try {
+    const parsedUrl = new URL(databaseUrl);
+    databaseTargetId = `database:${crypto.createHash("sha256").update(`${parsedUrl.host}${parsedUrl.pathname}`).digest("hex").slice(0, 20)}`;
+  } catch { /* the connection library will report malformed connection configuration */ }
+  const expectedMigrationHead = expectedHead?.tag ?? null;
+  const base = {
+    schemaVersion: "migration-execution-receipt.v1", idempotencyKey, tenantId: null, projectId: "SmartSpecPro",
+    authorityScope: "PLATFORM_WIDE", environment, databaseTargetId, migrationProvider: "drizzle",
+    expectedMigrationHead, expectedMigrationHash: expectedHead?.hash ?? null, requestedMigrationSet: migrationNames, sourceSha,
+    deploymentId: process.env.GITHUB_RUN_ID ?? null, actor: process.env.GITHUB_ACTOR ?? process.env.USER ?? "migration-operator",
+  };
+  let startReceipt: Record<string, unknown> | null = null;
+  let attemptNumber = 1;
+  let writeReceipts = false;
+  let recovering = false;
 
   try {
+    if (repairRequested) {
+      const prior = [...readReceiptFile(file, idempotencyKey), ...await auditReceipts(sql, idempotencyKey)];
+      const decision = prior.length ? evaluateMigrationAttempt({ receipts: prior, payload: base }) : "START";
+      if (decision === "IDEMPOTENCY_CONFLICT") throw new Error("MIGRATION_IDEMPOTENCY_CONFLICT");
+      if (decision === "IN_PROGRESS") { process.exitCode = 75; return; }
+      if (decision === "ALREADY_FAILED") { process.exitCode = 1; return; }
+      if (decision === "ALREADY_SUCCEEDED") {
+        // A replay after a successful receipt is read-only; inspect state without reapplying repairs.
+      } else {
+        recovering = decision === "RESUME_STALE" || decision === "RETRY_FAILED";
+        attemptNumber = decision === "START" ? 1 : Math.max(0, ...prior.map(receipt => Number(receipt.attemptNumber) || 0)) + 1;
+        const before = await appliedHead(sql, allMigrations);
+        startReceipt = { ...base, phase: "STARTED", attemptNumber, executionId: `${process.env.GITHUB_RUN_ID ?? idempotencyKey}:${attemptNumber}`,
+          beforeAppliedHead: before.tag, beforeAppliedHash: before.hash, startedAt: new Date().toISOString() };
+        appendReceipt(file, startReceipt);
+        writeReceipts = true;
+        await persistAuditReceipt(sql, startReceipt);
+      }
+    }
+    const applyRepairs = repairRequested && writeReceipts;
     const presentTablesBeforeRepair = await readPresentKnowledgeTables(sql);
     const presentTableSetBeforeRepair = new Set(
       presentTablesBeforeRepair.map((row) => row.table_name),
     );
 
-    if (repairSchema) {
+    if (repairSchema && applyRepairs) {
       await repairKnowledgeSchema(sql, presentTableSetBeforeRepair);
     }
 
@@ -269,7 +375,7 @@ async function main(): Promise<void> {
       limit 1
     `;
 
-    if (repairLedger) {
+    if (repairLedger && applyRepairs) {
       await sql.unsafe(`create schema if not exists drizzle`);
       await sql.unsafe(`
         create table if not exists drizzle.__drizzle_migrations (
@@ -387,9 +493,27 @@ async function main(): Promise<void> {
       summary.ledgerPresent &&
       summary.recordedKnowledgeMigrationHashes === expectedHashes.length;
 
+    if (writeReceipts && startReceipt) {
+      const after = await appliedHead(sql, allMigrations);
+      const settled = { ...startReceipt, phase: "SETTLED", result: healthy ? recovering ? "RECOVERED" : "SUCCEEDED" : "FAILED",
+        completedAt: new Date().toISOString(), appliedHead: after.tag,
+        appliedHash: after.hash, failureCategory: healthy ? null : "REPAIR_VALIDATION_FAILED" };
+      appendReceipt(file, settled);
+      await persistAuditReceipt(sql, settled);
+    }
+
     if (!healthy) {
       process.exitCode = 1;
     }
+  } catch (error) {
+    if (writeReceipts && startReceipt) {
+      const after = await appliedHead(sql, allMigrations).catch(() => ({ tag: null, hash: null }));
+      const settled = { ...startReceipt, phase: "SETTLED", result: "FAILED", completedAt: new Date().toISOString(), appliedHead: after.tag, appliedHash: after.hash,
+        failureCategory: error && typeof error === "object" && "code" in error ? String(error.code).slice(0, 80) : "EXECUTION_FAILED" };
+      appendReceipt(file, settled);
+      await persistAuditReceipt(sql, settled).catch(() => undefined);
+    }
+    throw error;
   } finally {
     await sql.end({ timeout: 5 });
   }

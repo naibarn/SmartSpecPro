@@ -223,7 +223,7 @@ export async function getDrizzleMigrationEvidence(input: {
     });
     let receiptRows: Array<{ metadata: MigrationExecutionReceipt | null }> = [];
     try {
-      receiptRows = (await db.execute(sql`SELECT "metadata" FROM "api_audit_events" WHERE "eventType" = 'migration_execution_receipt' ORDER BY "createdAt" ASC, "id" ASC`)) as unknown as Array<{ metadata: MigrationExecutionReceipt | null }>;
+      receiptRows = (await db.execute(sql`SELECT "metadata" FROM "api_audit_events" WHERE "eventType" = 'migration_execution_receipt' AND coalesce("metadata"->>'migrationProvider', 'drizzle') = 'drizzle' ORDER BY "createdAt" ASC, "id" ASC`)) as unknown as Array<{ metadata: MigrationExecutionReceipt | null }>;
     } catch (error) {
       // Fresh databases do not have api_audit_events until its creating migration runs.
       if (!(error && typeof error === "object" && "code" in error && String(error.code) === "42P01")) throw error;

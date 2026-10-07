@@ -1,18 +1,19 @@
-import postgres from "postgres";
+import dotenv from "dotenv";
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const sql = postgres(process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec");
+// Compatibility entry point for the former one-off memory schema patch. The
+// columns and enum values are part of the Drizzle history; never mutate them
+// through an untracked SQL path.
+const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+dotenv.config({ path: path.join(appRoot, ".env") });
 
-async function migrate() {
-  await sql.unsafe(`ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'decision'`);
-  await sql.unsafe(`ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'plan'`);
-  await sql.unsafe(`ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'architecture'`);
-  await sql.unsafe(`ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'component'`);
-  await sql.unsafe(`ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'task'`);
-  await sql.unsafe(`ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'code_knowledge'`);
-  await sql.unsafe(`ALTER TABLE entity_memories ADD COLUMN IF NOT EXISTS importance integer DEFAULT 5`);
-  await sql.unsafe(`ALTER TABLE entity_memories ADD COLUMN IF NOT EXISTS source varchar(20) DEFAULT 'auto'`);
-  console.log("Migration done");
-  await sql.end();
-}
-
-migrate().catch((e) => { console.error(e); process.exit(1); });
+const child = spawn("pnpm", ["run", "db:migrate"], { cwd: appRoot, env: process.env, stdio: "inherit" });
+child.once("error", error => {
+  console.error("Unable to start the canonical migration runner:", error.name);
+  process.exitCode = 127;
+});
+child.once("exit", (code, signal) => {
+  process.exitCode = code ?? (signal ? 1 : 0);
+});
