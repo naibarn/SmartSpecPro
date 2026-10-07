@@ -86,6 +86,7 @@
     "astryx": "node ../../node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
     "db:migrate": "node --import tsx scripts/db-migrate-with-receipt.ts migrate",
     "db:push": "node --import tsx scripts/db-migrate-with-receipt.ts push",
+    "test:research-notes-migration": "python3 scripts/test-research-notes-migration.py",
     "backfill:unified-job-control-plane": "tsx scripts/backfill-unified-job-control-plane.ts",
     "verify:feature-186": "tsx scripts/verify-feature-186.ts",
     "verify:cloudflare-local-readiness": "tsx scripts/verify-cloudflare-local-readiness.ts",

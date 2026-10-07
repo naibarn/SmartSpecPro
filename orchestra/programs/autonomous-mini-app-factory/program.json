@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "c6a49e4f2f4ee0d153eca3efcf9a2152ac629e50",
+    "sha": "763e9392afb147ed8574edc0d3e637ec2adad630",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": null
@@ -41,8 +41,8 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_PORTABLE_ARTIFACT_AND_RUNTIME_STALE_CORRECTION",
-    "state": "IMPLEMENTED_PENDING_INTEGRATION",
+    "id": "SPEC302_MIGRATION_0393_DISPOSABLE_DB_VALIDATION",
+    "state": "VALIDATED_LOCAL_NOT_DEPLOYED",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -63,13 +63,17 @@
       "Smoke runner now optionally checks cross-tenant note and summary-job isolation with a second authenticated principal; summary polling requires an explicit provider-cost gate. Focused suite remains 9 files/32 tests passed; package digest is 13d8cd6e72e0140654c331d968b5015a5554d8f5455feddb8c2cd8e02bb2a2c0.",
       "Runtime source discovery corrected earlier provisional probe attribution: system smartspec-web.service started 2026-10-07 08:39:30 +07, before the Research Notes router was integrated. On the stale process, /healthz and /readyz returned 200 (DB and feature186 checks reported ok), but unauthenticated POST /trpc/researchNotes.listNotes returned 404 No procedure found. This is evidence of a stale loaded service, not a Research Notes runtime pass; its source SHA is not bound to the live process.",
       "Package scope is now separated from deployment/UAT operations docs. Builder emits a deterministic tar.gz containing only the SPAAS manifest, UI binding, action schemas and README. Two consecutive builds matched package digest 714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; archive entries were inspected.",
-      "Correction: the system smartspec-web.service started at 2026-10-07 08:39:30 +07 before the Research Notes router integration. Current live process health/readiness probes returned 200, but its tRPC router returned 404 No procedure found for researchNotes.listNotes. This is stale-service evidence, not feature runtime PASS; no restart/deploy was made."
+      "Correction: the system smartspec-web.service started at 2026-10-07 08:39:30 +07 before the Research Notes router integration. Current live process health/readiness probes returned 200, but its tRPC router returned 404 No procedure found for researchNotes.listNotes. This is stale-service evidence, not feature runtime PASS; no restart/deploy was made.",
+      "On source SHA 763e9392afb147ed8574edc0d3e637ec2adad630, `pnpm --filter @smartspec/web run test:research-notes-migration` initialized a disposable local PostgreSQL 17 cluster, applied migration 0393, inserted/read one synthetic tenant/project/App/note fixture, and confirmed cross-tenant project FK, >262144-byte note content, and invalid membership role are rejected. The cluster was stopped and removed; no shared/staging/production DB was touched.",
+      "The same source passed 9 focused Vitest files/33 tests plus 4 GitHub outage retry tests. Portable tar.gz digest/archive are stable across two builds; SPAAS V5/V6 remain needs_context.",
+      "On checkpoint cce47ae20bce00795f00995d4d7e821537db233a, disposable PostgreSQL 17 applied migration 0393 then actual researchNotesService authorization checks passed: owner CRUD, viewer read/editor-write denial, cross-tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation, and archive lifecycle. No production database touched. Focused Vitest: 9 files/33 tests passed; GitHub retry regression: 4 passed; Python syntax and git diff --check passed. Deterministic package rebuilt with digest spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; validator remains needs_context for runtime/migration rollback evidence."
     ],
     "pending": [
-      "Portable archive/runtime-stale-evidence correction awaits integration.",
-      "No safe non-production DB/runtime target, authenticated app/project fixture, or migration credentials are available. Migration 0393 application/rollback and authenticated CRUD/summary UAT remain NOT_RUN; V5/V6 remain needs_context."
+      "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
+      "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed.",
+      "Migration 0393 and Research Notes service authorization are validated against disposable PostgreSQL only; shared/staging/production migration, rollback drill, authenticated runtime smoke, deployment and UAT remain not run."
     ],
-    "nextAction": "Integrate deterministic portable archive and corrected runtime evidence; continue independent test hardening. Resume migration/UAT only against a registered non-production target through SPEC-295."
+    "nextAction": "Retry integration of the latest validated checkpoint automatically. Continue independent work; resume guarded smoke/UAT only on a registered non-production target with authorized principals."
   },
   "checkpoints": [
     {
@@ -161,6 +165,18 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "c6a49e4f2f4ee0d153eca3efcf9a2152ac629e50",
       "evidence": "9 focused Vitest files, 33 tests passed; deterministic package digest 714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413; deterministic tar.gz SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; SPAAS V5/V6 needs_context."
+    },
+    {
+      "id": "SPEC302_MIGRATION_0393_DISPOSABLE_DB_VALIDATION",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "763e9392afb147ed8574edc0d3e637ec2adad630",
+      "evidence": "Disposable PostgreSQL 17 migration/constraint test PASS; 9 focused Vitest files/33 tests passed; retry outage regression 4 passed; no production database or runtime mutation."
+    },
+    {
+      "id": "SPEC302_MIGRATION_0393_AND_SERVICE_AUTHORIZATION_DISPOSABLE_DB",
+      "state": "VALIDATED_LOCAL_PENDING_INTEGRATION",
+      "sourceSha": "cce47ae20bce00795f00995d4d7e821537db233a",
+      "evidence": "Disposable PostgreSQL 17 applied migration 0393; migration constraints and 8 service authorization/lifecycle checks passed; 9 focused Vitest files/33 tests; retry regression 4 tests."
     }
   ],
   "completedWorkunits": [],
@@ -171,6 +187,17 @@
       "predicate": "registered_nonproduction_target_and_authenticated_app_project_fixture_available",
       "rootCause": "The visible systemd service is production-mode, started before route integration, and returns 404 for the feature procedure. No safe test DATABASE_URL or authenticated fixture is configured.",
       "nextAction": "Continue independent implementation; resume the guarded smoke runner and migration lifecycle when a safe target and authorized principals exist."
+    },
+    {
+      "id": "INTEGRATE_RESEARCH_NOTES_UI_CHECKPOINT",
+      "state": "WAITING_EXTERNAL_RETRYABLE",
+      "taskWorktree": "/home/dev/worktrees/mini-app-factory-reset",
+      "localCheckpointSha": "cce47ae20bce00795f00995d4d7e821537db233a",
+      "intendedRemoteBranch": "codex/mini-app-factory-runtime-20261007",
+      "pendingPullRequest": true,
+      "attempt": 0,
+      "lastError": "Retry target advanced to the latest validated local checkpoint; GitHub had returned transient Internal Server Error for the prior checkpoint.",
+      "nextAction": "Retry push of the latest checkpoint with bounded exponential backoff, then open/update and normally merge the PR; continue independent program work."
     }
   ],
   "criticalPath": [
@@ -303,8 +330,8 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_INDEPENDENT_TEST_HARDENING",
-    "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE applies only to integration workunits; independent implementation continues.",
+    "nextEligibleWorkunit": "SPEC302_HANDOFF_MIGRATION_AND_RUNTIME_EVIDENCE",
+    "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
       "lastScenario": "Transient GitHub integration wait/retry/PR recovery covered by regression test.",
@@ -317,5 +344,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T16:45:12Z"
+  "updatedAt": "2026-10-07T17:01:58Z"
 }
