@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "e14d9329f6a0cd62c84532146f2eb606f4a8636e",
+    "expected_canonical_sha": "fe37eb6a6bb36fb8701e5a26612a78ef9484c678",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind workspace rows with explicit branch/upstream identity where available and keep detached/no-upstream rows UNKNOWN without guessing; resolve task/provider assignment only from explicit owner/task/provider facts; identify an existing authoritative failed-migration result source without creating a second registry; finish remaining regression and acceptance evidence. External production verification remains separate and has not been attempted.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: classify remaining detached/no-upstream workspace rows only from durable explicit ownership/binding evidence and leave the rest UNKNOWN; locate and bind an already-authoritative migration execution result source for failed attempts without creating a parallel registry; complete the remaining regression/acceptance matrix and verify every locally implementable lifecycle/runtime wiring requirement. External production runtime verification remains separate and has not been attempted.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 52,
+  "generation": 53,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -201,7 +201,8 @@
       "3fa0d4846f15c9bbbd73f7e82080a27ed1121e60",
       "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "13266879192cf761a45a0f2a8a70d19eff3a0317",
-      "d70d14aa97a7aefc4e6751e62379999ae5a87702"
+      "d70d14aa97a7aefc4e6751e62379999ae5a87702",
+      "9fb15db189f7ecf928234aa6dffd15d31d1c677e"
     ],
     "mapping": [],
     "source_paths": [
@@ -241,9 +242,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e14d9329f6a0cd62c84532146f2eb606f4a8636e",
+    "canonical_sha": "fe37eb6a6bb36fb8701e5a26612a78ef9484c678",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:27:10Z"
+    "integrated_at": "2026-10-07T06:32:48Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -314,7 +315,9 @@
       "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-provider-neutral-closeout.md",
       "https://github.com/naibarn/SmartSpecPro/pull/191",
-      "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e"
+      "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e",
+      "https://github.com/naibarn/SmartSpecPro/pull/193",
+      "git:fe37eb6a6bb36fb8701e5a26612a78ef9484c678"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -470,7 +473,9 @@
         "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
         "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-provider-neutral-closeout.md",
         "https://github.com/naibarn/SmartSpecPro/pull/191",
-        "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e"
+        "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e",
+        "https://github.com/naibarn/SmartSpecPro/pull/193",
+        "git:fe37eb6a6bb36fb8701e5a26612a78ef9484c678"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -613,7 +618,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T06:28:02.257275Z",
+  "updated_at": "2026-10-07T06:33:21.025598Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -769,6 +774,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-fresh-remote-observation-e14d9329.md",
         "scope": "fresh remote canonical/push/integration observation, 60-second stale projection, exact and patch-equivalent integration; Python 45 tests and TypeScript projection 11 tests",
         "source_sha": "d70d14aa97a7aefc4e6751e62379999ae5a87702",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_SESSION_IDENTITY_REGRESSION",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-session-identity-fe37eb6a.md",
+        "scope": "same-session merge of trusted Runner provider and local owner task/host facts; confirmed provider conflict fails closed; focused 13-test projection and 43-test Runner suite",
+        "source_sha": "9fb15db189f7ecf928234aa6dffd15d31d1c677e",
         "status": "PASS"
       }
     ],

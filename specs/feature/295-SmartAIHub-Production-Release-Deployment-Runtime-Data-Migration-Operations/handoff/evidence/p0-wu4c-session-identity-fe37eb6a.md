@@ -1,0 +1,10 @@
+# P0-WU-4C Session Identity Merge Checkpoint
+
+- Requirement scope: combine explicit local owner/task facts and trusted Runner session/provider facts for the same fresh session without losing either source; do not choose between conflicting confirmed provider claims.
+- Reproduced RED: focused projection suite failed 2/13 tests. A local owner row with `provider=UNKNOWN` replaced the trusted Runner provider and runner identity; a conflicting `claude` fact replaced confirmed Runner `codex`.
+- Change: active session projection now merges facts by session ID, retains task/host/runner/provider evidence, preserves the authoritative provider source when the other is UNKNOWN, and emits `provider=UNKNOWN` with `conflicting_authoritative_provider_facts` when confirmed providers disagree.
+- Verification: `pnpm --dir apps/web exec vitest run server/services/workspaceAuthorityProjectReadModel.test.ts` — 13 passed; `JWT_SECRET=<test-only> pnpm --dir apps/web exec vitest run server/routes/__tests__/runnerControl.test.ts server/services/__tests__/runnerGateway.test.ts server/services/__tests__/computerUseFeature195Gateway.test.ts` — 43 passed; `git diff --check` — passed.
+- Candidate source SHA: `9fb15db189f7ecf928234aa6dffd15d31d1c677e`.
+- Integrated SHA: `fe37eb6a6bb36fb8701e5a26612a78ef9484c678` via [PR #193](https://github.com/naibarn/SmartSpecPro/pull/193), merged 2026-10-07 06:32:48 UTC; source SHA is reachable from `origin/main`.
+- CI: `build-preview` was `SKIPPED`; no CI pass is claimed. The shared test-only JWT value was not a production credential.
+- Residuals: detached/no-upstream workspaces remain UNKNOWN absent binding evidence. Drizzle's `__drizzle_migrations` is the existing applied-history source and explicitly does not record failed attempts; no second registry was introduced. Continue inspecting an already-authoritative migration execution result source and remaining local acceptance matrix. External production runtime verification remains separate and was not attempted.
