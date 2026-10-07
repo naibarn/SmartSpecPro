@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+    "sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
-      "canonical_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
-      "canonical_user_workspace_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+      "integrated_sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
+      "canonical_sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
+      "canonical_user_workspace_sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:9254cf4b-bbba-45d3-9708-3c5726472d07",
-      "verified_at": "2026-10-07T20:11:13.564+00:00"
+      "receipt_id": "workspace-convergence:06133fc6-c6f7-4e36-b537-4a9c6c044f5b",
+      "verified_at": "2026-10-07T20:16:24.514+00:00"
     },
-    "observedAt": "2026-10-08T03:16:00+07:00",
+    "observedAt": "2026-10-08T03:18:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
-      "canonical_user_workspace_sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+      "integrated_sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
+      "canonical_user_workspace_sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T20:12:00.058+00:00",
-      "receipt_id": "workspace-convergence:9254cf4b-bbba-45d3-9708-3c5726472d07"
+      "verified_at": "2026-10-07T20:16:30.457+00:00",
+      "receipt_id": "workspace-convergence:06133fc6-c6f7-4e36-b537-4a9c6c044f5b"
     }
   },
   "inventory": {
@@ -60,22 +60,20 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_HEADLESS_RUNTIME_ACCEPTANCE",
+    "id": "RESEARCH_NOTES_SMOKE_SAFETY_GUARDRAILS",
     "state": "LOCAL_VERIFIED_PENDING_PR",
-    "objective": "Exercise the packaged headless Research Notes smoke client against the authenticated loopback API backed by a disposable database, with real session and tenant isolation.",
+    "objective": "Make production-environment refusal and explicit provider-cost authorization executable smoke-runner regression tests.",
     "implementation": [
-      "apps/web/scripts/research-notes-focused-runtime.ts",
-      "apps/web/scripts/research-notes-smoke.ts"
+      "apps/web/scripts/research-notes-smoke.ts",
+      "apps/web/server/services/__tests__/researchNotesSmokeRunner.test.ts"
     ],
     "evidence": [
-      "The existing headless smoke client now runs asynchronously beside the focused loopback server, preserving the server event loop and validating health, authorized project context, create/list/update/archive, and cross-tenant hiding.",
-      "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed on disposable local PostgreSQL 17; receipt reports headlessSmokePassed=true.",
-      "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime-pgvector passed on loopback-only disposable PostgreSQL 15 + pgvector 0.8.2; headlessSmokePassed=true.",
-      "Five Research Notes router/service/summary/package suites passed, 19 tests total, at the same source state.",
-      "The smoke runner emits a phase-scoped safe error code; it does not log session credentials or note content."
+      "The runner returns phase-scoped PROVIDER_COST_GATE_REQUIRED before sending any request when --with-summary lacks explicit cost authorization.",
+      "Production environment is rejected before use of supplied credentials; tests assert neither credential nor production URL appears in stdout/stderr.",
+      "Focused Vitest suite passed 1 file/2 tests."
     ],
-    "nextAction": "Integrate through a normal PR, then continue the remaining deployment/UI/runtime and Factory execution lanes. Provider summary and background worker runtime remain separate waits; headless smoke did not execute paid/provider or background actions.",
-    "sourceSha": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
+    "nextAction": "Integrate through a normal PR, then continue the full application UI/runtime and Factory execution lanes; these smoke safety tests do not resolve deployment, provider, or background-worker waits.",
+    "sourceSha": "d8bf17af0974a85feac7e10287371f1096d7ff35",
     "integration": "PENDING_NORMAL_PR"
   },
   "checkpoints": [
@@ -216,6 +214,14 @@
       "sha": "fb208c253879ef81dc357942169227433ee5fc73",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/271",
       "evidence": "Disposable PostgreSQL 15 pgvector runtime extension 0.8.2, loopback-only database; Mini App baseline migrated and authenticated Research Notes API acceptance passed (unauthenticated, cross-tenant/project, revoked membership, archived App, CRUD/archive). ResearchNotesPage component suite 1 file/3 tests passed. Full app deployment/browser UAT remain pending."
+    },
+    {
+      "id": "RESEARCH_NOTES_HEADLESS_RUNTIME_ACCEPTANCE",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
+      "sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/273",
+      "evidence": "PR #273 integrated asynchronous execution of packaged headless smoke client against authenticated loopback API. Disposable PostgreSQL 17 and PostgreSQL 15 + pgvector 0.8.2 runs passed headless CRUD/archive and cross-tenant isolation; five Research Notes service/router/summary/package suites passed 19 tests. Full app browser/UAT remains pending."
     }
   ],
   "completedWorkunits": [
@@ -377,9 +383,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "Normal non-force GitHub API merge recovered from local gh pr merge checkout collision; canonical workspace converged without user intervention.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/271",
-      "integratedSha": "fb208c253879ef81dc357942169227433ee5fc73"
+      "lastScenario": "Normal squash integration of the authenticated headless smoke acceptance checkpoint; workspace convergence verified.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/273",
+      "integratedSha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a"
     },
     "waitingWorkunits": [
       {
@@ -409,7 +415,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:16:00+07:00",
+  "updatedAt": "2026-10-08T03:18:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -434,8 +440,8 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/research-notes-headless-smoke-runtime-20261008",
-    "sourceBranch": "codex/research-notes-headless-smoke-runtime-20261008",
+    "taskWorktree": "/home/dev/worktrees/research-notes-smoke-guardrails-20261008",
+    "sourceBranch": "codex/research-notes-smoke-guardrails-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -452,9 +458,10 @@
       "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
       "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
       "fb0ec8c37ecdb0e0e9d02055f3c93ecc5151e6ce",
-      "74bc4fcc74a9d6984e3c4509dc9ae041e2644598"
+      "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
+      "d8bf17af0974a85feac7e10287371f1096d7ff35"
     ],
-    "intendedRemoteBranch": "codex/research-notes-headless-smoke-runtime-20261008",
+    "intendedRemoteBranch": "codex/research-notes-smoke-guardrails-20261008",
     "pendingPullRequest": {
       "number": null,
       "url": null,
@@ -541,17 +548,22 @@
         "revision": "74bc4fcc74a9d6984e3c4509dc9ae041e2644598 based on canonical dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
         "command": "pnpm --filter @smartspec/web exec vitest run server/routers/researchNotes.test.ts server/services/researchNotesService.test.ts server/services/researchNotesSummaryExecutor.test.ts server/services/researchNotesSummaryContract.test.ts server/services/researchNotesPackage.test.ts",
         "outcome": "PASS: 5 files, 19 tests."
+      },
+      {
+        "revision": "d8bf17af0974a85feac7e10287371f1096d7ff35 based on canonical d4c7794bbc690557e79183102de0bfdf2eac8e7a",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/researchNotesSmokeRunner.test.ts",
+        "outcome": "PASS: 1 file, 2 tests; production environment rejected before credential use/logging; provider summary cost gate enforced before requests."
       }
     ],
-    "githubIntegration": "IDLE_AFTER_PR_272; headless runtime checkpoint pending normal PR",
+    "githubIntegration": "IDLE_AFTER_PR_273; smoke guardrail checkpoint pending normal PR",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+    "canonicalAtCheckpoint": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "dab3166ac4001b0e18cbc5d08a0834c8fc647ef0",
+      "sha": "d4c7794bbc690557e79183102de0bfdf2eac8e7a",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:9254cf4b-bbba-45d3-9708-3c5726472d07"
+      "receiptId": "workspace-convergence:06133fc6-c6f7-4e36-b537-4a9c6c044f5b"
     }
   }
 }

@@ -22,6 +22,7 @@ function requiredEnv(name: string): string {
 function safeError(error: unknown): string {
   if (error instanceof TRPCClientError) return error.data?.code ?? "TRPC_REQUEST_FAILED";
   if (error instanceof Error && error.name === "AbortError") return "REQUEST_TIMEOUT";
+  if (error instanceof Error && error.message === "PROVIDER_COST_GATE_REQUIRED") return error.message;
   return "REQUEST_FAILED";
 }
 
@@ -46,7 +47,7 @@ async function main(): Promise<void> {
   const crossTenantBearer = process.env.RESEARCH_NOTES_CROSS_TENANT_AUTH_BEARER?.trim();
   const includeSummary = process.argv.includes(SUMMARY_FLAG);
   if (includeSummary && process.env.RESEARCH_NOTES_ALLOW_PROVIDER_COST !== "true") {
-    throw new Error(`${SUMMARY_FLAG} requires RESEARCH_NOTES_ALLOW_PROVIDER_COST=true`);
+    throw new Error("PROVIDER_COST_GATE_REQUIRED");
   }
 
   const makeClient = (authBearer?: string, sessionCookie?: string) => createTRPCProxyClient<AppRouter>({
