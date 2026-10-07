@@ -5,10 +5,21 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "763e9392afb147ed8574edc0d3e637ec2adad630",
+    "sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": null
+    "convergenceReceipt": {
+      "canonical_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "canonical_user_workspace_dirty": false,
+      "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
+      "canonical_user_workspace_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "integrated_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "project_id": "smartspecpro",
+      "reasons": [],
+      "repository_id": "smartspecpro",
+      "status": "CANONICAL_CONVERGENCE_VERIFIED",
+      "verified_at": "2026-10-07T17:06:50.448+00:00"
+    }
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -66,14 +77,14 @@
       "Correction: the system smartspec-web.service started at 2026-10-07 08:39:30 +07 before the Research Notes router integration. Current live process health/readiness probes returned 200, but its tRPC router returned 404 No procedure found for researchNotes.listNotes. This is stale-service evidence, not feature runtime PASS; no restart/deploy was made.",
       "On source SHA 763e9392afb147ed8574edc0d3e637ec2adad630, `pnpm --filter @smartspec/web run test:research-notes-migration` initialized a disposable local PostgreSQL 17 cluster, applied migration 0393, inserted/read one synthetic tenant/project/App/note fixture, and confirmed cross-tenant project FK, >262144-byte note content, and invalid membership role are rejected. The cluster was stopped and removed; no shared/staging/production DB was touched.",
       "The same source passed 9 focused Vitest files/33 tests plus 4 GitHub outage retry tests. Portable tar.gz digest/archive are stable across two builds; SPAAS V5/V6 remain needs_context.",
-      "On checkpoint cce47ae20bce00795f00995d4d7e821537db233a, disposable PostgreSQL 17 applied migration 0393 then actual researchNotesService authorization checks passed: owner CRUD, viewer read/editor-write denial, cross-tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation, and archive lifecycle. No production database touched. Focused Vitest: 9 files/33 tests passed; GitHub retry regression: 4 passed; Python syntax and git diff --check passed. Deterministic package rebuilt with digest spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; validator remains needs_context for runtime/migration rollback evidence."
+      "On checkpoint cce47ae20bce00795f00995d4d7e821537db233a, disposable PostgreSQL 17 applied migration 0393 then actual researchNotesService authorization checks passed: owner CRUD, viewer read/editor-write denial, cross-tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation, and archive lifecycle. No production database touched. Focused Vitest: 9 files/33 tests passed; GitHub retry regression: 4 passed; Python syntax and git diff --check passed. Deterministic package rebuilt with digest spaas-package-v1:sha256:714f2f8f4729628bab7f1f2dacfaf2793eb119964c8d047e9d0955dd7d1b9413 and archive SHA-256 0ba74a4e864d16d2c3d1441053a37d0dc089a57be5925fa17550883e4dd7268c; validator remains needs_context for runtime/migration rollback evidence.",
+      "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at origin/main SHA 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248; the registered user workspace /home/dev/projects/SmartSpecPro converged cleanly to that SHA. Disposable migration and service-authorization evidence is recorded in SPEC-302 handoff generation 17; live non-production deployment/UAT remains pending."
     ],
     "pending": [
       "Authenticated app/project CRUD and summary UAT remains NOT_RUN because no registered non-production runtime, app/project fixture, or credential is configured.",
-      "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed.",
-      "Migration 0393 and Research Notes service authorization are validated against disposable PostgreSQL only; shared/staging/production migration, rollback drill, authenticated runtime smoke, deployment and UAT remain not run."
+      "The visible production-mode smartspec-web.service predates the route, and its loaded tRPC router returned 404 for researchNotes.listNotes; it was not restarted or deployed."
     ],
-    "nextAction": "Retry integration of the latest validated checkpoint automatically. Continue independent work; resume guarded smoke/UAT only on a registered non-production target with authorized principals."
+    "nextAction": "Resume authenticated smoke, migration rollback rehearsal, deployment and UAT when a registered non-production target and authorized fixtures become available; continue independent work and never treat production health as feature evidence."
   },
   "checkpoints": [
     {
@@ -168,15 +179,19 @@
     },
     {
       "id": "SPEC302_MIGRATION_0393_DISPOSABLE_DB_VALIDATION",
-      "state": "FAST_GATE_PASSED_PENDING_PR",
-      "sourceSha": "763e9392afb147ed8574edc0d3e637ec2adad630",
-      "evidence": "Disposable PostgreSQL 17 migration/constraint test PASS; 9 focused Vitest files/33 tests passed; retry outage regression 4 passed; no production database or runtime mutation."
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+      "evidence": "Disposable PostgreSQL 17 migration/constraint test PASS; 9 focused Vitest files/33 tests passed; retry outage regression 4 passed; no production database or runtime mutation. PR #249 merged normally and the canonical user workspace converged; migration deployment/rollback and runtime/UAT remain pending.",
+      "sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/249"
     },
     {
       "id": "SPEC302_MIGRATION_0393_AND_SERVICE_AUTHORIZATION_DISPOSABLE_DB",
-      "state": "VALIDATED_LOCAL_PENDING_INTEGRATION",
-      "sourceSha": "cce47ae20bce00795f00995d4d7e821537db233a",
-      "evidence": "Disposable PostgreSQL 17 applied migration 0393; migration constraints and 8 service authorization/lifecycle checks passed; 9 focused Vitest files/33 tests; retry regression 4 tests."
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+      "evidence": "Disposable PostgreSQL 17 applied migration 0393; migration constraints and 8 service authorization/lifecycle checks passed; 9 focused Vitest files/33 tests; retry regression 4 tests. PR #249 merged normally and the canonical user workspace converged; migration deployment/rollback and runtime/UAT remain pending.",
+      "sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/249"
     }
   ],
   "completedWorkunits": [],
@@ -186,18 +201,7 @@
       "state": "WAITING_ENVIRONMENT",
       "predicate": "registered_nonproduction_target_and_authenticated_app_project_fixture_available",
       "rootCause": "The visible systemd service is production-mode, started before route integration, and returns 404 for the feature procedure. No safe test DATABASE_URL or authenticated fixture is configured.",
-      "nextAction": "Continue independent implementation; resume the guarded smoke runner and migration lifecycle when a safe target and authorized principals exist."
-    },
-    {
-      "id": "INTEGRATE_RESEARCH_NOTES_UI_CHECKPOINT",
-      "state": "WAITING_EXTERNAL_RETRYABLE",
-      "taskWorktree": "/home/dev/worktrees/mini-app-factory-reset",
-      "localCheckpointSha": "cce47ae20bce00795f00995d4d7e821537db233a",
-      "intendedRemoteBranch": "codex/mini-app-factory-runtime-20261007",
-      "pendingPullRequest": true,
-      "attempt": 0,
-      "lastError": "Retry target advanced to the latest validated local checkpoint; GitHub had returned transient Internal Server Error for the prior checkpoint.",
-      "nextAction": "Retry push of the latest checkpoint with bounded exponential backoff, then open/update and normally merge the PR; continue independent program work."
+      "nextAction": "Continue independent work. Resume guarded smoke, migration lifecycle, deployment and UAT when a registered non-production target and authorized app/project principals exist."
     }
   ],
   "criticalPath": [
@@ -334,9 +338,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "Transient GitHub integration wait/retry/PR recovery covered by regression test.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/247",
-      "integratedSha": "c6a49e4f2f4ee0d153eca3efcf9a2152ac629e50"
+      "lastScenario": "Retryable GitHub integration completed without a user prompt.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/249",
+      "integratedSha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248"
     }
   },
   "deferredInfrastructure": [
@@ -344,5 +348,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T17:01:58Z"
+  "updatedAt": "2026-10-07T17:07:14Z"
 }
