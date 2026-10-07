@@ -330,17 +330,26 @@ export function projectRunnerWorkspaceAuthority(input: {
     production: local?.production ?? { status: "UNKNOWN", reason: "SPEC-295 normalized evidence unavailable" },
     localAuthorityStatus: input.localAuthorityStatus ?? "UNAVAILABLE",
     localAuthorityObservedAt: input.localAuthorityObservedAt?.toISOString() ?? null,
-    hosts: { count: rows.length, observed: rows.map((row) => ({
-      hostId: row.runnerId,
-      agentIdentity: row.runnerId,
-      provider: "UNKNOWN",
-      runnerProfile: row.profile,
-      ownerUserId: row.ownerUserId,
-      trust: row.revokedAt ? "REVOKED" : row.trustState === "trusted" ? "TRUSTED" : "UNTRUSTED",
-      status: row.status,
-      activeSessionId: row.activeSessionId,
-      lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
-    })) },
+    hosts: { count: rows.length, observed: rows.map((row) => {
+      const snapshot = row.currentSnapshotJson as { runnerSessionId?: unknown } | null;
+      const snapshotFresh = Boolean(row.snapshotExpiresAt && row.snapshotExpiresAt > now && row.snapshotObservedAt && row.snapshotObservedAt <= now);
+      const activeSession = snapshotFresh && !row.revokedAt && row.status === "online" && row.trustState === "trusted" &&
+        Boolean(row.activeSessionId && snapshot?.runnerSessionId === row.activeSessionId);
+      const providerFact = activeSessionProvider(row.currentSnapshotJson, activeSession, now);
+      return {
+        hostId: row.runnerId,
+        agentIdentity: providerFact.provider === "UNKNOWN" ? row.runnerId : providerFact.provider,
+        agentIdentityResolutionSource: providerFact.provider === "UNKNOWN" ? "trusted_runner_registration" : providerFact.source,
+        provider: providerFact.provider,
+        providerResolutionSource: providerFact.source,
+        runnerProfile: row.profile,
+        ownerUserId: row.ownerUserId,
+        trust: row.revokedAt ? "REVOKED" : row.trustState === "trusted" ? "TRUSTED" : "UNTRUSTED",
+        status: row.status,
+        activeSessionId: activeSession ? row.activeSessionId : null,
+        lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
+      };
+    }) },
     sessions: { activeCount: activeSessions.length, active: activeSessions },
     workspaceConflicts: workspaces.filter((row) => row.state === "CONFLICT"),
     pushState: pushed,
