@@ -48,4 +48,11 @@ describe("persisted deployment target authority", () => {
     await expect(updateProviderDeploymentTarget(db, { identity, targetRowId: row.id, changes: { credentialRef: "cloudflare:deployment" } }))
       .resolves.toEqual({ status: "PERMISSION_DENIED", target: null });
   });
+
+  it("reports update conflicts when another active target owns the same authority scope", async () => {
+    const conflict = Object.assign(new Error("duplicate"), { code: "23505", constraint: "provider_deployment_targets_active_identity_unique" });
+    const db = { update: () => ({ set: () => ({ where: () => ({ returning: async () => { throw conflict; } }) }) }) } as never;
+    await expect(updateProviderDeploymentTarget(db, { identity, targetRowId: row.id, changes: { enabled: true } }))
+      .resolves.toEqual({ status: "TARGET_AUTHORITY_CONFLICT", target: null });
+  });
 });

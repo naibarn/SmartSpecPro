@@ -51,6 +51,7 @@ import { auditLogger } from "../services/auditLogger";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
+import { createProviderDeploymentTarget, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -307,6 +308,68 @@ export const infrastructureRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
     return getCloudflareCredentialCenterState(db);
   }),
+
+  listProviderDeploymentTargets: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      return listProviderDeploymentTargets(db, input);
+    }),
+
+  createProviderDeploymentTarget: exactAdminProcedure
+    .input(z.object({
+      tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+      provider: z.literal("cloudflare"), deploymentTargetId: z.string().trim().min(1).max(160),
+      accountRef: z.string().trim().max(255).nullable().optional(), workerRef: z.string().trim().max(255).nullable().optional(),
+      containerApplicationRef: z.string().trim().max(255).nullable().optional(), provenance: z.string().trim().min(1).max(500),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { tenantId, projectId, environment, provider, ...target } = input;
+      const result = await createProviderDeploymentTarget(db, { identity: { tenantId, projectId, environment, provider }, ...target, actorUserId: ctx.user?.id });
+      if (result.status === "TARGET_AUTHORITY_CONFLICT") throw new TRPCError({ code: "CONFLICT", message: "An active target already owns this project environment and provider" });
+      auditLogger.log({ eventType: "provider_deployment_target_created", userId: ctx.user?.id ?? null,
+        requestType: "deployment_target_create", responsePayload: { targetRowId: result.target.id, tenantId, projectId, environment, provider }, statusCode: 201 });
+      return result;
+    }),
+
+  updateProviderDeploymentTarget: exactAdminProcedure
+    .input(z.object({
+      tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+      provider: z.literal("cloudflare"), targetRowId: z.string().uuid(),
+      changes: z.object({ deploymentTargetId: z.string().trim().min(1).max(160), accountRef: z.string().trim().max(255).nullable(),
+        workerRef: z.string().trim().max(255).nullable(), containerApplicationRef: z.string().trim().max(255).nullable(),
+        credentialRef: z.string().trim().max(255), enabled: z.boolean(), provenance: z.string().trim().min(1).max(500),
+        region: z.string().trim().max(100).nullable(), runtimePolicy: z.string().trim().max(160).nullable() }).partial()
+        .refine(value => Object.keys(value).length > 0),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { tenantId, projectId, environment, provider, targetRowId, changes } = input;
+      const result = await updateProviderDeploymentTarget(db, { identity: { tenantId, projectId, environment, provider }, targetRowId, changes, actorUserId: ctx.user?.id });
+      if (result.status === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Deployment target not found in the requested scope" });
+      if (result.status === "PERMISSION_DENIED") throw new TRPCError({ code: "FORBIDDEN", message: "Credential reference does not match target scope" });
+      if (result.status === "TARGET_AUTHORITY_CONFLICT") throw new TRPCError({ code: "CONFLICT", message: "Another active target already owns this project environment and provider" });
+      auditLogger.log({ eventType: "provider_deployment_target_updated", userId: ctx.user?.id ?? null,
+        requestType: "deployment_target_update", responsePayload: { targetRowId, tenantId, projectId, environment, provider }, statusCode: 200 });
+      return result;
+    }),
+
+  disableProviderDeploymentTarget: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32),
+      provider: z.literal("cloudflare"), targetRowId: z.string().uuid() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const result = await disableProviderDeploymentTarget(db, { identity: input, targetRowId: input.targetRowId, actorUserId: ctx.user?.id });
+      if (result.status === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "Deployment target not found in the requested scope" });
+      auditLogger.log({ eventType: "provider_deployment_target_disabled", userId: ctx.user?.id ?? null,
+        requestType: "deployment_target_disable", responsePayload: { targetRowId: input.targetRowId, tenantId: input.tenantId, projectId: input.projectId, environment: input.environment, provider: input.provider }, statusCode: 200 });
+      return result;
+    }),
 
   getInternalRuntimeEvidence: exactAdminProcedure.query(async () => {
     const db = await getDb();
