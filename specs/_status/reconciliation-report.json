@@ -139904,7 +139904,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+      "canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -140251,7 +140251,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+      "canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -140855,7 +140855,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
+      "canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
