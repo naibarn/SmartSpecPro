@@ -1,0 +1,56 @@
+apiVersion: spaas.smartaihub.app/v1
+kind: AIApplication
+metadata:
+  id: app_project_wiki_pages
+  name: Project Wiki Pages
+  slug: project-wiki-pages
+  version: 0.1.0
+  description: Project-scoped editable wiki pages with authenticated UI and machine-callable actions.
+ownership:
+  ownerType: platform
+  ownerId: smartaihub
+compatibility:
+  minimumPlatformVersion: "2026.10"
+  manifestSchema: "1.0"
+application:
+  kind: mini_app
+  experience: hybrid
+  primarySurface: web
+components:
+  - id: project-wiki-pages-ui
+    type: ui
+    source: ui.json
+    dependsOn: []
+    sideEffects: [persistent_read, persistent_write]
+    capabilities: [project_wiki.read, project_wiki.write]
+  - id: project-wiki-pages-actions
+    type: api-function
+    source: actions.json
+    dependsOn: []
+    sideEffects: [persistent_read, persistent_write]
+    capabilities: [project_wiki.read, project_wiki.write]
+sections:
+  - name: user-interface
+    path: ui.json
+    required: true
+  - name: actions
+    path: actions.json
+    required: true
+requires:
+  capabilities: [project_wiki.read, project_wiki.write]
+  secrets: []
+  storage: [postgresql]
+  network: [authenticated_platform_api]
+security:
+  authentication: required
+  tenantIsolation: required
+  projectMembership: required
+  appBinding: required
+  callerSuppliesTenantIdentity: false
+privacy:
+  pageContent: tenant_project_scoped
+runtime:
+  host: smartspec-web
+  route: /apps/{publicAppId}
+operations:
+  migrations: []
