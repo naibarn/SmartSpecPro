@@ -355,10 +355,10 @@
     },
     {
       "number": 50,
-      "name": "safe-action-idempotent-replay",
+      "name": "safe-action-exact-replay-is-idempotent",
       "proof_kind": "LOCAL_EXECUTABLE",
-      "assert": "same idempotency key and payload returns original receipt without re-execution",
-      "test_name": "test_exact_action_replay_returns_same_receipt"
+      "assert": "same action and normalized request do not execute twice and report replay safe",
+      "test_name": "test_exact_action_replay_returns_replay_safe_status_without_reexecution"
     },
     {
       "number": 51,
@@ -453,24 +453,24 @@
     },
     {
       "number": 64,
-      "name": "action-idempotency-reservation-is-durable",
+      "name": "action-idempotency-replay-uses-canonical-result",
       "proof_kind": "LOCAL_EXECUTABLE",
-      "assert": "in-progress idempotency reservation survives ledger reopening",
-      "test_name": "test_sqlite_action_ledger_reserves_across_retries"
+      "assert": "same normalized request returns REPLAY_SAFE and does not execute twice",
+      "test_name": "test_exact_action_replay_returns_replay_safe_status_without_reexecution"
     },
     {
       "number": 65,
-      "name": "action-idempotency-replay-uses-persisted-receipt",
+      "name": "action-idempotency-payload-conflict-rejected",
       "proof_kind": "LOCAL_EXECUTABLE",
-      "assert": "completed action receipt replays from the durable SQLite authority ledger",
-      "test_name": "test_sqlite_action_ledger_replays_completed_receipt"
+      "assert": "reusing a key with a different request returns IDEMPOTENCY_CONFLICT",
+      "test_name": "test_conflicting_action_replay_is_rejected"
     },
     {
       "number": 66,
-      "name": "action-idempotency-key-conflict-rejected-durably",
+      "name": "action-idempotency-request-normalization",
       "proof_kind": "LOCAL_EXECUTABLE",
-      "assert": "durable ledger rejects a reused key with a different request hash",
-      "test_name": "test_sqlite_action_ledger_rejects_conflicting_idempotency_key"
+      "assert": "trimmed key and canonical JSON object order replay the same receipt",
+      "test_name": "test_idempotency_uses_normalized_key_and_canonical_json_payload"
     },
     {
       "number": 67,
@@ -478,6 +478,13 @@
       "proof_kind": "LOCAL_EXECUTABLE",
       "assert": "cached evidence is marked stale using its collection timestamp",
       "test_name": "test_cached_provider_observation_expires_by_collection_timestamp"
+    },
+    {
+      "number": 68,
+      "name": "periodic-audit-emits-owner-lease-expiry-event",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "known owner lease expiration is recorded and queued without retiring the workspace",
+      "test_name": "test_periodic_audit_marks_expired_known_owner_lease_without_retiring_workspace"
     }
   ]
 }

@@ -50,6 +50,18 @@ export async function executeWorkspaceAuthorityAudit(input: {
     revokedAt: runnerNodes.revokedAt, activeSessionId: runnerNodes.activeSessionId,
   }).from(runnerNodes).where(and(eq(runnerNodes.tenantId, input.tenantId), isNull(runnerNodes.revokedAt)));
   const localWorkspaceAudit = await (input.collectLocal ?? collectLocalWorkspaceAudit)();
+  const localWorkspaceRows = localWorkspaceAudit.result?.workspaces;
+  const locallyExpiredOwners = localWorkspaceAudit.status === "OBSERVED" && Array.isArray(localWorkspaceRows)
+    ? localWorkspaceRows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object" &&
+      (row as Record<string, unknown>).owner_lease_expired === true &&
+      typeof (row as Record<string, unknown>).workspace_id === "string" &&
+      typeof (row as Record<string, unknown>).owner_lease_expires_at === "number"))
+    : [];
+  await Promise.all(locallyExpiredOwners.map(row => enqueueWorkspaceAuthorityAuditEvent({
+    tenantId: input.tenantId,
+    eventType: "OWNER_LEASE_EXPIRED",
+    eventId: `${row.workspace_id}:${row.owner_lease_expires_at}`,
+  })));
   return {
     mode: "AUDIT_ONLY" as const,
     observedAt: now.toISOString(),
@@ -58,6 +70,7 @@ export async function executeWorkspaceAuthorityAudit(input: {
     untrustedRunnerCount: rows.filter(row => row.trustState !== "trusted").length,
     offlineRunnerCount: rows.filter(row => row.status !== "online").length,
     unboundSessionCount: rows.filter(row => Boolean(row.activeSessionId) && row.status !== "online").length,
+    ownerLeaseExpirationEventCount: locallyExpiredOwners.length,
     localWorkspaceAudit,
   };
 }
