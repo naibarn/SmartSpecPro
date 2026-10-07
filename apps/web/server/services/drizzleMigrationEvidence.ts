@@ -7,6 +7,16 @@ import { sql } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
 
 export type MigrationEvidenceStatus = "OBSERVED" | "NOT_CONFIGURED" | "UNAVAILABLE" | "PERMISSION_DENIED" | "ERROR";
+export type MigrationFailureEvidence =
+  | {
+      state: "FAILED";
+      source: string;
+      migration: { tag: string; hash: string };
+      observedAt: string;
+      reason?: string;
+    }
+  | { state: "NONE"; source: string; migration: null; observedAt: string }
+  | { state: "UNKNOWN"; source: string; migration: null; observedAt: null; reason: string };
 export type MigrationEvidence = {
   status: MigrationEvidenceStatus;
   source: string;
@@ -17,9 +27,9 @@ export type MigrationEvidence = {
     expectedMigrationHead: { tag: string; hash: string } | null;
     observedAppliedHead: { hash: string; appliedAt: number | null } | null;
     pendingMigrations: Array<{ tag: string; hash: string }>;
-    failedMigration: null;
-    failureTracking: "not_recorded_by_drizzle_ledger";
-    latestExecution: { hash: string; result: "APPLIED"; executedAt: number | null } | null;
+    failedMigration: MigrationFailureEvidence;
+    failureTracking: "TRACKED" | "NOT_TRACKED";
+    latestExecution: { hash: string; result: "APPLIED" | "FAILED" | "UNKNOWN"; executedAt: number | null } | null;
   } | null;
   reason?: string;
 };
@@ -63,8 +73,14 @@ export function projectDrizzleMigrationEvidence(input: {
       expectedMigrationHead: expectedHead,
       observedAppliedHead: latest ? { hash: latest.hash, appliedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
       pendingMigrations: input.expected.filter(migration => !appliedHashes.has(migration.hash)),
-      failedMigration: null,
-      failureTracking: "not_recorded_by_drizzle_ledger",
+      failedMigration: {
+        state: "UNKNOWN",
+        source: "drizzle.__drizzle_migrations",
+        migration: null,
+        observedAt: null,
+        reason: "failed_attempts_not_recorded_by_source",
+      },
+      failureTracking: "NOT_TRACKED",
       latestExecution: latest ? { hash: latest.hash, result: "APPLIED", executedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
     },
   };
@@ -97,7 +113,9 @@ export async function getDrizzleMigrationEvidence(input: {
     const expected = await readExpectedMigrations(input.migrationDirectory ?? MIGRATION_DIRECTORY);
     const identityRows = await db.execute(sql<Array<{ database_name: string; schema_name: string }>>`SELECT current_database() AS database_name, current_schema() AS schema_name`);
     const databaseIdentity = `${identityRows[0]?.database_name ?? "unknown"}/${identityRows[0]?.schema_name ?? "unknown"}`;
-    const appliedRows = await db.execute(sql<Array<AppliedMigration>>`SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC`);
+    const appliedRows = (await db.execute(
+      sql`SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC`
+    )) as unknown as AppliedMigration[];
     return projectDrizzleMigrationEvidence({
       environment: input.environment ?? process.env.NODE_ENV ?? "unknown",
       databaseIdentity,
