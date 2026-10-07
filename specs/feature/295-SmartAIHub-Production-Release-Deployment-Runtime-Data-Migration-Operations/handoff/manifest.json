@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "94db033447cf115490d970bb368b00a0949043e4",
+    "expected_canonical_sha": "dc76f5423e039d117233889997dce73843907c7d",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: add the persisted tenant/project/environment provider-resource target source and integrate Worker/Container evidence callers; add migration execution receipts to real migration paths using shared audit evidence; bind credential references to tenant authority; preserve canonical user dirty data until its owner disposition and the main-branch worktree constraint are resolved.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: finish deployment-target create/update/disable/list and target-role identity; complete credential-broker tenant/project/environment authorization and revocation; bind persisted target authority to Worker and Container callers; reconcile migration receipts with Drizzle state and cover idempotent retry/interruption/recovery; inventory and wire purpose-built production migration workflows; connect normalized production evidence to Mission Control; rerun runtime-health and SPEC-224 focused suites. Canonical user workspace is now main/clean at dc76f5423e039d117233889997dce73843907c7d with verified convergence receipt workspace-convergence:9bca0023-c140-44fa-acdf-fab4598362fe. Force-push recovery is documented in specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-policy-workspace-recovery-20261007.md; old commit 195ad2924 is preserved at recovery/p0-force-push-195ad2924. Do not set P0_CODE_IMPLEMENTATION complete until remaining implementation and tests pass.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Continue after PR #218 at origin/main 94db033447cf115490d970bb368b00a0949043e4. Focus next on a persisted provider/resource target record and live caller integration, durable migration execution receipts via shared audit storage, and tenant-bound credential references. Canonical user workspace is at this SHA but remains dirty and on its existing codex branch; preserve both unique user paths and the active separate main worktree. See specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-internal-gap-closure-20261007.md.",
+    "resume_point": "Resume from origin/main dc76f5423e039d117233889997dce73843907c7d. PRs #220/#221/#222 are integrated. Workspace Authority has verified the registered canonical user workspace clean on main; exact receipt and artifact hashes are recorded in the P0 policy/workspace evidence file. Continue unresolved target-role lifecycle, tenant credential authorization, persisted Worker/Container adapter callers, migration receipt reconciliation and remaining migration paths, Mission Control normalized evidence, and fresh runtime-health/SPEC-224 focused verification. P0_CODE_IMPLEMENTATION remains PARTIAL; external runtime remains NOT_VERIFIED.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 69,
+  "generation": 70,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -209,7 +209,10 @@
       "452a2073b64a7a610b504b5175196a95a5e58d81",
       "f1bf44911d8176db9414ddc4eee934b0f304dec7",
       "3369b76ef4aaa252c56121c6abf2b8108bae9969",
-      "94db033447cf115490d970bb368b00a0949043e4"
+      "94db033447cf115490d970bb368b00a0949043e4",
+      "4b572c75042d7ba1c22d8bb7dfdfe674a8e13798",
+      "8104541b5cd082f2218b27f251e0d67ae8f80eee",
+      "dc76f5423e039d117233889997dce73843907c7d"
     ],
     "mapping": [],
     "source_paths": [
@@ -249,9 +252,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "94db033447cf115490d970bb368b00a0949043e4",
+    "canonical_sha": "dc76f5423e039d117233889997dce73843907c7d",
     "integrated": true,
-    "integrated_at": "2026-10-07T09:09:52Z"
+    "integrated_at": "2026-10-07T13:03:09Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -633,7 +636,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T09:13:59.679040Z",
+  "updated_at": "2026-10-07T13:08:08.236479Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -922,6 +925,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-internal-gap-closure-20261007.md",
         "scope": "Exact Cloudflare target resolver contracts and Drizzle current-state distinction; 10 focused tests pass. Persisted target authority, migration execution receipt wiring, and tenant-scoped credentials remain open.",
         "source_sha": "94db033447cf115490d970bb368b00a0949043e4",
+        "status": "PASS"
+      },
+      {
+        "kind": "P0_POLICY_WORKSPACE_RECOVERY",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-policy-workspace-recovery-20261007.md",
+        "scope": "Force-push recovery and policy regression test; dirty artifacts preserved with matching SHA-256; canonical user workspace converged and verified clean on main at the exact integrated SHA. This evidence does not close remaining P0 authority, migration, Mission Control, runtime-health, or SPEC-224 requirements.",
+        "source_sha": "dc76f5423e039d117233889997dce73843907c7d",
         "status": "PASS"
       }
     ],
