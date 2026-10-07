@@ -68,7 +68,7 @@ export function selectReadyMiniAppFactoryStages(
     .flatMap((dependency) => dependency.blockedScope));
 
   return pipeline.stages
-    .filter((stage) => remaining.has(stage.id) && !blocked.has(stage.id))
+    .filter((stage) => remaining.has(stage.id) && !completed.has(stage.id) && !blocked.has(stage.id))
     .filter((stage) => stage.dependsOn.every((dependency) => completed.has(dependency)))
     .map(({ id }) => id);
 }

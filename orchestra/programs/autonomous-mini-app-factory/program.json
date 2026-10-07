@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "0afa5436b2fcb6b3b14987265f7671a87d57c670",
+    "sha": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
@@ -18,7 +18,7 @@
       "receipt_id": "workspace-convergence:4c3f6743-4ea0-4039-8653-805c6668c316",
       "verified_at": "2026-10-07T18:47:00.132+00:00"
     },
-    "observedAt": "2026-10-08T02:25:00+07:00",
+    "observedAt": "2026-10-08T02:35:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
       "integrated_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
@@ -59,17 +59,24 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FACTORY_EXECUTION_AND_FRESH_NONPROD_BOOTSTRAP",
-    "state": "WORKING",
-    "objective": "Continue the executable DevelopmentRun-backed Factory pipeline and establish a deterministic non-production schema/runtime path without restoring retired systems.",
-    "nextAction": "Implement checkpoint-after-stage execution through the existing DevelopmentRun recordCanonicalCheckpoint path; separately resolve the historical fresh-migration baseline gap.",
-    "runtimeEvidence": [
-      "Installed PostgreSQL 17 pgvector 0.8.0 package; a new disposable loopback-only cluster enabled vector successfully.",
-      "The normal db:migrate receipt wrapper attempted the full 0000-0394 set and failed at migration 0015 because workflow_templates is absent. The empty database remained without application tables; no migration head was applied.",
-      "A disposable db:push probe generated a temporary SQL snapshot but then followed the historical migration runner and failed at the same 0015 assumption. The generated probe files were removed from the canonical checkout and its clean state was verified.",
-      "The temporary PostgreSQL server was stopped; its logs and receipt remain under /tmp/mini-app-factory-pgvector.mBaaft and the migration-receipts directory. No production target was used."
+    "id": "FACTORY_STAGE_CHECKPOINT_EXECUTOR",
+    "state": "CHECKPOINT_READY",
+    "objective": "Execute dependency-ready Mini App Factory stages through existing DevelopmentRun/worker_jobs authority and persist each successful stage before selecting the next.",
+    "implementation": [
+      "apps/web/server/services/miniAppFactoryPipeline.ts",
+      "apps/web/server/services/miniAppFactoryRunExecutor.ts",
+      "apps/web/server/services/miniAppFactoryRunExecutor.test.ts"
     ],
-    "productionTouched": false
+    "evidence": [
+      "Focused factory DAG/executor tests: 2 files, 5 tests passed. The executor reselects after each persisted DevelopmentRun checkpoint; final scope uses the existing implementation-completion API.",
+      "The executor accepts a stage implementation callback and uses existing DevelopmentRun persistence/fencing; no parallel queue or state store was added.",
+      "Module import and git diff --check passed."
+    ],
+    "remaining": [
+      "Wire the executor into an authorized Mini App Factory DevelopmentRun invocation/worker path and validate durable restart through the DB-backed adapter.",
+      "Resolve the fresh migration baseline gap before non-production deployment/UAT."
+    ],
+    "nextAction": "Promote this safe executor slice, then wire a real DevelopmentRun entry path and perform restart/resume validation against the existing durable store."
   },
   "checkpoints": [
     {
@@ -392,45 +399,35 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_BUILT_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-factory-stage-executor-20261008",
-    "sourceBranch": "codex/mini-app-factory-stage-executor-20261008",
+    "taskWorktree": "/home/dev/worktrees/mini-app-factory-stage-executor-v2-20261008",
+    "sourceBranch": "codex/mini-app-factory-stage-executor-v2-20261008",
     "localCommits": [],
-    "intendedRemoteBranch": "codex/mini-app-factory-stage-executor-20261008",
+    "intendedRemoteBranch": "codex/mini-app-factory-stage-executor-v2-20261008",
     "pendingPullRequest": {
-      "state": "NONE",
-      "integration": "IDLE_AFTER_SUCCESS"
+      "state": "PREPARING_NORMAL_PR",
+      "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
-        "revision": "bdc8a90fe3f4e31fb4e23b521b30ea11b72ffd2d",
-        "command": "pnpm --filter @smartspec/web exec vitest run server/services/projectWikiPagesService.test.ts server/routers/projectWikiPages.test.ts client/src/pages/__tests__/ProjectWikiPagesPage.test.tsx server/__tests__/canonicalProjectIdentity.migration.test.ts",
-        "outcome": "PASS: 4 files, 10 tests"
+        "revision": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c + task delta",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryPipeline.test.ts server/services/miniAppFactoryRunExecutor.test.ts",
+        "outcome": "PASS: 2 files, 5 tests"
       },
       {
-        "revision": "0394 migration in disposable PostgreSQL 17 synthetic prerequisite baseline",
-        "command": "Apply migration and verify active-path uniqueness/archive reuse, content-size, and FK constraints",
-        "outcome": "PASS; historical chain not exercised"
-      },
-      {
-        "revision": "origin/main 89d0a27 + empty disposable PostgreSQL 17 with pgvector 0.8.0",
-        "command": "DATABASE_URL=loopback disposable pnpm --filter @smartspec/web run db:migrate",
-        "outcome": "FAILED at migration 0015_naive_franklin_richards: relation workflow_templates does not exist; applied head null; receipt captured; server stopped"
-      },
-      {
-        "revision": "bdc8a90fe3f4e31fb4e23b521b30ea11b72ffd2d",
-        "command": "Shared Project Wiki Pages package builder",
-        "outcome": "BUILT; needs_context; digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a; archive SHA-256 ca4328932e7664bfabb3b7ebfa13fb169dc6db6aefc71a7f68ac2f00f05d4723"
+        "revision": "task delta",
+        "command": "pnpm --filter @smartspec/web exec tsx -e import miniAppFactoryRunExecutor; git diff --check; validate factory pipeline JSON",
+        "outcome": "PASS"
       }
     ],
     "githubIntegration": "IDLE_AFTER_SUCCESS; normal PR flow",
     "deploymentState": "WAITING_ENVIRONMENT",
-    "canonicalAtCheckpoint": "0afa5436b2fcb6b3b14987265f7671a87d57c670",
+    "canonicalAtCheckpoint": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "0afa5436b2fcb6b3b14987265f7671a87d57c670",
+      "sha": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:33e94288-86f6-4f21-8ed3-9a205cb392da"
+      "receiptId": "workspace-convergence:23b51b36-4274-44ff-acad-3121a9dd5adb"
     }
   }
 }
