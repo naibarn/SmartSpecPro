@@ -114,7 +114,7 @@ describe("projectRunnerWorkspaceAuthority", () => {
       repository: { repository_id: "repo-a", canonical_ref: "refs/heads/main", canonical_branch: "main", canonical_sha: "a".repeat(40), verification_state: "USER_WORKSPACE_CONVERGED" },
       user_workspace: { workspace_id: "workspace-a", role: "CANONICAL_USER_WORKSPACE", sha: "a".repeat(40), state: "SYNCED", dirty: false },
       sessions: { active_count: 1, active: [{ session_id: "local-session", owner_host: "host-a", owner_lease_expires_at: 1791374460, execution_state: "LEASED", provider: "UNKNOWN", runner_id: null, task_id: "task-a" }] },
-      development_state: { uncommitted_intended_work: [], unpushed_intended_commits: { state: "UNKNOWN" }, pushed_unintegrated_work: { state: "OBSERVED", count: 2 }, integrated_work: { state: "PARTIAL" }, recovery_pending: [{ workspace_id: "recovery-a" }] },
+      development_state: { uncommitted_intended_work: [], unpushed_intended_commits: { state: "UNKNOWN" }, pushed_unintegrated_work: { state: "OBSERVED", count: 2 }, integrated_work: { state: "PARTIAL" }, semantic_equivalent_integration: { state: "OBSERVED", count: 1 }, recovery_pending: [{ workspace_id: "recovery-a" }] },
       worktrees: { active: [], integrating: [], retireable: [], stale_or_unknown: [], recovery: [] },
       production: { status: "UNKNOWN", reason: "SPEC-295 runtime evidence was not supplied" },
     } });
@@ -128,6 +128,7 @@ describe("projectRunnerWorkspaceAuthority", () => {
       sessions: { activeCount: 1, active: [{ session_id: "local-session", provider: "UNKNOWN", task_id: "task-a" }] },
       pushState: { state: "OBSERVED", count: 2 },
       integrationState: { state: "PARTIAL" },
+      semanticEquivalentIntegration: { state: "OBSERVED", count: 1 },
       recoveryState: [{ workspace_id: "recovery-a" }],
       convergenceReceipt: null,
       production: { status: "UNKNOWN", reason: "SPEC-295 runtime evidence was not supplied" },
@@ -142,5 +143,27 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.canonical).toMatchObject({ status: "UNKNOWN", reason: "local_authority_snapshot_unavailable" });
     expect(result.localAuthorityStatus).toBe("STALE");
     expect(result.localAuthorityObservedAt).toBe("2026-10-07T11:00:00.000Z");
+  });
+
+  it("downgrades expired remote push and canonical facts to STALE", () => {
+    const observedAt = "2026-10-07T11:59:00.000Z";
+    const later = new Date("2026-10-07T12:02:00.000Z");
+    const fact = { state: "OBSERVED", count: 2, freshness: { state: "FRESH", observed_at: observedAt, ttl_seconds: 60 } };
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [], now: later,
+      localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: later,
+      localMissionControl: {
+        repository: { canonical_sha: "a".repeat(40), verification_state: "REMOTE_HEAD_OBSERVED", remote_observation: { status: "OBSERVED", observed_at: observedAt, freshness_ttl_seconds: 60 } },
+        user_workspace: { state: "SYNCED", sha: "a".repeat(40), ahead_behind: { state: "OBSERVED", ahead: 0, behind: 0, freshness: { state: "FRESH", observed_at: observedAt, ttl_seconds: 60 } }, remote_observation: { status: "OBSERVED", observed_at: observedAt, freshness_ttl_seconds: 60 } },
+        development_state: { unpushed_intended_commits: fact, pushed_unintegrated_work: fact, integrated_work: fact, semantic_equivalent_integration: fact,
+          remote_workspace_states: [{ remote_observed_at: observedAt, freshness_ttl_seconds: 60, push_state: "PUSHED", integration_state: "INTEGRATED", unpushed_commit_count: 0 }] },
+      },
+    });
+
+    expect(result.canonical).toMatchObject({ verification_state: "STALE", remote_observation: { status: "STALE" } });
+    expect(result.userWorkspace).toMatchObject({ ahead_behind: { state: "STALE", ahead: null, behind: null }, remote_observation: { status: "STALE" } });
+    expect(result.pushState).toMatchObject({ state: "STALE", count: null });
+    expect(result.integrationState).toMatchObject({ state: "STALE", count: null });
+    expect(result.semanticEquivalentIntegration).toMatchObject({ state: "STALE", count: null });
+    expect(result.developmentIntegration.remote_workspace_states[0]).toMatchObject({ push_state: "STALE", integration_state: "STALE", unpushed_commit_count: null });
   });
 });

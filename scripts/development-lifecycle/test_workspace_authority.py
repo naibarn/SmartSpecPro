@@ -790,14 +790,131 @@ class WorkspaceAuthorityTests(unittest.TestCase):
 
         self.assertEqual(result["user_workspace"]["ahead_behind"], {"state": "OBSERVED", "ahead": 1, "behind": 0})
 
+    def test_project_mission_control_uses_fresh_remote_heads_for_push_and_integration_state(self) -> None:
+        task = self.root / "mission-control-remote-state"
+        git(self.canonical, "worktree", "add", "-b", "task/remote-state", str(task), "HEAD")
+        (task / "remote.txt").write_text("pushed\n", encoding="utf-8")
+        git(task, "add", "remote.txt")
+        git(task, "commit", "-m", "pushed workspace checkpoint")
+        git(task, "push", "--set-upstream", "origin", "task/remote-state")
+        (task / "remote.txt").write_text("unpushed\n", encoding="utf-8")
+        git(task, "commit", "-am", "unpushed workspace checkpoint")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        tracking_refs_before = git(self.canonical, "for-each-ref", "--format=%(refname):%(objectname)", "refs/remotes/origin")
+        observation = authority.observe_remote_heads(self.canonical, "origin")
+        tracking_refs_after = git(self.canonical, "for-each-ref", "--format=%(refname):%(objectname)", "refs/remotes/origin")
+        self.assertEqual(tracking_refs_after, tracking_refs_before)
+        remote_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": observation}
+        )
+
+        self.assertEqual(remote_state["unpushed_intended_commits"], {
+            "state": "OBSERVED", "count": 1, "unknown_workspace_count": 0,
+            "freshness": {"state": "FRESH", "observed_at": observation["observed_at"], "ttl_seconds": 60},
+        })
+        self.assertEqual(remote_state["pushed_unintegrated_work"]["count"], 1)
+        self.assertEqual(remote_state["integrated_work"]["count"], 0)
+        self.assertEqual(remote_state["workspaces"][0]["push_state"], "UNPUSHED")
+        self.assertEqual(remote_state["workspaces"][0]["integration_state"], "PUSHED_UNINTEGRATED")
+        projected = authority.build_project_mission_control_read_model({
+            "project_id": self.project_id, "repository_id": self.repo_id,
+            "canonical_ref": "refs/heads/main", "canonical_sha": "0" * 40,
+            "canonical_workspace_id": "canonical", "workspaces": [{
+                "workspace_id": "canonical", "role": "CANONICAL_USER_WORKSPACE", "location": str(self.canonical),
+                "head_sha": git(self.canonical, "rev-parse", "HEAD"), "branch": "main", "dirty": False,
+            }],
+        }, remote_development_state=remote_state)
+        self.assertEqual(projected["repository"]["canonical_sha"], observation["heads"]["refs/heads/main"])
+        self.assertEqual(projected["repository"]["verification_state"], "REMOTE_HEAD_OBSERVED")
+
+        git(task, "push", "origin", "task/remote-state")
+        observation = authority.observe_remote_heads(self.canonical, "origin")
+        pushed_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": observation}
+        )
+        self.assertEqual(pushed_state["unpushed_intended_commits"]["count"], 0)
+        self.assertEqual(pushed_state["pushed_unintegrated_work"]["count"], 2)
+        self.assertEqual(pushed_state["workspaces"][0]["push_state"], "PUSHED")
+
+        git(self.canonical, "merge", "--ff-only", "task/remote-state")
+        git(self.canonical, "push", "origin", "main")
+        observation = authority.observe_remote_heads(self.canonical, "origin")
+        integrated_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": observation}
+        )
+        self.assertEqual(integrated_state["integrated_work"]["count"], 1)
+        self.assertEqual(integrated_state["workspaces"][0]["integration_state"], "INTEGRATED")
+
+        stale = dict(observation, observed_at="2000-01-01T00:00:00+00:00")
+        stale_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": stale}
+        )
+        self.assertEqual(stale_state["unpushed_intended_commits"]["state"], "UNKNOWN")
+        self.assertEqual(stale_state["pushed_unintegrated_work"]["state"], "UNKNOWN")
+        future = dict(observation, observed_at="2999-01-01T00:00:00+00:00")
+        future_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": future}
+        )
+        self.assertEqual(future_state["unpushed_intended_commits"]["state"], "UNKNOWN")
+
+    def test_remote_label_redacts_credentials_in_configured_url(self) -> None:
+        label = authority._safe_remote_label("https://user:secret@example.invalid/repository.git")
+        self.assertEqual(label, "configured_remote")
+        self.assertNotIn("secret", label)
+
+    def test_project_mission_control_marks_patch_equivalent_remote_head_explicitly(self) -> None:
+        task = self.root / "mission-control-patch-equivalent"
+        git(self.canonical, "worktree", "add", "-b", "task/patch-equivalent", str(task), "HEAD")
+        (task / "equivalent.txt").write_text("same patch\n", encoding="utf-8")
+        git(task, "add", "equivalent.txt")
+        git(task, "commit", "-m", "remote equivalent patch")
+        git(task, "push", "--set-upstream", "origin", "task/patch-equivalent")
+        (self.canonical / "equivalent.txt").write_text("same patch\n", encoding="utf-8")
+        git(self.canonical, "add", "equivalent.txt")
+        git(self.canonical, "commit", "-m", "canonical equivalent patch")
+        git(self.canonical, "push", "origin", "main")
+        workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+        observation = authority.observe_remote_heads(self.canonical, "origin")
+        remote_state = authority.project_remote_development_state(
+            self.canonical, [workspace], canonical_ref="refs/heads/main", remote_observations={"origin": observation}
+        )
+
+        self.assertEqual(remote_state["workspaces"][0]["integration_state"], "PATCH_EQUIVALENT")
+        self.assertEqual(remote_state["workspaces"][0]["integration_method"], "git_cherry_patch_id")
+        self.assertEqual(remote_state["semantic_equivalent_integration"]["count"], 1)
+
+    def test_project_mission_control_does_not_fall_back_to_local_sha_when_remote_is_unavailable(self) -> None:
+        snapshot = {
+            "project_id": self.project_id, "repository_id": self.repo_id,
+            "canonical_ref": "refs/heads/main", "canonical_sha": "a" * 40,
+            "canonical_workspace_id": "canonical", "workspaces": [{
+                "workspace_id": "canonical", "role": "CANONICAL_USER_WORKSPACE", "location": str(self.canonical),
+                "head_sha": "a" * 40, "branch": "main", "dirty": False,
+            }],
+        }
+        result = authority.build_project_mission_control_read_model(snapshot, remote_development_state={
+            "canonical_remote": {"status": "UNAVAILABLE", "reason": "remote_ref_observation_failed"},
+        })
+
+        self.assertIsNone(result["repository"]["canonical_sha"])
+        self.assertEqual(result["repository"]["verification_state"], "REMOTE_HEAD_UNAVAILABLE")
+        self.assertEqual(result["user_workspace"]["state"], "UNKNOWN")
+        self.assertEqual(result["user_workspace"]["ahead_behind"]["state"], "UNKNOWN")
+
     def test_mission_control_cli_returns_success_for_authority_snapshot(self) -> None:
         arguments = [
             "workspace_authority.py", "mission-control", "--repository", str(self.canonical),
             "--policy", str(self.policy),
         ]
-        with patch.object(authority.sys, "argv", arguments), redirect_stdout(io.StringIO()):
+        output = io.StringIO()
+        with patch.object(authority.sys, "argv", arguments), redirect_stdout(output):
             result = authority._cli()
         self.assertEqual(result, 0)
+        snapshot = json.loads(output.getvalue())
+        self.assertEqual(snapshot["status"], "MISSION_CONTROL_SNAPSHOT_READY")
+        self.assertEqual(snapshot["repository"]["verification_state"], "REMOTE_HEAD_OBSERVED")
+        self.assertEqual(snapshot["remote_observations"]["origin"]["head_count"], 1)
+        self.assertNotIn("heads", snapshot["remote_observations"]["origin"])
 
     def test_registration_racing_retirement_cannot_resurrect_removed_worktree(self) -> None:
         task = self.root / "retirement-registration-race"

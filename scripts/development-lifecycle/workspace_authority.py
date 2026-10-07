@@ -14,6 +14,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import socket
 import sqlite3
@@ -505,14 +506,204 @@ def _commit_ahead_behind(repo: Path | None, canonical_sha: str | None, workspace
     return {"state": "OBSERVED", "ahead": ahead, "behind": behind}
 
 
+def observe_remote_heads(repo: Path, remote: str, *, now: datetime | None = None) -> dict[str, Any]:
+    """Read current remote branch heads without updating local refs or logging remote URLs."""
+    observed_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    if not remote or remote.startswith("-") or any(ord(char) < 32 for char in remote):
+        return {"status": "UNAVAILABLE", "observed_at": observed_at.isoformat(),
+                "freshness_ttl_seconds": 60, "reason": "remote_ref_observation_invalid", "heads": {}}
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "ls-remote", "--heads", remote],
+            text=True, capture_output=True, timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {"status": "UNAVAILABLE", "observed_at": observed_at.isoformat(),
+                "freshness_ttl_seconds": 60, "reason": "remote_ref_observation_failed", "heads": {}}
+    if result.returncode:
+        return {"status": "UNAVAILABLE", "remote": remote, "observed_at": observed_at.isoformat(),
+                "freshness_ttl_seconds": 60, "reason": "remote_ref_observation_failed", "heads": {}}
+    heads: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        fields = line.split("\t", 1)
+        if len(fields) != 2 or not fields[1].startswith("refs/heads/") or not re.fullmatch(r"[a-f0-9]{40,64}", fields[0]):
+            return {"status": "UNAVAILABLE", "observed_at": observed_at.isoformat(),
+                    "freshness_ttl_seconds": 60, "reason": "remote_ref_response_invalid", "heads": {}}
+        heads[fields[1]] = fields[0]
+    return {"status": "OBSERVED", "observed_at": observed_at.isoformat(),
+            "freshness_ttl_seconds": 60, "heads": heads}
+
+
+def _safe_remote_label(remote: str) -> str:
+    return remote if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", remote) else "configured_remote"
+
+
+def _remote_observation_is_fresh(observation: dict[str, Any] | None, now: datetime) -> bool:
+    if not observation or observation.get("status") != "OBSERVED":
+        return False
+    try:
+        observed = datetime.fromisoformat(str(observation["observed_at"]).replace("Z", "+00:00"))
+        ttl = int(observation.get("freshness_ttl_seconds", 0))
+    except (KeyError, TypeError, ValueError):
+        return False
+    if observed.tzinfo is None:
+        return False
+    age = (now.astimezone(timezone.utc) - observed.astimezone(timezone.utc)).total_seconds()
+    return 0 <= age <= ttl
+
+
+def project_remote_development_state(
+    repo: Path,
+    workspaces: list[dict[str, Any]],
+    *,
+    canonical_ref: str,
+    remote_observations: dict[str, dict[str, Any]],
+    canonical_remote: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Classify push/integration only from fresh ls-remote heads and local commit graph."""
+    current = now or datetime.now(timezone.utc)
+    remote_names = sorted(remote_observations)
+    workspace_states: list[dict[str, Any]] = []
+    unpushed_total = 0
+    pushed_unintegrated_total = 0
+    equivalent_total = 0
+    integrated_count = 0
+    unknown_push_count = 0
+    unknown_integration_count = 0
+    seen_local_states: set[tuple[str, str, str]] = set()
+    integration_classifications: dict[tuple[str, str], dict[str, Any]] = {}
+
+    for workspace in workspaces:
+        if workspace.get("role") == "RECOVERY_WORKSPACE" or workspace.get("lifecycle_state") in {"RETIRED", "MISSING"}:
+            continue
+        branch = workspace.get("branch")
+        head = workspace.get("head_sha")
+        upstream = workspace.get("upstream")
+        state: dict[str, Any] = {"workspace_id": workspace.get("workspace_id"), "branch": branch,
+                                 "head_sha": head, "push_state": "UNKNOWN", "integration_state": "UNKNOWN"}
+        remote = next((name for name in sorted(remote_names, key=len, reverse=True)
+                       if isinstance(upstream, str) and upstream.startswith(name + "/")), None)
+        if not isinstance(branch, str) or branch == "DETACHED" or not isinstance(head, str) or remote is None:
+            state["reason"] = "upstream_or_commit_identity_unavailable"
+            workspace_states.append(state); unknown_push_count += 1; unknown_integration_count += 1; continue
+        observation = remote_observations[remote]
+        observed_at = observation.get("observed_at")
+        if not _remote_observation_is_fresh(observation, current):
+            state.update(reason=observation.get("reason", "remote_observation_stale"), remote=_safe_remote_label(remote),
+                         remote_observed_at=observed_at)
+            workspace_states.append(state); unknown_push_count += 1; unknown_integration_count += 1; continue
+        upstream_branch = upstream[len(remote) + 1:]
+        upstream_tip = observation.get("heads", {}).get(f"refs/heads/{upstream_branch}")
+        if not isinstance(upstream_tip, str):
+            state.update(reason="upstream_branch_not_observed", remote=_safe_remote_label(remote), remote_observed_at=observed_at)
+            workspace_states.append(state); unknown_push_count += 1; unknown_integration_count += 1; continue
+        if subprocess.run(["git", "-C", str(repo), "cat-file", "-e", f"{upstream_tip}^{{commit}}"], capture_output=True).returncode:
+            state.update(reason="upstream_commit_not_in_local_graph", remote=remote, upstream_ref=upstream)
+            workspace_states.append(state); unknown_push_count += 1; unknown_integration_count += 1; continue
+        unpushed = subprocess.run(["git", "-C", str(repo), "rev-list", "--count", f"{upstream_tip}..{head}"],
+                                  text=True, capture_output=True)
+        if unpushed.returncode or not unpushed.stdout.strip().isdigit():
+            state.update(reason="local_commit_graph_unavailable", remote=remote, upstream_ref=upstream)
+            workspace_states.append(state); unknown_push_count += 1; unknown_integration_count += 1; continue
+        unpushed_count = int(unpushed.stdout.strip())
+        state.update(remote=_safe_remote_label(remote), upstream_ref=upstream, upstream_sha=upstream_tip,
+                     remote_observed_at=observed_at, freshness_ttl_seconds=observation.get("freshness_ttl_seconds", 60),
+                     unpushed_commit_count=unpushed_count,
+                     push_state="UNPUSHED" if unpushed_count else "PUSHED")
+        local_key = (remote, upstream_tip, head)
+        if local_key not in seen_local_states:
+            seen_local_states.add(local_key)
+            unpushed_total += unpushed_count
+
+        canonical_tip = observation.get("heads", {}).get(canonical_ref)
+        if not isinstance(canonical_tip, str) or subprocess.run(
+            ["git", "-C", str(repo), "cat-file", "-e", f"{canonical_tip}^{{commit}}"], capture_output=True
+        ).returncode:
+            state.update(integration_state="UNKNOWN", integration_reason="canonical_remote_commit_unavailable")
+            unknown_integration_count += 1
+        else:
+            remote_key = (remote, upstream_tip)
+            if remote_key not in integration_classifications:
+                classification = _local_commit_classification(repo, upstream_tip, canonical_tip)
+                integration_classifications[remote_key] = classification
+                if classification["state"] == "ALREADY_IN_CANONICAL":
+                    integrated_count += 1
+                    state["integration_state"] = "INTEGRATED"
+                elif classification["state"] == "PATCH_EQUIVALENT":
+                    equivalent_total += len(classification.get("patch_equivalent_commits", []))
+                    state["integration_state"] = "PATCH_EQUIVALENT"
+                    state["integration_method"] = "git_cherry_patch_id"
+                    state["patch_equivalent_commit_count"] = len(classification.get("patch_equivalent_commits", []))
+                else:
+                    unique_count = len(classification.get("unique_commits", []))
+                    pushed_unintegrated_total += unique_count
+                    state["integration_state"] = "PUSHED_UNINTEGRATED"
+                    state["unintegrated_commit_count"] = unique_count
+            else:
+                classification = integration_classifications[remote_key]
+                state["integration_state"] = {
+                    "ALREADY_IN_CANONICAL": "INTEGRATED",
+                    "PATCH_EQUIVALENT": "PATCH_EQUIVALENT",
+                    "UNIQUE_LOCAL_COMMITS": "PUSHED_UNINTEGRATED",
+                }.get(classification["state"], "UNKNOWN")
+        workspace_states.append(state)
+
+    observed_times = [row.get("remote_observed_at") for row in workspace_states if row.get("remote_observed_at")]
+    observed_at = max(observed_times) if observed_times else None
+    push_known = len(workspace_states) - unknown_push_count
+    integration_known = len(workspace_states) - unknown_integration_count
+    push_state = "UNKNOWN" if not push_known else "PARTIAL" if unknown_push_count else "OBSERVED"
+    integration_state = "UNKNOWN" if not integration_known else "PARTIAL" if unknown_integration_count else "OBSERVED"
+    push_freshness = {"state": "FRESH" if observed_times and not unknown_push_count else "PARTIAL" if observed_times else "UNAVAILABLE",
+                      "observed_at": observed_at, "ttl_seconds": 60}
+    integration_freshness = {"state": "FRESH" if observed_times and not unknown_integration_count else "PARTIAL" if observed_times else "UNAVAILABLE",
+                             "observed_at": observed_at, "ttl_seconds": 60}
+    selected_canonical_remote = canonical_remote or next(
+        (name for name, observation in remote_observations.items()
+         if _remote_observation_is_fresh(observation, current) and canonical_ref in observation.get("heads", {})),
+        None,
+    )
+    canonical_observation = remote_observations.get(selected_canonical_remote) if selected_canonical_remote else None
+    canonical_sha = (canonical_observation or {}).get("heads", {}).get(canonical_ref)
+    canonical_remote_state = {
+        "status": "OBSERVED" if _remote_observation_is_fresh(canonical_observation, current) and isinstance(canonical_sha, str) else "UNKNOWN",
+        "remote": _safe_remote_label(selected_canonical_remote) if selected_canonical_remote else None,
+        "canonical_ref": canonical_ref,
+        "sha": canonical_sha if isinstance(canonical_sha, str) else None,
+        "observed_at": (canonical_observation or {}).get("observed_at"),
+        "freshness_ttl_seconds": (canonical_observation or {}).get("freshness_ttl_seconds"),
+        "reason": None if isinstance(canonical_sha, str) else (canonical_observation or {}).get("reason", "canonical_remote_ref_unavailable"),
+    }
+    return {
+        "canonical_remote": canonical_remote_state,
+        "unpushed_intended_commits": {"state": push_state, "count": unpushed_total if push_known else None,
+                                      "unknown_workspace_count": unknown_push_count, "freshness": push_freshness},
+        "pushed_unintegrated_work": {"state": integration_state, "count": pushed_unintegrated_total if integration_known else None,
+                                     "unknown_workspace_count": unknown_integration_count, "freshness": integration_freshness},
+        "integrated_work": {"state": integration_state, "count": integrated_count, "unknown_workspace_count": unknown_integration_count,
+                            "freshness": integration_freshness},
+        "semantic_equivalent_integration": {"state": integration_state, "count": equivalent_total if integration_known else None,
+                                            "unknown_workspace_count": unknown_integration_count, "freshness": integration_freshness},
+        "workspaces": workspace_states,
+    }
+
+
 def build_project_mission_control_read_model(
     authority_snapshot: dict[str, Any],
     *,
     production_evidence: dict[str, Any] | None = None,
+    remote_development_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Project-level operational projection from explicit authority records only."""
     workspaces = authority_snapshot.get("workspaces") or []
-    canonical_sha = authority_snapshot.get("canonical_sha")
+    has_remote_observation = remote_development_state is not None
+    remote_development_state = remote_development_state or {}
+    canonical_remote = remote_development_state.get("canonical_remote") or {}
+    canonical_remote_observed = canonical_remote.get("status") == "OBSERVED" and isinstance(canonical_remote.get("sha"), str)
+    canonical_sha = canonical_remote.get("sha") if canonical_remote_observed else (
+        None if has_remote_observation else authority_snapshot.get("canonical_sha")
+    )
     canonical_id = authority_snapshot.get("canonical_workspace_id")
     canonical_branch = str(authority_snapshot.get("canonical_ref") or "").removeprefix("refs/heads/") or None
     canonical_workspace = next((row for row in workspaces if row.get("workspace_id") == canonical_id), None)
@@ -525,6 +716,11 @@ def build_project_mission_control_read_model(
             workspace_state = "SYNCED"
         else:
             workspace_state = "BEHIND_OR_DIVERGED"
+        ahead_behind = _commit_ahead_behind(
+            Path(canonical_workspace["location"]) if canonical_workspace.get("location") else None,
+            canonical_sha,
+            canonical_workspace.get("head_sha"),
+        ) if canonical_sha else {"state": "UNKNOWN", "ahead": None, "behind": None, "reason": "canonical_remote_ref_unavailable"}
         user_workspace = {
             "workspace_id": canonical_id,
             "role": canonical_workspace.get("role"),
@@ -533,13 +729,15 @@ def build_project_mission_control_read_model(
             "branch": canonical_workspace.get("branch"),
             "state": workspace_state,
             "dirty": bool(canonical_workspace.get("dirty")),
-            "ahead_behind": _commit_ahead_behind(
-                Path(canonical_workspace["location"]) if canonical_workspace.get("location") else None,
-                canonical_sha,
-                canonical_workspace.get("head_sha"),
-            ),
+            "ahead_behind": ahead_behind,
             "convergence_receipt": authority_snapshot.get("convergence_receipt"),
         }
+        if canonical_remote.get("status") == "OBSERVED":
+            user_workspace["remote_observation"] = canonical_remote
+            user_workspace["ahead_behind"]["freshness"] = {
+                "state": "FRESH", "observed_at": canonical_remote.get("observed_at"),
+                "ttl_seconds": canonical_remote.get("freshness_ttl_seconds"),
+            }
     else:
         user_workspace = {"workspace_id": canonical_id, "role": "CANONICAL_USER_WORKSPACE", "host": None, "sha": None, "branch": None, "state": "UNKNOWN", "dirty": None, "ahead_behind": {"state": "UNKNOWN", "ahead": None, "behind": None, "reason": "workspace_authority_unavailable"}, "convergence_receipt": authority_snapshot.get("convergence_receipt")}
 
@@ -599,14 +797,20 @@ def build_project_mission_control_read_model(
             "canonical_ref": authority_snapshot.get("canonical_ref"),
             "canonical_branch": canonical_branch,
             "canonical_sha": canonical_sha,
-            "verification_state": authority_snapshot.get("convergence_state", "UNKNOWN"),
+            "verification_state": "REMOTE_HEAD_OBSERVED" if canonical_remote_observed else (
+                "REMOTE_HEAD_UNAVAILABLE" if has_remote_observation else authority_snapshot.get("convergence_state", "UNKNOWN")
+            ),
+            "remote_observation": canonical_remote,
         },
         "user_workspace": user_workspace,
         "sessions": {"active_count": len(sessions), "active": sessions},
         "development_state": {
             "uncommitted_intended_work": dirty_work,
-            "unpushed_intended_commits": {"state": "UNKNOWN", "count": None},
-            "pushed_unintegrated_work": {"state": "UNKNOWN", "count": None},
+            "unpushed_intended_commits": remote_development_state.get("unpushed_intended_commits", {"state": "UNKNOWN", "count": None}),
+            "pushed_unintegrated_work": remote_development_state.get("pushed_unintegrated_work", {"state": "UNKNOWN", "count": None}),
+            "integrated_work": remote_development_state.get("integrated_work", {"state": "UNKNOWN", "count": None}),
+            "semantic_equivalent_integration": remote_development_state.get("semantic_equivalent_integration", {"state": "UNKNOWN", "count": None}),
+            "remote_workspace_states": remote_development_state.get("workspaces", []),
             "open_integration": worktree_groups["integrating"],
             "recovery_pending": worktree_groups["recovery"],
         },
@@ -1343,7 +1547,24 @@ def _cli() -> int:
         elif args.action == "mission-control":
             snapshot = resolve_project_authority(repo, args.policy)
             production_evidence = json.loads(args.production_evidence.read_text(encoding="utf-8")) if args.production_evidence else None
-            result = build_project_mission_control_read_model(snapshot, production_evidence=production_evidence)
+            policy = load_workspace_policy(repo, args.policy)
+            configured_remotes = set(str(_git(repo, "remote")).splitlines())
+            configured_remotes.add(str(policy["remote"]))
+            remote_names = sorted(configured_remotes)
+            observations = {remote: observe_remote_heads(repo, remote) for remote in remote_names}
+            remote_state = project_remote_development_state(
+                repo, snapshot.get("workspaces", []), canonical_ref=str(policy["canonical_ref"]),
+                remote_observations=observations, canonical_remote=str(policy["remote"]),
+            )
+            result = build_project_mission_control_read_model(snapshot, production_evidence=production_evidence,
+                                                               remote_development_state=remote_state)
+            result["remote_observations"] = {
+                _safe_remote_label(remote): {"status": observation.get("status"), "observed_at": observation.get("observed_at"),
+                         "freshness_ttl_seconds": observation.get("freshness_ttl_seconds"),
+                         "reason": observation.get("reason"), "head_count": len(observation.get("heads", {})),
+                         "canonical_sha": observation.get("heads", {}).get(str(policy["canonical_ref"]))}
+                for remote, observation in observations.items()
+            }
             result["status"] = "MISSION_CONTROL_SNAPSHOT_READY"
         else:
             if not args.workspace_id:
