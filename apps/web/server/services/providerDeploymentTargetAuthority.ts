@@ -77,3 +77,43 @@ export async function createProviderDeploymentTarget(db: DrizzleDB, input: {
     throw error;
   }
 }
+
+export async function listProviderDeploymentTargets(db: DrizzleDB, identity: Pick<DeploymentTargetIdentity, "tenantId" | "projectId" | "environment">) {
+  return db.select().from(providerDeploymentTargets).where(and(
+    eq(providerDeploymentTargets.tenantId, identity.tenantId),
+    eq(providerDeploymentTargets.projectId, identity.projectId),
+    eq(providerDeploymentTargets.environment, identity.environment),
+  ));
+}
+
+export type DeploymentTargetUpdate = Partial<Pick<typeof providerDeploymentTargets.$inferInsert,
+  "deploymentTargetId" | "accountRef" | "workerRef" | "containerApplicationRef" | "credentialRef" | "enabled" | "provenance" | "region" | "runtimePolicy">>;
+
+/** Update only a target inside its full ownership scope; callers must separately authorize the actor. */
+export async function updateProviderDeploymentTarget(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity;
+  targetRowId: string;
+  changes: DeploymentTargetUpdate;
+  actorUserId?: number;
+}) {
+  if (input.identity.provider !== "cloudflare") throw new Error("UNSUPPORTED_DEPLOYMENT_TARGET_PROVIDER");
+  if (input.changes.credentialRef !== undefined && input.changes.credentialRef !== deploymentCredentialRef(input.identity))
+    return { status: "PERMISSION_DENIED" as const, target: null };
+  const [updated] = await db.update(providerDeploymentTargets).set({ ...input.changes, updatedBy: input.actorUserId ?? null, updatedAt: new Date() }).where(and(
+    eq(providerDeploymentTargets.id, input.targetRowId),
+    eq(providerDeploymentTargets.tenantId, input.identity.tenantId),
+    eq(providerDeploymentTargets.projectId, input.identity.projectId),
+    eq(providerDeploymentTargets.environment, input.identity.environment),
+    eq(providerDeploymentTargets.provider, input.identity.provider),
+  )).returning();
+  if (!updated) return { status: "NOT_FOUND" as const, target: null };
+  return { status: updated.enabled ? "UPDATED" as const : "DISABLED" as const, target: updated };
+}
+
+export async function disableProviderDeploymentTarget(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity;
+  targetRowId: string;
+  actorUserId?: number;
+}) {
+  return updateProviderDeploymentTarget(db, { ...input, changes: { enabled: false } });
+}
