@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "33b833a1a78101be8f5f0386b2fb49677b3c57bd",
+    "expected_canonical_sha": "2753c74afbfeadd0f218d23367f7c61728602a0b",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Complete the authenticated seven-action API and worker_jobs/Runner execution path; finish pushed/integrated Mission Control facts, task/provider precedence, and lifecycle producer call sites. Keep P0_CODE_IMPLEMENTATION PARTIAL until the internal checklist is complete; external runtime verification remains separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire authenticated seven-action tenant/project authorization and worker_jobs/Runner execution; finish integration/handoff/recovery event callsites and cross-host/runtime evidence bindings. Keep implementation PARTIAL and production verification separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -89,7 +89,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 32,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -123,7 +123,8 @@
       "4c5c43d52249ae767806947e9e6abe3222035542",
       "5928f373f7c395d1e0cf900615df3b116aae9fee",
       "26fd48168f44f31a6759c9264cfc5107445fe187",
-      "33b833a1a78101be8f5f0386b2fb49677b3c57bd"
+      "33b833a1a78101be8f5f0386b2fb49677b3c57bd",
+      "2753c74afbfeadd0f218d23367f7c61728602a0b"
     ],
     "mapping": [],
     "source_paths": [
@@ -157,9 +158,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "33b833a1a78101be8f5f0386b2fb49677b3c57bd",
+    "canonical_sha": "2753c74afbfeadd0f218d23367f7c61728602a0b",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:35:38Z"
+    "integrated_at": "2026-10-07T04:38:39Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -385,7 +386,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:36:15.189558Z",
+  "updated_at": "2026-10-07T04:39:57.488395Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -401,6 +402,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-partial-checkpoint-20261007.md",
         "scope": "RunnerGateway isolation, local AUDIT_ONLY registry scheduler, retirement receipt/dogfood, focused post-integration regression; remaining WU-4C requirements stay open.",
         "source_sha": "2a5660ebc88ee3bcc435b0452b4d68359fd18ace",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_CHECKPOINT",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-convergence-event-2753c74afbfe.md",
+        "scope": "Durable convergence receipt triggers an idempotent lifecycle job through the periodic AUDIT_ONLY audit; focused web regression passes; remaining internal WU-4C gaps remain open.",
+        "source_sha": "2753c74afbfeadd0f218d23367f7c61728602a0b",
         "status": "PASS"
       }
     ],
