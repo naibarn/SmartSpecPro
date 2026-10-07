@@ -5,7 +5,7 @@ Status: prepared only. No deployment, migration, provider call, or live UAT has 
 ## Preconditions
 
 1. Select and register a non-production environment through the existing SPEC-295 deployment authority; do not infer an environment from `.development-repository.toml`.
-2. Bind the deploy candidate to the SPAAS package digest emitted by `pnpm --filter @smartspec/web exec tsx scripts/build-research-notes-package.ts`.
+2. Bind the deploy candidate to the SPAAS package digest and archive emitted by `pnpm --filter @smartspec/web exec tsx scripts/build-research-notes-package.ts`.
 3. Apply migration 0393 only to the selected disposable database through the approved migration lifecycle; capture the existing migration receipt and rollback evidence.
 4. Prepare two authenticated tenant principals, two projects, and an active Research Notes App binding. Keep note content synthetic.
 

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "smartaihub.mini-app-ui-binding/v1",
+  "renderingMode": "hosted-route",
+  "routeTemplate": "/apps/{publicAppId}",
+  "host": "smartspec-web",
+  "hostSourcePath": "apps/web/client/src/pages/ResearchNotesPage.tsx",
+  "authContext": "authenticated-platform-principal",
+  "projectSelection": "authorized-projects-only",
+  "actions": "actions.json",
+  "portability": {
+    "packageContract": "portable-within-compatible-SmartAIHub-hosts",
+    "externalHostRequires": ["AppIdentity", "CanonicalProjectMembership", "ProjectAppBinding", "researchNotes tRPC procedures"]
+  }
+}
