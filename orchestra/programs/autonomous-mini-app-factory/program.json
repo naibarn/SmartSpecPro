@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "c32a222ba51380a6700109be43ab707cc995bda6",
+    "sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:dc9ede69-aff1-4d3d-860a-ff08e2c31679"
+    "convergenceReceipt": "workspace-convergence:f212f519-025a-4bac-9c60-3cbfc68a18ce"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -19,18 +19,19 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC304_TRUSTED_TENANT_ROUTE_API",
-    "state": "CHECKPOINT_READY",
-    "objective": "Expose authenticated App route resolution using account tenant authority and the persisted tenant-bound alias resolver.",
-    "implementation": ["apps/web/server/routers/appIdentity.ts", "apps/web/server/routers/appIdentity.test.ts", "apps/web/server/routers.ts", "apps/web/server/services/appIdentityRepository.ts"],
-    "evidence": ["15 focused router, repository and identity contract tests passed in the candidate based on c32a222ba51380a6700109be43ab707cc995bda6.", "Router derives tenant scope only from authenticated users.currentTenantId; unknown tenant input is rejected by strict schema."],
-    "pending": ["Database migration 0392 has not been applied; no DATABASE_URL is configured.", "No HTTP route consumer or reference Mini App UI/data CRUD exists yet."],
-    "nextAction": "Pass FAST GATE and integrate this read-only route API, then continue with the reference Mini App shell and a DB-backed vertical slice; validate PostgreSQL only on a verified non-production target."
+    "id": "SPEC304_REFERENCE_APP_RESEARCH_NOTES_SLICE",
+    "state": "WORKING",
+    "objective": "Build the first user-visible Research Notes Mini App slice on the authenticated App route contract, including tenant/project scoped persisted CRUD and a responsive shell.",
+    "implementation": ["apps/web/client/src/", "apps/web/server/routers/", "apps/web/server/services/"],
+    "evidence": ["SPEC304_TRUSTED_TENANT_ROUTE_API integrated at d50caa27f2e29b0e725398b1b5653aed9cb90562; 15 focused tests passed on the exact integrated SHA.", "SPEC-304 requirement REQ-8267DE389563 remains PARTIAL with exact integrated source and test evidence."],
+    "pending": ["Database migration 0392 has not been applied; no DATABASE_URL is configured.", "Research Notes UI, CRUD service, project binding, AI summary and background action are not implemented."],
+    "nextAction": "Inspect existing project-scoped resource/CRUD patterns and build the smallest Research Notes vertical slice with authenticated tenant/project enforcement; do not apply migrations without a verified non-production target."
   },
   "checkpoints": [
     { "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS", "state": "PARTIAL_INTEGRATED", "sha": "28d8a2864335b02524b60943498006cb2929d60c", "evidence": "tenantProductIdentityContracts.test.ts: 9 passed" },
     { "id": "SPEC304_PERSISTED_IDENTITY_SCHEMA", "state": "PARTIAL_INTEGRATED", "sha": "5eff1efc0fd53ae6e9818fd97095bae021b175b8", "evidence": "Additive Drizzle schema and migration 0392 integrated; migration application and database integration remain pending." },
-    { "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION", "state": "PARTIAL_INTEGRATED", "sha": "c32a222ba51380a6700109be43ab707cc995bda6", "evidence": "12 focused tests passed on the integrated SHA; SPEC-304 requirement ledger updated through the shared writer." }
+    { "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION", "state": "PARTIAL_INTEGRATED", "sha": "c32a222ba51380a6700109be43ab707cc995bda6", "evidence": "12 focused tests passed on the integrated SHA; SPEC-304 requirement ledger updated through the shared writer." },
+    { "id": "SPEC304_TRUSTED_TENANT_ROUTE_API", "state": "PARTIAL_INTEGRATED", "sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562", "evidence": "15 focused tests passed on the exact integrated SHA; tenant authority comes from authenticated account context; SPEC-304 handoff updated through shared writer." }
   ],
   "completedWorkunits": [],
   "blockedWorkunits": [],
@@ -71,5 +72,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T14:30:00Z"
+  "updatedAt": "2026-10-07T14:40:00Z"
 }

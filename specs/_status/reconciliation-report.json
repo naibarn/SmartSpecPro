@@ -142774,7 +142774,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "c32a222ba51380a6700109be43ab707cc995bda6",
+      "canonical_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
