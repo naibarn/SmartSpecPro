@@ -76,8 +76,8 @@
       "No authenticated web session, app process, deployment, or UAT was run."
     ],
     "nextAction": "Integrate this baseline, then wire an authenticated non-production app process/fixture to it and continue API/UI smoke acceptance.",
-    "sourceSha": "88a7870c90e4abcba214b6d55d5cf56c8bfeb831",
-    "pullRequest": "PENDING_PR_URL"
+    "sourceSha": "88a7870c963941b71aca348ae860d0d1d97b8ae3",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/263"
   },
   "checkpoints": [
     {
@@ -223,7 +223,7 @@
     {
       "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
       "state": "SCHEMA_BOOTSTRAP_AND_DB_CONTRACTS_PASS",
-      "sourceSha": "88a7870c90e4abcba214b6d55d5cf56c8bfeb831",
+      "sourceSha": "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "evidence": "Isolated schema projection migrated on fresh PostgreSQL 17 without vector; required active Mini App and worker_jobs/outbox tables present; retired tables absent; fixture contract script passed; app runtime/auth/UAT still pending."
     }
   ],
@@ -400,11 +400,14 @@
     "taskWorktree": "/home/dev/worktrees/mini-app-factory-resume-test-20261008",
     "sourceBranch": "codex/mini-app-runtime-schema-baseline-20261008",
     "localCommits": [
-      "88a7870c90e4abcba214b6d55d5cf56c8bfeb831"
+      "88a7870c963941b71aca348ae860d0d1d97b8ae3",
+      "f7bf736adbee6ee3403be1cef0f3851e8223f47f"
     ],
     "intendedRemoteBranch": "codex/mini-app-runtime-schema-baseline-20261008",
     "pendingPullRequest": {
-      "state": "OPENING_NORMAL_PR",
+      "number": 263,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/263",
+      "state": "OPEN",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
