@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c",
+    "sha": "2f93bf168c375966f580931b4a969c5fae38e7c4",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
@@ -18,7 +18,7 @@
       "receipt_id": "workspace-convergence:4c3f6743-4ea0-4039-8653-805c6668c316",
       "verified_at": "2026-10-07T18:47:00.132+00:00"
     },
-    "observedAt": "2026-10-08T02:35:00+07:00",
+    "observedAt": "2026-10-08T02:50:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
       "integrated_sha": "9d7027fd11bb9e6cc612e13477f027ab2be5aabc",
@@ -59,24 +59,25 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FACTORY_STAGE_CHECKPOINT_EXECUTOR",
-    "state": "CHECKPOINT_READY",
-    "objective": "Execute dependency-ready Mini App Factory stages through existing DevelopmentRun/worker_jobs authority and persist each successful stage before selecting the next.",
+    "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
+    "state": "PR_PENDING",
+    "objective": "Provide a deterministic loopback-only fresh schema baseline for the Research Notes and Project Wiki Pages acceptance slice using the existing worker_jobs/outbox authority while excluding retired systems.",
     "implementation": [
-      "apps/web/server/services/miniAppFactoryPipeline.ts",
-      "apps/web/server/services/miniAppFactoryRunExecutor.ts",
-      "apps/web/server/services/miniAppFactoryRunExecutor.test.ts"
+      "apps/web/drizzle.mini-app-baseline.config.ts",
+      "apps/web/drizzle/mini-app-fresh-baseline/",
+      "apps/web/scripts/test-mini-app-runtime-baseline.sh",
+      "apps/web/scripts/test-mini-app-runtime-baseline.sql"
     ],
     "evidence": [
-      "Focused factory DAG/executor tests: 2 files, 5 tests passed. The executor reselects after each persisted DevelopmentRun checkpoint; final scope uses the existing implementation-completion API.",
-      "The executor accepts a stage implementation callback and uses existing DevelopmentRun persistence/fencing; no parallel queue or state store was added.",
-      "Module import and git diff --check passed."
+      "The isolated projection applied successfully to a new PostgreSQL 17 cluster using its own Drizzle journal: 20 active tables. Required project/App/Mini App/worker_jobs/outbox tables exist; workflow_templates, workflows, agencies, workpacks, and sandbox_jobs are absent.",
+      "`pnpm --filter @smartspec/web run test:mini-app-runtime-baseline` passed end-to-end. It creates a loopback-only temporary cluster, applies the guarded projection migration, validates tenant/project isolation, note/page constraints, path reuse after archive, and inserts worker_jobs plus outbox, then rolls back fixtures and tears down the cluster.",
+      "The acceptance database had only plpgsql and no vector extension; the Mini App projection itself does not require pgvector. This does not establish that the full SmartSpecPro schema can run without it.",
+      "The existing full-schema migration chain still fails at 0015 due to missing workflow_templates. The Mini App projection avoids that historical legacy assumption without creating compatibility schema.",
+      "No authenticated web session, app process, deployment, or UAT was run."
     ],
-    "remaining": [
-      "Wire the executor into an authorized Mini App Factory DevelopmentRun invocation/worker path and validate durable restart through the DB-backed adapter.",
-      "Resolve the fresh migration baseline gap before non-production deployment/UAT."
-    ],
-    "nextAction": "Promote this safe executor slice, then wire a real DevelopmentRun entry path and perform restart/resume validation against the existing durable store."
+    "nextAction": "Integrate this baseline, then wire an authenticated non-production app process/fixture to it and continue API/UI smoke acceptance.",
+    "sourceSha": "88a7870c963941b71aca348ae860d0d1d97b8ae3",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/263"
   },
   "checkpoints": [
     {
@@ -218,18 +219,15 @@
       "sha": "0afa5436b2fcb6b3b14987265f7671a87d57c670",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/260",
       "evidence": "PR #260 merged normally. Focused suite 4 files/10 tests passed; migration 0394 synthetic-baseline constraints passed; deterministic package digest 0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a, archive SHA ca4328932e7664bfabb3b7ebfa13fb169dc6db6aefc71a7f68ac2f00f05d4723; validation needs_context, runtime/UAT pending."
-    }
-  ],
-  "blockedWorkunits": [
+    },
     {
-      "id": "NONPROD_FRESH_SCHEMA_BASELINE",
-      "state": "WAITING_ENVIRONMENT",
-      "rootCause": "The canonical migration journal has no migration creating workflow_templates before 0015 alters it; the current schema exports the table, but the historical migration chain assumes it already exists. A broad drizzle-kit push would generate retired schemas and is not an acceptable baseline.",
-      "reactivationPredicate": "Establish an approved fresh schema baseline that excludes retired systems and can apply later supported migrations; then create authenticated fixtures and resume Research Notes and Project Wiki Pages runtime/UAT.",
-      "nextAction": "Inspect migration history/schema authority for an existing snapshot or supported baseline; otherwise isolate a Mini App-only baseline proposal using only active dependencies.",
-      "productionTouched": false
+      "id": "MINI_APP_ONLY_FRESH_SCHEMA_BASELINE",
+      "state": "SCHEMA_BOOTSTRAP_AND_DB_CONTRACTS_PASS",
+      "sourceSha": "88a7870c963941b71aca348ae860d0d1d97b8ae3",
+      "evidence": "Isolated schema projection migrated on fresh PostgreSQL 17 without vector; required active Mini App and worker_jobs/outbox tables present; retired tables absent; fixture contract script passed; app runtime/auth/UAT still pending."
     }
   ],
+  "blockedWorkunits": [],
   "criticalPath": [
     {
       "order": 1,
@@ -379,7 +377,7 @@
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "WAITING_ENVIRONMENT",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "BASELINE_READY_RUNTIME_NOT_DEPLOYED",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
@@ -388,9 +386,9 @@
     "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT"
   },
   "deployment": {
-    "state": "WAITING_ENVIRONMENT",
-    "targetId": "local-disposable-research-notes-uat",
-    "reason": "pgvector is available on a disposable PostgreSQL 17 runtime, but the canonical empty-database migration chain still fails at 0015_naive_franklin_richards because workflow_templates is absent. No compatibility table or retired workflow functionality was added.",
+    "state": "PREPARED_NOT_DEPLOYED",
+    "targetId": "miniapp-factory-fresh-schema-loopback",
+    "reason": "The Mini App-only schema baseline and worker_jobs/outbox DB contracts pass. An authenticated app process has not been started on this target, so deployment and runtime remain pending.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -399,35 +397,45 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_BUILT_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-factory-stage-executor-v2-20261008",
-    "sourceBranch": "codex/mini-app-factory-stage-executor-v2-20261008",
-    "localCommits": [],
-    "intendedRemoteBranch": "codex/mini-app-factory-stage-executor-v2-20261008",
+    "taskWorktree": "/home/dev/worktrees/mini-app-factory-resume-test-20261008",
+    "sourceBranch": "codex/mini-app-runtime-schema-baseline-20261008",
+    "localCommits": [
+      "88a7870c963941b71aca348ae860d0d1d97b8ae3",
+      "f7bf736adbee6ee3403be1cef0f3851e8223f47f"
+    ],
+    "intendedRemoteBranch": "codex/mini-app-runtime-schema-baseline-20261008",
     "pendingPullRequest": {
-      "state": "PREPARING_NORMAL_PR",
+      "number": 263,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/263",
+      "state": "OPEN",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
-        "revision": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c + task delta",
-        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryPipeline.test.ts server/services/miniAppFactoryRunExecutor.test.ts",
-        "outcome": "PASS: 2 files, 5 tests"
+        "revision": "origin/main 2f93bf168c375966f580931b4a969c5fae38e7c4 + baseline delta",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-runtime-baseline",
+        "outcome": "PASS: fresh PostgreSQL 17 loopback cluster; isolated migration and database contract checks; vector extension absent"
       },
       {
-        "revision": "task delta",
-        "command": "pnpm --filter @smartspec/web exec tsx -e import miniAppFactoryRunExecutor; git diff --check; validate factory pipeline JSON",
+        "revision": "baseline migration projection",
+        "command": "Inspect required/retired table set and worker_jobs/outbox registration",
+        "outcome": "PASS: 20 active tables; required Mini App dependencies present; retired workflow/Agency/workpack/sandbox tables absent"
+      },
+      {
+        "revision": "baseline delta",
+        "command": "python3 -m json.tool apps/web/drizzle/mini-app-fresh-baseline/migrations/meta/_journal.json; git diff --check",
         "outcome": "PASS"
       }
     ],
     "githubIntegration": "IDLE_AFTER_SUCCESS; normal PR flow",
-    "deploymentState": "WAITING_ENVIRONMENT",
-    "canonicalAtCheckpoint": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c",
+    "deploymentState": "PREPARED_NOT_DEPLOYED",
+    "canonicalAtCheckpoint": "2f93bf168c375966f580931b4a969c5fae38e7c4",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "bf1c7d2e47ef0503de25082465cbd5d56fa5148c",
+      "sha": "2f93bf168c375966f580931b4a969c5fae38e7c4",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:23b51b36-4274-44ff-acad-3121a9dd5adb"
+      "receiptId": "workspace-convergence:1db00333-ff80-4746-a2b5-82c0ae53a9be"
     }
   }
 }
