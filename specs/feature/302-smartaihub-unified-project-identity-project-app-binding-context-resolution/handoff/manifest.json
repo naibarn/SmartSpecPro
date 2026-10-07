@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+    "expected_canonical_sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Implement the portable Mini App manifest/package and headless action contract; retain PostgreSQL migration application, direct authorization integration tests, deployment and runtime acceptance as open obligations.",
+    "next_ready_workunit": "RESEARCH_NOTES_PORTABLE_MANIFEST_PACKAGE_AND_HEADLESS_ACTIONS",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Research Notes AI summary/background checkpoint integrated at de9498f0ae73b9c3f6d0d2abb6dba637f616463a; 8 focused Vitest files and 29 tests passed on source SHA 48e8dd1fad5789dcd3c63a615f9776a121e005cd. PostgreSQL migration was not applied.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 13,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -146,17 +146,25 @@
     "title": "SmartAIHub Unified Project Identity, Project-App Binding & Context Resolution Contract"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "de9498f0ae73b9c3f6d0d2abb6dba637f616463a"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/services/researchNotesService.ts",
+      "apps/web/server/services/researchNotesSummaryContract.ts",
+      "apps/web/server/services/researchNotesSummaryExecutor.ts",
+      "apps/web/server/routers/researchNotes.ts",
+      "apps/web/client/src/pages/ResearchNotesPage.tsx"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+    "canonical_sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
     "integrated": true,
-    "integrated_at": "2026-10-07T14:49:00Z"
+    "integrated_at": "2026-10-07T16:00:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -381,7 +389,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T14:51:34.159085Z",
+  "updated_at": "2026-10-07T16:01:58.501472Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
