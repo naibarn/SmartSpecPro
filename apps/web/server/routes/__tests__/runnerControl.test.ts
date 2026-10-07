@@ -5,8 +5,10 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 
-const { recordRunnerSessionInventory } = vi.hoisted(() => ({
+const { recordRunnerSessionInventory, revokedJtis, ephemeralValues } = vi.hoisted(() => ({
   recordRunnerSessionInventory: vi.fn(),
+  revokedJtis: new Set<string>(),
+  ephemeralValues: new Map<string, unknown>(),
 }));
 
 vi.mock("../../services/runnerExecutionSessionService", () => ({
@@ -18,15 +20,24 @@ vi.mock("../../_core/authz", () => ({
 }));
 
 vi.mock("../../_core/revocation", () => {
-  const revoked = new Set<string>();
   return {
-    isJtiRevoked: vi.fn(async (jti: string) => revoked.has(jti)),
+    isJtiRevoked: vi.fn(async (jti: string) => revokedJtis.has(jti)),
     revokeJti: vi.fn(async (jti: string) => {
-      revoked.add(jti);
+      revokedJtis.add(jti);
     }),
     hashJti: (value: string) => value,
   };
 });
+
+vi.mock("../../services/postgresEphemeralStore", () => ({
+  readEphemeralValue: vi.fn(async (namespace: string, key: string) => ephemeralValues.get(`${namespace}:${key}`) ?? null),
+  putEphemeralValueIfAbsent: vi.fn(async (namespace: string, key: string, value: unknown) => {
+    const storageKey = `${namespace}:${key}`;
+    if (ephemeralValues.has(storageKey)) return false;
+    ephemeralValues.set(storageKey, value);
+    return true;
+  }),
+}));
 
 vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
   const byDevice = new Map<string, unknown>();
@@ -126,6 +137,8 @@ describe("Runner control transport routes", () => {
     vi.mocked(authorizeRequest).mockReset();
     auditLog.mockClear();
     recordRunnerSessionInventory.mockReset();
+    revokedJtis.clear();
+    ephemeralValues.clear();
   });
 
   afterEach(() => {
