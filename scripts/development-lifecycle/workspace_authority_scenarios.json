@@ -254,6 +254,230 @@
       "proof_kind": "LOCAL_EXECUTABLE",
       "assert": "project snapshot command exits successfully and uses resolver facts",
       "test_name": "test_mission_control_cli_returns_success_for_authority_snapshot"
+    },
+    {
+      "number": 36,
+      "name": "trusted-cross-host-fact",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "signed fact from a registered managed Runner host is accepted",
+      "test_name": "test_trusted_cross_host_fact_is_accepted"
+    },
+    {
+      "number": 37,
+      "name": "unsigned-cross-host-fact",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "unsigned fact is rejected",
+      "test_name": "test_unsigned_fact_is_rejected"
+    },
+    {
+      "number": 38,
+      "name": "unregistered-host-fact",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "host without a trusted key cannot publish authority facts",
+      "test_name": "test_unknown_host_key_is_rejected"
+    },
+    {
+      "number": 39,
+      "name": "expired-cross-host-fact",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "expired authority fact is classified stale",
+      "test_name": "test_expired_fact_is_stale"
+    },
+    {
+      "number": 40,
+      "name": "future-dated-cross-host-fact",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "unreasonable future observation is classified stale",
+      "test_name": "test_future_fact_is_stale"
+    },
+    {
+      "number": 41,
+      "name": "lower-authority-fact-cannot-overwrite",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "lower trust level cannot replace a managed Runner observation",
+      "test_name": "test_lower_authority_cannot_replace_managed_fact"
+    },
+    {
+      "number": 42,
+      "name": "same-authority-fact-conflict",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "different revisions at equal authority produce explicit conflict",
+      "test_name": "test_same_authority_sha_conflict_is_explicit"
+    },
+    {
+      "number": 43,
+      "name": "multi-host-project-conflict",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "project projection surfaces conflicting revisions across hosts",
+      "test_name": "test_project_snapshot_detects_same_workspace_multi_host_conflict"
+    },
+    {
+      "number": 44,
+      "name": "path-independent-workspace-identity",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "logical workspace identity is scoped by host rather than local path",
+      "test_name": "test_fact_identity_includes_host_not_local_path"
+    },
+    {
+      "number": 45,
+      "name": "safe-action-requires-authenticated-actor",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "dispatcher rejects absent actor authentication",
+      "test_name": "test_missing_actor_authentication_denied"
+    },
+    {
+      "number": 46,
+      "name": "safe-action-rejects-unknown-action",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "dispatcher rejects an action outside the explicit allowlist",
+      "test_name": "test_invalid_action_denied"
+    },
+    {
+      "number": 47,
+      "name": "safe-action-permission-denial-audited",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "authorization denial is audited and action is not executed",
+      "test_name": "test_permission_denial_is_audited"
+    },
+    {
+      "number": 48,
+      "name": "safe-action-owner-rechecked",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "workspace owner is rechecked immediately before action execution",
+      "test_name": "test_owner_is_rechecked_before_execution"
+    },
+    {
+      "number": 49,
+      "name": "safe-action-receipt-and-audit",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "successful action emits durable-shaped receipt and audit event",
+      "test_name": "test_action_receipt_and_audit_are_emitted"
+    },
+    {
+      "number": 50,
+      "name": "safe-action-idempotent-replay",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "same idempotency key and payload returns original receipt without re-execution",
+      "test_name": "test_exact_action_replay_returns_same_receipt"
+    },
+    {
+      "number": 51,
+      "name": "safe-action-conflicting-replay",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "same idempotency key with a different action is rejected",
+      "test_name": "test_conflicting_action_replay_is_rejected"
+    },
+    {
+      "number": 52,
+      "name": "production-evidence-status-contract",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "all required provider availability states are represented and invalid states rejected",
+      "test_name": "test_evidence_result_accepts_all_declared_provider_statuses"
+    },
+    {
+      "number": 53,
+      "name": "multi-instance-source-artifact-mismatch",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "source provenance mismatch blocks convergence before other release checks",
+      "test_name": "test_source_artifact_mismatch_has_precedence"
+    },
+    {
+      "number": 54,
+      "name": "multi-instance-partial-rollout-and-health",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "stale instances, mixed revisions, rollout lag, and degraded health remain non-converged",
+      "test_name": "test_multiple_runtime_revisions_are_mixed"
+    },
+    {
+      "number": 55,
+      "name": "multi-instance-fully-converged-release",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "fresh matching healthy instances satisfy runtime convergence",
+      "test_name": "test_fully_converged_release_requires_fresh_matching_healthy_instances"
+    },
+    {
+      "number": 56,
+      "name": "artifact-evidence-from-canonical-build-ledger",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "build result is bound to exact source SHA and artifact digest",
+      "test_name": "test_canonical_build_artifact_provider_reads_source_bound_receipt"
+    },
+    {
+      "number": 57,
+      "name": "cloudflare-credential-unavailable",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "missing broker credential returns NOT_CONFIGURED without making an HTTP request",
+      "test_name": "test_cloudflare_missing_credentials_return_not_configured"
+    },
+    {
+      "number": 58,
+      "name": "cloudflare-permission-failure-mapping",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "HTTP 401 and 403 map to PERMISSION_DENIED",
+      "test_name": "test_cloudflare_401_and_403_map_to_permission_denied"
+    },
+    {
+      "number": 59,
+      "name": "cloudflare-worker-deployment-normalization",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "deployment ID, version ID, traffic and observation time are normalized",
+      "test_name": "test_cloudflare_worker_deployment_normalizes_revision_and_traffic"
+    },
+    {
+      "number": 60,
+      "name": "cloudflare-container-no-synthetic-image-digest",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "container version, rollout, instance state and health are preserved without inventing a digest",
+      "test_name": "test_cloudflare_container_adapter_exposes_only_observed_fields"
+    },
+    {
+      "number": 61,
+      "name": "cloudflare-resource-age-is-not-cache-age",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "historical resource creation time is retained without falsely marking a live API observation stale",
+      "test_name": "test_cloudflare_old_observation_is_stale"
+    },
+    {
+      "number": 62,
+      "name": "canonical-build-stale-artifact-receipt",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "expired build artifact receipt returns STALE",
+      "test_name": "test_canonical_build_artifact_provider_marks_stale_receipt"
+    },
+    {
+      "number": 63,
+      "name": "same-host-equal-authority-conflict-remains-visible",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "conflicting signed revisions persist in the project projection",
+      "test_name": "test_same_host_conflict_remains_visible_in_project_snapshot"
+    },
+    {
+      "number": 64,
+      "name": "action-idempotency-reservation-is-durable",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "in-progress idempotency reservation survives ledger reopening",
+      "test_name": "test_sqlite_action_ledger_reserves_across_retries"
+    },
+    {
+      "number": 65,
+      "name": "action-idempotency-replay-uses-persisted-receipt",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "completed action receipt replays from the durable SQLite authority ledger",
+      "test_name": "test_sqlite_action_ledger_replays_completed_receipt"
+    },
+    {
+      "number": 66,
+      "name": "action-idempotency-key-conflict-rejected-durably",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "durable ledger rejects a reused key with a different request hash",
+      "test_name": "test_sqlite_action_ledger_rejects_conflicting_idempotency_key"
+    },
+    {
+      "number": 67,
+      "name": "cached-provider-observation-expiry",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "cached evidence is marked stale using its collection timestamp",
+      "test_name": "test_cached_provider_observation_expires_by_collection_timestamp"
     }
   ]
 }

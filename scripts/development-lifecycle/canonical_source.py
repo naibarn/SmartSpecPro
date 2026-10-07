@@ -78,6 +78,30 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _artifact_manifest(root: Path) -> dict[str, Any] | None:
+    """Hash a successful build output without following links outside the artifact root."""
+    if not root.is_dir():
+        return None
+    files: list[tuple[str, str, int]] = []
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        relative = path.relative_to(root).as_posix()
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        files.append((relative, digest.hexdigest(), path.stat().st_size))
+    if not files:
+        return None
+    canonical = "\n".join(f"{path}\0{digest}\0{size}" for path, digest, size in files)
+    return {
+        "artifact_digest": f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}",
+        "artifact_path": str(root),
+        "artifact_file_count": len(files),
+    }
+
+
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
@@ -377,6 +401,8 @@ def build_canonical(
             print(f"[canonical-build] command could not start: {exc}", file=sys.stderr)
             exit_code = 127
         completed_at = time.time()
+        artifact_root = Path(str(lease["isolated_workspace"])) / "apps/web/dist"
+        artifact_manifest = _artifact_manifest(artifact_root) if exit_code == 0 else None
         latest_tip = remote_canonical_tip(repo, policy)
         if latest_tip != lease["source_revision"]:
             status = "STALE_CANONICAL_ADVANCED"
@@ -406,6 +432,7 @@ def build_canonical(
             "exit_code": exit_code,
             "started_at": started_at,
             "completed_at": completed_at,
+            "artifact": artifact_manifest,
             "isolated_workspace": lease["isolated_workspace"],
             "primary_workspace_sync": primary_workspace_sync,
         }

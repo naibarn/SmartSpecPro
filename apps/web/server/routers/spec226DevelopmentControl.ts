@@ -20,6 +20,7 @@ import {
 } from "../services/spec224DevelopmentRunPersistence";
 import { defaultSpec224WorkspaceSpecSetService, SPEC224_MAX_RAW_REQUEST_BYTES } from "../services/spec224WorkspaceSpecSet";
 import { defaultSpec224RunnerInputStagingService } from "../services/spec224RunnerInputStaging";
+import { getWorkspaceAuthorityProjectReadModel } from "../services/workspaceAuthorityProjectReadModel";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -196,6 +197,16 @@ const providerInput = z.object({
  * dispatch remains gated by the Spec 224 authorization authority.
  */
 export const spec226DevelopmentControlRouter = router({
+  projectMissionControl: protectedProcedure
+    .input(z.object({}).optional())
+    .query(async ({ ctx }) => {
+      try {
+        return await getWorkspaceAuthorityProjectReadModel(requireScope(ctx));
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
   availableWorkspaces: protectedProcedure
     .input(z.object({}).optional())
     .query(async ({ ctx }) => {

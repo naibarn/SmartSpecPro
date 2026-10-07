@@ -191,6 +191,7 @@ import {
   initializeWorkerHeartbeatRetentionJob,
   shutdownWorkerHeartbeatRetentionJob,
 } from "../jobs/workerHeartbeatRetentionJob";
+import { initializeWorkspaceAuthorityAuditJob, shutdownWorkspaceAuthorityAuditJob } from "../jobs/workspaceAuthorityAuditJob";
 import {
   initializeSpec224RunnerInputRetentionJob,
   shutdownSpec224RunnerInputRetentionJob,
@@ -2790,6 +2791,12 @@ async function main() {
   }
 
   try {
+    await initializeWorkspaceAuthorityAuditJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize workspace authority audit job:", error);
+  }
+
+  try {
     await initializeSpec224RunnerInputRetentionJob();
   } catch (error) {
     console.error(
@@ -3031,6 +3038,7 @@ process.on("SIGTERM", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownWorkspaceAuthorityAuditJob()).catch(() => {});
   await Promise.resolve(shutdownSpec224RunnerInputRetentionJob()).catch(() => {});
   await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
@@ -3104,6 +3112,7 @@ process.on("SIGINT", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownWorkspaceAuthorityAuditJob()).catch(() => {});
   await Promise.resolve(shutdownSpec224RunnerInputRetentionJob()).catch(() => {});
   await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(

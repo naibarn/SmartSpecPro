@@ -294,6 +294,27 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(result["status"], "BUILD_PASSED")
         self.assertEqual(result["build_target"], "fixture-policy-target")
 
+    def test_central_build_result_binds_output_artifact_digest_to_source_sha(self) -> None:
+        from canonical_source import build_canonical
+
+        command_source = (
+            "from pathlib import Path; p=Path('apps/web/dist'); p.mkdir(parents=True); "
+            "(p/'index.html').write_text('<main>fixture</main>', encoding='utf-8')"
+        )
+        result = build_canonical(
+            self.shared,
+            command=[sys.executable, "-c", command_source],
+            required_revisions=[self.revision],
+            build_target="fixture",
+            policy_path=self.policy,
+        )
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertEqual(result["artifact"]["artifact_file_count"], 1)
+        self.assertRegex(result["artifact"]["artifact_digest"], r"^sha256:[a-f0-9]{64}$")
+        manifest = json.loads(Path(str(result["result_file"])).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["source_revision"], result["source_revision"])
+        self.assertEqual(manifest["artifact"], result["artifact"])
+
     def test_central_build_marks_result_stale_if_canonical_advances_during_build(self) -> None:
         from canonical_source import build_canonical
 
