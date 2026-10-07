@@ -627,6 +627,11 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         retired = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
         self.assertEqual(retired["status"], "WORKTREE_RETIRED")
         self.assertEqual(retired["receipt"]["result"], "WORKTREE_RETIRED")
+        self.assertEqual(retired["receipt"]["workspace_id"], workspace["workspace_id"])
+        self.assertEqual(retired["receipt"]["previous_path"], str(task))
+        self.assertEqual(retired["receipt"]["final_lifecycle_classification"], "RETIRED")
+        self.assertEqual(retired["receipt"]["retirement_reason"], "CLEAN_CANONICAL_EQUIVALENT_NO_UNIQUE_WORK")
+        self.assertEqual(retired["receipt"]["integration_sha"], retired["receipt"]["canonical_sha"])
         self.assertFalse(task.exists())
 
     def test_periodic_audit_is_conservative_and_never_classifies_canonical_as_retireable(self) -> None:
@@ -638,6 +643,12 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         report = authority.collect_worktrees(self.canonical, self.policy)
 
         self.assertEqual(report["mode"], "AUDIT_ONLY")
+        with authority._db(self.canonical) as db:
+            persisted = db.execute(
+                "SELECT result_json FROM receipts WHERE kind='WORKSPACE_AUDIT' ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        self.assertIsNotNone(persisted)
+        self.assertEqual(json.loads(persisted[0])["audited_at"], report["audited_at"])
         classifications = {item["workspace_id"]: item["classification"] for item in report["workspaces"]}
         self.assertEqual(classifications[registered_task["workspace_id"]], "RETIREABLE")
         self.assertEqual(classifications[canonical["workspace_id"]], "ACTIVE")
