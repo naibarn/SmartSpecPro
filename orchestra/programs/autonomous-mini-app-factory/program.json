@@ -5,18 +5,18 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+    "sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
-      "canonical_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
-      "canonical_user_workspace_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+      "integrated_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+      "canonical_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+      "canonical_user_workspace_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:55c25af8-85be-495b-a946-00849dc7c39d",
-      "verified_at": "2026-10-07T17:54:08.439+00:00"
+      "receipt_id": "workspace-convergence:a2478299-a447-40f6-82af-c070fa71e691",
+      "verified_at": "2026-10-07T17:59:44.114+00:00"
     }
   },
   "inventory": {
@@ -364,9 +364,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "GitHub available; two normal PR merges completed.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/254",
-      "integratedSha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c"
+      "lastScenario": "GitHub recovered and two normal checkpoint PRs merged without user prompt.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/255",
+      "integratedSha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1"
     }
   },
   "deferredInfrastructure": [
@@ -374,7 +374,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T17:57:00Z",
+  "updatedAt": "2026-10-07T18:00:00Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
