@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
+    "expected_canonical_sha": "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
@@ -91,7 +91,10 @@
       "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
       "https://github.com/naibarn/SmartSpecPro/pull/182",
       "git:55571e18378880a7058bde38548e8211aa280842",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/184",
+      "git:9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-route-isolation.md"
     ],
     "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
     "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -130,7 +133,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 45,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -187,7 +190,8 @@
       "60678faa879d5cad0646275086a79760b4b6ba8a",
       "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
       "a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
-      "55571e18378880a7058bde38548e8211aa280842"
+      "55571e18378880a7058bde38548e8211aa280842",
+      "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5"
     ],
     "mapping": [],
     "source_paths": [
@@ -227,9 +231,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "55571e18378880a7058bde38548e8211aa280842",
+    "canonical_sha": "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:57:04Z"
+    "integrated_at": "2026-10-07T06:00:06Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -289,7 +293,10 @@
       "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
       "https://github.com/naibarn/SmartSpecPro/pull/182",
       "git:55571e18378880a7058bde38548e8211aa280842",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/184",
+      "git:9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-route-isolation.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -354,7 +361,10 @@
         "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
         "https://github.com/naibarn/SmartSpecPro/pull/182",
         "git:55571e18378880a7058bde38548e8211aa280842",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/184",
+        "git:9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-route-isolation.md"
       ],
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
       "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -425,7 +435,10 @@
         "git:a80ca95c3f7f34569f227ca9fb3d68656ab2b436",
         "https://github.com/naibarn/SmartSpecPro/pull/182",
         "git:55571e18378880a7058bde38548e8211aa280842",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/184",
+        "git:9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-route-isolation.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -511,7 +524,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:57:32.793901Z",
+  "updated_at": "2026-10-07T06:00:27.773206Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -646,6 +659,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-owner-identity-evidence.md",
         "scope": "Active registered owner session projects as agent_identity with authoritative source; provider remains unknown absent provider evidence",
         "source_sha": "55571e18378880a7058bde38548e8211aa280842",
+        "status": "PASS"
+      },
+      {
+        "kind": "RUNNER_CONTROL_ROUTE_STATE_ISOLATION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-runner-route-isolation.md",
+        "scope": "Runner control HTTP routes, RunnerGateway, contracts, and workspace projection focused regression suite (55 passed)",
+        "source_sha": "9bdf7c1bba56fd9f0a77ec7b4dc7c649f62573d5",
         "status": "PASS"
       }
     ],
