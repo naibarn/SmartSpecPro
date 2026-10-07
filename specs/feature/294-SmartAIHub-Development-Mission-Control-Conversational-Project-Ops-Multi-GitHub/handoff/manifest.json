@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+    "expected_canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: implement the authenticated seven-action API with tenant/project/role authorization and canonical worker_jobs/Runner execution; add handoff and recovery/archive event producers; close remaining Mission Control and cross-host evidence gaps. Keep code status PARTIAL until all local requirements pass.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -49,18 +49,21 @@
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/mission-control-ahead-behind-integrated-26fd48168f44.md",
       "https://github.com/naibarn/SmartSpecPro/pull/146",
       "git:33b833a1a78101be8f5f0386b2fb49677b3c57bd",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/runner-agent-identity-integrated-33b833a1a781.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/runner-agent-identity-integrated-33b833a1a781.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/158",
+      "git:ba8da3fb51458b0ee98f16289e346d4fe0575474",
+      "git:587e52b7067482582b807a8786b81c075b8f46b8",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
     ],
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
-    "rationale": "Integrated PR #146 uses trusted Runner registration as active agent identity when provider evidence is absent, while preserving UNKNOWN for provider and refusing guesses from profile/workspace names. This closes one precedence fallback only. Safe-action API/worker dispatch, pushed/integrated Mission Control facts, task-assignment precedence, and lifecycle producers remain open. Canonical user checkout remains dirty and is preserved.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
+    "rationale": "PR #158 adds authenticated worker_jobs safe-action dispatch and canonical execution with normalized evidence and lifecycle events. This closes the initial API/worker path but does not complete cross-host Runner execution or the other local WU-4C requirements. Canonical user checkout remains dirty on another branch and is preserved.",
     "residual_requirements": [
-      "authenticated safe-action API and worker_jobs/Runner execution",
-      "complete Mission Control project and lifecycle projections",
-      "lifecycle event producer call sites",
-      "cross-host ingestion and conflict persistence",
-      "Drizzle migration and runtime-health internal source bindings",
-      "Cloudflare credential-center integration proof",
-      "clean canonical workspace convergence after unrelated dirty data is safely reconciled"
+      "cross-host Runner dispatch and durable fact ingestion/conflict reconciliation",
+      "complete Mission Control aggregation and active session identity precedence",
+      "periodic local worktree audit scheduler and handoff lifecycle producer",
+      "migration and runtime health bindings to internal sources",
+      "Cloudflare credential-center integration path",
+      "remaining WU-4C regression matrix and acceptance evidence"
     ]
   },
   "dependencies": {
@@ -89,7 +92,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -127,7 +130,9 @@
       "2753c74afbfeadd0f218d23367f7c61728602a0b",
       "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
       "7902974a70d4631e51410de67762b1e59ded9bde",
-      "b2791404dde26fef8a2a9a46caece7f3f8b24285"
+      "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+      "ba8da3fb51458b0ee98f16289e346d4fe0575474",
+      "587e52b7067482582b807a8786b81c075b8f46b8"
     ],
     "mapping": [],
     "source_paths": [
@@ -154,16 +159,20 @@
       "scripts/development-lifecycle/workspace_authority_scenarios.json",
       "apps/web/server/services/runnerContracts.ts",
       "apps/web/server/services/__tests__/runnerContracts.test.ts",
-      "apps/web/server/services/spec224WorkspaceSpecSet.test.ts"
+      "apps/web/server/services/spec224WorkspaceSpecSet.test.ts",
+      "apps/web/server/routers/spec226DevelopmentControl.ts",
+      "apps/web/server/services/workspaceAuthoritySafeActions.ts",
+      "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
+      "apps/web/server/services/jobExecutorRegistry.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+    "canonical_sha": "587e52b7067482582b807a8786b81c075b8f46b8",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:46:24Z"
+    "integrated_at": "2026-10-07T05:10:40Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -187,7 +196,10 @@
       "git:4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
       "https://github.com/naibarn/SmartSpecPro/pull/135",
       "https://github.com/naibarn/SmartSpecPro/pull/136",
-      "git:4c5c43d52249ae767806947e9e6abe3222035542"
+      "git:4c5c43d52249ae767806947e9e6abe3222035542",
+      "https://github.com/naibarn/SmartSpecPro/pull/158",
+      "git:587e52b7067482582b807a8786b81c075b8f46b8",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -210,18 +222,21 @@
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/mission-control-ahead-behind-integrated-26fd48168f44.md",
         "https://github.com/naibarn/SmartSpecPro/pull/146",
         "git:33b833a1a78101be8f5f0386b2fb49677b3c57bd",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/runner-agent-identity-integrated-33b833a1a781.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/runner-agent-identity-integrated-33b833a1a781.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/158",
+        "git:ba8da3fb51458b0ee98f16289e346d4fe0575474",
+        "git:587e52b7067482582b807a8786b81c075b8f46b8",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
       ],
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire the seven safe actions through authenticated tenant/project authorization, Workspace Authority resolution, role policy, canonical worker_jobs/Runner execution, normalized receipts and audit; complete Mission Control projections and lifecycle event producer call sites; bind cross-host authority, Drizzle migrations and runtime health to their internal sources; verify Cloudflare credential-center integration internally. Keep P0 implementation PARTIAL and external runtime verification separate.",
-      "rationale": "Integrated PR #146 uses trusted Runner registration as active agent identity when provider evidence is absent, while preserving UNKNOWN for provider and refusing guesses from profile/workspace names. This closes one precedence fallback only. Safe-action API/worker dispatch, pushed/integrated Mission Control facts, task-assignment precedence, and lifecycle producers remain open. Canonical user checkout remains dirty and is preserved.",
+      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.",
+      "rationale": "PR #158 adds authenticated worker_jobs safe-action dispatch and canonical execution with normalized evidence and lifecycle events. This closes the initial API/worker path but does not complete cross-host Runner execution or the other local WU-4C requirements. Canonical user checkout remains dirty on another branch and is preserved.",
       "residual_requirements": [
-        "authenticated safe-action API and worker_jobs/Runner execution",
-        "complete Mission Control project and lifecycle projections",
-        "lifecycle event producer call sites",
-        "cross-host ingestion and conflict persistence",
-        "Drizzle migration and runtime-health internal source bindings",
-        "Cloudflare credential-center integration proof",
-        "clean canonical workspace convergence after unrelated dirty data is safely reconciled"
+        "cross-host Runner dispatch and durable fact ingestion/conflict reconciliation",
+        "complete Mission Control aggregation and active session identity precedence",
+        "periodic local worktree audit scheduler and handoff lifecycle producer",
+        "migration and runtime health bindings to internal sources",
+        "Cloudflare credential-center integration path",
+        "remaining WU-4C regression matrix and acceptance evidence"
       ]
     },
     "lifecycle": {
@@ -246,7 +261,10 @@
         "git:4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
         "https://github.com/naibarn/SmartSpecPro/pull/135",
         "https://github.com/naibarn/SmartSpecPro/pull/136",
-        "git:4c5c43d52249ae767806947e9e6abe3222035542"
+        "git:4c5c43d52249ae767806947e9e6abe3222035542",
+        "https://github.com/naibarn/SmartSpecPro/pull/158",
+        "git:587e52b7067482582b807a8786b81c075b8f46b8",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -332,7 +350,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:48:38.572641Z",
+  "updated_at": "2026-10-07T05:12:14.256599Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -383,6 +401,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-integration-event-b2791404dde2.md",
         "scope": "Integration finish is emitted only from a verified convergence receipt bound to current canonical SHA; focused lifecycle job regression passes. Remaining WU-4C gaps stay open.",
         "source_sha": "b2791404dde26fef8a2a9a46caece7f3f8b24285",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_SAFE_ACTION_REGRESSION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-safe-actions-integrated-ba8da3fb5145.md",
+        "scope": "authenticated seven-action API/worker dispatch, idempotency, retirement role gate, normalized receipt and lifecycle events",
+        "source_sha": "ba8da3fb51458b0ee98f16289e346d4fe0575474",
         "status": "PASS"
       }
     ],
