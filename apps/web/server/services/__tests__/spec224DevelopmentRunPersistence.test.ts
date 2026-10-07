@@ -220,8 +220,24 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       actorId: run.actorId,
       idempotencyKey: "verification:full:admission:1",
       type: "VERIFICATION_ADMISSION",
-      payload: { profile: "full", state: "QUEUED_RESOURCE" },
+      payload: {
+        profile: "full",
+        state: "QUEUED_RESOURCE",
+        reason: "INSUFFICIENT_MEMORY_HEADROOM",
+        requiredMemoryMiB: 10_240,
+      },
+      occurredAt: "2026-10-03T01:00:00.000Z",
     });
+    await expect(
+      service.recordVerificationEvent({
+        runId: run.runId,
+        tenantId: run.tenantId,
+        actorId: run.actorId,
+        idempotencyKey: "verification:full:admission:1",
+        type: "VERIFICATION_ADMISSION",
+        payload: { profile: "full", state: "QUEUED_RESOURCE" },
+      })
+    ).rejects.toThrow("RUN_IDEMPOTENCY_CONFLICT");
     const persisted = await adapter.read();
 
     expect(recorded.accepted).toBe(true);
