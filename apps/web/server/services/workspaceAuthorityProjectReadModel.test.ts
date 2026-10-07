@@ -16,7 +16,16 @@ describe("projectRunnerWorkspaceAuthority", () => {
   it("projects trusted fresh host identity and preserves project and repository identities", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now });
     expect(result.workspaces.observed[0]).toMatchObject({ projectId: "project-a", repositoryId: "repo-a", hostId: "runner-a", provider: "codex", providerResolutionSource: "trusted_runner_active_tool_inventory", runnerProfile: "local_device", trust: "TRUSTED", ownerUserId: 7, sessionId: "session-a", sessionState: "ACTIVE", taskId: "task-42", taskIdSource: "trusted_runner_snapshot_active_session", observedSha: "a".repeat(40), convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), observedAt: "2026-10-07T11:59:00.000Z" });
+    expect(result.hosts.observed[0]).toMatchObject({ hostId: "runner-a", provider: "codex", providerResolutionSource: "trusted_runner_active_tool_inventory" });
     expect(result.pushState.state).toBe("UNKNOWN");
+  });
+
+  it("keeps the host provider unknown when its session or tool evidence is stale", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner({ snapshotExpiresAt: new Date("2026-10-07T11:59:00.000Z") }),
+    ] as never[], now });
+
+    expect(result.hosts.observed[0]).toMatchObject({ hostId: "runner-a", provider: "UNKNOWN", providerResolutionSource: "no_active_session_provider_fact" });
   });
 
   it("does not project a Runner-reported task when its session is no longer current", () => {

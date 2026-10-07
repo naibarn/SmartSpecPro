@@ -1,0 +1,5 @@
+# P0-WU-4C Mission Control host provider resolution
+
+| Requirement | Observable behavior | Test level | Test location | RED evidence | GREEN evidence | Residual boundary |
+|---|---|---|---|---|---|---|
+| Resolve UNKNOWN agent/provider from authoritative live Runner session facts | The Mission Control host projection reports the unique fresh authenticated provider from Runner tool inventory; stale, revoked, ambiguous, or absent session evidence remains UNKNOWN | Unit | `apps/web/server/services/workspaceAuthorityProjectReadModel.test.ts` | RED: projection kept `hosts[].provider` UNKNOWN with an active trusted Codex session, and omitted a provider resolution source when evidence was stale | GREEN: focused projection plus safe-action tests pass (2 files, 28 tests); fresh evidence yields `codex`, stale evidence stays `UNKNOWN` | Fixture-backed projection evidence does not prove a real Runner emitted truthful tool facts or a live DB read; live production provider/runtime verification remains separate |
