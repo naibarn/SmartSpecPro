@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
+    "sha": "916c185770784456af764d97a767a2b1fe293e0f",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:f212f519-025a-4bac-9c60-3cbfc68a18ce"
+    "convergenceReceipt": "workspace-convergence:d649e16a-bc94-4627-b85d-62b4b88281d7"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -19,19 +19,20 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC304_REFERENCE_APP_RESEARCH_NOTES_SLICE",
-    "state": "WORKING",
-    "objective": "Build the first user-visible Research Notes Mini App slice on the authenticated App route contract, including tenant/project scoped persisted CRUD and a responsive shell.",
-    "implementation": ["apps/web/client/src/", "apps/web/server/routers/", "apps/web/server/services/"],
-    "evidence": ["SPEC304_TRUSTED_TENANT_ROUTE_API integrated at d50caa27f2e29b0e725398b1b5653aed9cb90562; 15 focused tests passed on the exact integrated SHA.", "SPEC-304 requirement REQ-8267DE389563 remains PARTIAL with exact integrated source and test evidence."],
-    "pending": ["Database migration 0392 has not been applied; no DATABASE_URL is configured.", "Research Notes UI, CRUD service, project binding, AI summary and background action are not implemented."],
-    "nextAction": "Inspect existing project-scoped resource/CRUD patterns and build the smallest Research Notes vertical slice with authenticated tenant/project enforcement; do not apply migrations without a verified non-production target."
+    "id": "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE",
+    "state": "CHECKPOINT_READY",
+    "objective": "Add minimum Canonical Project identity, tenant membership and App binding required by SPEC-302, then persist Research Notes through that authorized project scope.",
+    "implementation": ["apps/web/drizzle/schema.ts", "apps/web/drizzle/0393_spec302_canonical_project_identity.sql", "apps/web/server/services/researchNotesService.ts", "apps/web/server/routers/researchNotes.ts"],
+    "evidence": ["21 focused router, service input, route identity and project contract tests passed in candidate based on canonical SHA 916c185770784456af764d97a767a2b1fe293e0f.", "Drizzle schema module imports with CanonicalProject, membership, App binding and Research Notes tables."],
+    "pending": ["Migration 0393 has not been applied; no DATABASE_URL is configured, so PostgreSQL integration evidence is pending.", "Responsive Research Notes UI, AI summary, durable background indexing/export and deployment remain open."],
+    "nextAction": "Promote this safe schema/service/API checkpoint, update SPEC-302 handoff on its exact integrated SHA, then implement the responsive Research Notes UI and AI/background actions."
   },
   "checkpoints": [
     { "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS", "state": "PARTIAL_INTEGRATED", "sha": "28d8a2864335b02524b60943498006cb2929d60c", "evidence": "tenantProductIdentityContracts.test.ts: 9 passed" },
     { "id": "SPEC304_PERSISTED_IDENTITY_SCHEMA", "state": "PARTIAL_INTEGRATED", "sha": "5eff1efc0fd53ae6e9818fd97095bae021b175b8", "evidence": "Additive Drizzle schema and migration 0392 integrated; migration application and database integration remain pending." },
     { "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION", "state": "PARTIAL_INTEGRATED", "sha": "c32a222ba51380a6700109be43ab707cc995bda6", "evidence": "12 focused tests passed on the integrated SHA; SPEC-304 requirement ledger updated through the shared writer." },
-    { "id": "SPEC304_TRUSTED_TENANT_ROUTE_API", "state": "PARTIAL_INTEGRATED", "sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562", "evidence": "15 focused tests passed on the exact integrated SHA; tenant authority comes from authenticated account context; SPEC-304 handoff updated through shared writer." }
+    { "id": "SPEC304_TRUSTED_TENANT_ROUTE_API", "state": "PARTIAL_INTEGRATED", "sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562", "evidence": "15 focused tests passed on the exact integrated SHA; tenant authority comes from authenticated account context; SPEC-304 handoff updated through shared writer." },
+    { "id": "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE", "state": "CHECKPOINT_READY", "sha": "916c185770784456af764d97a767a2b1fe293e0f", "evidence": "21 focused tests and schema module import passed in candidate based on this canonical SHA; migration application and runtime database evidence remain pending." }
   ],
   "completedWorkunits": [],
   "blockedWorkunits": [],
@@ -65,12 +66,12 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "SPEC304_REFERENCE_APP_SHELL_AND_DATA_SLICE"
+    "nextEligibleWorkunit": "SPEC304_REFERENCE_APP_SHELL_AI_BACKGROUND_SLICE"
   },
   "deferredInfrastructure": [
     "Full reconciliation of unrelated dormant Specs not needed by Mini App Factory MVP",
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T14:40:00Z"
+  "updatedAt": "2026-10-07T14:50:00Z"
 }

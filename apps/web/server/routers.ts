@@ -131,6 +131,7 @@ import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 import { appIdentityRouter } from "./routers/appIdentity";
+import { researchNotesRouter } from "./routers/researchNotes";
 import { agentRegistryRouter } from "./routers/agentRegistry";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
@@ -3337,6 +3338,7 @@ type AppRouterShape = {
   persona: typeof personaRouter;
   tenantFeatureFlags: typeof tenantFeatureFlagsRouter;
   appIdentity: typeof appIdentityRouter;
+  researchNotes: typeof researchNotesRouter;
   automationCopilot: typeof automationCopilotRouter;
   liveBrowser: typeof liveBrowserRouter;
   metaChannels: typeof metaChannelsRouter;
@@ -3523,6 +3525,7 @@ const appRouterInternal = router<AppRouterShape>({
   persona: personaRouter,
   tenantFeatureFlags: tenantFeatureFlagsRouter,
   appIdentity: appIdentityRouter,
+  researchNotes: researchNotesRouter,
   automationCopilot: automationCopilotRouter,
   liveBrowser: liveBrowserRouter,
   metaChannels: metaChannelsRouter,
