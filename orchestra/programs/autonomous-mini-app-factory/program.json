@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "28d8a2864335b02524b60943498006cb2929d60c",
+    "sha": "b1cd01a55d70c5e8f5792c1679081a1e25d598a1",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:cd95c5fd-f678-4d54-b74b-c6cde139f30c"
+    "convergenceReceipt": "workspace-convergence:eb2cdcb2-2d75-4a53-88f5-4c461296cf14"
   },
   "inventory": {
     "canonicalSpecCount": 311,
@@ -19,16 +19,18 @@
     "outsideMainSources": "not fully audited yet"
   },
   "currentWorkunit": {
-    "id": "SPEC304_PERSISTED_IDENTITY_AND_ROUTE_RESOLUTION",
+    "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION",
     "state": "WORKING",
-    "objective": "Persist the stable App identity and route aliases, then bind them to authorized runtime routing.",
-    "implementation": ["apps/web/drizzle/schema.ts", "apps/web/drizzle/0392_spec304_app_identity_and_route_aliases.sql"],
-    "evidence": ["Schema module import succeeded in the uncommitted candidate based on 28d8a2864335b02524b60943498006cb2929d60c", "tenantProductIdentityContracts.test.ts: 9 tests passed at the exact 28d8a2864335b02524b60943498006cb2929d60c base SHA"],
-    "pending": ["No DATABASE_URL is configured in the implementation workspace; migration application and database integration evidence are pending."],
-    "nextAction": "Add repository/service and authenticated route binding; apply migration only against a verified non-production target."
+    "objective": "Resolve active App route aliases from persisted identity using trusted tenant context and fail closed across tenant and lifecycle boundaries.",
+    "implementation": ["apps/web/server/services/appIdentityRepository.ts", "apps/web/server/services/__tests__/appIdentityRepository.test.ts"],
+    "evidence": ["Focused Vitest: appIdentityRepository.test.ts and tenantProductIdentityContracts.test.ts, 12 passed on base b1cd01a55d70c5e8f5792c1679081a1e25d598a1.", "Repository resolver scopes lookup by trusted tenantId, alias kind and normalized value; contract rejects inactive aliases/apps and tenant mismatch."],
+    "pending": ["Database migration 0392 has not been applied; no DATABASE_URL is configured.", "No authenticated route or request-host binding is integrated yet."],
+    "nextAction": "Integrate this repository checkpoint, then bind it to trusted host routing and add authenticated Mini App endpoints; validate PostgreSQL only against a verified non-production database."
   },
   "checkpoints": [
-    { "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS", "state": "PARTIAL_INTEGRATED", "sha": "28d8a2864335b02524b60943498006cb2929d60c", "evidence": "tenantProductIdentityContracts.test.ts: 9 passed" }
+    { "id": "SPEC304_APP_IDENTITY_ROUTE_ALIAS_CONTRACTS", "state": "PARTIAL_INTEGRATED", "sha": "28d8a2864335b02524b60943498006cb2929d60c", "evidence": "tenantProductIdentityContracts.test.ts: 9 passed" },
+    { "id": "SPEC304_PERSISTED_IDENTITY_SCHEMA", "state": "PARTIAL_INTEGRATED", "sha": "5eff1efc0fd53ae6e9818fd97095bae021b175b8", "evidence": "Additive Drizzle schema and migration 0392 integrated; migration application and database integration remain pending." },
+    { "id": "SPEC304_RUNTIME_ROUTE_RESOLUTION", "state": "CHECKPOINT_READY", "sha": "b1cd01a55d70c5e8f5792c1679081a1e25d598a1", "evidence": "12 focused tests passed for persisted route resolver and identity contracts; awaiting FAST GATE and integration." }
   ],
   "completedWorkunits": [],
   "blockedWorkunits": [],
@@ -62,12 +64,12 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "SPEC304_PERSISTED_IDENTITY_AND_ROUTE_RESOLUTION"
+    "nextEligibleWorkunit": "SPEC304_AUTHENTICATED_MINI_APP_RUNTIME_API"
   },
   "deferredInfrastructure": [
     "Full reconciliation of unrelated dormant Specs not needed by Mini App Factory MVP",
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T13:55:00Z"
+  "updatedAt": "2026-10-07T14:25:00Z"
 }
