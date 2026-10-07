@@ -140,10 +140,19 @@ jobs:
       - name: Run database migrations (Production)
         env:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/production-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
         run: |
           cd apps/web
           npm ci --legacy-peer-deps --workspaces=false
           npm run db:migrate
+
+      - name: Upload production migration execution receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-receipts-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/smartspecpro-migration-receipts/*.jsonl
+          if-no-files-found: ignore
 
       - name: Deploy node-api to Cloud Run (10% canary)
         env:

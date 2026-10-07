@@ -2633,6 +2633,13 @@
       "when": 1791374488774,
       "tag": "0389_spec288_provider_deployment_target_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 376,
+      "version": "7",
+      "when": 1791400000000,
+      "tag": "0390_migration_receipt_attempt_uniqueness",
+      "breakpoints": true
     }
   ]
 }

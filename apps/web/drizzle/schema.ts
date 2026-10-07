@@ -1590,7 +1590,7 @@ export const apiAuditEvents = pgTable(
     index("api_audit_events_user_created").on(t.userId, t.createdAt),
     index("api_audit_events_type_created").on(t.eventType, t.createdAt),
     uniqueIndex("api_audit_migration_receipt_phase_idempotency_unique")
-      .on(sql`(${t.metadata}->>'idempotencyKey')`, sql`(${t.metadata}->>'phase')`)
+      .on(sql`(${t.metadata}->>'idempotencyKey')`, sql`(coalesce(${t.metadata}->>'attemptNumber', '0'))`, sql`(${t.metadata}->>'phase')`)
       .where(sql`${t.eventType} = 'migration_execution_receipt'`),
   ]
 );
