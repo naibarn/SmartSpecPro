@@ -3,10 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getFinanceOcrDebugTraceId = getFinanceOcrDebugTraceId;
 exports.recordFinanceOcrDebugStep = recordFinanceOcrDebugStep;
 var node_fs_1 = require("node:fs");
+var node_os_1 = require("node:os");
 var node_path_1 = require("node:path");
 var traceContext_1 = require("./traceContext");
-var DEFAULT_DEBUG_LOG_PATH = node_path_1.default.resolve(process.cwd(), "finance-ocr-debug.jsonl");
-var DEBUG_LOG_PATH = (process.env.FINANCE_OCR_DEBUG_LOG_PATH || "").trim() || DEFAULT_DEBUG_LOG_PATH;
+var DEFAULT_DEBUG_LOG_PATH = node_path_1.default.join(node_os_1.default.homedir(), ".local", "state", "smartspecpro", "artifacts", "debug", "finance-ocr-debug.jsonl");
+var configuredDebugPath = (process.env.FINANCE_OCR_DEBUG_LOG_PATH || "").trim();
+var configuredPath = configuredDebugPath ? node_path_1.default.resolve(configuredDebugPath) : DEFAULT_DEBUG_LOG_PATH;
+var projectRoot = node_path_1.default.resolve(process.cwd());
+var DEBUG_LOG_PATH = configuredPath === projectRoot || configuredPath.startsWith("".concat(projectRoot).concat(node_path_1.default.sep)) ? DEFAULT_DEBUG_LOG_PATH : configuredPath;
 var DEBUG_ENABLED = (function () {
     var raw = (process.env.FINANCE_OCR_DEBUG_ENABLED || "").trim().toLowerCase();
     if (!raw) {
@@ -82,6 +86,7 @@ function recordFinanceOcrDebugStep(step, data) {
         data: sanitizeValue(data),
     };
     try {
+        node_fs_1.default.mkdirSync(node_path_1.default.dirname(DEBUG_LOG_PATH), { recursive: true, mode: 448 });
         node_fs_1.default.appendFileSync(DEBUG_LOG_PATH, "".concat(JSON.stringify(entry), "\n"), "utf8");
     }
     catch (_a) {

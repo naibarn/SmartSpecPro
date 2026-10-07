@@ -1,5 +1,6 @@
 import type { DrizzleDB } from "../db";
 import { withCloudflareCredential } from "./cloudflareCredentialCenter";
+import { authorizeDeploymentTarget, resolveProviderDeploymentTarget } from "./providerDeploymentTargetAuthority";
 
 export type RuntimeEvidenceStatus = "OBSERVED" | "UNAVAILABLE" | "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE" | "ERROR";
 export type RuntimeEvidence<T> = { status: RuntimeEvidenceStatus; observedAt: string; source: string; value: T | null; diagnostic?: string };
@@ -14,7 +15,7 @@ export type CloudflareDeploymentTarget = {
   accountRef: string;
   workerRef: string | null;
   containerApplicationRef: string | null;
-  credentialRef: "cloudflare:deployment";
+  credentialRef: string;
   enabled: boolean;
   provenance: string;
   lastVerifiedAt: string | null;
@@ -24,7 +25,7 @@ export type CloudflareDeploymentTarget = {
 
 export type CloudflareTargetResolution =
   | { status: "CONFIGURED"; target: CloudflareDeploymentTarget }
-  | { status: "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE"; target: null; reason: string };
+  | { status: "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE" | "TARGET_AUTHORITY_CONFLICT"; target: null; reason: string };
 
 /** Match only exact tenant/project/environment identity; resource names never establish ownership. */
 export function resolveCloudflareDeploymentTarget(input: {
@@ -35,9 +36,12 @@ export function resolveCloudflareDeploymentTarget(input: {
   now?: Date;
   maxAgeMs?: number;
 }): CloudflareTargetResolution {
-  const target = input.targets.find(candidate => candidate.tenantId === input.tenantId &&
-    candidate.projectId === input.projectId && candidate.environment === input.environment &&
-    candidate.provider === "cloudflare");
+  const candidates = input.targets.filter(candidate => candidate.tenantId === input.tenantId &&
+    candidate.projectId === input.projectId && candidate.environment === input.environment && candidate.provider === "cloudflare");
+  const matching = candidates.filter(candidate => candidate.enabled);
+  if (matching.length > 1) return { status: "TARGET_AUTHORITY_CONFLICT", target: null, reason: "multiple_active_targets" };
+  if (!matching.length && candidates.length) return { status: "PERMISSION_DENIED", target: null, reason: "target_disabled" };
+  const target = matching[0];
   if (!target) return { status: "NOT_CONFIGURED", target: null, reason: "target_not_found" };
   if (!target.enabled) return { status: "PERMISSION_DENIED", target: null, reason: "target_disabled" };
   if (!target.targetId || !target.accountRef || !target.credentialRef || !target.provenance) {
@@ -50,6 +54,30 @@ export function resolveCloudflareDeploymentTarget(input: {
     }
   }
   return { status: "CONFIGURED", target };
+}
+
+/** Resolve persisted SPEC-288 authority before any Cloudflare request. */
+export async function getPersistedCloudflareWorkerDeploymentEvidence(input: {
+  db: DrizzleDB; callerTenantId: string; projectId: string; environment: string; fetchImpl?: CloudflareFetch; now?: Date;
+}): Promise<RuntimeEvidence<unknown>> {
+  const observedAt = (input.now ?? new Date()).toISOString();
+  if (input.callerTenantId.trim() !== input.callerTenantId || !input.callerTenantId || !input.projectId || !input.environment)
+    return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_workers_api", value: null };
+  const resolution = await resolveProviderDeploymentTarget(input.db, { tenantId: input.callerTenantId,
+    projectId: input.projectId, environment: input.environment, provider: "cloudflare" });
+  if (resolution.status !== "CONFIGURED") return { status: resolution.status === "TARGET_AUTHORITY_CONFLICT" ? "ERROR" : resolution.status,
+    observedAt, source: "cloudflare_workers_api", value: null, diagnostic: resolution.status };
+  if (authorizeDeploymentTarget({ target: resolution.target, callerTenantId: input.callerTenantId,
+    projectId: input.projectId, environment: input.environment, provider: "cloudflare" }) !== "AUTHORIZED")
+    return { status: "PERMISSION_DENIED", observedAt, source: "cloudflare_workers_api", value: null };
+  const target: CloudflareDeploymentTarget = { targetId: resolution.target.deploymentTargetId,
+    tenantId: resolution.target.tenantId, projectId: resolution.target.projectId, environment: resolution.target.environment,
+    provider: "cloudflare", accountRef: resolution.target.accountRef ?? "", workerRef: resolution.target.workerRef,
+    containerApplicationRef: resolution.target.containerApplicationRef, credentialRef: resolution.target.credentialRef,
+    enabled: resolution.target.enabled, provenance: resolution.target.provenance,
+    lastVerifiedAt: resolution.target.lastVerifiedAt?.toISOString() ?? null, region: resolution.target.region,
+    runtimePolicy: resolution.target.runtimePolicy };
+  return getAuthorizedCloudflareWorkerDeploymentEvidence({ db: input.db, target, fetchImpl: input.fetchImpl, now: input.now });
 }
 
 /** Resolve Worker evidence only from an authorized target record, never from a Worker name alone. */

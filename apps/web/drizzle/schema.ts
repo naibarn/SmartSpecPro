@@ -1589,6 +1589,9 @@ export const apiAuditEvents = pgTable(
     index("api_audit_events_trace_id").on(t.traceId),
     index("api_audit_events_user_created").on(t.userId, t.createdAt),
     index("api_audit_events_type_created").on(t.eventType, t.createdAt),
+    uniqueIndex("api_audit_migration_receipt_phase_idempotency_unique")
+      .on(sql`(${t.metadata}->>'idempotencyKey')`, sql`(${t.metadata}->>'phase')`)
+      .where(sql`${t.eventType} = 'migration_execution_receipt'`),
   ]
 );
 
@@ -22446,6 +22449,42 @@ export const systemResourceState = pgTable("system_resource_state", {
 
 export type SystemResourceState = typeof systemResourceState.$inferSelect;
 export type InsertSystemResourceState = typeof systemResourceState.$inferInsert;
+
+/** SPEC-288 provider/resource authority for environment deployment targets. */
+export const providerDeploymentTargets = pgTable(
+  "provider_deployment_targets",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    projectId: varchar("projectId", { length: 100 }).notNull(),
+    environment: varchar("environment", { length: 32 }).notNull(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    deploymentTargetId: varchar("deploymentTargetId", { length: 160 }).notNull(),
+    accountRef: varchar("accountRef", { length: 255 }),
+    workerRef: varchar("workerRef", { length: 255 }),
+    containerApplicationRef: varchar("containerApplicationRef", { length: 255 }),
+    credentialRef: varchar("credentialRef", { length: 255 }).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    provenance: varchar("provenance", { length: 500 }).notNull(),
+    region: varchar("region", { length: 100 }),
+    runtimePolicy: varchar("runtimePolicy", { length: 160 }),
+    verificationVersion: integer("verificationVersion").notNull().default(1),
+    lastVerifiedAt: timestamp("lastVerifiedAt", { withTimezone: true }),
+    createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+    updatedBy: integer("updatedBy").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  t => [
+    uniqueIndex("provider_deployment_targets_active_identity_unique")
+      .on(t.tenantId, t.projectId, t.environment, t.provider)
+      .where(sql`${t.enabled} = true`),
+    index("provider_deployment_targets_project_idx").on(t.tenantId, t.projectId, t.environment),
+  ],
+);
+
+export type ProviderDeploymentTarget = typeof providerDeploymentTargets.$inferSelect;
+export type InsertProviderDeploymentTarget = typeof providerDeploymentTargets.$inferInsert;
 
 // ==========================================
 // Virtual AI Office Orchestrator — Automation Handoffs & External Intake (Section 16)
