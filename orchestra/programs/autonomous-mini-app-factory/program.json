@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "b2e7c32466e35384a024d2e3b2009d0af1c651f3",
+    "sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:69e48748-ed66-426a-86f0-c667122c980a"
+    "convergenceReceipt": "workspace-convergence:348f3a86-1f81-4f47-ba38-ae4e45ccf525"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -42,7 +42,7 @@
   },
   "currentWorkunit": {
     "id": "SPEC304_RESEARCH_NOTES_AI_SUMMARY_BACKGROUND",
-    "state": "IMPLEMENTED_PENDING_INTEGRATION",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -53,13 +53,14 @@
       "PR #238 integrated the Research Notes UI and tenant-bound public App resolution at origin/main SHA 1f898eb5f4e00b7befd026e8cbf551bc524a5ae8; 12 focused UI/router/service tests passed on source 1b008107.",
       "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE integrated at 3ad161e36132db51d7a9260a20d07e362ac8b2cd; 21 focused tests passed on that exact SHA.",
       "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence.",
-      "AI summary is enqueued atomically through canonical worker_jobs/outbox, uses tenant/project/note scope and source-version idempotency, and is registered with the PostgreSQL node worker. Focused suite: 8 files, 29 tests passed on source 4880ef58; git diff --check passed."
+      "AI summary is enqueued atomically through canonical worker_jobs/outbox, uses tenant/project/note scope and source-version idempotency, and is registered with the PostgreSQL node worker. Focused suite: 8 files, 29 tests passed on source 4880ef58; git diff --check passed.",
+      "PR #240 merged normally: source 48e8dd1fad5789dcd3c63a615f9776a121e005cd is reachable from origin/main at de9498f0ae73b9c3f6d0d2abb6dba637f616463a. Registered canonical workspace /home/dev/projects/SmartSpecPro converged cleanly to de9498f0ae73b9c3f6d0d2abb6dba637f616463a."
     ],
     "pending": [
       "Migration 0393 has structural/schema/journal validation only; PostgreSQL application/integration is pending because this environment has no usable DB credentials.",
       "AI summary worker/UI implementation is locally tested and awaits normal PR integration; package/portable manifest, headless actions, deployment descriptor and runtime/UAT evidence remain open."
     ],
-    "nextAction": "Integrate the AI summary/background checkpoint; then implement the portable Mini App manifest/package and headless action contract while preparing a safe database-backed migration/UAT target."
+    "nextAction": "Continue with the portable Mini App manifest/package and headless action contract, then deployment descriptor and smoke/UAT plan; database-backed migration and runtime evidence stay pending."
   },
   "checkpoints": [
     {
@@ -102,9 +103,11 @@
     },
     {
       "id": "SPEC304_RESEARCH_NOTES_AI_SUMMARY_BACKGROUND",
-      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "state": "PARTIAL_INTEGRATED",
       "sourceSha": "4880ef58b291666d4e66e4d004ef83e4766daa9e",
-      "evidence": "8 focused Vitest files, 29 tests passed; retry regression tests 3/3 passed; retry worker py_compile passed; git diff --check and program JSON validation passed. PostgreSQL migration application and provider runtime remain pending."
+      "evidence": "8 focused Vitest files, 29 tests passed; retry regression tests 3/3 passed; retry worker py_compile passed; git diff --check and program JSON validation passed. PostgreSQL migration application and provider runtime remain pending.",
+      "sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/240"
     }
   ],
   "completedWorkunits": [],
@@ -244,8 +247,8 @@
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
       "lastScenario": "Retryable GitHub integration completed without a user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/239",
-      "integratedSha": "b2e7c32466e35384a024d2e3b2009d0af1c651f3"
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/240",
+      "integratedSha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a"
     }
   },
   "deferredInfrastructure": [
@@ -253,5 +256,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T16:05:00Z"
+  "updatedAt": "2026-10-07T16:02:08Z"
 }
