@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "bea3933b18bc11dc76dbac4d972b8ed14532be65",
+    "expected_canonical_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Continue P0-WU-4C local gap closure. Keep P0_CODE_IMPLEMENTATION=PARTIAL while: (1) the registered canonical user workspace has modified apps/web/finance-ocr-debug.jsonl and untracked .tmp-audit-download/SmartSpecPro-True-Latest-Audit-2026-10-07.zip, preserved at the linked recovery receipt; (2) 46 UNKNOWN_OWNER rows remain UNRESOLVED_OWNER_PROVENANCE; (3) no durable failed-migration execution-result source is bound, so Drizzle remains UNKNOWN/NOT_TRACKED; and (4) Cloudflare runtime evidence adapters have no internal call site bound to tenant/deployment targets, while local provider/account refs are not configured. Do not invoke live production endpoints or infer ownership/provider configuration.",
+    "next_action": "Do not mark P0 complete. Finish local provider-path wiring by resolving an authoritative tenant/deployment target source before calling Cloudflare adapters; inspect/establish a durable migration failure-result source without duplicating an existing ledger; obtain provenance or owner disposition for the 46 UNKNOWN_OWNER workspaces; and reconcile the registered canonical workspace only after its modified apps/web/finance-ocr-debug.jsonl and untracked audit ZIP have explicit disposition. No live provider query or destructive workspace action has been performed.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0-WU-4C at canonical main bea3933b18bc11dc76dbac4d972b8ed14532be65. The code and Handoff through PR #212 are integrated. First preserve/resolve the two dirty canonical workspace paths by their owner, then continue provider-target discovery and migration execution-result source analysis; do not perform destructive worktree cleanup.",
+    "resume_point": "P0-WU-4C at origin/main d6ca72a05ac2b574d8d05761a7913d06a17f7163. Last regression refresh passed 71 tests. Canonical user workspace is still dirty and behind, with recovery receipt /home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T080814745213Z/manifest.json. Cloudflare target and migration failed-result source discovery remain open; production verification is separate.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 64,
+  "generation": 65,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -248,9 +248,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bea3933b18bc11dc76dbac4d972b8ed14532be65",
+    "canonical_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
     "integrated": true,
-    "integrated_at": "2026-10-07T08:02:08Z"
+    "integrated_at": "2026-10-07T08:07:04Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -632,7 +632,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T08:05:40.548418Z",
+  "updated_at": "2026-10-07T08:09:01.659378Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -872,6 +872,20 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-current-canonical-workspace-convergence-20261007.md",
         "scope": "Attempted exact-SHA convergence and verification of the registered canonical checkout; dirty work was preserved with a recovery receipt.",
         "source_sha": "bea3933b18bc11dc76dbac4d972b8ed14532be65",
+        "status": "BLOCKED"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_REGRESSION_REFRESH",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-final-current-state-20261007.md",
+        "scope": "Five focused Runner/Mission Control/Spec-224 suites; 71 tests pass with test-only JWT configuration.",
+        "source_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
+        "status": "PASS"
+      },
+      {
+        "kind": "CANONICAL_USER_WORKSPACE_CONVERGENCE",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4c-final-current-state-20261007.md",
+        "scope": "Exact-SHA convergence attempted; the existing canonical checkout has two unrelated dirty user paths preserved with a recovery receipt.",
+        "source_sha": "d6ca72a05ac2b574d8d05761a7913d06a17f7163",
         "status": "BLOCKED"
       }
     ],
