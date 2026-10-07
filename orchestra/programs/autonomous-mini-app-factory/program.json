@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "PROJECT_WIKI_PAGES_REFERENCE_MINI_APP",
-    "state": "CHECKPOINT_READY",
+    "state": "PR_PENDING",
     "objective": "Complete the second Mini App Factory reference app through scoped implementation, authorization/UI tests, disposable migration validation, and package build; deployment/UAT remain gated on a supported isolated runtime.",
     "implementation": [
       "apps/web/drizzle/0394_project_wiki_pages_mini_app.sql",
@@ -76,7 +76,9 @@
       "Shared package builder built app_project_wiki_pages: digest spaas-package-v1:sha256:0f5094b9fded79258095dd1fc8c418729199006ae964d416e621f80b2525c62a; archive SHA-256 ca4328932e7664bfabb3b7ebfa13fb169dc6db6aefc71a7f68ac2f00f05d4723; validator needs_context.",
       "git diff --check and JSON validation passed. Runtime deployment and authenticated UAT are not claimed."
     ],
-    "nextAction": "Promote this safe checkpoint through a normal PR, converge the registered canonical workspace, then continue Factory execution/resume wiring and the non-production runtime lane."
+    "nextAction": "Promote this safe checkpoint through a normal PR, converge the registered canonical workspace, then continue Factory execution/resume wiring and the non-production runtime lane.",
+    "sourceSha": "42951de5a",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/260"
   },
   "checkpoints": [
     {
@@ -207,8 +209,9 @@
       "id": "PROJECT_WIKI_PAGES_REFERENCE_MINI_APP_IMPLEMENTATION",
       "state": "IMPLEMENTED_TESTED_PACKAGE_BUILT",
       "sourceBranch": "codex/project-wiki-pages-miniapp-20261008",
-      "sourceSha": "PENDING_COMMIT",
-      "evidence": "10 focused tests passed; disposable migration constraints passed; package built needs_context; deployment/UAT pending."
+      "sourceSha": "42951de5a",
+      "evidence": "10 focused tests passed; disposable migration constraints passed; package built needs_context; deployment/UAT pending.",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/260"
     }
   ],
   "blockedWorkunits": [
@@ -392,10 +395,14 @@
   "executionCheckpoint": {
     "taskWorktree": "/home/dev/worktrees/project-wiki-pages-miniapp-20261008",
     "sourceBranch": "codex/project-wiki-pages-miniapp-20261008",
-    "localCommits": [],
+    "localCommits": [
+      "42951de5a"
+    ],
     "intendedRemoteBranch": "codex/project-wiki-pages-miniapp-20261008",
     "pendingPullRequest": {
-      "state": "PREPARING_NORMAL_PR",
+      "number": 260,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/260",
+      "state": "OPEN",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
