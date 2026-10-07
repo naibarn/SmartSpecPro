@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import io
 import importlib.util
+import re
 import os
 import subprocess
 import sys
@@ -820,18 +821,20 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         scenarios_path = Path(__file__).with_name("workspace_authority_scenarios.json")
         matrix = json.loads(scenarios_path.read_text(encoding="utf-8"))
         scenarios = matrix["scenarios"]
-        self.assertEqual(len(scenarios), 35)
-        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 36)))
+        self.assertEqual(len(scenarios), 67)
+        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 68)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
         self.assertTrue(all(repeat_counts[number] >= count for number, count in {18: 5, 19: 5, 20: 5, 21: 3, 22: 5, 30: 3}.items()))
         self.assertTrue(all(row.get("proof_kind") in {"LOCAL_EXECUTABLE", "CONTRACT_SIMULATION"} for row in scenarios))
         available_tests = {name for name in dir(self) if name.startswith("test_")}
+        runtime_test_source = Path(__file__).with_name("test_runtime_authority.py").read_text(encoding="utf-8")
+        available_tests.update(re.findall(r"^    def (test_[A-Za-z0-9_]+)\(", runtime_test_source, re.MULTILINE))
         self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
             {row["number"] for row in scenarios if row.get("test_name")},
-            set(range(1, 36)),
+            set(range(1, 68)),
         )
 
 

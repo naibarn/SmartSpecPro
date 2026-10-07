@@ -122,6 +122,17 @@ async function readProfileToken(db: DrizzleDB, profileId: CloudflareCredentialPr
   return stored[profileId]?.token ?? "";
 }
 
+/** Runs a provider request with a credential resolved from the encrypted credential center. */
+export async function withCloudflareCredential<T>(
+  db: DrizzleDB,
+  profileId: Exclude<CloudflareCredentialProfileId, "vectorize">,
+  operation: (token: string) => Promise<T>,
+): Promise<{ configured: false } | { configured: true; value: T }> {
+  const token = await readProfileToken(db, profileId);
+  if (!token) return { configured: false };
+  return { configured: true, value: await operation(token) };
+}
+
 type ProbeResult = { id: string; label: string; scope: string; permission: string; status: CloudflareProbeStatus; httpStatus: number | null };
 
 function statusFor(httpStatus: number, success: boolean): CloudflareProbeStatus {

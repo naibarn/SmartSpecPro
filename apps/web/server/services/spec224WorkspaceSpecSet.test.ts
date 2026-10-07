@@ -65,7 +65,7 @@ describe("spec224 workspace Spec Set", () => {
       runnerId: "runner-a",
       workspaceIds: ["workspace-legacy"],
       workspaces: [{ workspaceId: "workspace-a", displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-a", repositoryRef: "do-not-expose" }],
-    })).toEqual([{ workspaceId: "workspace-a", displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-legacy", displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null }]);
+    })).toEqual([{ workspaceId: "workspace-a", projectId: null, repositoryId: null, displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64) }, { workspaceId: "workspace-legacy", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null }]);
   });
 
   it("accepts bounded Markdown and JSON artifacts deterministically", async () => {

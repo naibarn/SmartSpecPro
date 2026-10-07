@@ -7,6 +7,7 @@ a merged source commit or a partial rollout alone.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from datetime import datetime
 from typing import Any
 
 
@@ -100,12 +101,73 @@ def evaluate_production_convergence(release: Mapping[str, Any]) -> dict[str, Any
     ):
         reasons.append("ROLLBACK_LINEAGE_MISSING")
 
+    convergence_state = evaluate_multi_instance_convergence(release)["status"]
     return {
         "status": "PRODUCTION_CONVERGED" if not reasons else "PRODUCTION_CONVERGENCE_PENDING",
+        "convergence_state": convergence_state,
         "source_sha": source_sha,
         "artifact_digest": artifact_digest,
         "reasons": reasons,
     }
+
+
+def evaluate_multi_instance_convergence(evidence: Mapping[str, Any], *, now: float | None = None,
+                                        max_age_seconds: int = 300) -> dict[str, Any]:
+    """Return deterministic normalized release state from authoritative evidence."""
+    import time
+
+    now = time.time() if now is None else now
+    source = evidence.get("source_sha")
+    artifact = evidence.get("artifact_digest")
+    if not source or not artifact or evidence.get("artifact_source_sha") != source:
+        state = "SOURCE_ARTIFACT_MISMATCH"
+    elif evidence.get("release_kind") == "ROLLBACK" and evidence.get("rollback_in_progress"):
+        state = "ROLLBACK_IN_PROGRESS"
+    elif evidence.get("migration_failed") or any(row.get("state") in {"FAILED", "MIGRATION_FAILED"} for row in evidence.get("migration_evidence") or []):
+        state = "MIGRATION_FAILED"
+    elif evidence.get("migration_pending") or any(row.get("state") not in {"APPLIED_VERIFIED", "APPLIED"} for row in evidence.get("migration_evidence") or []):
+        state = "MIGRATION_PENDING"
+    else:
+        instances = list(evidence.get("instances") or evidence.get("runtime_targets") or [])
+        if any(_observation_is_stale(row.get("observed_at"), now, max_age_seconds) for row in instances):
+            state = "STALE_INSTANCE"
+        elif not instances:
+            state = "UNKNOWN_EVIDENCE"
+        elif any(row.get("artifact_digest") != artifact for row in instances):
+            state = "ARTIFACT_RUNTIME_MISMATCH"
+        else:
+            revisions = [row.get("revision", row.get("runtime_revision")) for row in instances]
+            expected_revision = evidence.get("expected_revision")
+            if expected_revision is None and len(set(revisions)) > 1:
+                state = "MIXED_REVISION"
+            elif expected_revision is not None and any(revision != expected_revision for revision in revisions):
+                state = "MIXED_REVISION" if len(set(revisions)) > 1 else "PARTIAL_ROLLOUT"
+            elif any(row.get("health") in {"DEGRADED", "UNHEALTHY"} for row in instances):
+                state = "HEALTH_DEGRADED"
+            elif any(row.get("health") not in {"HEALTHY"} for row in instances):
+                state = "UNKNOWN_EVIDENCE"
+            else:
+                state = "FULLY_CONVERGED"
+    return {
+        "status": state,
+        "source_sha": source,
+        "artifact_digest": artifact,
+        "instance_count": len(evidence.get("instances") or evidence.get("runtime_targets") or []),
+        "evaluated_at": now,
+    }
+
+
+def _observation_is_stale(value: Any, now: float, max_age_seconds: int) -> bool:
+    if value is None:
+        return True
+    try:
+        observed = float(value)
+    except (TypeError, ValueError):
+        try:
+            observed = datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+        except (TypeError, ValueError):
+            return True
+    return now - observed > max_age_seconds or observed > now + 30
 
 
 def evaluate_development_completion(evidence: Mapping[str, Any]) -> dict[str, Any]:

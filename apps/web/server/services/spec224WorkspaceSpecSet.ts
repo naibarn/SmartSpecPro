@@ -90,14 +90,14 @@ function normalizeFile(path: string, bytes: Buffer): Spec224WorkspaceSpecFile {
 }
 
 /** Selects only the Runner's opaque, sanitized workspace identity/display facts. */
-export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspaceId: string; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }> {
+export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }> {
   if (!snapshot || typeof snapshot !== "object") return [];
   const source = snapshot as { workspaceIds?: unknown; workspaces?: unknown };
-  const facts = new Map<string, { displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }>();
+  const facts = new Map<string, { projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null }>();
   if (Array.isArray(source.workspaces)) {
     for (const candidate of source.workspaces) {
       if (!candidate || typeof candidate !== "object") continue;
-      const record = candidate as { workspaceId?: unknown; displayName?: unknown; gitHead?: unknown; gitBranch?: unknown; dirty?: unknown; contentFingerprint?: unknown };
+      const record = candidate as { workspaceId?: unknown; projectId?: unknown; repositoryId?: unknown; displayName?: unknown; gitHead?: unknown; gitBranch?: unknown; dirty?: unknown; contentFingerprint?: unknown };
       if (typeof record.workspaceId !== "string" || !record.workspaceId.trim() || record.workspaceId.length > 200) continue;
       const displayName = typeof record.displayName === "string" && record.displayName.trim() ? record.displayName.trim() : null;
       const gitHead = typeof record.gitHead === "string" && /^[a-f0-9]{40,64}$/.test(record.gitHead) ? record.gitHead : null;
@@ -105,12 +105,14 @@ export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspace
       const dirty = typeof record.dirty === "boolean" ? record.dirty : null;
       const contentFingerprint = typeof record.contentFingerprint === "string" && /^[a-f0-9]{64}$/.test(record.contentFingerprint) ? record.contentFingerprint : null;
       const current = facts.get(record.workspaceId);
-      if (!current || (current.displayName === null && displayName)) facts.set(record.workspaceId, { displayName, gitHead, gitBranch, dirty, contentFingerprint });
+      const projectId = typeof record.projectId === "string" && record.projectId.trim() && record.projectId.length <= 200 ? record.projectId.trim() : null;
+      const repositoryId = typeof record.repositoryId === "string" && record.repositoryId.trim() && record.repositoryId.length <= 200 ? record.repositoryId.trim() : null;
+      if (!current || (current.displayName === null && displayName)) facts.set(record.workspaceId, { projectId, repositoryId, displayName, gitHead, gitBranch, dirty, contentFingerprint });
     }
   }
   if (Array.isArray(source.workspaceIds)) {
     for (const workspaceId of source.workspaceIds) {
-      if (typeof workspaceId === "string" && workspaceId.trim() && workspaceId.length <= 200 && !facts.has(workspaceId)) facts.set(workspaceId, { displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null });
+      if (typeof workspaceId === "string" && workspaceId.trim() && workspaceId.length <= 200 && !facts.has(workspaceId)) facts.set(workspaceId, { projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null });
     }
   }
   return [...facts.entries()].map(([workspaceId, facts]) => ({ workspaceId, ...facts })).sort((left, right) => left.workspaceId.localeCompare(right.workspaceId));

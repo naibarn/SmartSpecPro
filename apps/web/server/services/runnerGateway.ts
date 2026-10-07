@@ -570,11 +570,17 @@ export class RunnerGateway {
         "Runner is not owned by the authenticated user"
       );
     const revoked = new Date().toISOString();
+    const endedSessionId = node.activeSessionId;
     node.revokedAt = revoked;
     node.activeSessionId = null;
     node.trustState = "revoked";
     node.status = "revoked";
     await this.repository.saveNode(node);
+    if (endedSessionId) {
+      const { enqueueWorkspaceAuthorityAuditEvent } = await import("../jobs/workspaceAuthorityAuditJob");
+      await enqueueWorkspaceAuthorityAuditEvent({ tenantId: input.tenantId, eventType: "SESSION_FINISH", eventId: `${input.runnerId}:${endedSessionId}` })
+        .catch(error => console.warn("[WorkspaceAuthority] session-finish audit enqueue failed", { runnerId: input.runnerId, error: error instanceof Error ? error.name : "unknown" }));
+    }
     return node;
   }
 }

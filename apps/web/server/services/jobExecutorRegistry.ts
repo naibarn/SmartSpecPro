@@ -1274,3 +1274,16 @@ defaultJobExecutorRegistry.register({
     return result;
   },
 });
+
+defaultJobExecutorRegistry.register({
+  jobType: "workspace.authority.audit",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, lease, reporter }) => {
+    await reporter.assertActive(lease);
+    const { executeWorkspaceAuthorityAudit } = await import("../jobs/workspaceAuthorityAuditJob");
+    const result = await executeWorkspaceAuthorityAudit({ tenantId: context.tenantId });
+    await reporter.assertActive(lease);
+    return { output: result };
+  },
+});
