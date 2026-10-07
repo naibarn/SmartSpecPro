@@ -41,13 +41,16 @@ describe("Research Notes portable package", () => {
   it("exposes only authenticated procedures and never accepts caller user or tenant authority", () => {
     const actions = JSON.parse(readFileSync(join(packageRoot, "actions.json"), "utf8")) as {
       transport: { authentication: string; callerMaySetTenantOrUserId: boolean };
-      actions: Array<{ id: string; input: string[] }>;
+      actions: Array<{ id: string; input: string[]; inputSchema: { additionalProperties: boolean; properties: Record<string, unknown> } }>;
     };
     expect(actions.transport.authentication).toBe("authenticated-platform-session");
     expect(actions.transport.callerMaySetTenantOrUserId).toBe(false);
     expect(actions.actions.map(({ id }) => id)).toContain("notes.summary.request");
     expect(actions.actions.flatMap(({ input }) => input)).not.toContain("tenantId");
     expect(actions.actions.flatMap(({ input }) => input)).not.toContain("userId");
+    expect(actions.actions.every(({ inputSchema }) => inputSchema.additionalProperties === false)).toBe(true);
+    expect(actions.actions.flatMap(({ inputSchema }) => Object.keys(inputSchema.properties))).not.toContain("tenantId");
+    expect(actions.actions.flatMap(({ inputSchema }) => Object.keys(inputSchema.properties))).not.toContain("userId");
   });
 
   it("keeps deployment and UAT explicitly pending until an authorized environment exists", () => {

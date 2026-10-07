@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "88db09239234c1ce2444bca10f44903f26ff5e8d",
+    "sha": "c0a9eef1a2d230b200b9f791b328b90d300fe9e3",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:348f3a86-1f81-4f47-ba38-ae4e45ccf525"
+    "convergenceReceipt": "workspace-convergence:48084354-a2f2-4617-b602-3684ed70aacf"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -41,7 +41,7 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC295_RESEARCH_NOTES_DEPLOYMENT_SMOKE_PLAN",
+    "id": "RESEARCH_NOTES_PORTABLE_ACTION_SCHEMA",
     "state": "IMPLEMENTED_PENDING_INTEGRATION",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
@@ -56,13 +56,14 @@
       "AI summary is enqueued atomically through canonical worker_jobs/outbox, uses tenant/project/note scope and source-version idempotency, and is registered with the PostgreSQL node worker. Focused suite: 8 files, 29 tests passed on source 4880ef58; git diff --check passed.",
       "PR #240 merged normally: source 48e8dd1fad5789dcd3c63a615f9776a121e005cd is reachable from origin/main at de9498f0ae73b9c3f6d0d2abb6dba637f616463a. Registered canonical workspace /home/dev/projects/SmartSpecPro converged cleanly to de9498f0ae73b9c3f6d0d2abb6dba637f616463a.",
       "Research Notes SPAAS package descriptor and machine-callable tRPC action catalog validated with the existing Spec 261 package validator; package digest spaas-package-v1:sha256:9090b2e9ec01b2490341e39d4140059d7d5aa34447d321b5e90a9ceb9b23a0fd. Validation is needs_context: V1/V2/V3/V4 passed; V5 runtime placement and V6 migration rollback remain not_evaluated.",
-      "PR #242 merged normally at origin/main SHA 88db09239234c1ce2444bca10f44903f26ff5e8d. Research Notes package/action contract is integrated; the current package digest including deployment descriptor and smoke plan is a85fd5afedcd3378f89663f07d8587cddf09cdea523c57fba78519c579344c03. Local focused suite: 9 files, 32 tests passed; package status needs_context due missing trusted V5/V6 evidence."
+      "PR #242 merged normally at origin/main SHA 88db09239234c1ce2444bca10f44903f26ff5e8d. Research Notes package/action contract is integrated; the current package digest including deployment descriptor and smoke plan is a85fd5afedcd3378f89663f07d8587cddf09cdea523c57fba78519c579344c03. Local focused suite: 9 files, 32 tests passed; package status needs_context due missing trusted V5/V6 evidence.",
+      "The machine action catalog now has strict JSON Schema inputs and typed summary-job output/status enums. Latest local focused suite: 9 files, 32 tests passed; deterministic package digest is spaas-package-v1:sha256:1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b."
     ],
     "pending": [
-      "Deployment descriptor and smoke/UAT plan are prepared, not deployed/executed; environment and base URL remain unselected.",
-      "Migration 0393 application/rollback evidence, runtime placement, provider execution and UAT remain pending."
+      "Action-schema refinement is ready for integration.",
+      "PostgreSQL migration application, runtime placement, deployment and UAT remain NOT_RUN: DATABASE_URL and registered test/deployment environment are absent; no base URL or Cloudflare credential is configured."
     ],
-    "nextAction": "Integrate the deployment descriptor and executable smoke plan; then determine whether a safe non-production database/deployment target is already registered and continue only through the existing SPEC-295 authorities."
+    "nextAction": "Integrate the stricter action schema; continue checking for a safe registered non-production DB/runtime target and run only through existing SPEC-295 migration/deployment authority."
   },
   "checkpoints": [
     {
@@ -122,6 +123,12 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "88db09239234c1ce2444bca10f44903f26ff5e8d",
       "evidence": "9 focused Vitest files, 32 tests passed; package digest a85fd5afedcd3378f89663f07d8587cddf09cdea523c57fba78519c579344c03; validation needs_context for V5 runtime placement and V6 migration rollback; deployment state PREPARED_NOT_DEPLOYED."
+    },
+    {
+      "id": "RESEARCH_NOTES_PORTABLE_ACTION_SCHEMA",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "c0a9eef1a2d230b200b9f791b328b90d300fe9e3",
+      "evidence": "9 focused Vitest files, 32 tests passed; SPAAS package digest 1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b; validation status needs_context for V5/V6."
     }
   ],
   "completedWorkunits": [],
@@ -256,13 +263,13 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_SAFE_DATABASE_AND_DEPLOYMENT_TARGET_EVIDENCE",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_SAFE_DATABASE_AND_RUNTIME_TARGET",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE applies only to integration workunits; independent implementation continues.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "Retryable GitHub integration completed without a user prompt.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/240",
-      "integratedSha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a"
+      "lastScenario": "GitHub/LFS transient failure was covered by automatic resume regression; retry integration recovered without user prompt.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/244",
+      "integratedSha": "c0a9eef1a2d230b200b9f791b328b90d300fe9e3"
     }
   },
   "deferredInfrastructure": [
@@ -270,5 +277,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T16:13:20Z"
+  "updatedAt": "2026-10-07T16:26:20Z"
 }
