@@ -2837,6 +2837,7 @@ async function main() {
   // Prefer PORT, else pick a free one
   const preferred = parseInt(process.env.PORT || "3000");
   const port = Number.isFinite(preferred) ? preferred : 3000;
+  const host = process.env.HOST?.trim() || "0.0.0.0";
 
   // Long-running LLM mutations can legitimately exceed two minutes. Keep the
   // response socket alive slightly longer than the reverse proxy's 600s
@@ -2856,8 +2857,8 @@ async function main() {
     keepAliveTimeoutMs: server.keepAliveTimeout,
   });
 
-  server.listen(port, "0.0.0.0", () => {
-    console.log(`SmartAIHub Web listening on http://0.0.0.0:${port}`);
+  server.listen(port, host, () => {
+    console.log(`SmartAIHub Web listening on http://${host}:${port}`);
 
     // Start background scheduler to resolve pending media images
     import("../services/aiPresentationService")
