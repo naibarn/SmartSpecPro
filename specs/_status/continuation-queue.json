@@ -3436,21 +3436,6 @@
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
-      "priority": "R4_STATUS_CLAIM",
-      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "269"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5",
@@ -3820,51 +3805,6 @@
         "TEST": 0
       },
       "spec_id": "301"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
-      "priority": "R4_STATUS_CLAIM",
-      "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "302"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
-      "priority": "R4_STATUS_CLAIM",
-      "record_key": "canonical:specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "303"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
-      "priority": "R4_STATUS_CLAIM",
-      "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 0
-      },
-      "spec_id": "304"
     },
     {
       "authority": "UNRESOLVED",
@@ -4878,6 +4818,51 @@
       "rationale": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
+      "priority": "P1",
+      "rationale": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
+      "spec_id": "268"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "priority": "P1",
+      "rationale": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
+      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "spec_id": "269"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "priority": "P1",
+      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "spec_id": "302"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+      "priority": "P1",
+      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "record_key": "canonical:specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+      "spec_id": "303"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "priority": "P1",
+      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "spec_id": "304"
     },
     {
       "confidence": "HIGH",

@@ -5,37 +5,36 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "269",
-        "referenced_spec_id": "269",
-        "referencing_spec_id": "279",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L2443",
-        "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
-        "successor_spec_id": "279"
-      }
-    ],
-    "confidence": "UNRESOLVED",
+    "claims": [],
+    "confidence": "HIGH",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+      },
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "DEPENDENCY_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "IMPLEMENTATION",
+      "id": "RUNTIME_CONTEXT_ACCEPTANCE",
+      "next_action": "Implement resolver/context bindings and run direct acceptance.",
+      "root_cause": "App/Project-aware runtime resolution and executable T acceptance are not implemented."
+    }
+  ],
   "concurrency": {
     "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
-    "expected_spec_digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307"
+    "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
     "next_action": null,
@@ -45,24 +44,53 @@
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
+    "rationale": "The source-authority dependency is recovered; runtime resolver, app-aware bindings, and acceptance remain incomplete.",
+    "residual_requirements": [
+      "App-aware MemoryContext runtime binding",
+      "Project resolution receipt integration",
+      "Direct T-01 through T-23 acceptance"
+    ]
   },
   "dependencies": {
     "predicates": [],
     "runtime_capabilities": [],
     "satisfaction_evidence": [],
-    "specs": []
+    "specs": [
+      {
+        "minimum_revision": "2.6",
+        "relationship": "MEMORY_SCOPE_AND_CONTEXT",
+        "spec_id": "268",
+        "status": "CANONICALIZED_PENDING_INTEGRATION"
+      },
+      {
+        "minimum_revision": "0.1",
+        "relationship": "PROJECT_IDENTITY_AND_RESOLUTION",
+        "spec_id": "302",
+        "status": "INTEGRATED"
+      },
+      {
+        "minimum_revision": "current",
+        "relationship": "KNOWLEDGE_AND_EVIDENCE",
+        "spec_id": "266",
+        "status": "INTEGRATED"
+      },
+      {
+        "minimum_revision": "current",
+        "relationship": "WORK_CONTEXT",
+        "spec_id": "292",
+        "status": "INTEGRATED"
+      }
+    ]
   },
   "deployment": {
     "artifact_digest": null,
@@ -73,27 +101,32 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "evidence": [
       {
-        "digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+      },
+      {
+        "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "kind": "DEPENDENCY_SPEC",
+        "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 6,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-    "digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+    "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
     "metadata": {
       "implementation_last_touched_at": null,
       "last_evidence_at": "2026-10-07T04:14:02.325224Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-07T11:19:51+07:00",
+      "spec_last_changed_at": "2026-10-07T11:19:51+07:00"
     },
     "revision": "3.18",
     "slug": "269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
@@ -115,22 +148,89 @@
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
-    "previous_state": "DISCOVERING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
     "updated_at": "2026-10-07T04:14:02.325224Z"
   },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+        },
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "DEPENDENCY_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+        }
+      ],
+      "next_action": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
+      "rationale": "The source-authority dependency is recovered; runtime resolver, app-aware bindings, and acceptance remain incomplete.",
+      "residual_requirements": [
+        "App-aware MemoryContext runtime binding",
+        "Project resolution receipt integration",
+        "Direct T-01 through T-23 acceptance"
+      ]
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+        },
+        {
+          "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+          "kind": "DEPENDENCY_SPEC",
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
+        }
+      ],
+      "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "VALIDATION_PENDING",
+      "state_evidence": [],
+      "updated_at": "2026-10-07T04:14:02.325224Z"
+    },
+    "reconciliation_confidence": {
+      "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+      "value": "HIGH"
+    }
+  },
   "reconciliation": {
-    "confidence": "LOW",
+    "confidence": "HIGH",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
       "continuation_assessment.decision"
     ],
-    "mode": "AUTOMATED_CONSERVATIVE",
+    "mode": "EVIDENCE_RECONCILED",
     "reconciled_at": "2026-10-07T04:14:02.325224Z",
     "sources": [
       {
-        "digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       },
@@ -142,7 +242,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 8,
         "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-        "source_digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
       }
     ],
@@ -161,7 +261,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -173,14 +273,14 @@
         "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER",
         "line": 8,
         "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-        "source_digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5059a64399a02a75e6cfcbbaf29a7e26ddcaaf73eff2fdd8f389cfa966f4f307",
+        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       }
@@ -188,7 +288,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -200,14 +300,29 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:22:34.246013Z",
+  "updated_at": "2026-10-07T05:16:50.968338Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
+    "evidence": [
+      {
+        "kind": "TARGETED_REGRESSION",
+        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
+        "scope": "existing runtime helper regressions; not direct T acceptance",
+        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "status": "PASS"
+      },
+      {
+        "kind": "UAT_MATRIX",
+        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
+        "scope": "T-01 through T-23 direct scenarios",
+        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "status": "BLOCKED"
+      }
+    ],
+    "freshness": "STALE",
     "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

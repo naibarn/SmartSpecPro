@@ -1,0 +1,15 @@
+{
+  "canonical_spec_id": "268",
+  "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
+  "canonical_revision": "2.6",
+  "recovered_revision": "2.5",
+  "recovery_source": "/home/dev/.codex/attachments/c868351d-ed07-4463-8f34-81fa618b51bd/SpecR7.zip#SPEC-268-SmartAIHub-Unified-Memory-R2.5-Work-Context-Evidence-Alignment.md",
+  "recovery_source_sha256": "1804759f845dafb5412886114a192e9703b9e5550dfa98c0a06d048878adb978",
+  "recovery_source_bytes": 310534,
+  "recovery_evidence": "/home/dev/.codex/sessions/2026/10/05/rollout-2026-10-05T19-44-10-01a10c17-d42f-78e3-af34-9bd6eb87ecb6.jsonl; lines 87-90 show selected archive entry, canonical mapping, and copied byte/hash verification.",
+  "recovery_method": "Restored exact R2.5 source bytes as a supporting recovery artifact. Created canonical R2.6 by preserving predecessor content and adding a separately labeled additive amendment; no R2.5 source bytes were edited in the recovery artifact.",
+  "external_library_check": "Unavailable; repository/archive evidence only.",
+  "recovery_task_base_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+  "latest_origin_main_at_last_reconciliation": "587e52b7067482582b807a8786b81c075b8f46b8",
+  "latest_origin_main_at_candidate_promotion": "327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c"
+}
