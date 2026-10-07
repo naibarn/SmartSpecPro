@@ -95,7 +95,7 @@
     }
   ],
   "sourceSha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
-  "generatedAt": "2026-10-07T17:54:08Z",
+  "generatedAt": "2026-10-07T18:00:00Z",
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "reason": "Loopback server reached healthz/readyz, but full schema bootstrap and authenticated Research Notes API/UI smoke failed on the incomplete disposable DB. Drizzle push needs the unavailable vector extension.",
