@@ -42,6 +42,30 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.workspaces.observed[0]).toMatchObject({ provider: "UNKNOWN", agentIdentity: "runner-a", agentIdentityResolutionSource: "trusted_runner_registration", providerResolutionSource: "no_active_session_provider_fact" });
   });
 
+  it("merges registered owner task facts with trusted Runner provider facts for the same live session", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now,
+      localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: now,
+      localMissionControl: { sessions: { active_count: 1, active: [{ session_id: "session-a", provider: "UNKNOWN",
+        runner_id: null, task_id: "task-a", owner_host: "host-a", execution_state: "LEASED" }] } },
+    });
+
+    expect(result.sessions).toMatchObject({ activeCount: 1, active: [expect.objectContaining({
+      sessionId: "session-a", provider: "codex", runnerId: "runner-a", runner_id: "runner-a",
+      agentIdentity: "codex", task_id: "task-a", owner_host: "host-a", execution_state: "LEASED",
+    })] });
+  });
+
+  it("does not choose between conflicting confirmed session providers", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now,
+      localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: now,
+      localMissionControl: { sessions: { active_count: 1, active: [{ session_id: "session-a", provider: "claude" }] } },
+    });
+
+    expect(result.sessions.active[0]).toMatchObject({
+      provider: "UNKNOWN", providerResolutionSource: "conflicting_authoritative_provider_facts",
+    });
+  });
+
   it("reports conflicts in project/repository or dirty-state facts instead of selecting a newer host", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
       runner(),

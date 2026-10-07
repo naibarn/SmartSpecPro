@@ -111,6 +111,39 @@ function freshRemoteWorkspaceStates(value: unknown, now: Date): unknown[] {
   });
 }
 
+function sessionField(row: Record<string, unknown>, camel: string, snake: string): unknown {
+  return row[camel] ?? row[snake];
+}
+
+function knownSessionProvider(value: unknown): string | null {
+  return typeof value === "string" && value.trim() && value.trim().toUpperCase() !== "UNKNOWN"
+    ? value.trim() : null;
+}
+
+function mergeActiveSessionFacts(previous: Record<string, unknown>, incoming: Record<string, unknown>): Record<string, unknown> {
+  const merged = { ...previous, ...incoming };
+  const previousProvider = knownSessionProvider(previous.provider);
+  const incomingProvider = knownSessionProvider(incoming.provider);
+  const providerConflict = Boolean(previousProvider && incomingProvider && previousProvider.toLowerCase() !== incomingProvider.toLowerCase());
+  const provider = providerConflict ? "UNKNOWN" : incomingProvider ?? previousProvider ?? "UNKNOWN";
+  const providerResolutionSource = providerConflict ? "conflicting_authoritative_provider_facts"
+    : incomingProvider ? incoming.providerResolutionSource ?? incoming.provider_resolution_source ?? "registered_owner_session_fact"
+      : previous.providerResolutionSource ?? previous.provider_resolution_source ?? "no_authoritative_provider_fact";
+  const sessionId = sessionField(incoming, "sessionId", "session_id") ?? sessionField(previous, "sessionId", "session_id");
+  const runnerId = sessionField(incoming, "runnerId", "runner_id") ?? sessionField(previous, "runnerId", "runner_id");
+  const taskId = sessionField(incoming, "taskId", "task_id") ?? sessionField(previous, "taskId", "task_id");
+  const agentIdentity = incoming.agentIdentity ?? previous.agentIdentity ?? incoming.agent_identity ?? previous.agent_identity;
+  return {
+    ...merged,
+    ...(sessionId ? { sessionId } : {}),
+    ...(runnerId ? { runnerId, runner_id: runnerId } : {}),
+    ...(taskId ? { taskId, task_id: taskId } : {}),
+    ...(agentIdentity ? { agentIdentity } : {}),
+    provider,
+    providerResolutionSource,
+  };
+}
+
 export function projectRunnerWorkspaceAuthority(input: {
   tenantId: string;
   actorId: number;
@@ -248,7 +281,10 @@ export function projectRunnerWorkspaceAuthority(input: {
   for (const row of [...sessions, ...localActiveSessions]) {
     const id = typeof row.sessionId === "string" ? row.sessionId
       : typeof row.session_id === "string" ? row.session_id : null;
-    if (id) activeSessionsById.set(id, row);
+    if (id) {
+      const existing = activeSessionsById.get(id);
+      activeSessionsById.set(id, existing ? mergeActiveSessionFacts(existing, row) : row);
+    }
   }
   const activeSessions = [...activeSessionsById.values()];
   const localDevelopment = local?.development_state && typeof local.development_state === "object"
