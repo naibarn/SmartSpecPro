@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "073020f0bc222f4d1dfdde75d12716cfbc036d84",
+    "expected_canonical_sha": "94db033447cf115490d970bb368b00a0949043e4",
     "expected_spec_digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
   },
   "continuation": {
-    "next_action": "Resolve the missing authoritative tenant-to-Cloudflare deployment target/configuration source before binding the adapters; establish whether an existing durable failed-migration result source is available; preserve the 46 UNKNOWN_OWNER rows until provenance or owner disposition exists; reconcile the canonical user checkout only after explicit disposition of its two existing dirty paths. Keep external production verification separate.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: add the persisted tenant/project/environment provider-resource target source and integrate Worker/Container evidence callers; add migration execution receipts to real migration paths using shared audit evidence; bind credential references to tenant authority; preserve canonical user dirty data until its owner disposition and the main-branch worktree constraint are resolved.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0-WU-4C at origin/main 073020f0bc222f4d1dfdde75d12716cfbc036d84. PR #216 and 12 focused Web suites (115 tests) pass; Workspace Authority 48 and Runtime Authority 41 passed before the test-only change. Handoff validation passes. Cloudflare target authority, migration failure history, and canonical checkout disposition remain open; latest checkout recovery receipt: /home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T083109229742Z/manifest.json.",
+    "resume_point": "Continue after PR #218 at origin/main 94db033447cf115490d970bb368b00a0949043e4. Focus next on a persisted provider/resource target record and live caller integration, durable migration execution receipts via shared audit storage, and tenant-bound credential references. Canonical user workspace is at this SHA but remains dirty and on its existing codex branch; preserve both unique user paths and the active separate main worktree. See specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-internal-gap-closure-20261007.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 67,
+  "generation": 69,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c",
@@ -208,7 +208,8 @@
       "fb9012f80ef413f34180ccf294588155b0454ae7",
       "452a2073b64a7a610b504b5175196a95a5e58d81",
       "f1bf44911d8176db9414ddc4eee934b0f304dec7",
-      "3369b76ef4aaa252c56121c6abf2b8108bae9969"
+      "3369b76ef4aaa252c56121c6abf2b8108bae9969",
+      "94db033447cf115490d970bb368b00a0949043e4"
     ],
     "mapping": [],
     "source_paths": [
@@ -248,9 +249,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "073020f0bc222f4d1dfdde75d12716cfbc036d84",
+    "canonical_sha": "94db033447cf115490d970bb368b00a0949043e4",
     "integrated": true,
-    "integrated_at": "2026-10-07T08:30:31Z"
+    "integrated_at": "2026-10-07T09:09:52Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -632,7 +633,7 @@
     "unresolved": 166
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T08:32:32.871746Z",
+  "updated_at": "2026-10-07T09:13:59.679040Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -915,6 +916,13 @@
         "scope": "Post-PR-216 canonical convergence was attempted; the user checkout remains dirty/behind and was preserved with a fresh recovery receipt.",
         "source_sha": "073020f0bc222f4d1dfdde75d12716cfbc036d84",
         "status": "BLOCKED"
+      },
+      {
+        "kind": "P0_INTERNAL_GAP_CLOSURE_PARTIAL_218",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-internal-gap-closure-20261007.md",
+        "scope": "Exact Cloudflare target resolver contracts and Drizzle current-state distinction; 10 focused tests pass. Persisted target authority, migration execution receipt wiring, and tenant-scoped credentials remain open.",
+        "source_sha": "94db033447cf115490d970bb368b00a0949043e4",
+        "status": "PASS"
       }
     ],
     "freshness": "UNKNOWN",
