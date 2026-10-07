@@ -27,6 +27,8 @@ export type MigrationEvidence = {
     expectedMigrationHead: { tag: string; hash: string } | null;
     observedAppliedHead: { tag: string | null; hash: string; appliedAt: number | null } | null;
     pendingMigrations: Array<{ tag: string; hash: string }>;
+    currentState: "APPLIED" | "PENDING" | "PARTIALLY_APPLIED" | "UNKNOWN";
+    failureHistory: "FAILURE_HISTORY_UNAVAILABLE";
     failedMigration: MigrationFailureEvidence;
     failureTracking: "TRACKED" | "NOT_TRACKED";
     latestExecution: { tag: string | null; hash: string; result: "APPLIED" | "FAILED" | "UNKNOWN"; executedAt: number | null } | null;
@@ -65,6 +67,10 @@ export function projectDrizzleMigrationEvidence(input: {
   const migrationTagByHash = new Map(input.expected.map(migration => [migration.hash, migration.tag]));
   const latestTag = latest ? migrationTagByHash.get(latest.hash) ?? null : null;
   const expectedHead = input.expected.at(-1) ?? null;
+  const knownApplied = applied.filter(row => migrationTagByHash.has(row.hash));
+  const unknownApplied = applied.some(row => !migrationTagByHash.has(row.hash));
+  const pendingMigrations = input.expected.filter(migration => !appliedHashes.has(migration.hash));
+  const currentState = unknownApplied ? "UNKNOWN" : pendingMigrations.length === 0 ? "APPLIED" : knownApplied.length === 0 ? "PENDING" : "PARTIALLY_APPLIED";
   return {
     status: "OBSERVED",
     source: "drizzle.__drizzle_migrations",
@@ -74,7 +80,9 @@ export function projectDrizzleMigrationEvidence(input: {
       databaseIdentity: input.databaseIdentity,
       expectedMigrationHead: expectedHead,
       observedAppliedHead: latest ? { tag: latestTag, hash: latest.hash, appliedAt: latest.created_at === null ? null : Number(latest.created_at) } : null,
-      pendingMigrations: input.expected.filter(migration => !appliedHashes.has(migration.hash)),
+      pendingMigrations,
+      currentState,
+      failureHistory: "FAILURE_HISTORY_UNAVAILABLE",
       failedMigration: {
         state: "UNKNOWN",
         source: "drizzle.__drizzle_migrations",

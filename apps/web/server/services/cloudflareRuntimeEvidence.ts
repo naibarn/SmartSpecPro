@@ -4,6 +4,92 @@ import { withCloudflareCredential } from "./cloudflareCredentialCenter";
 export type RuntimeEvidenceStatus = "OBSERVED" | "UNAVAILABLE" | "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE" | "ERROR";
 export type RuntimeEvidence<T> = { status: RuntimeEvidenceStatus; observedAt: string; source: string; value: T | null; diagnostic?: string };
 
+/** A target record supplied by the trusted SPEC-288/provider-resource authority. */
+export type CloudflareDeploymentTarget = {
+  targetId: string;
+  tenantId: string;
+  projectId: string;
+  environment: string;
+  provider: "cloudflare";
+  accountRef: string;
+  workerRef: string | null;
+  containerApplicationRef: string | null;
+  credentialRef: "cloudflare:deployment";
+  enabled: boolean;
+  provenance: string;
+  lastVerifiedAt: string | null;
+  region?: string | null;
+  runtimePolicy?: string | null;
+};
+
+export type CloudflareTargetResolution =
+  | { status: "CONFIGURED"; target: CloudflareDeploymentTarget }
+  | { status: "NOT_CONFIGURED" | "PERMISSION_DENIED" | "STALE"; target: null; reason: string };
+
+/** Match only exact tenant/project/environment identity; resource names never establish ownership. */
+export function resolveCloudflareDeploymentTarget(input: {
+  targets: CloudflareDeploymentTarget[];
+  tenantId: string;
+  projectId: string;
+  environment: string;
+  now?: Date;
+  maxAgeMs?: number;
+}): CloudflareTargetResolution {
+  const target = input.targets.find(candidate => candidate.tenantId === input.tenantId &&
+    candidate.projectId === input.projectId && candidate.environment === input.environment &&
+    candidate.provider === "cloudflare");
+  if (!target) return { status: "NOT_CONFIGURED", target: null, reason: "target_not_found" };
+  if (!target.enabled) return { status: "PERMISSION_DENIED", target: null, reason: "target_disabled" };
+  if (!target.targetId || !target.accountRef || !target.credentialRef || !target.provenance) {
+    return { status: "NOT_CONFIGURED", target: null, reason: "target_authority_incomplete" };
+  }
+  if (target.lastVerifiedAt) {
+    const verifiedAt = Date.parse(target.lastVerifiedAt);
+    if (!Number.isFinite(verifiedAt) || (input.now ?? new Date()).getTime() - verifiedAt > (input.maxAgeMs ?? 24 * 60 * 60 * 1000)) {
+      return { status: "STALE", target: null, reason: "target_verification_stale" };
+    }
+  }
+  return { status: "CONFIGURED", target };
+}
+
+/** Resolve Worker evidence only from an authorized target record, never from a Worker name alone. */
+export async function getAuthorizedCloudflareWorkerDeploymentEvidence(input: {
+  db: DrizzleDB;
+  target: CloudflareDeploymentTarget | null;
+  fetchImpl?: CloudflareFetch;
+  now?: Date;
+}): Promise<RuntimeEvidence<unknown>> {
+  const observedAt = (input.now ?? new Date()).toISOString();
+  if (!input.target?.enabled || !input.target?.accountRef || !input.target.workerRef || !input.target.credentialRef) {
+    return { status: "NOT_CONFIGURED", observedAt, source: "cloudflare_workers_api", value: null };
+  }
+  const result = await getCloudflareWorkerDeploymentEvidence({
+    db: input.db, accountId: input.target.accountRef, scriptName: input.target.workerRef,
+    fetchImpl: input.fetchImpl, now: input.now,
+  });
+  return { ...result, value: result.value ? { targetId: input.target.targetId, tenantId: input.target.tenantId,
+    projectId: input.target.projectId, environment: input.target.environment, ...result.value } : null };
+}
+
+/** Container targets are optional; absent authority is an honest NOT_CONFIGURED result. */
+export async function getAuthorizedCloudflareContainerEvidence(input: {
+  db: DrizzleDB;
+  target: CloudflareDeploymentTarget | null;
+  fetchImpl?: CloudflareFetch;
+  now?: Date;
+}): Promise<RuntimeEvidence<unknown>> {
+  const observedAt = (input.now ?? new Date()).toISOString();
+  if (!input.target?.enabled || !input.target?.accountRef || !input.target.containerApplicationRef || !input.target.credentialRef) {
+    return { status: "NOT_CONFIGURED", observedAt, source: "cloudflare_containers_api", value: null };
+  }
+  const result = await getCloudflareContainerInstanceEvidence({
+    db: input.db, accountId: input.target.accountRef, applicationId: input.target.containerApplicationRef,
+    fetchImpl: input.fetchImpl, now: input.now,
+  });
+  return { ...result, value: result.value ? { targetId: input.target.targetId, tenantId: input.target.tenantId,
+    projectId: input.target.projectId, environment: input.target.environment, ...result.value } : null };
+}
+
 type CloudflareFetch = (url: string, init: RequestInit) => Promise<Response>;
 type JsonResponse = { response: Response; body: Record<string, unknown> | null };
 

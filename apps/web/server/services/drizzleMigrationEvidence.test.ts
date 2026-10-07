@@ -16,6 +16,8 @@ describe("Drizzle migration evidence", () => {
       expectedMigrationHead: { tag: "0002_second", hash: "b" },
       observedAppliedHead: { tag: "0001_first", hash: "a", appliedAt: 100 },
       pendingMigrations: [{ tag: "0002_second", hash: "b" }],
+      currentState: "PARTIALLY_APPLIED",
+      failureHistory: "FAILURE_HISTORY_UNAVAILABLE",
       failedMigration: {
         state: "UNKNOWN",
         source: "drizzle.__drizzle_migrations",
@@ -26,6 +28,16 @@ describe("Drizzle migration evidence", () => {
       failureTracking: "NOT_TRACKED",
       latestExecution: { tag: "0001_first", hash: "a", result: "APPLIED", executedAt: 100 },
     } });
+  });
+
+  it("distinguishes applied, pending, partial, and unknown migration current state", () => {
+    const expected = [{ tag: "0001_first", hash: "a" }, { tag: "0002_second", hash: "b" }];
+    const project = (applied: Array<{ hash: string; created_at: number | null }>) => projectDrizzleMigrationEvidence({ environment: "test", databaseIdentity: "db/public", expected, applied }).value;
+    expect(project([{ hash: "a", created_at: 1 }, { hash: "b", created_at: 2 }])?.currentState).toBe("APPLIED");
+    expect(project([])?.currentState).toBe("PENDING");
+    expect(project([{ hash: "a", created_at: 1 }])?.currentState).toBe("PARTIALLY_APPLIED");
+    expect(project([{ hash: "legacy-unknown", created_at: 1 }])?.currentState).toBe("UNKNOWN");
+    expect(project([])?.failureHistory).toBe("FAILURE_HISTORY_UNAVAILABLE");
   });
 
   it("reports an unconfigured database without reading credentials", async () => {
