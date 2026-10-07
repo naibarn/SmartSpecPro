@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "LOCAL_VERIFIED_PENDING_PR",
+    "state": "PR_OPEN_CONFLICT_RECONCILED",
     "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
     "implementation": [
       "apps/web/scripts/research-notes-focused-runtime.ts",
@@ -78,7 +78,8 @@
     ],
     "nextAction": "Integrate this focused API runtime slice, then investigate the smallest safe path to actual UI/runtime acceptance and worker execution. Deployment, provider summary execution, browser UAT, and full service boot remain separate pending evidence.",
     "sourceSha": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
-    "integration": "PENDING_NORMAL_PR"
+    "integration": "PENDING_NORMAL_PR",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/265"
   },
   "checkpoints": [
     {
@@ -405,13 +406,14 @@
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
       "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
       "091a3b7f66fdaebbb5d4fdeec95b06fa3e5dfd17",
-      "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727"
+      "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
+      "e48bd280bc9ab0877a58f39dc1dace873f31db23"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
-      "number": null,
-      "url": null,
-      "state": "NOT_CREATED",
+      "number": 265,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/265",
+      "state": "OPEN",
       "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
@@ -441,7 +443,7 @@
         "outcome": "PASS: disposable PostgreSQL 17; real signed session-cookie authentication; unauthenticated denial; cross-tenant and unmembered-project denial; project-scoped create/list/update/archive over loopback HTTP/tRPC"
       }
     ],
-    "githubIntegration": "IDLE_BEFORE_RUNTIME_PR; normal non-force PR path",
+    "githubIntegration": "PR #265 open after normal merge of latest origin/main; retryable integration state only if GitHub becomes unavailable",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
     "canonicalAtCheckpoint": "3ae709d67481d82eba8b235608c2063a8fa6dc76",
     "canonicalWorkspace": {
