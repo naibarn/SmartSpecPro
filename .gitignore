@@ -322,3 +322,7 @@ apps/web/client/public/releases/*.zip
 # Accidental root-level Drizzle output; application migrations live under
 # apps/web/drizzle/.
 /drizzle/
+
+# Runtime/debug and downloaded audit artifacts belong in external project storage.
+apps/web/finance-ocr-debug.jsonl
+.tmp-audit-download/

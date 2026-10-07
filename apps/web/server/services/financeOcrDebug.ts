@@ -1,10 +1,16 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { getTraceId } from "./traceContext";
 
-const DEFAULT_DEBUG_LOG_PATH = path.resolve(process.cwd(), "finance-ocr-debug.jsonl");
-const DEBUG_LOG_PATH = (process.env.FINANCE_OCR_DEBUG_LOG_PATH || "").trim() || DEFAULT_DEBUG_LOG_PATH;
+const DEFAULT_DEBUG_LOG_PATH = path.join(os.homedir(), ".local", "state", "smartspecpro", "artifacts", "debug", "finance-ocr-debug.jsonl");
+const configuredDebugPath = (process.env.FINANCE_OCR_DEBUG_LOG_PATH || "").trim();
+const configuredPath = configuredDebugPath ? path.resolve(configuredDebugPath) : DEFAULT_DEBUG_LOG_PATH;
+const projectRoot = path.resolve(process.cwd());
+const DEBUG_LOG_PATH = configuredPath === projectRoot || configuredPath.startsWith(`${projectRoot}${path.sep}`)
+  ? DEFAULT_DEBUG_LOG_PATH
+  : configuredPath;
 const DEBUG_ENABLED = (() => {
   const raw = (process.env.FINANCE_OCR_DEBUG_ENABLED || "").trim().toLowerCase();
   if (!raw) {
@@ -94,6 +100,7 @@ export function recordFinanceOcrDebugStep(
   };
 
   try {
+    fs.mkdirSync(path.dirname(DEBUG_LOG_PATH), { recursive: true, mode: 0o700 });
     fs.appendFileSync(DEBUG_LOG_PATH, `${JSON.stringify(entry)}\n`, "utf8");
   } catch {
     // Best-effort debug tracing only.
