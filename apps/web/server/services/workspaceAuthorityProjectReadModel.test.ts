@@ -31,7 +31,7 @@ describe("projectRunnerWorkspaceAuthority", () => {
   it("does not guess a provider from the Runner profile or workspace name when no active tool fact exists", () => {
     const row = runner({ profile: "local_device", currentSnapshotJson: { runnerSessionId: "session-a", workspaces: [{ workspaceId: "codex-project", projectId: "project-a", repositoryId: "repo-a" }] } });
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [row] as never[], now });
-    expect(result.workspaces.observed[0]).toMatchObject({ provider: "UNKNOWN", agentIdentity: "UNKNOWN", providerResolutionSource: "no_active_session_provider_fact" });
+    expect(result.workspaces.observed[0]).toMatchObject({ provider: "UNKNOWN", agentIdentity: "runner-a", agentIdentityResolutionSource: "trusted_runner_registration", providerResolutionSource: "no_active_session_provider_fact" });
   });
 
   it("reports conflicts in project/repository or dirty-state facts instead of selecting a newer host", () => {

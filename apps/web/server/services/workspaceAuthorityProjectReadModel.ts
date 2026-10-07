@@ -73,7 +73,12 @@ export function projectRunnerWorkspaceAuthority(input: {
       repositoryId: workspace.repositoryId,
       hostId: runner.runnerId,
       runnerId: runner.runnerId,
-      agentIdentity: activeSession ? providerFact.provider : "UNKNOWN",
+      agentIdentity: activeSession
+        ? providerFact.provider === "UNKNOWN" ? runner.runnerId : providerFact.provider
+        : "UNKNOWN",
+      agentIdentityResolutionSource: activeSession
+        ? providerFact.provider === "UNKNOWN" ? "trusted_runner_registration" : providerFact.source
+        : "no_active_session_provider_fact",
       provider: activeSession ? providerFact.provider : "UNKNOWN",
       providerResolutionSource: providerFact.source,
       runnerProfile: runner.profile,
