@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1677 unresolved of 1677
 - Next action: Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.
-- Manifest generation: 9
+- Manifest generation: 10
 
 ## Source-declared status and relationship claims
 

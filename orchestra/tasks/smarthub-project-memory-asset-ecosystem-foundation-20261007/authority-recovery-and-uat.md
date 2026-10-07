@@ -1,6 +1,6 @@
 # Authority Recovery, Workspace Convergence, and UAT Evidence
 
-Evidence snapshot and targeted test source: `55a0786a7359f578e0f68743a6551eaa7f588596`, fetched 2026-10-07 04:54 UTC. Latest fetched promotion target is `origin/main` `327c5a6b366ee63c02b8e0e2dd90f3e5ba97fd5c` (PR #160; includes #158 and #159). The test snapshot remains exact, but later commits mean it is not a verification run against the current tip. Source Spec/Handoff paths have no overlap with newer main changes; generated global indexes were regenerated from the latest Spec/Handoff base. This addendum continues prior work; it does not recreate Spec drafting or the 15 review lenses.
+Evidence snapshot and targeted test source: `55a0786a7359f578e0f68743a6551eaa7f588596`, fetched 2026-10-07 04:54 UTC. SPEC-268 recovery PR #163 merged at `a4c5c85f51205c445107e33f6929fe5649d2836b`. Latest fetched `origin/main` is `0a0b597e26ca98fb64a02189471775a580ddf0cc` (PR #165); the test snapshot remains exact, but later commits mean it is not a verification run against the current tip. Source Spec/Handoff paths had no overlap with newer main changes; generated indexes were regenerated on the current base. This addendum continues prior work; it does not recreate Spec drafting or the 15 review lenses.
 
 ## A. SPEC-268 R2.5 disposition
 
@@ -30,6 +30,8 @@ Latest authority observation: `/home/dev/projects/SmartSpecPro` is registered as
 `workspace_authority.py converge` returned `DIRTY_WORK_PRESERVED`. The recovery receipt and path classification are under `/home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T043322324544Z/` (`manifest.json`, `classification.json`). `workspace_authority.py verify` reports `CONVERGENCE_PENDING` with `USER_WORKSPACE_NOT_SYNCED` and `USER_WORKSPACE_DIRTY`. No reset, clean, checkout, or file removal was performed. There is no `USER_WORKSPACE_CONVERGED` receipt.
 
 The two changes are preserved and classified, but clearing/removing the generated log delta and audit input from the registered checkout would violate the instruction not to reset or discard user workspace contents. Convergence therefore remains blocked until their owner/user selects an archival disposition that leaves the checkout clean.
+
+After PR #163, `workspace_authority.py converge --integrated-sha a4c5c85f51205c445107e33f6929fe5649d2836b` returned `DIRTY_WORK_PRESERVED`. `verify` returned `CONVERGENCE_PENDING`, with reasons `USER_WORKSPACE_NOT_SYNCED` and `USER_WORKSPACE_DIRTY`; the resolver's current canonical SHA was `0a0b597e26ca98fb64a02189471775a580ddf0cc`. Latest recovery snapshot: `/home/dev/projects/SmartSpecPro/.git/workspace-recovery/smartspecpro/workspace-63612604-a004-447e-b1c4-616de72d86b7/20261007T052343862437Z/`. The two original paths remain unchanged.
 
 ## D. T-01 through T-23 execution
 
@@ -100,25 +102,25 @@ Repository scan found no duplicate canonical authority for 302–304. All refere
 ## G. Independent completion states and next workunit
 
 ```text
-SPEC_268_DISPOSITION = RECOVERED_AUTHORITATIVE_R2_5; R2.6 additive source prepared
+SPEC_268_DISPOSITION = RECOVERED_AUTHORITATIVE_R2_5; additive R2.6 integrated at a4c5c85f
 SPEC_302_AUTHORITY = REPOSITORY_ID_AUTHORITY_VALID
 SPEC_303_AUTHORITY = REPOSITORY_ID_AUTHORITY_VALID
 SPEC_304_AUTHORITY = REPOSITORY_ID_AUTHORITY_VALID
 EXTERNAL_SPEC_LIBRARY_COLLISION_CHECK = NOT_VERIFIED
 WORKSPACE_OWNER_STATE = NONE / NO_ACTIVE_SESSION / task_id=null
 CANONICAL_USER_WORKSPACE_CONVERGED = FALSE
-T01_T23_LOCAL_EXECUTED = 0/15 direct cases (112 supporting tests passed on 55a0786; stale against cd41d2fe)
+T01_T23_LOCAL_EXECUTED = 0/15 direct cases (112 supporting tests passed on 55a0786; stale against current main)
 T01_T23_INTEGRATION_EXECUTED = 0/5 direct cases
 T01_T23_EXTERNAL_BLOCKED = 3 (T-14, T-16, T-19)
 PROJECT_MEMORY_CONTEXT_ACCEPTANCE = 0/12 direct cases (11 local implementation blockers, 1 external runtime blocker)
 CROSS_SPEC_AUTHORITY_VALIDATION = REPOSITORY_REFERENCE_AND_BOUNDARIES_VALID; runtime acceptance pending
-HANDOFF_UPDATED = TRUE in this candidate branch; validate/index pass; canonical integration pending
+HANDOFF_UPDATED = TRUE; integration SHA refresh to a4c5c85f is in this follow-up
 
-SPEC_AUTHORITY_COMPLETENESS = PARTIAL (SPEC-268 R2.5 recovered and R2.6 source prepared; 302–304 repository ID authority valid; candidate promotion pending; external library check not verified)
-DOCUMENTATION_COMPLETENESS = PARTIAL (R2.5 provenance, R2.6 amendment, T matrix, authority report, and shared Handoff updates are in the candidate branch; canonical integration pending)
-LOCAL_RUNTIME_VALIDATION = PARTIAL (112 Vitest + 20 Python tests passed on 55a0786; direct T cases remain blocked and evidence is stale against cd41d2fe)
+SPEC_AUTHORITY_COMPLETENESS = COMPLETE_REPOSITORY_SCOPE (SPEC-268 source recovered; 302–304 repository ID authority valid; external library status separate)
+DOCUMENTATION_COMPLETENESS = COMPLETE (R2.5 provenance, R2.6 amendment, T matrix, authority report, and shared Handoffs integrated at PR #163)
+LOCAL_RUNTIME_VALIDATION = PARTIAL_STALE_EVIDENCE (112 Vitest + 20 Python tests passed on 55a0786; direct T cases remain blocked)
 EXTERNAL_RUNTIME_VALIDATION = BLOCKED_EXTERNAL (T-14, T-16, T-19; no external/production evidence)
-WORKSPACE_CONVERGENCE = BLOCKED_DIRTY_WORK_PRESERVED (recovery is verified; checkout deliberately unchanged)
+WORKSPACE_CONVERGENCE = BLOCKED_DIRTY_WORK_PRESERVED (latest resolver attempt preserved both paths)
 ```
 
-Next workunit: **`SMARTHUB-AUTHORITY-RECOVERY-UAT-CLOSURE`**. Promote the recovered SPEC-268 R2.5 source, R2.6 amendment, SPEC-269 consumer correction, report, and Handoff updates through the normal integration path; record the resulting SHA. Continue direct T-01–T-23 runtime acceptance and keep external gates separate. Workspace convergence still requires a safe disposition for the generated debug-log delta and audit ZIP; both are preserved and no destructive action is authorized.
+Next workunit: **`SMARTHUB-AUTHORITY-RECOVERY-UAT-CLOSURE`**. Integrate this exact-SHA Handoff refresh. Then implement and run direct T-01–T-23 runtime acceptance; handle external gates separately. Workspace convergence still requires a safe disposition for the generated debug-log delta and audit ZIP; both are preserved and no destructive action is authorized.

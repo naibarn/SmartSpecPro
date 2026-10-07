@@ -44,7 +44,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
     "expected_spec_digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38"
   },
   "continuation": {
@@ -128,7 +128,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
     "digest": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38",
@@ -153,9 +153,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:21:12Z"
+    "integrated_at": "2026-10-07T05:22:30Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -320,7 +320,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:16:51.060135Z",
+  "updated_at": "2026-10-07T05:25:29.876717Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
