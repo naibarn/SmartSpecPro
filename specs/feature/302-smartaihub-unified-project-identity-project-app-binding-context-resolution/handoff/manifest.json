@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
+    "expected_canonical_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
-    "next_action": "Implement the portable Mini App manifest/package and headless action contract; retain PostgreSQL migration application, direct authorization integration tests, deployment and runtime acceptance as open obligations.",
-    "next_ready_workunit": "RESEARCH_NOTES_PORTABLE_MANIFEST_PACKAGE_AND_HEADLESS_ACTIONS",
+    "next_action": "Continue independent implementation and regression evidence; retryable GitHub failures resume automatically. Do not claim deployment/UAT until executed on a registered non-production target.",
+    "next_ready_workunit": "RESEARCH_NOTES_RUNTIME_DEPLOYMENT_TARGET",
     "reactivation_predicate": null,
-    "resume_point": "Research Notes AI summary/background checkpoint integrated at de9498f0ae73b9c3f6d0d2abb6dba637f616463a; 8 focused Vitest files and 29 tests passed on source SHA 48e8dd1fad5789dcd3c63a615f9776a121e005cd. PostgreSQL migration was not applied.",
+    "resume_point": "PR #249 source b661b7e20648b1dc9b0f9f279c6c3257303bdfc0 merged normally at 168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248 and canonical user workspace converged cleanly. Migration 0393 plus Research Notes service authorization passed on disposable PostgreSQL 17; continue with safe authenticated non-production runtime smoke, migration rollback evidence, deployment and UAT when the registered target predicate is met.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 14,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -147,7 +147,8 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "de9498f0ae73b9c3f6d0d2abb6dba637f616463a"
+      "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
+      "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248"
     ],
     "mapping": [],
     "source_paths": [
@@ -162,9 +163,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "de9498f0ae73b9c3f6d0d2abb6dba637f616463a",
+    "canonical_sha": "168f1d1d6dc9d7b8434fb2d2f96b064c3e08c248",
     "integrated": true,
-    "integrated_at": "2026-10-07T16:00:00Z"
+    "integrated_at": "2026-10-07T17:02:28Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -249,62 +250,90 @@
     },
     "requirements": {
       "REQ-6B4D8C8FA775": {
-        "applicability": "UNASSESSED",
+        "applicability": "APPLICABLE",
         "authority_refs": [
           "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24"
         ],
         "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24",
         "blocker": null,
-        "current_relevance": "UNASSESSED",
+        "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+        "evidence_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
             "kind": "CANONICAL_PROJECT_IDENTITY",
             "path": "apps/web/drizzle/schema.ts",
             "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
-            "summary": "Adds separate canonical_projects identity plus tenant-scoped membership and many-to-many App binding; project identity is independent from App identity."
+            "summary": "Separate canonical project identity with tenant-scoped membership and App binding."
+          },
+          {
+            "kind": "MIGRATION_AND_CONSTRAINT_TEST",
+            "path": "apps/web/scripts/test-research-notes-migration.py",
+            "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+            "summary": "Migration 0393 applied to disposable PostgreSQL 17; project/App/note insert/read, cross-tenant FK, oversized note and invalid role constraints verified."
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Apply migration 0393 to a verified non-production database, then add domain-record bindings and cross-App acceptance.",
+        "next_action": "Apply migration 0393 and perform rollback rehearsal on an authorized non-production target, then verify domain-record binding and cross-App acceptance.",
         "requirement_digest": "fc5f2f9e5a37dd3bab9030f9ec03a4a914a49d0d022910cd234b5aa8f94b6c53",
         "requirement_id": "REQ-6B4D8C8FA775",
         "requirement_text": "1. A Project MUST NOT be a child of one App; an App MUST NOT own global Project identity.",
         "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "successor_mapping": [],
-        "verification_evidence": [],
-        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+        "verification_evidence": [
+          {
+            "kind": "DISPOSABLE_POSTGRESQL_MIGRATION",
+            "path": "apps/web/scripts/test-research-notes-migration.py",
+            "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+            "status": "PASS",
+            "summary": "PostgreSQL 17 disposable cluster applied migration 0393 and verified expected constraints; production database untouched."
+          }
+        ],
+        "verification_method": "Run migration and authorization integration checks against a disposable PostgreSQL cluster; repeat migration/rollback and authenticated acceptance on a registered non-production target before completion."
       },
       "REQ-8D8136DAE54F": {
-        "applicability": "UNASSESSED",
+        "applicability": "APPLICABLE",
         "authority_refs": [
           "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28"
         ],
         "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28",
         "blocker": null,
-        "current_relevance": "UNASSESSED",
+        "current_relevance": "RELEVANT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+        "evidence_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
             "kind": "TENANT_PROJECT_APP_AUTHORIZATION",
             "path": "apps/web/server/services/researchNotesService.ts",
             "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
-            "summary": "Research Notes operations scope by tenant, active project membership, project-App binding, active App state and note identity; writes require a non-viewer membership."
+            "summary": "Research Notes operations re-check tenant, membership, project-App binding, App lifecycle and note identity; writes require editor/owner."
+          },
+          {
+            "kind": "DISPOSABLE_POSTGRESQL_SERVICE_AUTHORIZATION",
+            "path": "apps/web/scripts/test-research-notes-service-integration.ts",
+            "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+            "summary": "Actual service authorization tests verified owner CRUD, viewer read/editor-write denial, tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation and archive lifecycle."
           }
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Verify query authorization against PostgreSQL and add revocation/cross-tenant integration tests.",
+        "next_action": "Run authenticated app/project CRUD and cross-tenant summary-job smoke tests on a registered non-production runtime; preserve deployment and live UAT as separate gates.",
         "requirement_digest": "b5baa588f3c5a664edf7f53d2dd7ee415d5888a05ff60c4071259e144b76f496",
         "requirement_id": "REQ-8D8136DAE54F",
         "requirement_text": "5. Identity resolution is distinct from authorization. Every read/write MUST re-check tenant, membership, ACL, and current revocation state.",
         "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
         "successor_mapping": [],
-        "verification_evidence": [],
-        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+        "verification_evidence": [
+          {
+            "kind": "DISPOSABLE_POSTGRESQL_AUTHORIZATION_INTEGRATION",
+            "path": "apps/web/scripts/test-research-notes-service-integration.ts",
+            "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+            "status": "PASS",
+            "summary": "Eight actual Research Notes service authorization/lifecycle checks passed against disposable PostgreSQL; production DB untouched."
+          }
+        ],
+        "verification_method": "Execute authorization and revocation checks against disposable PostgreSQL, then repeat authenticated cross-tenant smoke/UAT on a registered non-production runtime."
       }
     }
   },
@@ -380,7 +409,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -389,35 +418,28 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T16:01:58.501472Z",
+  "updated_at": "2026-10-07T17:06:32.773944Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       {
-        "kind": "REPOSITORY_ID_AUTHORITY",
-        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
-        "scope": "SPEC-302 canonical uniqueness, occupied registry state, dependency closure, and integrated handoff source",
-        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "kind": "DISPOSABLE_POSTGRESQL_MIGRATION_AND_AUTHORIZATION",
+        "path": "apps/web/scripts/test-research-notes-migration.py",
+        "scope": "Migration 0393 application, schema constraints, and actual Research Notes service authorization/lifecycle checks; isolated disposable PostgreSQL 17; no production database touched.",
+        "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
         "status": "PASS"
       },
       {
-        "kind": "TARGETED_REGRESSION",
-        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
-        "scope": "supporting local tests only; not direct T acceptance",
-        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+        "kind": "FOCUSED_REGRESSION",
+        "path": "apps/web/server/services/researchNotesSummaryExecutor.test.ts",
+        "scope": "9 focused Vitest files, 33 tests passed; GitHub outage retry regression 4 tests passed; source integrated by PR 249.",
+        "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
         "status": "PASS"
-      },
-      {
-        "kind": "EXTERNAL_SPEC_LIBRARY",
-        "path": "orchestra/tasks/smarthub-project-memory-asset-ecosystem-foundation-20261007/authority-recovery-and-uat.md",
-        "scope": "external library collision evidence unavailable",
-        "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
-        "status": "NOT_VERIFIED"
       }
     ],
-    "freshness": "STALE",
+    "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+    "sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
     "status": "PARTIAL",
     "task_regressions": []
   }

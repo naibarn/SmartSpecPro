@@ -1,5 +1,5 @@
 {
-  "generation": 4,
+  "generation": 6,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -25,62 +25,90 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24"
       ],
       "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L24",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
+      "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+      "evidence_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
           "kind": "CANONICAL_PROJECT_IDENTITY",
           "path": "apps/web/drizzle/schema.ts",
           "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
-          "summary": "Adds separate canonical_projects identity plus tenant-scoped membership and many-to-many App binding; project identity is independent from App identity."
+          "summary": "Separate canonical project identity with tenant-scoped membership and App binding."
+        },
+        {
+          "kind": "MIGRATION_AND_CONSTRAINT_TEST",
+          "path": "apps/web/scripts/test-research-notes-migration.py",
+          "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+          "summary": "Migration 0393 applied to disposable PostgreSQL 17; project/App/note insert/read, cross-tenant FK, oversized note and invalid role constraints verified."
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Apply migration 0393 to a verified non-production database, then add domain-record bindings and cross-App acceptance.",
+      "next_action": "Apply migration 0393 and perform rollback rehearsal on an authorized non-production target, then verify domain-record binding and cross-App acceptance.",
       "requirement_digest": "fc5f2f9e5a37dd3bab9030f9ec03a4a914a49d0d022910cd234b5aa8f94b6c53",
       "requirement_id": "REQ-6B4D8C8FA775",
       "requirement_text": "1. A Project MUST NOT be a child of one App; an App MUST NOT own global Project identity.",
       "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "kind": "DISPOSABLE_POSTGRESQL_MIGRATION",
+          "path": "apps/web/scripts/test-research-notes-migration.py",
+          "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+          "status": "PASS",
+          "summary": "PostgreSQL 17 disposable cluster applied migration 0393 and verified expected constraints; production database untouched."
+        }
+      ],
+      "verification_method": "Run migration and authorization integration checks against a disposable PostgreSQL cluster; repeat migration/rollback and authenticated acceptance on a registered non-production target before completion."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28"
       ],
       "authority_source": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md#L28",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
+      "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
+      "evidence_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
           "kind": "TENANT_PROJECT_APP_AUTHORIZATION",
           "path": "apps/web/server/services/researchNotesService.ts",
           "source_sha": "3ad161e36132db51d7a9260a20d07e362ac8b2cd",
-          "summary": "Research Notes operations scope by tenant, active project membership, project-App binding, active App state and note identity; writes require a non-viewer membership."
+          "summary": "Research Notes operations re-check tenant, membership, project-App binding, App lifecycle and note identity; writes require editor/owner."
+        },
+        {
+          "kind": "DISPOSABLE_POSTGRESQL_SERVICE_AUTHORIZATION",
+          "path": "apps/web/scripts/test-research-notes-service-integration.ts",
+          "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+          "summary": "Actual service authorization tests verified owner CRUD, viewer read/editor-write denial, tenant isolation, revoked membership, revoked App binding, inactive App, summary invalidation and archive lifecycle."
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Verify query authorization against PostgreSQL and add revocation/cross-tenant integration tests.",
+      "next_action": "Run authenticated app/project CRUD and cross-tenant summary-job smoke tests on a registered non-production runtime; preserve deployment and live UAT as separate gates.",
       "requirement_digest": "b5baa588f3c5a664edf7f53d2dd7ee415d5888a05ff60c4071259e144b76f496",
       "requirement_id": "REQ-8D8136DAE54F",
       "requirement_text": "5. Identity resolution is distinct from authorization. Every read/write MUST re-check tenant, membership, ACL, and current revocation state.",
       "source_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "kind": "DISPOSABLE_POSTGRESQL_AUTHORIZATION_INTEGRATION",
+          "path": "apps/web/scripts/test-research-notes-service-integration.ts",
+          "source_sha": "b661b7e20648b1dc9b0f9f279c6c3257303bdfc0",
+          "status": "PASS",
+          "summary": "Eight actual Research Notes service authorization/lifecycle checks passed against disposable PostgreSQL; production DB untouched."
+        }
+      ],
+      "verification_method": "Execute authorization and revocation checks against disposable PostgreSQL, then repeat authenticated cross-tenant smoke/UAT on a registered non-production runtime."
     },
     {
       "applicability": "UNASSESSED",
