@@ -671,6 +671,37 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             result = authority._cli()
         self.assertEqual(result, 0)
 
+    def test_integration_completion_racing_safe_retirement_is_deferred_then_resumes(self) -> None:
+        task = self.root / "collector-integration-race"
+        git(self.canonical, "worktree", "add", "-b", "task/collector-integration-race", str(task), "HEAD")
+        (task / "tracked.txt").write_text("integrated while collector audits\n", encoding="utf-8")
+        git(task, "add", "tracked.txt")
+        git(task, "commit", "-m", "integration race fixture")
+        registered = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
+
+        fetch_canonical = authority._fetch_canonical
+        completed = False
+
+        def complete_integration_after_fetch(repo: Path, policy: dict[str, object]) -> str:
+            nonlocal completed
+            observed_sha = fetch_canonical(repo, policy)
+            if not completed:
+                git(task, "push", "origin", "HEAD:main")
+                completed = True
+            return observed_sha
+
+        with patch.object(authority, "_fetch_canonical", complete_integration_after_fetch):
+            raced = authority.collect_worktrees(self.canonical, self.policy, mode="RETIRE_SAFE")
+
+        raced_item = next(row for row in raced["workspaces"] if row["workspace_id"] == registered["workspace_id"])
+        self.assertEqual(raced_item["classification"], "BLOCKED")
+        self.assertTrue(task.exists())
+
+        resumed = authority.collect_worktrees(self.canonical, self.policy, mode="RETIRE_SAFE")
+        resumed_item = next(row for row in resumed["workspaces"] if row["workspace_id"] == registered["workspace_id"])
+        self.assertEqual(resumed_item["classification"], "RETIRED")
+        self.assertFalse(task.exists())
+
     def test_registration_racing_retirement_cannot_resurrect_removed_worktree(self) -> None:
         task = self.root / "retirement-registration-race"
         git(self.canonical, "worktree", "add", "-b", "task/retirement-race", str(task), "HEAD")
@@ -744,12 +775,12 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             authority._db = original_db
         self.assertFalse(task.exists())
 
-    def test_scenario_matrix_has_all_thirty_incident_cases_and_repeats_race_cases(self) -> None:
+    def test_scenario_matrix_has_all_incident_cases_and_repeats_race_cases(self) -> None:
         scenarios_path = Path(__file__).with_name("workspace_authority_scenarios.json")
         matrix = json.loads(scenarios_path.read_text(encoding="utf-8"))
         scenarios = matrix["scenarios"]
-        self.assertEqual(len(scenarios), 32)
-        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 33)))
+        self.assertEqual(len(scenarios), 33)
+        self.assertEqual({row["number"] for row in scenarios}, set(range(1, 34)))
         repeated = {row["number"] for row in scenarios if row.get("repetitions", 1) >= 2}
         self.assertTrue({18, 19, 20, 21, 22, 30}.issubset(repeated))
         repeat_counts = {row["number"]: row["repetitions"] for row in scenarios if "repetitions" in row}
@@ -759,7 +790,7 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertTrue(all(row.get("test_name") in available_tests for row in scenarios))
         self.assertEqual(
             {row["number"] for row in scenarios if row.get("test_name")},
-            set(range(1, 33)),
+            set(range(1, 34)),
         )
 
 

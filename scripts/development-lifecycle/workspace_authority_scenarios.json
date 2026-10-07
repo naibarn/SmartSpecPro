@@ -233,6 +233,13 @@
       "proof_kind": "LOCAL_EXECUTABLE",
       "assert": "completed read-only collector run exits successfully for callers and schedulers",
       "test_name": "test_collector_cli_reports_success_for_completed_report_only_audit"
+    },
+    {
+      "number": 33,
+      "name": "integration-completion-races-with-safe-retirement",
+      "proof_kind": "LOCAL_EXECUTABLE",
+      "assert": "collector defers retirement against a stale canonical observation, then safely retires on resumed fresh audit",
+      "test_name": "test_integration_completion_racing_safe_retirement_is_deferred_then_resumes"
     }
   ]
 }
