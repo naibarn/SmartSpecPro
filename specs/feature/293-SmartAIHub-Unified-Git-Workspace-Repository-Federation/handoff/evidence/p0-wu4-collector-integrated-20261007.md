@@ -7,3 +7,10 @@
 - `python3 -m py_compile scripts/development-lifecycle/workspace_authority.py scripts/development-lifecycle/test_workspace_authority.py` — PASS.
 - `git diff --check` — PASS.
 - This is a callable local collector, not a scheduled periodic service. Project-level Mission Control/actions, cross-host authority, production evidence adapters, integration-completion race coverage, and Spec-224 compatibility diagnosis remain open.
+
+## Follow-up CLI correction
+
+- Implementation commit tested: `c48a357b1` (merged PR #111).
+- Integrated `origin/main`: `8d45273a3f1844bd80629a54a0b990e551a1f98a`.
+- Fixed successful `WORKTREE_AUDIT_COMPLETE` CLI exit status; added scenario 32 and CLI regression.
+- Re-ran `python3 -B -m unittest scripts.development-lifecycle.test_workspace_authority` — 36 passed; `py_compile` and `git diff --check` passed.
