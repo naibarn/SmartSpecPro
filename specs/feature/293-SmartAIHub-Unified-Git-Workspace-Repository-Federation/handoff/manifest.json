@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "94e2cd2eb95c63a078cf81b01250bc3ba4adf003",
+    "expected_canonical_sha": "4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
@@ -80,7 +80,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 24,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -109,7 +109,8 @@
       "27092cfda7f1bf651a44f6894b2b0cc87ecf0b11",
       "00e840b514c598e8b0864a694246702feb694a3a",
       "97bfdefe2d787899ec498e1bee9633ec23b75eda",
-      "94e2cd2eb95c63a078cf81b01250bc3ba4adf003"
+      "94e2cd2eb95c63a078cf81b01250bc3ba4adf003",
+      "4850d2bd1b067f9f9c2a292099c6d8233ad39ba8"
     ],
     "mapping": [],
     "source_paths": [
@@ -129,16 +130,20 @@
       "apps/web/server/routers/infrastructure.ts",
       "apps/web/server/services/internalRuntimeEvidence.ts",
       "apps/web/server/services/internalRuntimeEvidence.test.ts",
-      "scripts/development-lifecycle/test_runtime_authority.py"
+      "scripts/development-lifecycle/test_runtime_authority.py",
+      "apps/web/server/services/workspaceAuthorityProjectReadModel.test.ts",
+      "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts",
+      "scripts/development-lifecycle/test_workspace_authority.py",
+      "scripts/development-lifecycle/workspace_authority_scenarios.json"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "94e2cd2eb95c63a078cf81b01250bc3ba4adf003",
+    "canonical_sha": "4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:08:34Z"
+    "integrated_at": "2026-10-07T04:12:24Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -156,7 +161,10 @@
       "https://github.com/naibarn/SmartSpecPro/pull/128",
       "git:97bfdefe2d787899ec498e1bee9633ec23b75eda",
       "https://github.com/naibarn/SmartSpecPro/pull/129",
-      "git:94e2cd2eb95c63a078cf81b01250bc3ba4adf003"
+      "git:94e2cd2eb95c63a078cf81b01250bc3ba4adf003",
+      "https://github.com/naibarn/SmartSpecPro/pull/131",
+      "https://github.com/naibarn/SmartSpecPro/pull/132",
+      "git:4850d2bd1b067f9f9c2a292099c6d8233ad39ba8"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -200,7 +208,10 @@
         "https://github.com/naibarn/SmartSpecPro/pull/128",
         "git:97bfdefe2d787899ec498e1bee9633ec23b75eda",
         "https://github.com/naibarn/SmartSpecPro/pull/129",
-        "git:94e2cd2eb95c63a078cf81b01250bc3ba4adf003"
+        "git:94e2cd2eb95c63a078cf81b01250bc3ba4adf003",
+        "https://github.com/naibarn/SmartSpecPro/pull/131",
+        "https://github.com/naibarn/SmartSpecPro/pull/132",
+        "git:4850d2bd1b067f9f9c2a292099c6d8233ad39ba8"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -286,7 +297,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:08:10.256904Z",
+  "updated_at": "2026-10-07T04:14:37.883792Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
