@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+    "sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
-      "canonical_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
-      "canonical_user_workspace_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+      "integrated_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "canonical_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "canonical_user_workspace_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:5b76c8ec-4d1e-476a-a718-3523fac65046",
-      "verified_at": "2026-10-07T20:01:15.976+00:00"
+      "receipt_id": "workspace-convergence:7f74ea99-026c-44d0-a725-e04f4739d446",
+      "verified_at": "2026-10-07T20:05:00+00:00"
     },
-    "observedAt": "2026-10-08T03:01:55+07:00",
+    "observedAt": "2026-10-08T03:08:00+07:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
-      "canonical_user_workspace_sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+      "integrated_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "canonical_user_workspace_sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T20:01:15.976+00:00",
-      "receipt_id": null
+      "verified_at": "2026-10-07T20:05:00+00:00",
+      "receipt_id": "workspace-convergence:7f74ea99-026c-44d0-a725-e04f4739d446"
     }
   },
   "inventory": {
@@ -60,19 +60,21 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FACTORY_STAGE_EXECUTOR_RESUME_SEAM",
+    "id": "RESEARCH_NOTES_PGVECTOR_AUTHENTICATED_LOOPBACK_RUNTIME",
     "state": "LOCAL_VERIFIED_PENDING_PR",
-    "objective": "Prove that a new Mini App Factory executor invocation resumes the next ready stage from the latest persisted DevelopmentRun checkpoint.",
+    "objective": "Run the authenticated Research Notes loopback API against a disposable PostgreSQL image that supports pgvector, while keeping the database bound to loopback and isolated from shared or production data.",
     "implementation": [
-      "apps/web/server/services/miniAppFactoryRunExecutor.test.ts"
+      "apps/web/package.json",
+      "apps/web/scripts/test-mini-app-authenticated-runtime.sh",
+      "apps/web/scripts/test-mini-app-authenticated-runtime-pgvector.sh"
     ],
     "evidence": [
-      "The first invocation executes one stage and records its canonical DevelopmentRun checkpoint before returning READY with the dependent stage selected.",
-      "A fresh service/executor instance reloads the saved run snapshot, resumes the dependent stage with prior completion and artifact context, and reaches implementation-scope completion.",
-      "Focused Mini App Factory selector/executor suite passed 2 files/6 tests at the task source. The persistence adapter in this focused test is in-memory; this is a resume-seam regression, not cross-process PostgreSQL or M7 AUTO_RESUME PASS."
+      "Disposable pgvector/pgvector:pg15 container exposed only on 127.0.0.1; vector extension 0.8.2 available and installed before baseline migrations.",
+      "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime-pgvector passed: authenticated Research Notes create/list/update/archive; unauthenticated, cross-tenant, other-project, revoked-membership, and archived-App checks passed.",
+      "ResearchNotesPage.test.tsx passed 1 file/3 tests at the same task source. This is component test evidence, not browser, responsive, full app deployment, or UAT evidence."
     ],
-    "nextAction": "Bind the generic stage executor to an approved durable DevelopmentRun/worker execution composition. The executor still requires a caller-supplied executeStage callback; do not add another queue or route through retired workflow surfaces.",
-    "sourceSha": "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
+    "nextAction": "Integrate this runtime harness through a normal PR. Continue with full application UI/runtime and Factory execution only through approved paths; preserve runtime/bootstrap and worker-binding waits until a safe non-retired app composition and approved durable execution binding are available.",
+    "sourceSha": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
     "integration": "PENDING_NORMAL_PR"
   },
   "checkpoints": [
@@ -197,6 +199,14 @@
       "sha": "6a7c6d7b64c66fd77d69b5cbfec50069486ebb68",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/251",
       "evidence": "GitHub retryable Internal Server Error did not stop the program. Retry resumed without a user message, pushed via normal non-force path, merged PR #251, and verified canonical user workspace convergence. Regression test suite exercises retryable status, persisted checkpoint, bounded backoff, PR merge, and no user prompt (4 tests passed)."
+    },
+    {
+      "id": "FACTORY_STAGE_EXECUTOR_RESUME_SEAM",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
+      "sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/270",
+      "evidence": "PR #270 merged normally at this SHA and canonical workspace converged clean. Focused selector/executor suite passed 2 files/6 tests with a fresh executor invocation resuming the dependent stage from the persisted DevelopmentRun snapshot; test adapter is in-memory, so cross-process PostgreSQL recovery/M7 remain pending. Existing DevelopmentRun persistence/integration tests passed 2 files/21 tests at prior SHA 41444f8ff520dfae154373df23ee64f7a99b1212."
     }
   ],
   "completedWorkunits": [
@@ -354,7 +364,7 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "FACTORY_STAGE_EXECUTOR_APPROVED_WORKER_BINDING",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_FULL_APP_RUNTIME_AND_FACTORY_APPROVED_WORKER_BINDING; continue dependency-safe local acceptance while these runtime bindings remain waiting.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -366,7 +376,7 @@
       {
         "id": "RESEARCH_NOTES_UI_FULL_APP_RUNTIME_AND_UAT",
         "state": "WAITING_RUNTIME_BOOTSTRAP",
-        "predicate": "A supported full app runtime can boot against a safe non-production schema and authenticated fixture; current focused API listener deliberately exposes only Research Notes endpoints."
+        "predicate": "The disposable PostgreSQL 15 pgvector authenticated loopback API now passes. Full app/UI UAT still requires an isolated full application composition that does not activate the retired workflow runtime; the existing focused listener exposes only Research Notes API endpoints."
       },
       {
         "id": "RESEARCH_NOTES_BACKGROUND_EXECUTION",
@@ -390,12 +400,12 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T03:02:00+07:00",
+  "updatedAt": "2026-10-08T03:08:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "AUTHENTICATED_LOOPBACK_API_PASS_FULL_DEPLOY_NOT_RUN",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "AUTHENTICATED_LOOPBACK_API_PG15_PGVECTOR_PASS_FULL_APP_DEPLOY_NOT_RUN",
     "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
@@ -406,7 +416,7 @@
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "Authenticated loopback API with tenant/project/App authorization passes. Project Wiki second app package also rebuilds deterministically. No full app deployment, browser UAT, provider summary, or background worker execution has been performed.",
+    "reason": "Authenticated Research Notes loopback API passes over disposable PostgreSQL 15 with pgvector; this is focused API runtime evidence only. Full app deployment, browser UAT, provider summary, and background worker execution have not been performed.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -415,8 +425,8 @@
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/mini-app-factory-resume-proof-20261008",
-    "sourceBranch": "codex/mini-app-factory-resume-proof-20261008",
+    "taskWorktree": "/home/dev/worktrees/miniapp-pgvector-runtime-bootstrap-20261008",
+    "sourceBranch": "codex/miniapp-pgvector-runtime-bootstrap-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -430,9 +440,10 @@
       "592aec5c4d732f85e9baed40cf56516e68962a92",
       "357f55a63b2db85510af80610208a0e9f3a19cbf",
       "f89c9f549047c9a94a86aed3769fa29b8fc89c42",
-      "9886550e2a5d194efe59fffaac2abdf9cfe81ce6"
+      "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
+      "c1b5d3777f9cafdc6358cf7048b7edf2942afba6"
     ],
-    "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
+    "intendedRemoteBranch": "codex/miniapp-pgvector-runtime-bootstrap-20261008",
     "pendingPullRequest": {
       "number": null,
       "url": null,
@@ -494,17 +505,27 @@
         "revision": "9886550e2a5d194efe59fffaac2abdf9cfe81ce6 based on canonical 41444f8ff520dfae154373df23ee64f7a99b1212",
         "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryRunExecutor.test.ts server/services/miniAppFactoryPipeline.test.ts",
         "outcome": "PASS: 2 files, 6 tests; resumed a dependent stage from a fresh executor/service invocation using persisted DevelopmentRun snapshot; in-memory persistence only, cross-process database recovery remains pending"
+      },
+      {
+        "revision": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6 based on canonical 9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime-pgvector",
+        "outcome": "PASS: disposable pgvector/pgvector:pg15 container loopback-bound to 127.0.0.1; vector 0.8.2 available and installed; baseline migration and authenticated Research Notes API checks passed, including tenant/project boundaries, revoked membership, archived App and CRUD/archive."
+      },
+      {
+        "revision": "c1b5d3777f9cafdc6358cf7048b7edf2942afba6 based on canonical 9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
+        "command": "pnpm --filter @smartspec/web exec vitest run client/src/pages/__tests__/ResearchNotesPage.test.tsx",
+        "outcome": "PASS: 1 file, 3 tests; component-level evidence only, no browser or responsive UAT."
       }
     ],
-    "githubIntegration": "IDLE_BEFORE_RESUME-SEAM_PR; normal non-force PR path",
+    "githubIntegration": "IDLE_AFTER_PR_270; PGVECTOR_RUNTIME_CHECKPOINT_PENDING_NORMAL_PR",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "41444f8ff520dfae154373df23ee64f7a99b1212",
+    "canonicalAtCheckpoint": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "41444f8ff520dfae154373df23ee64f7a99b1212",
+      "sha": "9ae0dc69784a9f5c6fb4bc5ff02aedcfa891b1e4",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:5b76c8ec-4d1e-476a-a718-3523fac65046"
+      "receiptId": "workspace-convergence:7f74ea99-026c-44d0-a725-e04f4739d446"
     }
   }
 }
