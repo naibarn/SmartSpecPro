@@ -9,6 +9,8 @@ function setup(user: any = { id: 7, currentTenantId: "tenant-account" }, overrid
     createResearchNote: vi.fn(async (input: any) => input),
     updateResearchNote: vi.fn(async (input: any) => input),
     archiveResearchNote: vi.fn(async (input: any) => input),
+    requestResearchNoteSummary: vi.fn(async (input: any) => ({ jobId: "job-summary", ...input })),
+    getResearchNoteSummaryJob: vi.fn(async (input: any) => ({ jobId: input.jobId, status: "queued", summary: null, errorCode: null })),
     ...overrides,
   };
   return {
@@ -54,5 +56,34 @@ describe("researchNotes router", () => {
     await expect(caller.createProject({ appId: "app-1", title: "A", tenantId: "victim" } as any))
       .rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(service.createResearchProject).not.toHaveBeenCalled();
+  });
+
+  it("exposes the same authenticated summary action for UI and headless tRPC callers", async () => {
+    const { caller, service } = setup();
+    await caller.requestSummary({ appId: "app-1", projectId: "project-1", noteId: "note-1" });
+    expect(service.requestResearchNoteSummary).toHaveBeenCalledWith({
+      tenantId: "tenant-account",
+      principalId: "user:7",
+      appId: "app-1",
+      projectId: "project-1",
+      noteId: "note-1",
+      userId: 7,
+    });
+    await caller.summaryJob({ appId: "app-1", projectId: "project-1", noteId: "note-1", jobId: "job-summary" });
+    expect(service.getResearchNoteSummaryJob).toHaveBeenCalledWith({
+      tenantId: "tenant-account",
+      principalId: "user:7",
+      appId: "app-1",
+      projectId: "project-1",
+      noteId: "note-1",
+      jobId: "job-summary",
+    });
+  });
+
+  it("does not accept a caller-selected user identity for summary execution", async () => {
+    const { caller, service } = setup();
+    await expect(caller.requestSummary({ appId: "app-1", projectId: "project-1", noteId: "note-1", userId: 8 } as any))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(service.requestResearchNoteSummary).not.toHaveBeenCalled();
   });
 });

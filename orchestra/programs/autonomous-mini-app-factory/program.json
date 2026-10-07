@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "1f898eb5f4e00b7befd026e8cbf551bc524a5ae8",
+    "sha": "b2e7c32466e35384a024d2e3b2009d0af1c651f3",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": "workspace-convergence:69e48748-ed66-426a-86f0-c667122c980a"
@@ -41,8 +41,8 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "SPEC304_REFERENCE_APP_UI_AI_BACKGROUND",
-    "state": "WORKING",
+    "id": "SPEC304_RESEARCH_NOTES_AI_SUMMARY_BACKGROUND",
+    "state": "IMPLEMENTED_PENDING_INTEGRATION",
     "objective": "Complete the Research Notes reference Mini App with AI summary, durable background work and end-to-end package/deploy/runtime evidence.",
     "implementation": [
       "apps/web/client/src/",
@@ -52,13 +52,14 @@
     "evidence": [
       "PR #238 integrated the Research Notes UI and tenant-bound public App resolution at origin/main SHA 1f898eb5f4e00b7befd026e8cbf551bc524a5ae8; 12 focused UI/router/service tests passed on source 1b008107.",
       "SPEC302_CANONICAL_PROJECT_AND_RESEARCH_NOTES_SLICE integrated at 3ad161e36132db51d7a9260a20d07e362ac8b2cd; 21 focused tests passed on that exact SHA.",
-      "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence."
+      "SPEC-302 requirements REQ-6B4D8C8FA775 and REQ-8D8136DAE54F remain PARTIAL with exact-SHA source evidence.",
+      "AI summary is enqueued atomically through canonical worker_jobs/outbox, uses tenant/project/note scope and source-version idempotency, and is registered with the PostgreSQL node worker. Focused suite: 8 files, 29 tests passed on source 4880ef58; git diff --check passed."
     ],
     "pending": [
-      "Migration 0393 is present in main; local PostgreSQL connection lacks credentials, so DB application/integration evidence is pending. No migration was run against an unknown target.",
-      "AI-backed summary execution, background status UI, portable manifest/package path, deployment descriptor and runtime acceptance remain open."
+      "Migration 0393 has structural/schema/journal validation only; PostgreSQL application/integration is pending because this environment has no usable DB credentials.",
+      "AI summary worker/UI implementation is locally tested and awaits normal PR integration; package/portable manifest, headless actions, deployment descriptor and runtime/UAT evidence remain open."
     ],
-    "nextAction": "Validate migration 0393 structurally and with a safe local test target if available; then implement the tenant/project-bound canonical summary worker and continue through package and deployment evidence."
+    "nextAction": "Integrate the AI summary/background checkpoint; then implement the portable Mini App manifest/package and headless action contract while preparing a safe database-backed migration/UAT target."
   },
   "checkpoints": [
     {
@@ -98,6 +99,12 @@
       "sha": "1f898eb5f4e00b7befd026e8cbf551bc524a5ae8",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/238",
       "evidence": "12 focused UI/router/service tests passed on source 1b008107. PR #238 merged normally; source is reachable from origin/main and the registered canonical workspace converged cleanly."
+    },
+    {
+      "id": "SPEC304_RESEARCH_NOTES_AI_SUMMARY_BACKGROUND",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "4880ef58b291666d4e66e4d004ef83e4766daa9e",
+      "evidence": "8 focused Vitest files, 29 tests passed; retry regression tests 3/3 passed; retry worker py_compile passed; git diff --check and program JSON validation passed. PostgreSQL migration application and provider runtime remain pending."
     }
   ],
   "completedWorkunits": [],
@@ -232,19 +239,13 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "RESEARCH_NOTES_MIGRATION_AND_AI_BACKGROUND",
+    "nextEligibleWorkunit": "RESEARCH_NOTES_PORTABLE_MANIFEST_PACKAGE_AND_HEADLESS_ACTIONS",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE applies only to integration workunits; independent implementation continues.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "GitHub returned Internal Server Error; bounded retry recovered, pushed a normal PR, and integrated it without user input.",
-      "regressionTest": "orchestra/programs/autonomous-mini-app-factory/test_retry_github_integration.py",
-      "backoff": {
-        "attempts": 10,
-        "baseDelaySeconds": 5,
-        "multiplier": 2,
-        "capSeconds": 300
-      },
-      "mergePolicy": "normal PR merge; auto-merge is not enabled on this repository"
+      "lastScenario": "Retryable GitHub integration completed without a user prompt.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/239",
+      "integratedSha": "b2e7c32466e35384a024d2e3b2009d0af1c651f3"
     }
   },
   "deferredInfrastructure": [
@@ -252,5 +253,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T15:48:00Z"
+  "updatedAt": "2026-10-07T16:05:00Z"
 }

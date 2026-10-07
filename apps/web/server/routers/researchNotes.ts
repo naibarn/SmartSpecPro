@@ -6,7 +6,8 @@ import * as persistence from "../services/researchNotesService";
 
 type ResearchNotesService = Pick<typeof persistence,
   "createResearchProject" | "listResearchProjects" | "listResearchNotes" |
-  "createResearchNote" | "updateResearchNote" | "archiveResearchNote"
+  "createResearchNote" | "updateResearchNote" | "archiveResearchNote" |
+  "requestResearchNoteSummary" | "getResearchNoteSummaryJob"
 >;
 
 const id = z.string().trim().min(1).max(128);
@@ -28,6 +29,7 @@ function mapError(error: unknown): never {
   if (error instanceof persistence.ResearchNotesError) {
     if (error.code === "INVALID_INPUT") throw new TRPCError({ code: "BAD_REQUEST", message: "Research Notes input is invalid" });
     if (error.code === "APP_NOT_ACTIVE") throw new TRPCError({ code: "NOT_FOUND", message: "App not found" });
+    if (error.code === "SUMMARY_SOURCE_CHANGED") throw new TRPCError({ code: "CONFLICT", message: "Note changed while its summary was being generated" });
     throw new TRPCError({ code: "NOT_FOUND", message: "Project or note not found" });
   }
   throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Research Notes service unavailable" });
@@ -57,6 +59,19 @@ export function createResearchNotesRouter(service: ResearchNotesService = persis
     }),
     archiveNote: writeProcedure.input(z.object({ appId, projectId: id, noteId: id }).strict()).mutation(async ({ ctx, input }) => {
       try { return await service.archiveResearchNote({ ...scope(ctx, input.appId), ...input }); }
+      catch (error) { return mapError(error); }
+    }),
+    requestSummary: writeProcedure.input(z.object({ appId, projectId: id, noteId: id }).strict()).mutation(async ({ ctx, input }) => {
+      try {
+        return await service.requestResearchNoteSummary({
+          ...scope(ctx, input.appId),
+          ...input,
+          userId: ctx.user.id,
+        });
+      } catch (error) { return mapError(error); }
+    }),
+    summaryJob: protectedProcedure.input(z.object({ appId, projectId: id, noteId: id, jobId: id }).strict()).query(async ({ ctx, input }) => {
+      try { return await service.getResearchNoteSummaryJob({ ...scope(ctx, input.appId), ...input }); }
       catch (error) { return mapError(error); }
     }),
   });
