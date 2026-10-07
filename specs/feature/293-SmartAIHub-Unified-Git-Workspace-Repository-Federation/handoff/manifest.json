@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "fe37eb6a6bb36fb8701e5a26612a78ef9484c678",
+    "expected_canonical_sha": "867de0c38b7c4a16cab262eb2e088d3667dcff41",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: classify remaining detached/no-upstream workspace rows only from durable explicit ownership/binding evidence and leave the rest UNKNOWN; locate and bind an already-authoritative migration execution result source for failed attempts without creating a parallel registry; complete the remaining regression/acceptance matrix and verify every locally implementable lifecycle/runtime wiring requirement. External production runtime verification remains separate and has not been attempted.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: determine whether an approved existing source can durably report failed `db:migrate` attempts; until then keep failed migration state explicitly untracked/unknown and do not infer from pending migrations. Classify the 37 detached/no-upstream workspaces only from explicit durable owner/binding evidence and keep all others UNKNOWN/non-destructive. Finish the locally applicable acceptance and regression matrix; keep production runtime/provider verification separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 51,
+  "generation": 52,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -242,9 +242,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fe37eb6a6bb36fb8701e5a26612a78ef9484c678",
+    "canonical_sha": "867de0c38b7c4a16cab262eb2e088d3667dcff41",
     "integrated": true,
-    "integrated_at": "2026-10-07T06:32:48Z"
+    "integrated_at": "2026-10-07T06:34:03Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -317,7 +317,9 @@
       "https://github.com/naibarn/SmartSpecPro/pull/191",
       "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e",
       "https://github.com/naibarn/SmartSpecPro/pull/193",
-      "git:fe37eb6a6bb36fb8701e5a26612a78ef9484c678"
+      "git:fe37eb6a6bb36fb8701e5a26612a78ef9484c678",
+      "https://github.com/naibarn/SmartSpecPro/pull/194",
+      "git:867de0c38b7c4a16cab262eb2e088d3667dcff41"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -475,7 +477,9 @@
         "https://github.com/naibarn/SmartSpecPro/pull/191",
         "git:e14d9329f6a0cd62c84532146f2eb606f4a8636e",
         "https://github.com/naibarn/SmartSpecPro/pull/193",
-        "git:fe37eb6a6bb36fb8701e5a26612a78ef9484c678"
+        "git:fe37eb6a6bb36fb8701e5a26612a78ef9484c678",
+        "https://github.com/naibarn/SmartSpecPro/pull/194",
+        "git:867de0c38b7c4a16cab262eb2e088d3667dcff41"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -561,7 +565,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T06:33:20.940599Z",
+  "updated_at": "2026-10-07T06:36:16.224764Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -758,6 +762,13 @@
         "kind": "FOCUSED_P0_WU4C_SESSION_IDENTITY_REGRESSION",
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-session-identity-fe37eb6a.md",
         "scope": "same-session merge of trusted Runner provider and local owner task/host facts; confirmed provider conflict fails closed; focused 13-test projection and 43-test Runner suite",
+        "source_sha": "9fb15db189f7ecf928234aa6dffd15d31d1c677e",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_LATEST_CANONICAL_AND_CONVERGENCE",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-latest-main-and-convergence-867de0c3.md",
+        "scope": "live local remote-head observation, workspace push/integration aggregate, registered canonical user workspace convergence attempt, focused internal migration/runtime and Runner session evidence",
         "source_sha": "9fb15db189f7ecf928234aa6dffd15d31d1c677e",
         "status": "PASS"
       }
