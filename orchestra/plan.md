@@ -1,5 +1,15 @@
 # Orchestra Plan — Spec 214 Completion
 
+## Resume plan — AUTONOMOUS_MINI_APP_FACTORY_PROGRAM (2026-10-08)
+- Active objective: finish Research Notes non-production package/deploy/migrate/smoke/UAT, then persist the generic Mini App Factory pipeline and exercise a second app.
+- Classification: project scope, high operational/data-safety risk. Use an isolated loopback app process and disposable PostgreSQL only; never use the production-mode service, customer data, retired Docker/OpenSandbox, or unregistered Cloudflare target.
+- Current canonical source: `origin/main` at `526b40b6df8e8aee730aeb7be13bca2a1120b7f1`; user workspace `/home/dev/projects/SmartSpecPro` is clean. Task worktree is `/home/dev/worktrees/mini-app-factory-reset`; preserve its existing auto-updated program receipt and `node_modules` symlink.
+- Runtime discovery: no existing safe non-production deployment target is configured. Use the existing `NODE_ENV=development` web server, loopback-only binding, normal migration-receipt runner, and PostgreSQL-pull worker against a temporary PostgreSQL cluster if the local runtime can be safely composed.
+- Current investigation: normal migration runner on a new disposable database exposed a wrapped PostgreSQL `42P01` (`DrizzleQueryError.cause.code`) in the missing migration-ledger table branch; full migration has not yet started. Fix and test this runner defect, then retry in the same isolated database.
+- WorkUnit sequence: (1) repair clean-database migration startup; (2) migrate/seed authenticated two-tenant test fixture; (3) bind local server to loopback and run CRUD + cross-tenant smoke; (4) execute worker/outbox summary with an available safe provider or record the exact provider failure/fallback gap; (5) responsive UI acceptance; (6) extract reusable factory pipeline; (7) small second-app reuse exercise.
+- External/runtime blocker: only if this supported local route cannot satisfy the required HTTP/auth/worker predicates. Keep `WAITING_ENVIRONMENT` scoped to the missing predicate while continuing any independent local implementation.
+- No production deploy, migration, restart, credential read, paid provider invocation, or full repository typecheck is allowed by this plan.
+
 ## Task classification
 - Scope: large; canonical contracts, authoring integration, compiler boundary, corpus coverage, migration safety, and conformance verification.
 - Risk: high; node semantics and persisted workflow definitions are shared product contracts. No production deployment or destructive migration is authorized by this repo-local task.

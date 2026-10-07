@@ -8,6 +8,7 @@ import { apiAuditEvents } from "../drizzle/schema";
 import { sql } from "drizzle-orm";
 import { evaluateMigrationAttempt } from "../server/services/migrationExecutionReceiptPolicy";
 import { closeDb, getDb } from "../server/db";
+import { hasDatabaseErrorCode } from "./migrationReceiptHelpers";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const phaseKey = process.env.MIGRATION_IDEMPOTENCY_KEY?.trim() || randomUUID();
@@ -33,7 +34,7 @@ async function readAppliedHead(db: ReturnType<typeof getDb>, tags: Array<{ tag: 
   try {
     rows = await db.execute(sql`SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC`);
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && String(error.code) === "42P01") return { tag: null, hash: null };
+    if (hasDatabaseErrorCode(error, "42P01")) return { tag: null, hash: null };
     throw error;
   }
   const latest = (rows as unknown as Array<{ hash: string; created_at: number | string | null }>).at(-1);
