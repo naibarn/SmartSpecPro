@@ -65,5 +65,6 @@ describe("Research Notes portable package", () => {
     expect(deployment.release.migration.status).toBe("NOT_APPLIED");
     expect(smokePlan).toContain("Status: prepared only.");
     expect(smokePlan).toContain("NOT_RUN");
+    expect(readFileSync(join(process.cwd(), "scripts/research-notes-smoke.ts"), "utf8")).toContain("Cross-tenant principal could read the smoke note");
   });
 });

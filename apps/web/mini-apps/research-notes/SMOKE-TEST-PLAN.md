@@ -19,6 +19,7 @@ RESEARCH_NOTES_BASE_URL=https://<registered-target> \
 RESEARCH_NOTES_APP_ID=<public-app-id> \
 RESEARCH_NOTES_PROJECT_ID=<authorized-project-id> \
 RESEARCH_NOTES_AUTH_BEARER=<platform-issued-user-token> \
+RESEARCH_NOTES_CROSS_TENANT_AUTH_BEARER=<different-tenant-user-token> \
 pnpm --filter @smartspec/web exec tsx scripts/research-notes-smoke.ts
 ```
 
@@ -29,7 +30,7 @@ Run the summary job scenario only in a cost-approved non-production environment 
 3. Call `researchNotes.listProjects` for the app and verify only A's authorized projects are returned.
 4. Create a project and note, read them back, edit the note, then archive it. Confirm an edited note has no stale AI summary.
 5. Call the same `researchNotes.createNote` and `researchNotes.listNotes` procedures from a headless tRPC client with A's authenticated platform session. Verify the persisted result matches the UI view.
-6. As principal B, attempt to read A's project/note and poll A's summary job. Each call must fail closed without disclosing note content or job details.
+6. When a second-tenant credential is supplied, the runner attempts to read A's note and summary job as principal B; each call must fail closed without disclosing note content or job details.
 7. As an authorized editor, request a summary. Verify the request returns a canonical job ID, `worker_jobs` plus outbox accept the job once, retries do not duplicate an already saved summary, and terminal status is visible in the UI and machine query.
 8. Change the note after requesting its summary; verify the stale result is rejected and cannot overwrite the current note summary.
 9. Capture package digest, integrated source SHA, migration receipt, target/environment identity, job ID, sanitized request/response evidence, and screenshots. Mark runtime/deployment/acceptance separately in SPEC-295/SPEC-302.

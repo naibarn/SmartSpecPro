@@ -5,10 +5,10 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "d9d72f48867cff6fecac8ec8b73a0521e25522d0",
+    "sha": "503bff23b33941696fab07e6463acfd811f8fc37",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
-    "convergenceReceipt": "workspace-convergence:48084354-a2f2-4617-b602-3684ed70aacf"
+    "convergenceReceipt": "workspace-convergence:e892a952-edd3-43d9-ada4-4e213bbf27ef"
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -59,13 +59,14 @@
       "PR #242 merged normally at origin/main SHA 88db09239234c1ce2444bca10f44903f26ff5e8d. Research Notes package/action contract is integrated; the current package digest including deployment descriptor and smoke plan is a85fd5afedcd3378f89663f07d8587cddf09cdea523c57fba78519c579344c03. Local focused suite: 9 files, 32 tests passed; package status needs_context due missing trusted V5/V6 evidence.",
       "The machine action catalog now has strict JSON Schema inputs and typed summary-job output/status enums. Latest local focused suite: 9 files, 32 tests passed; deterministic package digest is spaas-package-v1:sha256:1b80551dcd3b27177b1e27321675602bee07c9774d74f135162a35cd16ce739b.",
       "A guarded non-production tRPC smoke runner now covers authenticated CRUD and optionally the canonical summary job; --with-summary requires explicit RESEARCH_NOTES_ALLOW_PROVIDER_COST=true. CLI --help works; local package focused suite 9 files/32 tests passed; current SPAAS digest 44231a81e31bb677fad3c476f52c094eb1ac2108d0c750349e552db5fabde308.",
-      "Local web runtime at source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3 returned /healthz HTTP 200 {status:ok} and /readyz HTTP 200 {status:ready, db:ok, feature186:ok:postgres-pull}; this is service readiness only, not Research Notes UAT or migration evidence."
+      "Local web runtime at source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3 returned /healthz HTTP 200 {status:ok} and /readyz HTTP 200 {status:ready, db:ok, feature186:ok:postgres-pull}; this is service readiness only, not Research Notes UAT or migration evidence.",
+      "Smoke runner now optionally checks cross-tenant note and summary-job isolation with a second authenticated principal; summary polling requires an explicit provider-cost gate. Focused suite remains 9 files/32 tests passed; package digest is 13d8cd6e72e0140654c331d968b5015a5554d8f5455feddb8c2cd8e02bb2a2c0."
     ],
     "pending": [
-      "The smoke runner has not been executed against authenticated app/project data: no RESEARCH_NOTES_BASE_URL, app identity, project identity, or credential is configured in this session.",
-      "Migration 0393 has static SQL/Drizzle schema/journal validation but no application/rollback run; shell DATABASE_URL is absent. Deployment environment remains unselected; no deploy or UAT PASS is claimed."
+      "Latest guarded runner/action schema change awaits integration.",
+      "Migration 0393 application and authenticated tenant-level CRUD/summary UAT were not run: no safe test DATABASE_URL, target base URL, or tenant App/project credentials are configured."
     ],
-    "nextAction": "Integrate the smoke runner and current action schemas; then execute only against a registered non-production database/runtime with an authenticated tenant and App/project binding. If those facts remain unavailable, continue independent test-hardening work."
+    "nextAction": "Integrate the updated guarded UAT runner; continue checking for a registered non-production migration/runtime target while preserving the production service readiness probe as separate evidence."
   },
   "checkpoints": [
     {
@@ -137,6 +138,12 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "d9d72f48867cff6fecac8ec8b73a0521e25522d0",
       "evidence": "9 focused Vitest files, 32 tests passed; smoke runner --help parsed successfully; package digest 44231a81e31bb677fad3c476f52c094eb1ac2108d0c750349e552db5fabde308; github retry suite 4 passed; runtime liveness/readiness probes passed at service source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3."
+    },
+    {
+      "id": "RESEARCH_NOTES_CROSS_TENANT_SMOKE_COVERAGE",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "503bff23b33941696fab07e6463acfd811f8fc37",
+      "evidence": "9 focused Vitest files, 32 tests passed; smoke runner --help passed; deterministic SPAAS digest 13d8cd6e72e0140654c331d968b5015a5554d8f5455feddb8c2cd8e02bb2a2c0; /healthz and /readyz were separately observed at process source SHA c0a9eef1a2d230b200b9f791b328b90d300fe9e3."
     }
   ],
   "completedWorkunits": [],
@@ -285,5 +292,5 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-07T16:34:19Z"
+  "updatedAt": "2026-10-07T16:39:00Z"
 }
