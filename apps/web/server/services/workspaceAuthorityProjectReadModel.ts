@@ -104,7 +104,10 @@ export function projectRunnerWorkspaceAuthority(input: {
 
   const byWorkspace = new Map<string, typeof workspaceRows>();
   for (const row of workspaceRows) {
-    const key = row.workspaceId;
+    // Workspace IDs are opaque and may be reused across repositories. Keep
+    // host claims for one repository together so contradictory project bindings
+    // remain visible as conflicts instead of being silently split apart.
+    const key = JSON.stringify([row.tenantId, row.repositoryId, row.workspaceId]);
     byWorkspace.set(key, [...(byWorkspace.get(key) ?? []), row]);
   }
   const workspaces = [...byWorkspace.values()].map((facts) => {
@@ -118,7 +121,14 @@ export function projectRunnerWorkspaceAuthority(input: {
         : facts.some((fact) => fact.hostState === "STALE")
           ? "STALE"
           : "OBSERVED";
-    return { state, hosts: facts };
+    return {
+      tenantId: facts[0].tenantId,
+      projectId: facts[0].projectId,
+      repositoryId: facts[0].repositoryId,
+      workspaceId: facts[0].workspaceId,
+      state,
+      hosts: facts,
+    };
   });
   const sessions = workspaceRows.filter((row) => row.sessionState === "ACTIVE");
   const local = input.localAuthorityStatus && input.localAuthorityStatus !== "OBSERVED"

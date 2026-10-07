@@ -43,6 +43,19 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.workspaceConflicts[0].state).toBe("CONFLICT");
   });
 
+  it("keeps identical opaque workspace IDs isolated across project/repository scopes", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner(),
+      runner({ runnerId: "runner-b", currentSnapshotJson: { workspaces: [{ workspaceId: "ws-a", projectId: "project-b", repositoryId: "repo-b", gitHead: "b".repeat(40), gitBranch: "work" }] } }),
+    ] as never[], now });
+    expect(result.workspaceGroups.observed).toHaveLength(2);
+    expect(result.workspaceGroups.observed).toEqual(expect.arrayContaining([
+      expect.objectContaining({ projectId: "project-a", repositoryId: "repo-a", workspaceId: "ws-a", state: "OBSERVED" }),
+      expect.objectContaining({ projectId: "project-b", repositoryId: "repo-b", workspaceId: "ws-a", state: "OBSERVED" }),
+    ]));
+    expect(result.workspaceConflicts).toHaveLength(0);
+  });
+
   it("marks facts without a project/repository binding as unbound", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
       runner({ currentSnapshotJson: { workspaces: [{ workspaceId: "ws-a", gitHead: "a".repeat(40) }] } }),
