@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
+    "expected_canonical_sha": "b350f013bbcd4ea299961f982f8c59c323e5add3",
     "expected_spec_digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814"
   },
   "continuation": {
-    "next_action": "Continue P0-WU-4: add bounded collector scheduling and authority-backed Mission Control safe actions; complete project read-model inputs for unpushed/pushed-unintegrated commits and agent/provider ownership; add transport-neutral cross-host workspace locators; implement authenticated provider-neutral SPEC-295 evidence adapters and Cloudflare Workers/Containers collectors; validate actual runtime evidence. Keep P0 partial until all platform-facing gates pass.",
+    "next_action": "Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.",
     "next_ready_workunit": "P0-WU-4",
     "reactivation_predicate": null,
     "resume_point": "P0-WU-4",
@@ -35,14 +35,12 @@
     "confidence": "HIGH",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
-      {
-        "digest": "392b41dbaadcee6bfb4497735d451db8b553aef7",
-        "kind": "INTEGRATION",
-        "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
-      }
+      "https://github.com/naibarn/SmartSpecPro/pull/120",
+      "git:b350f013bbcd4ea299961f982f8c59c323e5add3",
+      "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4b-provider-evidence-integrated-20261007.md"
     ],
-    "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
-    "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
+    "next_action": "Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.",
+    "rationale": "A safe implementation checkpoint is integrated. Additional production action routing/source bindings and lifecycle event integration remain implementation requirements; external runtime verification is a separate pending obligation.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -71,7 +69,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 16,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
     "digest": "98665f22d219c88a8d76ea2f2de8393dd73000d6661bfcc03641f96cca060814",
@@ -94,25 +92,33 @@
       "1b93981fdde901e30ca6f681af02315de68d65cb",
       "064f07851a0fe27f531cb2139ad0644a94dbf3f8",
       "52fe0fead65f8d3542d73f21e0abbf24ce70fb2f",
-      "6b68c02dc9cfe51ac50bf6c34207fad7fea22225"
+      "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
+      "b350f013bbcd4ea299961f982f8c59c323e5add3"
     ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
+      "apps/web/server/services/cloudflareRuntimeEvidence.ts",
+      "apps/web/server/services/workspaceAuthorityProjectReadModel.ts",
+      "scripts/development-lifecycle/canonical_source.py",
+      "scripts/development-lifecycle/convergence_contract.py",
+      "scripts/development-lifecycle/runtime_authority.py"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
+    "canonical_sha": "b350f013bbcd4ea299961f982f8c59c323e5add3",
     "integrated": true,
-    "integrated_at": "2026-10-07T00:00:00Z"
+    "integrated_at": "2026-10-07T03:05:13Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
-    "previous_state": "DISCOVERING",
+    "previous_state": "PARTIAL_INTEGRATED",
     "state_evidence": [
-      "https://github.com/naibarn/SmartSpecPro/pull/93",
-      "git:392b41dbaadcee6bfb4497735d451db8b553aef7"
+      "https://github.com/naibarn/SmartSpecPro/pull/120",
+      "git:b350f013bbcd4ea299961f982f8c59c323e5add3"
     ],
     "updated_at": "2026-10-06T17:53:47Z"
   },
@@ -121,22 +127,20 @@
       "confidence": "HIGH",
       "decision": "RECONCILIATION_REQUIRED",
       "evidence": [
-        {
-          "digest": "392b41dbaadcee6bfb4497735d451db8b553aef7",
-          "kind": "INTEGRATION",
-          "path": "https://github.com/naibarn/SmartSpecPro/pull/93"
-        }
+        "https://github.com/naibarn/SmartSpecPro/pull/120",
+        "git:b350f013bbcd4ea299961f982f8c59c323e5add3",
+        "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4b-provider-evidence-integrated-20261007.md"
       ],
-      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
-      "rationale": "P0 workspace authority is partially integrated. Runtime receipt producers/binding, full 30-scenario execution, and Mission Control/production adapters remain open.",
+      "next_action": "Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.",
+      "rationale": "A safe implementation checkpoint is integrated. Additional production action routing/source bindings and lifecycle event integration remain implementation requirements; external runtime verification is a separate pending obligation.",
       "residual_requirements": []
     },
     "lifecycle": {
       "current_state": "PARTIAL_INTEGRATED",
-      "previous_state": "DISCOVERING",
+      "previous_state": "PARTIAL_INTEGRATED",
       "state_evidence": [
-        "https://github.com/naibarn/SmartSpecPro/pull/93",
-        "git:392b41dbaadcee6bfb4497735d451db8b553aef7"
+        "https://github.com/naibarn/SmartSpecPro/pull/120",
+        "git:b350f013bbcd4ea299961f982f8c59c323e5add3"
       ],
       "updated_at": "2026-10-06T17:53:47Z"
     }
@@ -222,10 +226,18 @@
     "unresolved": 165
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T00:31:48.305172Z",
+  "updated_at": "2026-10-07T03:08:00.928618Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "FOCUSED_P0_WU4B_CHECKPOINT",
+        "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-wu4b-provider-evidence-integrated-20261007.md",
+        "scope": "Canonical artifact digest and credential-center-backed Cloudflare Worker/Container read adapters with fixture tests; concrete migration/runtime-health source bindings and external provider verification remain open.",
+        "source_sha": "b350f013bbcd4ea299961f982f8c59c323e5add3",
+        "status": "PASS"
+      }
+    ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
     "sha": null,

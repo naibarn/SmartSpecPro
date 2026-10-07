@@ -136766,7 +136766,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
+      "canonical_sha": "b350f013bbcd4ea299961f982f8c59c323e5add3",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -137050,7 +137050,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.193296Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
+      "next_action": "Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
       "primary_blocker": null,
       "problem": null,
@@ -137113,7 +137113,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
+      "canonical_sha": "b350f013bbcd4ea299961f982f8c59c323e5add3",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -137654,7 +137654,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.211822Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
+      "next_action": "Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -137717,7 +137717,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "8cc6327d472bf78175fb9fa584d92a08aec98877",
+      "canonical_sha": "b350f013bbcd4ea299961f982f8c59c323e5add3",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -137931,7 +137931,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T09:28:58.246992Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Complete remaining local regression cases and repeated races; then implement cross-host authority, full Mission Control actions, external receipt authentication, and SPEC-295 source-to-runtime convergence without duplicating canonical job/evidence authority.",
+      "next_action": "Continue P0-WU-4 from the integrated checkpoint: wire all seven safe actions through authenticated Mission Control and canonical worker_jobs/Runner control-plane authority; add production migration and health evidence bindings; wire integration-finish, handoff-completion, and owner-lease-expiration triggers; dogfood safe retirement with a durable receipt. Keep code implementation and external runtime verification separate; do not infer production credential absence from shell state.",
       "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "primary_blocker": null,
       "problem": null,
