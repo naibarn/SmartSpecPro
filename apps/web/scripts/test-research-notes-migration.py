@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import getpass
+import json
 from pathlib import Path
 
 
@@ -64,6 +65,7 @@ def main() -> int:
               CREATE TABLE app_identities (
                 tenant_id varchar(36) NOT NULL REFERENCES tenants(id),
                 app_id varchar(128) NOT NULL,
+                lifecycle varchar(24) NOT NULL DEFAULT 'active',
                 PRIMARY KEY (tenant_id, app_id)
               );
               INSERT INTO tenants (id) VALUES ('tenant-a'), ('tenant-b');
@@ -87,6 +89,20 @@ def main() -> int:
             cross_tenant = run(psql_base + ["--command", "INSERT INTO mini_app_research_notes (tenant_id, project_id, app_id, owner_principal_id, title) VALUES ('tenant-b', 'project-a', 'app-b', 'user:2', 'Cross tenant')"], expect=False)
             oversized = run(psql_base + ["--command", "INSERT INTO mini_app_research_notes (tenant_id, project_id, app_id, owner_principal_id, title, content) VALUES ('tenant-a', 'project-a', 'app-a', 'user:1', 'Too large', repeat('x', 262145))"], expect=False)
             bad_role = run(psql_base + ["--command", "INSERT INTO canonical_project_memberships (tenant_id, project_id, principal_id, role) VALUES ('tenant-a', 'project-a', 'user:3', 'admin')"], expect=False)
+            service_env = os.environ.copy()
+            service_env["DATABASE_URL"] = f"postgresql://{db_user}@127.0.0.1:{port}/postgres"
+            service_result = subprocess.run(
+                ["pnpm", "--filter", "@smartspec/web", "exec", "tsx", "scripts/test-research-notes-service-integration.ts"],
+                cwd=ROOT,
+                env=service_env,
+                text=True,
+                capture_output=True,
+                timeout=90,
+                check=False,
+            )
+            if service_result.returncode:
+                detail = (service_result.stderr or service_result.stdout or "service integration failed").strip()[-1500:]
+                raise RuntimeError(f"service authorization integration failed: {detail}")
             print(json.dumps({
                 "status": "PASS",
                 "target": "disposable local PostgreSQL cluster",
@@ -95,6 +111,7 @@ def main() -> int:
                 "rejectedCrossTenantProjectReference": cross_tenant.returncode != 0,
                 "rejectedOversizedNote": oversized.returncode != 0,
                 "rejectedInvalidMembershipRole": bad_role.returncode != 0,
+                "serviceAuthorizationIntegration": json.loads(service_result.stdout.strip().splitlines()[-1]),
                 "productionDatabaseTouched": False,
             }))
         finally:
