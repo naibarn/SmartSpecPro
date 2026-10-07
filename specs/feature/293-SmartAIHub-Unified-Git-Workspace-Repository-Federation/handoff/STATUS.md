@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 235 unresolved of 235
-- Next action: Continue P0_INTERNAL_GAP_CLOSURE: complete cross-host Runner dispatch/fact persistence and conflict semantics; finish Mission Control lifecycle/session/integration projections, local audit scheduling, handoff event call sites, migration/runtime source binding, Cloudflare credential path, and remaining regression gates. Keep P0 implementation PARTIAL.
-- Manifest generation: 35
+- Next action: Continue P0_INTERNAL_GAP_CLOSURE: finish cross-host Runner dispatch/fact persistence and conflict semantics; complete Mission Control integration/push state and provider/task identity precedence; add genuine handoff lifecycle producer; bind migrations/runtime health and Cloudflare credential-center path; complete remaining WU-4C regression/acceptance evidence. Keep P0 implementation PARTIAL.
+- Manifest generation: 36
 
 ## Source-declared status and relationship claims
 
