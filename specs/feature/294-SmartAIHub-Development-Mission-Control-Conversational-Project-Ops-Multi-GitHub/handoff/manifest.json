@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "60678faa879d5cad0646275086a79760b4b6ba8a",
+    "expected_canonical_sha": "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
     "expected_spec_digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: finish RunnerGateway isolation and known-owner safe-retirement dogfood; complete Mission Control task/provider and push/integration identity evidence; establish Cloudflare credential-center adapter fixture proof; clarify migration failed-execution evidence limits; complete remaining regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
+    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: close authenticated cross-host fact ingestion and trusted Runner binding; complete Mission Control task/provider and push/integration identity sources; establish Cloudflare credential-center adapter fixture proof; document migration failed-execution evidence limits; finish the required remaining regression and acceptance gates. Keep global retirement AUDIT_ONLY and preserve the dirty noncanonical primary checkout.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -83,7 +83,10 @@
       "git:46f17355679a746cd8637198e9af96ee807d20cc",
       "https://github.com/naibarn/SmartSpecPro/pull/178",
       "git:60678faa879d5cad0646275086a79760b4b6ba8a",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/179",
+      "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md"
     ],
     "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
     "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -122,7 +125,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 42,
+  "generation": 43,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13",
@@ -176,7 +179,8 @@
       "f3703f06ba9ba8679838e7ab6c5b4b157f52d78e",
       "965a21b614847441ad90047177c8bc1352135911",
       "46f17355679a746cd8637198e9af96ee807d20cc",
-      "60678faa879d5cad0646275086a79760b4b6ba8a"
+      "60678faa879d5cad0646275086a79760b4b6ba8a",
+      "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be"
     ],
     "mapping": [],
     "source_paths": [
@@ -216,9 +220,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "60678faa879d5cad0646275086a79760b4b6ba8a",
+    "canonical_sha": "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:47:07Z"
+    "integrated_at": "2026-10-07T05:48:52Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -270,7 +274,10 @@
       "git:46f17355679a746cd8637198e9af96ee807d20cc",
       "https://github.com/naibarn/SmartSpecPro/pull/178",
       "git:60678faa879d5cad0646275086a79760b4b6ba8a",
-      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md"
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md",
+      "https://github.com/naibarn/SmartSpecPro/pull/179",
+      "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md"
     ],
     "updated_at": "2026-10-07T03:50:23Z"
   },
@@ -327,7 +334,10 @@
         "git:46f17355679a746cd8637198e9af96ee807d20cc",
         "https://github.com/naibarn/SmartSpecPro/pull/178",
         "git:60678faa879d5cad0646275086a79760b4b6ba8a",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/179",
+        "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md"
       ],
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
       "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
@@ -390,7 +400,10 @@
         "git:46f17355679a746cd8637198e9af96ee807d20cc",
         "https://github.com/naibarn/SmartSpecPro/pull/178",
         "git:60678faa879d5cad0646275086a79760b4b6ba8a",
-        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md"
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/179",
+        "git:76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
+        "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md"
       ],
       "updated_at": "2026-10-07T03:50:23Z"
     }
@@ -476,7 +489,7 @@
     "unresolved": 492
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:48:07.234001Z",
+  "updated_at": "2026-10-07T05:51:58.781404Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -583,6 +596,20 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-readiness-evidence.md",
         "scope": "Shared application readiness decision for /readyz and internal runtime evidence; local DB and Feature 186 config checks, no external provider probe",
         "source_sha": "60678faa879d5cad0646275086a79760b4b6ba8a",
+        "status": "PASS"
+      },
+      {
+        "kind": "RUNNER_GATEWAY_ISOLATION",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
+        "scope": "RunnerGateway auth suite with isolated revocation, ephemeral, and TTL-dedupe stores",
+        "source_sha": "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
+        "status": "PASS"
+      },
+      {
+        "kind": "KNOWN_OWNER_RETIREMENT_DOGFOOD",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-retirement-dogfood-evidence.md",
+        "scope": "Controlled TASK_WORKTREE owner-block, owner release, canonical-equivalent dry-run, scoped retirement, durable receipt, and registry transition",
+        "source_sha": "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
         "status": "PASS"
       }
     ],
