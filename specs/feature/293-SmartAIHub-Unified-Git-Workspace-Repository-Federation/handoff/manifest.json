@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "af4e3284b38070dcae5a2cf27b65200317226f9d",
+    "expected_canonical_sha": "0b19f95cbc8648358e082ae1e946e00247d9498b",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: bind migration failures only from an authorized durable execution-result source. The Drizzle source now distinguishes UNKNOWN from confirmed NONE and the provider-neutral contract accepts FAILED; no durable failure result source is configured in this environment, so do not infer one or add a parallel registry. Preserve the 46 UNKNOWN_OWNER workspaces until per-workspace provenance is explicit; keep destructive automation disabled for them. External runtime verification remains separate.",
+    "next_action": "Continue P0-WU-4C gap closure against current origin/main. Remaining code-side gaps include durable cross-host fact ingestion/persistence and conflict resolution, complete event/scheduler/read-model paths, authenticated provider configuration discovery/Cloudflare credential integration, and an authoritative durable migration failure-result source. Preserve all UNKNOWN_OWNER workspaces. Reconcile the registered canonical user workspace only after its two dirty paths are safely resolved; current resolver receipt is DIRTY_WORK_PRESERVED. Keep production runtime verification separate.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "P0_INTERNAL_GAP_CLOSURE: authorized durable failed-migration result source and explicit provenance for remaining unknown-owner workspaces.",
+    "resume_point": "P0-WU-4C after safe-action execution authority recheck integrated at 0b19f95cbc8648358e082ae1e946e00247d9498b; next audit internal cross-host ingestion and lifecycle gaps, then preserve and converge the dirty canonical user workspace when safe.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 56,
+  "generation": 57,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -203,7 +203,8 @@
       "13266879192cf761a45a0f2a8a70d19eff3a0317",
       "d70d14aa97a7aefc4e6751e62379999ae5a87702",
       "9fb15db189f7ecf928234aa6dffd15d31d1c677e",
-      "9536f33358331ac12a77fa54bbbb663d86fa1d48"
+      "9536f33358331ac12a77fa54bbbb663d86fa1d48",
+      "0b19f95cbc8648358e082ae1e946e00247d9498b"
     ],
     "mapping": [],
     "source_paths": [
@@ -243,9 +244,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "af4e3284b38070dcae5a2cf27b65200317226f9d",
+    "canonical_sha": "0b19f95cbc8648358e082ae1e946e00247d9498b",
     "integrated": true,
-    "integrated_at": "2026-10-07T07:12:50Z"
+    "integrated_at": "2026-10-07T07:24:34Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -570,7 +571,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T07:13:57.192335Z",
+  "updated_at": "2026-10-07T07:27:58.353787Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -803,6 +804,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-migration-failure-state-integrated-20261007.md",
         "scope": "Typed FAILED/NONE/UNKNOWN migration failure evidence, Drizzle UNKNOWN mapping, alternate provider FAILED and NONE contract fixtures; 7 focused tests pass at integrated source SHA.",
         "source_sha": "af4e3284b38070dcae5a2cf27b65200317226f9d",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_SAFE_ACTION_EXECUTION_AUTHORITY",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-safe-action-execution-recheck-20261007.md",
+        "scope": "Worker-side revalidation of trusted Runner identity and snapshot freshness before local safe-action execution; changed and stale authority fail closed.",
+        "source_sha": "0b19f95cbc8648358e082ae1e946e00247d9498b",
         "status": "PASS"
       }
     ],
