@@ -21,11 +21,11 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
+    "expected_canonical_sha": "7902974a70d4631e51410de67762b1e59ded9bde",
     "expected_spec_digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
   },
   "continuation": {
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: wire authenticated safe actions to worker_jobs/Runner, complete lifecycle producers for integration/handoff/recovery, and bind cross-host and production evidence to their internal sources. Keep implementation PARTIAL and production verification separate.",
+    "next_action": "Complete the authenticated seven-action safe-action path through tenant/project authorization, Workspace Authority, role policy, worker_jobs/Runner execution and normalized receipts/audit; finish direct integration/handoff/recovery event producers and any remaining source bindings. Keep P0 implementation PARTIAL until every local gate closes.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
     "resume_point": "P0_INTERNAL_GAP_CLOSURE",
@@ -89,7 +89,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 32,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a",
@@ -125,7 +125,8 @@
       "26fd48168f44f31a6759c9264cfc5107445fe187",
       "33b833a1a78101be8f5f0386b2fb49677b3c57bd",
       "2753c74afbfeadd0f218d23367f7c61728602a0b",
-      "ebabe0cab9805f7a26ba4b752e045db8fcf16608"
+      "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
+      "7902974a70d4631e51410de67762b1e59ded9bde"
     ],
     "mapping": [],
     "source_paths": [
@@ -159,9 +160,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
+    "canonical_sha": "7902974a70d4631e51410de67762b1e59ded9bde",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:42:00Z"
+    "integrated_at": "2026-10-07T04:43:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -330,7 +331,7 @@
     "unresolved": 235
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:41:57.431951Z",
+  "updated_at": "2026-10-07T04:44:40.801629Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -409,6 +410,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-scope-conflicts-ebabe0cab980.md",
         "scope": "Workspace Authority conflict groups now distinguish reused opaque IDs across repositories while preserving contradictory project bindings as conflicts.",
         "source_sha": "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_P0_WU4C_REGRESSION_REFRESH",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-wu4c-regression-refresh-7902974a70d4.md",
+        "scope": "Focused internal evidence refresh across RunnerGateway, Mission Control, migration/runtime evidence, credential-backed adapters, Workspace Authority and Python regression suites.",
+        "source_sha": "7902974a70d4631e51410de67762b1e59ded9bde",
         "status": "PASS"
       }
     ],
