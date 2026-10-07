@@ -6,7 +6,7 @@ const credentialState = {
   runtime: { workerUrlConfigured: false, runtimeTokenConfigured: false },
 };
 
-vi.mock("./drizzleMigrationEvidence", () => ({ getDrizzleMigrationEvidence: vi.fn(async () => migration) }));
+vi.mock("./drizzleMigrationEvidence", () => ({ drizzleMigrationEvidenceSource: { observe: vi.fn(async () => migration) } }));
 vi.mock("./runtimeHealthMonitor", () => ({ collectRuntimeHealthEvidence: vi.fn(() => ({ status: "OBSERVED", value: { readiness: "UNKNOWN" } })) }));
 vi.mock("./applicationReadiness", () => ({ evaluateApplicationReadiness: vi.fn(async () => ({ status: "ready", checks: { db: "ok" }, observedAt: "2026-10-07T12:00:00.000Z", evidenceSource: "application_readiness_probe" })) }));
 vi.mock("./cloudflareCredentialCenter", () => ({ getCloudflareCredentialCenterState: vi.fn(async () => credentialState) }));
@@ -27,5 +27,13 @@ describe("internal runtime evidence aggregation", () => {
     await expect(getInternalRuntimeEvidence({ db: {} as never })).resolves.toMatchObject({
       providerConfiguration: { cloudflareDeployment: { status: "NOT_CONFIGURED" } },
     });
+  });
+
+  it("accepts another normalized migration source through the provider boundary", async () => {
+    const alternateMigration = { status: "OBSERVED", source: "alternate-migration-provider", observedAt: "2026-10-07T12:01:00.000Z", value: { databaseIdentity: "d1/app" } };
+    const migrationSource = { observe: vi.fn(async () => alternateMigration) };
+    const result = await getInternalRuntimeEvidence({ db: {} as never, migrationSource: migrationSource as never });
+    expect(migrationSource.observe).toHaveBeenCalledOnce();
+    expect(result.migration).toEqual(alternateMigration);
   });
 });

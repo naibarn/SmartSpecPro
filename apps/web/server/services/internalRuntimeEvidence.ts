@@ -1,6 +1,6 @@
 import type { DrizzleDB } from "../db";
 import { getCloudflareCredentialCenterState } from "./cloudflareCredentialCenter";
-import { getDrizzleMigrationEvidence } from "./drizzleMigrationEvidence";
+import { drizzleMigrationEvidenceSource, type MigrationEvidenceSource } from "./drizzleMigrationEvidence";
 import { collectRuntimeHealthEvidence } from "./runtimeHealthMonitor";
 import { evaluateApplicationReadiness } from "./applicationReadiness";
 
@@ -8,9 +8,11 @@ export async function getInternalRuntimeEvidence(input: {
   db: DrizzleDB;
   now?: Date;
   runtimeEnv?: NodeJS.ProcessEnv;
+  migrationSource?: MigrationEvidenceSource;
 }) {
+  const migrationSource = input.migrationSource ?? drizzleMigrationEvidenceSource;
   const [migration, credentials, readiness] = await Promise.all([
-    getDrizzleMigrationEvidence({ db: input.db, now: input.now }),
+    migrationSource.observe({ db: input.db, now: input.now }),
     getCloudflareCredentialCenterState(input.db),
     evaluateApplicationReadiness({ db: input.db, now: input.now }),
   ]);
