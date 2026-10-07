@@ -827,6 +827,29 @@ export function getEnhancedPromptSemanticValidationError(
     );
     const compactSpeakerId = firstNonBlankString(line.speakerId, line.characterKey)
       || `char-${index + 1}`;
+    const compactSpeakerAliases = new Set([compactSpeakerId]);
+    for (const aliasCandidate of [line.speakerHint, line.speaker]) {
+      const alias = firstNonBlankString(aliasCandidate);
+      if (!alias || compactSpeakerAliases.has(alias)) continue;
+      const canonicalIdsForAlias = input.dialogue.flatMap((candidate, candidateIndex) => {
+        if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+        const candidateLine = candidate as Record<string, unknown>;
+        const candidateAliases = [candidateLine.speakerHint, candidateLine.speaker]
+          .map(value => firstNonBlankString(value))
+          .filter((value): value is string => Boolean(value));
+        if (!candidateAliases.includes(alias)) return [];
+        return [
+          firstNonBlankString(candidateLine.speakerId, candidateLine.characterKey)
+            || `char-${candidateIndex + 1}`,
+        ];
+      });
+      // Some authoring models use the canonical spoken name in compact events
+      // instead of the stable ID. Accept it only when that name resolves to
+      // this same character for every matching source line.
+      if (canonicalIdsForAlias.length > 0 && canonicalIdsForAlias.every(id => id === compactSpeakerId)) {
+        compactSpeakerAliases.add(alias);
+      }
+    }
     const compactPosition = firstNonBlankString(line.position);
     const customIdentity = customIdentityFor(
       line.characterKey,
@@ -854,7 +877,7 @@ export function getEnhancedPromptSemanticValidationError(
           ? ` @ ${escapeRegExp(compactPosition)}`
           : "(?: @ [^):\\r\\n]+)?";
       const compactCanonicalLine = new RegExp(
-        `(?:^|\\n)Line ${index + 1} ONLY \\(${escapeRegExp(compactSpeakerId)}${positionAnchor}\\): "${escapeRegExp(text)}"(?: \\[[^\\]\\r\\n]*\\])?(?=\\n|$)`,
+        `(?:^|\\n)Line ${index + 1} ONLY \\((?:${Array.from(compactSpeakerAliases).map(escapeRegExp).join("|")})${positionAnchor}\\): "${escapeRegExp(text)}"(?: \\[[^\\]\\r\\n]*\\])?(?=\\n|$)`,
         "g",
       );
       if (prompt.match(compactCanonicalLine)?.length !== 1) {
