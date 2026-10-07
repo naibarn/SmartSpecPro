@@ -99,15 +99,23 @@ export async function updateProviderDeploymentTarget(db: DrizzleDB, input: {
   if (input.identity.provider !== "cloudflare") throw new Error("UNSUPPORTED_DEPLOYMENT_TARGET_PROVIDER");
   if (input.changes.credentialRef !== undefined && input.changes.credentialRef !== deploymentCredentialRef(input.identity))
     return { status: "PERMISSION_DENIED" as const, target: null };
-  const [updated] = await db.update(providerDeploymentTargets).set({ ...input.changes, updatedBy: input.actorUserId ?? null, updatedAt: new Date() }).where(and(
-    eq(providerDeploymentTargets.id, input.targetRowId),
-    eq(providerDeploymentTargets.tenantId, input.identity.tenantId),
-    eq(providerDeploymentTargets.projectId, input.identity.projectId),
-    eq(providerDeploymentTargets.environment, input.identity.environment),
-    eq(providerDeploymentTargets.provider, input.identity.provider),
-  )).returning();
-  if (!updated) return { status: "NOT_FOUND" as const, target: null };
-  return { status: updated.enabled ? "UPDATED" as const : "DISABLED" as const, target: updated };
+  try {
+    const [updated] = await db.update(providerDeploymentTargets).set({ ...input.changes, updatedBy: input.actorUserId ?? null, updatedAt: new Date() }).where(and(
+      eq(providerDeploymentTargets.id, input.targetRowId),
+      eq(providerDeploymentTargets.tenantId, input.identity.tenantId),
+      eq(providerDeploymentTargets.projectId, input.identity.projectId),
+      eq(providerDeploymentTargets.environment, input.identity.environment),
+      eq(providerDeploymentTargets.provider, input.identity.provider),
+    )).returning();
+    if (!updated) return { status: "NOT_FOUND" as const, target: null };
+    return { status: updated.enabled ? "UPDATED" as const : "DISABLED" as const, target: updated };
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    const constraint = error && typeof error === "object" && "constraint" in error ? String(error.constraint) : "";
+    if (code === "23505" && constraint === "provider_deployment_targets_active_identity_unique")
+      return { status: "TARGET_AUTHORITY_CONFLICT" as const, target: null };
+    throw error;
+  }
 }
 
 export async function disableProviderDeploymentTarget(db: DrizzleDB, input: {
