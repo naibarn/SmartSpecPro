@@ -6,7 +6,9 @@ import { COOKIE_NAME } from "@shared/const";
 import { createContext } from "../server/_core/context";
 import { sdk } from "../server/_core/sdk";
 import { router } from "../server/_core/trpc";
-import { closeDb } from "../server/db";
+import { getDb, closeDb } from "../server/db";
+import { appIdentities, canonicalProjectMemberships } from "../drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import { researchNotesRouter } from "../server/routers/researchNotes";
 
 const appId = "app_research_notes";
@@ -78,7 +80,26 @@ async function main() {
     const afterArchive = await authenticated.researchNotes.listNotes.query({ appId, projectId });
     if (afterArchive.some((note: { noteId: string }) => note.noteId === created.noteId)) throw new Error("ARCHIVED_NOTE_STILL_VISIBLE");
 
-    process.stdout.write(`${JSON.stringify({ status: "PASS", scope: "loopback Research Notes API with real session-cookie authentication", health: health.status, unauthenticatedDenied, otherProjectDenied, otherTenantDenied, projectContext: true, operations: ["create", "list", "update", "archive"] })}\n`);
+    await getDb().update(canonicalProjectMemberships).set({ lifecycle: "REVOKED", revokedAt: new Date() }).where(and(
+      eq(canonicalProjectMemberships.tenantId, "miniapp-runtime-tenant"),
+      eq(canonicalProjectMemberships.projectId, projectId),
+      eq(canonicalProjectMemberships.principalId, "user:1"),
+    ));
+    let revokedMembershipDenied = false;
+    try { await authenticated.researchNotes.listNotes.query({ appId, projectId }); }
+    catch { revokedMembershipDenied = true; }
+    if (!revokedMembershipDenied) throw new Error("REVOKED_MEMBERSHIP_ACCESS_ACCEPTED");
+
+    await getDb().update(canonicalProjectMemberships).set({ lifecycle: "ACTIVE", revokedAt: null }).where(and(
+      eq(canonicalProjectMemberships.tenantId, "miniapp-runtime-tenant"),
+      eq(canonicalProjectMemberships.projectId, projectId),
+      eq(canonicalProjectMemberships.principalId, "user:1"),
+    ));
+    await getDb().update(appIdentities).set({ lifecycle: "archived" }).where(eq(appIdentities.appId, appId));
+    const archivedAppProjects = await authenticated.researchNotes.listProjects.query({ appId });
+    if (archivedAppProjects.length !== 0) throw new Error("ARCHIVED_APP_PROJECTS_STILL_VISIBLE");
+
+    process.stdout.write(`${JSON.stringify({ status: "PASS", scope: "loopback Research Notes API with real session-cookie authentication", health: health.status, unauthenticatedDenied, otherProjectDenied, otherTenantDenied, revokedMembershipDenied, archivedAppProjectsHidden: true, projectContext: true, operations: ["create", "list", "update", "archive"] })}\n`);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await closeDb();

@@ -60,7 +60,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_AUTHENTICATED_LOOPBACK_RUNTIME",
-    "state": "PARTIAL_INTEGRATED",
+    "state": "PR_OPEN",
     "objective": "Run a loopback-only, schema-projection Research Notes API process using the platform SDK session-cookie authentication and real tenant/project/App authorization; preserve repeatable evidence without starting unrelated service surfaces.",
     "implementation": [
       "apps/web/scripts/research-notes-focused-runtime.ts",
@@ -75,12 +75,13 @@
       "Authenticated principal listed its bound project and completed note create, list, update, and archive over HTTP/tRPC against the disposable database.",
       "A second authenticated tenant was denied access to the first tenant project; the first tenant user was denied access to a same-tenant project without membership.",
       "The reproducible command pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime passed end-to-end. The temporary database was stopped and removed after pass; no production data or service was touched.",
-      "PR #265 merged normally as 2e1042c6523765915c7970c8958c9951905d07cd; /home/dev/projects/SmartSpecPro converged and verified clean at this SHA. The PR branch had diverged from the squash merge of #264; conflict was reconciled on the single owned program.json path using git_capabilities.py resolve before normal PR merge."
+      "PR #265 merged normally as 2e1042c6523765915c7970c8958c9951905d07cd; /home/dev/projects/SmartSpecPro converged and verified clean at this SHA. The PR branch had diverged from the squash merge of #264; conflict was reconciled on the single owned program.json path using git_capabilities.py resolve before normal PR merge.",
+      "Authenticated loopback API suite now also denies revoked project membership and hides projects for an archived App; command passed against a fresh disposable PostgreSQL 17 baseline."
     ],
-    "nextAction": "Continue the Factory execution wiring lane. Preserve M4 as focused API-runtime evidence only; full product deploy, UI/browser UAT, worker execution and AI provider runtime remain pending.",
-    "sourceSha": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
-    "integration": "MERGED_NORMAL_PR",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/265",
+    "nextAction": "Integrate the expanded API authorization acceptance, then continue FACTORY_STAGE_EXECUTOR_WORKER_WIRING as the next dependency-safe workunit.",
+    "sourceSha": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
+    "integration": "PENDING_NORMAL_PR",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/267",
     "integratedSha": "2e1042c6523765915c7970c8958c9951905d07cd"
   },
   "checkpoints": [
@@ -393,7 +394,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T02:54:00+07:00",
+  "updatedAt": "2026-10-08T03:08:00+07:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
@@ -428,15 +429,15 @@
       "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
       "e48bd280bc9ab0877a58f39dc1dace873f31db23",
       "290360e194974ee270e652dd811693336d1dad88",
-      "2ecd11664227b82f3d007a7db737f06baf1f93e2"
+      "2ecd11664227b82f3d007a7db737f06baf1f93e2",
+      "85ed6ce87079cfb6c81cc5043a18d0c83f37c368"
     ],
     "intendedRemoteBranch": "codex/mini-app-auth-runtime-next-20261008",
     "pendingPullRequest": {
-      "number": 265,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/265",
-      "state": "MERGED",
-      "integration": "MERGED_NORMAL_PR",
-      "integratedSha": "2e1042c6523765915c7970c8958c9951905d07cd"
+      "number": 267,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/267",
+      "state": "OPEN",
+      "integration": "PENDING_NORMAL_PR"
     },
     "testEvidence": [
       {
@@ -463,9 +464,14 @@
         "revision": "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727 (built from integrated baseline 3ae709d67481d82eba8b235608c2063a8fa6dc76)",
         "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
         "outcome": "PASS: disposable PostgreSQL 17; real signed session-cookie authentication; unauthenticated denial; cross-tenant and unmembered-project denial; project-scoped create/list/update/archive over loopback HTTP/tRPC"
+      },
+      {
+        "revision": "85ed6ce87079cfb6c81cc5043a18d0c83f37c368 based on integrated 2e1042c6523765915c7970c8958c9951905d07cd",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-authenticated-runtime",
+        "outcome": "PASS: real session auth; unauthenticated, cross-tenant, unmembered-project, revoked-membership and archived-App denial/hiding; CRUD/archive over loopback HTTP/tRPC"
       }
     ],
-    "githubIntegration": "IDLE_AFTER_SUCCESS; PR #265 merged through normal non-force flow",
+    "githubIntegration": "PR #267 open for normal non-force integration",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
     "canonicalAtCheckpoint": "2e1042c6523765915c7970c8958c9951905d07cd",
     "canonicalWorkspace": {
