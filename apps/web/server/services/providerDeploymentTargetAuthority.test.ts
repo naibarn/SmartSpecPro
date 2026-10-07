@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorizeDeploymentTarget, deploymentCredentialRef, resolveProviderDeploymentTarget } from "./providerDeploymentTargetAuthority";
+import { authorizeDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, resolveProviderDeploymentTarget, updateProviderDeploymentTarget } from "./providerDeploymentTargetAuthority";
 
 const identity = { tenantId: "tenant-a", projectId: "project-a", environment: "staging", provider: "cloudflare" };
 const row = { ...identity, id: "target-1", deploymentTargetId: "target-a", accountRef: "account-a", workerRef: "worker-a",
@@ -29,5 +29,23 @@ describe("persisted deployment target authority", () => {
     expect(authorizeDeploymentTarget({ target: row, callerTenantId: "tenant-b", projectId: "project-a", environment: "staging", provider: "cloudflare" })).toBe("PERMISSION_DENIED");
     expect(authorizeDeploymentTarget({ target: row, callerTenantId: "tenant-a", projectId: "project-a", environment: "production", provider: "cloudflare" })).toBe("PERMISSION_DENIED");
     expect(authorizeDeploymentTarget({ target: { ...row, credentialRef: "cloudflare:deployment" }, callerTenantId: "tenant-a", projectId: "project-a", environment: "staging", provider: "cloudflare" })).toBe("PERMISSION_DENIED");
+  });
+
+  it("lists targets in tenant/project/environment scope and updates or disables only scoped rows", async () => {
+    let whereClause: unknown;
+    let changes: unknown;
+    const updated = { ...row, enabled: false };
+    const db = {
+      select: () => ({ from: () => ({ where: async (where: unknown) => { whereClause = where; return [row]; } }) }),
+      update: () => ({ set: (set: unknown) => ({ where: (where: unknown) => ({ returning: async () => { changes = set; whereClause = where; return [updated]; } }) }) }),
+    } as never;
+    await expect(listProviderDeploymentTargets(db, identity)).resolves.toEqual([row]);
+    expect(whereClause).toBeDefined();
+    await expect(updateProviderDeploymentTarget(db, { identity, targetRowId: row.id, changes: { workerRef: "worker-b" }, actorUserId: 2 }))
+      .resolves.toMatchObject({ status: "DISABLED", target: updated });
+    expect(changes).toMatchObject({ workerRef: "worker-b", updatedBy: 2 });
+    await expect(disableProviderDeploymentTarget(db, { identity, targetRowId: row.id })).resolves.toMatchObject({ status: "DISABLED" });
+    await expect(updateProviderDeploymentTarget(db, { identity, targetRowId: row.id, changes: { credentialRef: "cloudflare:deployment" } }))
+      .resolves.toEqual({ status: "PERMISSION_DENIED", target: null });
   });
 });
