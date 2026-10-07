@@ -14,6 +14,7 @@ const execFileAsync = promisify(execFile);
 export type LocalWorkspaceAudit = {
   status: "OBSERVED" | "NOT_CONFIGURED" | "UNAVAILABLE" | "ERROR";
   result?: Record<string, unknown>;
+  missionControl?: { status: "OBSERVED" | "UNAVAILABLE" | "ERROR"; result?: Record<string, unknown>; reason?: string };
   reason?: string;
 };
 
@@ -30,7 +31,18 @@ export async function collectLocalWorkspaceAudit(env: NodeJS.ProcessEnv = proces
     const result = JSON.parse(stdout) as Record<string, unknown>;
     if (result.status !== "WORKTREE_AUDIT_COMPLETE" || result.mode !== "AUDIT_ONLY")
       return { status: "ERROR", reason: "collector_contract_invalid" };
-    return { status: "OBSERVED", result };
+    try {
+      const { stdout: missionControlStdout } = await execFileAsync(env.SMARTSPEC_PYTHON_EXECUTABLE?.trim() || "python3", [
+        script, "mission-control", "--repository", root,
+      ], { timeout: 120_000, maxBuffer: 5 * 1024 * 1024, cwd: root });
+      const missionControl = JSON.parse(missionControlStdout) as Record<string, unknown>;
+      return { status: "OBSERVED", result, missionControl: missionControl.status === "MISSION_CONTROL_SNAPSHOT_READY"
+        ? { status: "OBSERVED", result: missionControl }
+        : { status: "ERROR", reason: "mission_control_contract_invalid" } };
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+      return { status: "OBSERVED", result, missionControl: { status: code === "ENOENT" ? "UNAVAILABLE" : "ERROR", reason: code.slice(0, 80) } };
+    }
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
     return { status: code === "ENOENT" ? "UNAVAILABLE" : "ERROR", reason: code.slice(0, 80) };

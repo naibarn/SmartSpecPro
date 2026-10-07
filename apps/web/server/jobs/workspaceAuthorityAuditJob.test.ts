@@ -49,13 +49,13 @@ describe("workspace authority audit triggers", () => {
     const temp = mkdtempSync(path.join(os.tmpdir(), "workspace-audit-exec-"));
     const executable = path.join(temp, "python-fixture");
     try {
-      writeFileSync(executable, "#!/bin/sh\nprintf '%s\\n' '{\"status\":\"WORKTREE_AUDIT_COMPLETE\",\"mode\":\"AUDIT_ONLY\",\"workspaces\":[]}'\n");
+      writeFileSync(executable, "#!/bin/sh\nif [ \"$2\" = \"mission-control\" ]; then printf '%s\\n' '{\"status\":\"MISSION_CONTROL_SNAPSHOT_READY\",\"project_id\":\"project-a\"}'; else printf '%s\\n' '{\"status\":\"WORKTREE_AUDIT_COMPLETE\",\"mode\":\"AUDIT_ONLY\",\"workspaces\":[]}'; fi\n");
       chmodSync(executable, 0o700);
       const result = await collectLocalWorkspaceAudit({
         SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY: process.cwd(),
         SMARTSPEC_PYTHON_EXECUTABLE: executable,
       });
-      expect(result).toEqual({ status: "OBSERVED", result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [] } });
+      expect(result).toEqual({ status: "OBSERVED", result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [] }, missionControl: { status: "OBSERVED", result: { status: "MISSION_CONTROL_SNAPSHOT_READY", project_id: "project-a" } } });
     } finally {
       rmSync(temp, { recursive: true, force: true });
     }

@@ -51,4 +51,33 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.workspaceGroups.observed[0].state).toBe("UNBOUND");
     expect(result.workspaceConflicts).toHaveLength(0);
   });
+
+  it("aggregates canonical, user-workspace, development, worktree, and SPEC-295 production facts from the local authority snapshot", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [], now, localAuthorityStatus: "OBSERVED", localAuthorityObservedAt: now, localMissionControl: {
+      repository: { repository_id: "repo-a", canonical_ref: "refs/heads/main", canonical_branch: "main", canonical_sha: "a".repeat(40), verification_state: "USER_WORKSPACE_CONVERGED" },
+      user_workspace: { workspace_id: "workspace-a", role: "CANONICAL_USER_WORKSPACE", sha: "a".repeat(40), state: "SYNCED", dirty: false },
+      development_state: { uncommitted_intended_work: [], unpushed_intended_commits: { state: "UNKNOWN" } },
+      worktrees: { active: [], integrating: [], retireable: [], stale_or_unknown: [], recovery: [] },
+      production: { status: "UNKNOWN", reason: "SPEC-295 runtime evidence was not supplied" },
+    } });
+    expect(result).toMatchObject({
+      localAuthorityStatus: "OBSERVED",
+      localAuthorityObservedAt: now.toISOString(),
+      canonical: { canonical_sha: "a".repeat(40) },
+      userWorkspace: { workspace_id: "workspace-a", role: "CANONICAL_USER_WORKSPACE" },
+      developmentIntegration: { unpushed_intended_commits: { state: "UNKNOWN" } },
+      worktreeLifecycle: { integrating: [], recovery: [] },
+      production: { status: "UNKNOWN", reason: "SPEC-295 runtime evidence was not supplied" },
+    });
+  });
+
+  it("does not present stale local audit evidence as current Mission Control state", () => {
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [], now,
+      localAuthorityStatus: "STALE", localAuthorityObservedAt: new Date("2026-10-07T11:00:00.000Z"),
+      localMissionControl: { repository: { canonical_sha: "old" } },
+    });
+    expect(result.canonical).toMatchObject({ status: "UNKNOWN", reason: "local_authority_snapshot_unavailable" });
+    expect(result.localAuthorityStatus).toBe("STALE");
+    expect(result.localAuthorityObservedAt).toBe("2026-10-07T11:00:00.000Z");
+  });
 });

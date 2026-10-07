@@ -1,6 +1,6 @@
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 
-import { runnerNodes } from "../../drizzle/schema";
+import { runnerNodes, workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { workspaceFactsFromSnapshot } from "./spec224WorkspaceSpecSet";
 
@@ -52,6 +52,9 @@ export function projectRunnerWorkspaceAuthority(input: {
   actorId: number;
   rows: RunnerAuthorityRow[];
   now: Date;
+  localMissionControl?: Record<string, unknown> | null;
+  localAuthorityStatus?: "OBSERVED" | "STALE" | "UNAVAILABLE";
+  localAuthorityObservedAt?: Date | null;
 }) {
   const { tenantId, rows, now } = input;
   const workspaceRows = rows.flatMap((runner) => {
@@ -113,12 +116,21 @@ export function projectRunnerWorkspaceAuthority(input: {
     return { state, hosts: facts };
   });
   const sessions = workspaceRows.filter((row) => row.sessionState === "ACTIVE");
+  const local = input.localAuthorityStatus && input.localAuthorityStatus !== "OBSERVED"
+    ? null : input.localMissionControl;
   return {
     tenantId,
     generatedAt: now.toISOString(),
     authority: "runner-control-plane",
     workspaces: { count: workspaceRows.length, observed: workspaceRows },
     workspaceGroups: { count: workspaces.length, observed: workspaces },
+    canonical: local?.repository ?? { status: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
+    userWorkspace: local?.user_workspace ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
+    developmentIntegration: local?.development_state ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
+    worktreeLifecycle: local?.worktrees ?? { state: "UNKNOWN", reason: "local_authority_snapshot_unavailable" },
+    production: local?.production ?? { status: "UNKNOWN", reason: "SPEC-295 normalized evidence unavailable" },
+    localAuthorityStatus: input.localAuthorityStatus ?? "UNAVAILABLE",
+    localAuthorityObservedAt: input.localAuthorityObservedAt?.toISOString() ?? null,
     hosts: { count: rows.length, observed: rows.map((row) => ({
       hostId: row.runnerId,
       agentIdentity: row.runnerId,
@@ -166,5 +178,34 @@ export async function getWorkspaceAuthorityProjectReadModel(input: ProjectWorksp
     or(isNull(runnerNodes.ownerUserId), eq(runnerNodes.ownerUserId, input.actorId)),
   ));
 
-  return projectRunnerWorkspaceAuthority({ tenantId: input.tenantId, actorId: input.actorId, rows, now });
+  const [latestAudit] = await db.select({ outputJson: workerJobs.outputJson, finishedAt: workerJobs.finishedAt })
+    .from(workerJobs)
+    .where(and(
+      eq(workerJobs.tenantId, input.tenantId),
+      eq(workerJobs.jobType, "workspace.authority.audit"),
+      inArray(workerJobs.status, ["completed", "succeeded"]),
+    ))
+    .orderBy(desc(workerJobs.finishedAt))
+    .limit(1);
+  const jobOutput = latestAudit?.outputJson && typeof latestAudit.outputJson === "object"
+    ? latestAudit.outputJson as Record<string, unknown> : null;
+  const auditOutput = jobOutput?.output && typeof jobOutput.output === "object"
+    ? jobOutput.output as Record<string, unknown> : jobOutput;
+  const localAudit = auditOutput?.localWorkspaceAudit && typeof auditOutput.localWorkspaceAudit === "object"
+    ? auditOutput.localWorkspaceAudit as Record<string, unknown> : null;
+  const missionControlEvidence = localAudit?.missionControl && typeof localAudit.missionControl === "object"
+    ? localAudit.missionControl as Record<string, unknown> : null;
+  const localMissionControl = missionControlEvidence?.status === "OBSERVED" && missionControlEvidence.result && typeof missionControlEvidence.result === "object"
+    ? missionControlEvidence.result as Record<string, unknown> : null;
+  const auditAgeMs = latestAudit?.finishedAt ? now.getTime() - latestAudit.finishedAt.getTime() : null;
+  const localAuthorityStatus = auditAgeMs === null
+    ? "UNAVAILABLE"
+    : auditAgeMs < 0 || auditAgeMs > 15 * 60_000 || !localMissionControl
+      ? "STALE"
+      : "OBSERVED";
+
+  return projectRunnerWorkspaceAuthority({ tenantId: input.tenantId, actorId: input.actorId, rows, now,
+    localMissionControl: localAuthorityStatus === "OBSERVED" ? localMissionControl : null,
+    localAuthorityStatus, localAuthorityObservedAt: latestAudit?.finishedAt ?? null,
+  });
 }
