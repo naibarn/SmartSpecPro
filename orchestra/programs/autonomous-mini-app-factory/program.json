@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+    "sha": "804411ba46401c5a2b819afe284e4aa537b20612",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
-      "canonical_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
-      "canonical_user_workspace_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+      "integrated_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
+      "canonical_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
+      "canonical_user_workspace_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:dcfc1a32-5716-4f02-a800-35a4600070bd",
-      "verified_at": "2026-10-08T16:16:11.188Z"
+      "receipt_id": "workspace-convergence:83254837-036a-4844-9458-b88ba86d0658",
+      "verified_at": "2026-10-08T16:23:58.565Z"
     },
-    "observedAt": "2026-10-08T16:21:47.774Z",
+    "observedAt": "2026-10-08T16:26:31.080Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+      "canonical_user_workspace_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
       "dirty": false,
-      "reason": "PR #367 merged normally at 98ec7c9645cdceaa3ba534622e86db06f47defd4; canonical workspace converge and verify passed."
+      "reason": "PR #370 handoff merged normally at 804411ba46401c5a2b819afe284e4aa537b20612; workspace converge and verify passed."
     },
     "latestIntegratedProgramChange": "PR #367 exposes the existing P-RECOVERY issuer through authenticated tenant-owner authority. Real Runner dispatch remains blocked by expired capability evidence, missing job-scoped authority/budget/ledger provisioning, and missing receipt-to-economic-capture integration.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+      "sha": "804411ba46401c5a2b819afe284e4aa537b20612",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:dcfc1a32-5716-4f02-a800-35a4600070bd",
-      "verifiedAt": "2026-10-08T16:16:11.188Z"
+      "convergenceReceipt": "workspace-convergence:83254837-036a-4844-9458-b88ba86d0658",
+      "verifiedAt": "2026-10-08T16:23:58.565Z"
     }
   },
   "inventory": {
@@ -433,9 +433,19 @@
     },
     {
       "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
-      "state": "WAITING_EXTERNAL_AUTHORITY",
-      "rootCause": "The observed loopback database has no provider_deployment_targets or provider_deployment_credentials tables. Existing target authority is Cloudflare-only; Cloudflare account ID, API token, and runtime token are absent. No authoritative target ID/runtime identity/deployment authorization exists.",
-      "reactivationPredicate": "An approved non-production target is registered under existing deployment authority with tenant/project/environment, runtime identity, isolated DB, package reference, and deployment authorization."
+      "state": "WAITING_SCHEMA_MIGRATIONS_AND_EXTERNAL_AUTHORITY",
+      "rootCause": "The local loopback control-plane database is at migration 0388_worker_job_event_context (349 recorded migrations). Deployment target table migration 0389_spec288_provider_deployment_target_authority and credential table migration 0391_tenant_deployment_credentials are unapplied; current canonical migration journal continues through 0394_project_wiki_pages_mini_app. The implementation and admin APIs exist in code, but this database has no target/credential tables or registered target. Local apps/web/.env has no Cloudflare account/API token values. Applying 0389-0394 would also apply intervening shared migration changes, so no migration or target/credential provisioning was performed without an approved environment/owner action.",
+      "reactivationPredicate": "Confirm the intended non-production tenant/project/environment/provider/target/runtime identity and isolated DB; obtain deployment authorization and credential source. Run the repository migration chain 0389-0394 against the explicitly authorized non-production DB, then register the target and credential via existing admin authority, bind package digest, deploy and run smoke/UAT.",
+      "ownerActionRequired": {
+        "requiredDecisions": [
+          "Name the tenant, project, environment and provider for the non-production target.",
+          "Authorize the target/runtime identity and isolated database.",
+          "Authorize a credential source and deployment scope; supply it only through the existing secret-management workflow.",
+          "Approve application of migrations 0389-0394 to that specific non-production database.",
+          "Authorize the Research Notes package digest and deployment/UAT window."
+        ]
+      },
+      "evidence": "At 2026-10-08T16:24:09Z local DB migration head is 0388 (349 rows); target schema 0389 and credentials schema 0391 absent; journal head is 0394. No target registration or credential rows exist. Environment presence check found no Cloudflare account/API token values in apps/web/.env. No migration or target was created."
     }
   ],
   "criticalPath": [
@@ -604,7 +614,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T16:21:47.774Z",
+  "updatedAt": "2026-10-08T16:26:31.080Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -618,9 +628,9 @@
     "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_PROJECT_WIKI_SHARED_FACTORY_STAGE_CHAIN_TO_PACKAGE; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "deployment": {
-    "state": "PREPARED_NOT_DEPLOYED",
-    "targetId": "UNSELECTED",
-    "reason": "Existing disposable PostgreSQL/pgvector runtime is test infrastructure, not an authorized deployment target. Observed DB lacks provider deployment target/credential tables; Cloudflare target authority configuration lacks account/API/runtime credentials. No deployment or production mutation performed.",
+    "state": "WAITING_SCHEMA_MIGRATIONS_AND_EXTERNAL_AUTHORITY",
+    "targetId": "UNREGISTERED",
+    "reason": "Loopback DB is at migration 0388; target/credential migrations 0389 and 0391 and later canonical migrations through 0394 are unapplied. No authorized non-production target identity, isolated DB, credential source, or deployment approval is registered. No deployment performed.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -1092,7 +1102,12 @@
       {
         "dependency": "migration",
         "state": "NOT_ROOT_CAUSE",
-        "evidence": "Runner/grant/budget/ledger tables exist; provisioning, configuration or approval is absent"
+        "evidence": "Runner/grant/budget/ledger schemas are present; local DB migration head 0388 predates deployment target 0389 and credential 0391. Thus Runner authority rows are provisioning/configuration gaps, while non-production target availability also has an incomplete migration chain."
+      },
+      {
+        "dependency": "deployment target schema migration",
+        "state": "MIGRATION_PENDING",
+        "evidence": "Loopback DB at 0388; required target/credential migrations 0389/0391 absent; canonical journal head 0394."
       }
     ],
     "qaReviewPasses": [
@@ -1181,9 +1196,25 @@
       },
       {
         "id": "REGISTERED_NONPROD_TARGET",
-        "state": "SEPARATE_WAITING_AUTHORITY",
-        "dependency": "Approved target identity, runtime, isolated DB and deployment authorization."
+        "state": "WAITING_MIGRATIONS_AND_OWNER_AUTHORITY",
+        "dependency": "Owner names target identity, isolated DB, credential source and authorizes the complete 0389-0394 migration chain."
       }
-    ]
+    ],
+    "latestIndependentWorkunitObservation": {
+      "observedAt": "2026-10-08T16:24:09.064Z",
+      "scope": "Read-only loopback DB/runtime environment inspection",
+      "registeredRunners": "local-runner is the only current Windows candidate; it remains trusted/online with expired capability snapshot. Other registered local_device rows are stale historical records, not eligible Linux runners.",
+      "linuxRunner": "NO_FRESH_REGISTERED_LINUX_RUNNER",
+      "deploymentTargetSchema": {
+        "databaseHead": "0388_worker_job_event_context",
+        "migrationCount": 349,
+        "targetSchemaMigration": "0389_spec288_provider_deployment_target_authority",
+        "credentialSchemaMigration": "0391_tenant_deployment_credentials",
+        "canonicalJournalHead": "0394_project_wiki_pages_mini_app",
+        "targetAndCredentialTables": "ABSENT"
+      },
+      "deploymentCredentials": "No Cloudflare account/API token values in local apps/web/.env; no external secret source was queried.",
+      "action": "No migrations, runner identities, target identities, credentials or economic records created."
+    }
   }
 }
