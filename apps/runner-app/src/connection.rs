@@ -303,7 +303,16 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{safe_refresh_error_code, validate_start_pairing_response, StartPairingResponse};
+    use super::{
+        map_connect_request_error, request_json_with_agent, safe_refresh_error_code,
+        validate_start_pairing_response, StartPairingResponse,
+    };
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        thread,
+        time::Duration,
+    };
 
     fn current_response() -> StartPairingResponse {
         StartPairingResponse {
@@ -361,6 +370,14 @@ mod tests {
             "RUNNER_CONNECT_REQUEST_REJECTED_503"
         );
         assert_eq!(
+            safe_refresh_error_code("RUNNER_CONNECT_DNS_FAILED"),
+            "RUNNER_CONNECT_DNS_FAILED"
+        );
+        assert_eq!(
+            safe_refresh_error_code("RUNNER_CONNECT_TLS_FAILED"),
+            "RUNNER_CONNECT_TLS_FAILED"
+        );
+        assert_eq!(
             safe_refresh_error_code("network failed with bearer secret-value"),
             "RUNNER_CREDENTIAL_REFRESH_FAILED"
         );
@@ -368,6 +385,143 @@ mod tests {
             safe_refresh_error_code("BEARER_TOKEN_VALUE"),
             "RUNNER_CREDENTIAL_REFRESH_FAILED"
         );
+        let untrusted = "https://runner:password@example.test/refresh?token=url-secret Authorization: Bearer access-secret X-Runner-Device-Signature: signature-secret private_key=private-secret response-body-secret";
+        let safe = safe_refresh_error_code(untrusted);
+        assert_eq!(safe, "RUNNER_CREDENTIAL_REFRESH_FAILED");
+        for secret in [
+            "password",
+            "url-secret",
+            "access-secret",
+            "signature-secret",
+            "private-secret",
+            "response-body-secret",
+        ] {
+            assert!(!safe.contains(secret));
+        }
+    }
+
+    fn test_agent(timeout: Duration) -> ureq::Agent {
+        ureq::Agent::config_builder()
+            .timeout_global(Some(timeout))
+            .build()
+            .new_agent()
+    }
+
+    fn mock_http_server(response: Vec<u8>, delay: Duration) -> (String, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
+            let mut request = [0; 4096];
+            let _ = stream.read(&mut request);
+            if !delay.is_zero() {
+                thread::sleep(delay);
+            }
+            let _ = stream.write_all(&response);
+        });
+        (format!("http://{address}/refresh"), server)
+    }
+
+    fn json_response(status: u16, body: &str) -> Vec<u8> {
+        let reason = match status {
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            429 => "Too Many Requests",
+            503 => "Service Unavailable",
+            _ => "Test Response",
+        };
+        format!(
+            "HTTP/1.1 {status} {reason}\r\nContent-Length: {}\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{body}",
+            body.len()
+        )
+        .into_bytes()
+    }
+
+    fn send_mock_request(
+        agent: &ureq::Agent,
+        endpoint: &str,
+        token: Option<&str>,
+    ) -> Result<serde_json::Value, String> {
+        request_json_with_agent(agent, "POST", endpoint, token, None, b"{}")
+    }
+
+    #[test]
+    fn maps_http_statuses_without_reading_or_exposing_response_bodies() {
+        for status in [401, 403, 404, 429, 503] {
+            let secret_body = r#"{"message":"response-body-secret","token":"body-token-secret"}"#;
+            let (endpoint, server) =
+                mock_http_server(json_response(status, secret_body), Duration::ZERO);
+            let result = send_mock_request(
+                &test_agent(Duration::from_secs(1)),
+                &endpoint,
+                Some("access-token-secret"),
+            );
+            assert_eq!(
+                result.unwrap_err(),
+                format!("RUNNER_CONNECT_REQUEST_REJECTED_{status}")
+            );
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn classifies_dns_and_connection_failures_without_transport_details() {
+        assert_eq!(
+            map_connect_request_error(ureq::Error::HostNotFound),
+            "RUNNER_CONNECT_DNS_FAILED"
+        );
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!("http://{}/refresh", listener.local_addr().unwrap());
+        drop(listener);
+        let result = send_mock_request(&test_agent(Duration::from_secs(1)), &endpoint, None);
+        assert_eq!(result.unwrap_err(), "RUNNER_CONNECT_CONNECTION_FAILED");
+    }
+
+    #[test]
+    fn classifies_tls_failure_from_local_mock_server() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut client_hello = [0; 2048];
+            let _ = stream.read(&mut client_hello);
+            let _ = stream.write_all(b"not a TLS record");
+        });
+        let endpoint = format!("https://{address}/refresh");
+        let request = ureq::http::Request::builder()
+            .method("POST")
+            .uri(&endpoint)
+            .body(b"{}".to_vec())
+            .unwrap();
+        let raw_error = test_agent(Duration::from_secs(1)).run(request).unwrap_err();
+        assert_eq!(
+            map_connect_request_error(raw_error),
+            "RUNNER_CONNECT_TLS_FAILED"
+        );
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn classifies_request_timeout_from_local_mock_server() {
+        let (endpoint, server) =
+            mock_http_server(json_response(200, "{}"), Duration::from_millis(150));
+        let result = send_mock_request(&test_agent(Duration::from_millis(25)), &endpoint, None);
+        assert_eq!(result.unwrap_err(), "RUNNER_CONNECT_TIMEOUT");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn classifies_malformed_response_without_including_body() {
+        let secret_body = "malformed-response-secret";
+        let (endpoint, server) = mock_http_server(json_response(200, secret_body), Duration::ZERO);
+        let result = send_mock_request(&test_agent(Duration::from_secs(1)), &endpoint, None);
+        let error = result.unwrap_err();
+        assert_eq!(error, "RUNNER_CONNECT_RESPONSE_INVALID");
+        assert!(!error.contains(secret_body));
+        server.join().unwrap();
     }
 }
 
@@ -415,6 +569,12 @@ pub fn safe_refresh_error_code(error: &str) -> String {
     let code = error.trim();
     const SAFE_CODES: &[&str] = &[
         "RUNNER_CONNECT_REQUEST_FAILED",
+        "RUNNER_CONNECT_DNS_FAILED",
+        "RUNNER_CONNECT_CONNECTION_FAILED",
+        "RUNNER_CONNECT_TLS_FAILED",
+        "RUNNER_CONNECT_TIMEOUT",
+        "RUNNER_CONNECT_HTTP_REDIRECT_FAILED",
+        "RUNNER_CONNECT_PROXY_INVALID",
         "RUNNER_CONNECT_ENDPOINT_INVALID",
         "RUNNER_CONNECT_REQUEST_BUILD_FAILED",
         "RUNNER_CONNECT_RESPONSE_READ_FAILED",
@@ -496,6 +656,17 @@ fn request_json<T: for<'de> Deserialize<'de>>(
         .timeout_global(Some(std::time::Duration::from_secs(30)))
         .build()
         .new_agent();
+    request_json_with_agent(&agent, method, endpoint, token, proof, body)
+}
+
+fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
+    agent: &ureq::Agent,
+    method: &str,
+    endpoint: &str,
+    token: Option<&str>,
+    proof: Option<&DeviceProofSigner>,
+    body: &[u8],
+) -> Result<T, String> {
     let path = endpoint_path(endpoint).map_err(|_| "RUNNER_CONNECT_ENDPOINT_INVALID")?;
     let mut request_builder = ureq::http::Request::builder()
         .method(method)
@@ -518,9 +689,7 @@ fn request_json<T: for<'de> Deserialize<'de>>(
     let request = request_builder
         .body(body.to_vec())
         .map_err(|_| "RUNNER_CONNECT_REQUEST_BUILD_FAILED")?;
-    let response = agent
-        .run(request)
-        .map_err(|_| "RUNNER_CONNECT_REQUEST_FAILED")?;
+    let response = agent.run(request).map_err(map_connect_request_error)?;
     if !response.status().is_success() {
         return Err(format!(
             "RUNNER_CONNECT_REQUEST_REJECTED_{}",
@@ -532,8 +701,57 @@ fn request_json<T: for<'de> Deserialize<'de>>(
         .with_config()
         .limit(MAX_RESPONSE_BYTES as u64)
         .read_to_vec()
-        .map_err(|_| "RUNNER_CONNECT_RESPONSE_READ_FAILED")?;
+        .map_err(map_connect_response_read_error)?;
     serde_json::from_slice(&bytes).map_err(|_| "RUNNER_CONNECT_RESPONSE_INVALID".into())
+}
+
+fn map_connect_request_error(error: ureq::Error) -> String {
+    use ureq::Error;
+
+    match error {
+        Error::StatusCode(status) => format!("RUNNER_CONNECT_REQUEST_REJECTED_{status}"),
+        Error::HostNotFound => "RUNNER_CONNECT_DNS_FAILED".into(),
+        Error::Timeout(_) => "RUNNER_CONNECT_TIMEOUT".into(),
+        Error::Io(error) if error.kind() == std::io::ErrorKind::InvalidData => {
+            "RUNNER_CONNECT_TLS_FAILED".into()
+        }
+        Error::Io(error) if error.kind() == std::io::ErrorKind::TimedOut => {
+            "RUNNER_CONNECT_TIMEOUT".into()
+        }
+        Error::Io(_) | Error::ConnectionFailed | Error::ConnectProxyFailed(_) => {
+            "RUNNER_CONNECT_CONNECTION_FAILED".into()
+        }
+        Error::Tls(_) | Error::Rustls(_) | Error::TlsRequired => "RUNNER_CONNECT_TLS_FAILED".into(),
+        Error::Protocol(_) | Error::LargeResponseHeader(_, _) | Error::Json(_) => {
+            "RUNNER_CONNECT_RESPONSE_INVALID".into()
+        }
+        Error::BadUri(_) => "RUNNER_CONNECT_ENDPOINT_INVALID".into(),
+        Error::InvalidProxyUrl => "RUNNER_CONNECT_PROXY_INVALID".into(),
+        Error::RedirectFailed | Error::TooManyRedirects => {
+            "RUNNER_CONNECT_HTTP_REDIRECT_FAILED".into()
+        }
+        Error::Http(_) | Error::BodyExceedsLimit(_) => "RUNNER_CONNECT_REQUEST_BUILD_FAILED".into(),
+        _ => "RUNNER_CONNECT_REQUEST_FAILED".into(),
+    }
+}
+
+fn map_connect_response_read_error(error: ureq::Error) -> String {
+    use ureq::Error;
+
+    match error {
+        Error::Timeout(_) => "RUNNER_CONNECT_TIMEOUT".into(),
+        Error::Io(error) if error.kind() == std::io::ErrorKind::InvalidData => {
+            "RUNNER_CONNECT_TLS_FAILED".into()
+        }
+        Error::Io(error) if error.kind() == std::io::ErrorKind::TimedOut => {
+            "RUNNER_CONNECT_TIMEOUT".into()
+        }
+        Error::Tls(_) | Error::Rustls(_) | Error::TlsRequired => "RUNNER_CONNECT_TLS_FAILED".into(),
+        Error::Protocol(_) | Error::LargeResponseHeader(_, _) | Error::Json(_) => {
+            "RUNNER_CONNECT_RESPONSE_INVALID".into()
+        }
+        _ => "RUNNER_CONNECT_RESPONSE_READ_FAILED".into(),
+    }
 }
 
 fn server_base_url(control_url: &str) -> Result<String, String> {
