@@ -875,7 +875,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
+    "expected_canonical_sha": "6abad215078bbed5df8d158be504d56bb6f77559",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 14,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1083,7 +1083,8 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "074eb72c5bd3a3c62028e052f60831d451e3f4e9"
+      "074eb72c5bd3a3c62028e052f60831d451e3f4e9",
+      "76d88dd7e9c81f6a8a244074463e1a850410769b"
     ],
     "mapping": [
       {
@@ -1097,6 +1098,16 @@
           "apps/runner-app/src/spec224_candidate.rs"
         ],
         "source_sha": "074eb72c5bd3a3c62028e052f60831d451e3f4e9"
+      },
+      {
+        "coverage": "PARTIAL; advisory lifecycle eligibility only; not integrated into protected runtime admission",
+        "scope": "Versioned SPEC-224 DevelopmentRun eligibility contract v1 with focused tests and separate remote-trust blocker handoffs",
+        "source_paths": [
+          "apps/web/server/services/developmentRunEligibility.ts",
+          "apps/web/server/services/__tests__/developmentRunEligibility.test.ts",
+          "orchestra/tasks/spec224-remote-trust-eligibility-20261009/"
+        ],
+        "source_sha": "76d88dd7e9c81f6a8a244074463e1a850410769b"
       }
     ],
     "source_paths": [
@@ -1104,16 +1115,17 @@
       "apps/web/server/services/spec224PhaseController.ts",
       "apps/web/server/services/spec224RequirementClosurePersistence.ts",
       "apps/web/server/services/spec224FinalVerify.ts",
-      "apps/runner-app/src/spec224_candidate.rs"
+      "apps/runner-app/src/spec224_candidate.rs",
+      "apps/web/server/services/developmentRunEligibility.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
+    "canonical_sha": "6abad215078bbed5df8d158be504d56bb6f77559",
     "integrated": true,
-    "integrated_at": "2026-10-08T02:12:22Z"
+    "integrated_at": "2026-10-08T23:18:50Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -3058,7 +3070,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T02:13:46.294681Z",
+  "updated_at": "2026-10-08T23:19:40.691214Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
