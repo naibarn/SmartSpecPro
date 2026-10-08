@@ -14,6 +14,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "geo.source.refresh",
   "intelligence.research.execute",
   "research_notes.summarize",
+  "mini_app_factory.stage",
   "spec224.verification.full",
   "channel.delivery",
   "channel.webhook_ingest",
