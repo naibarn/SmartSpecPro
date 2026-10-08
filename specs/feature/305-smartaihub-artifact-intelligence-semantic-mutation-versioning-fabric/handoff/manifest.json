@@ -1,0 +1,195 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f"
+  },
+  "continuation": {
+    "next_action": "Map semantic artifact mutation requirements to canonical artifact, revision, validation, and evidence implementations; establish exact test and migration/deployment receipts before changing UNKNOWN states.",
+    "next_ready_workunit": "SPEC305_REQUIREMENT_EVIDENCE_MAPPING",
+    "reactivation_predicate": null,
+    "resume_point": "Handoff initialized and reconciled on candidate branch codex/evidence-execution-reconcile-20261008. Base origin/main is 074eb72c5bd3a3c62028e052f60831d451e3f4e9. Implementation, verification, and deployment remain UNKNOWN; no completion receipts were created.",
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+    "digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-08T02:01:24.113919Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-07T21:14:38+07:00",
+      "spec_last_changed_at": "2026-10-07T21:14:38+07:00"
+    },
+    "revision": "1.3",
+    "slug": "305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric",
+    "spec_id": "305",
+    "title": "SPEC-305 --- SmartAIHub Artifact Intelligence, Semantic Mutation & Versioning Fabric"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-08T02:01:24.113919Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-08T02:01:24.113919Z",
+    "sources": [
+      {
+        "digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PROPOSED / IMPLEMENTATION-READY AFTER CANONICAL NUMBER",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 4,
+        "source": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+        "source_digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "value": "PROPOSED / IMPLEMENTATION-READY AFTER CANONICAL NUMBER"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "**Status:** PROPOSED / IMPLEMENTATION-READY AFTER CANONICAL NUMBER",
+        "line": 4,
+        "source": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+        "source_digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "value": "PROPOSED / IMPLEMENTATION-READY AFTER CANONICAL NUMBER"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 94,
+    "unresolved": 94
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-08T02:04:03.289107Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

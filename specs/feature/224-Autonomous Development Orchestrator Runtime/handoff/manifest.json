@@ -15,7 +15,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -27,7 +27,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -39,7 +39,7 @@
         "relation_text": "supersedes",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -51,7 +51,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -63,7 +63,7 @@
         "relation_text": "replaceable",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -75,7 +75,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -87,7 +87,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -99,7 +99,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -111,7 +111,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -123,7 +123,7 @@
         "relation_text": "replaces",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -191,8 +191,8 @@
           "R20",
           "R21"
         ],
-        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1275",
-        "source_digest": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992",
+        "source": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md#L1276",
+        "source_digest": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e",
         "successor_spec_id": "233"
       },
       {
@@ -290,8 +290,8 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L807",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -574,6 +574,30 @@
         "direction": "SUCCESSOR_CANDIDATE",
         "predecessor_spec_id": "224",
         "referenced_spec_id": "224",
+        "referencing_spec_id": "259",
+        "relation_text": "merge",
+        "requirement_ids": [],
+        "source": "specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop/spec.md#L1792",
+        "source_digest": "35322113c84b99c3c4a550b8a6e67cee84db8a9958b5fea97943d391d50d7ca2",
+        "successor_spec_id": "259"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "259",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/259-smartaihub-thclaws-hybrid-runtime-cloud-development-llm-subscription-interop/spec.md#L203",
+        "source_digest": "35322113c84b99c3c4a550b8a6e67cee84db8a9958b5fea97943d391d50d7ca2",
+        "successor_spec_id": "259"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
         "referencing_spec_id": "261",
         "relation_text": "replace",
         "requirement_ids": [],
@@ -598,12 +622,84 @@
         "direction": "SUCCESSOR_CANDIDATE",
         "predecessor_spec_id": "224",
         "referenced_spec_id": "224",
+        "referencing_spec_id": "267",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L158",
+        "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "successor_spec_id": "267"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
         "referencing_spec_id": "271",
         "relation_text": "replacement",
         "requirement_ids": [],
         "source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L104",
         "source_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
         "successor_spec_id": "271"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "273",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/273-portable-mini-app-data-architecture/spec.md#L2075",
+        "source_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "successor_spec_id": "273"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "273",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/273-portable-mini-app-data-architecture/spec.md#L2765",
+        "source_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "successor_spec_id": "273"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "273",
+        "relation_text": "replacement",
+        "requirement_ids": [],
+        "source": "specs/feature/273-portable-mini-app-data-architecture/spec.md#L2775",
+        "source_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "successor_spec_id": "273"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "273",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/273-portable-mini-app-data-architecture/spec.md#L968",
+        "source_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "successor_spec_id": "273"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "275",
+        "relation_text": "replace",
+        "requirement_ids": [],
+        "source": "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L111",
+        "source_digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+        "successor_spec_id": "275"
       },
       {
         "confidence": "LOW",
@@ -664,7 +760,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md#L446",
-        "source_digest": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30",
+        "source_digest": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e",
         "successor_spec_id": "280"
       },
       {
@@ -700,7 +796,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -712,7 +808,7 @@
         "relation_text": "merging",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -724,7 +820,7 @@
         "relation_text": "merge",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -736,7 +832,7 @@
         "relation_text": "absorbing",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -748,7 +844,7 @@
         "relation_text": "replaceable",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       },
       {
@@ -760,7 +856,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "successor_spec_id": "224"
       }
     ],
@@ -768,7 +864,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       }
@@ -780,11 +876,11 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c"
+    "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Map Revision 22 action-basis, permission, independent verification, durable recovery, and bounded-repair criteria to current code and fresh focused tests; keep implementation PARTIAL and verification NOT_RUN until those receipts bind to an exact candidate SHA.",
+    "next_ready_workunit": "SPEC224_REQUIREMENT_LEVEL_EVIDENCE_MAPPING",
     "reactivation_predicate": null,
     "resume_point": null,
     "waiting_predicate": null
@@ -794,7 +890,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -818,6 +914,34 @@
         "kind": "DOCUMENTATION_OR_CONFIG",
         "line": 3,
         "path": "python-backend/spec224-admission/README.md"
+      },
+      {
+        "excerpt": "When this convergence is evidence for Spec 224 Final Verify, pass that run's",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 70,
+        "path": "skills/canonical-checkout-sync/SKILL.md"
+      },
+      {
+        "excerpt": "the user workspace untouched and report convergence pending. For Spec 224 Final",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 55,
+        "path": "skills/development-lifecycle/SKILL.md"
+      },
+      {
+        "excerpt": "6. Resolve and converge the registered `CANONICAL_USER_WORKSPACE` after each promotion through `scripts/development-lifecycle/workspace_authority.py` (run it on the SSH host that owns that checkout when applicable): `resolve`, then `converg",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 52,
+        "path": "skills/integration-controller/SKILL.md"
+      },
+      {
+        "excerpt": "6. Resolve and converge the registry's `CANONICAL_USER_WORKSPACE` through `scripts/development-lifecycle/workspace_authority.py`, using the integrated SHA. When this is Spec 224 completion evidence, pass the exact development run ID with `-",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 43,
+        "path": "skills/session-finish/SKILL.md"
       },
       {
         "excerpt": "//! Local Spec 224 candidate workspaces. Provider writes remain under the",
@@ -865,14 +989,14 @@
         "excerpt": "* Sealed, short-lived input bundles for one canonical Spec 224 Runner command.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 15876,
+        "line": 16066,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Repository-wide Spec 224 FULL verification exclusion with expiring fencing lease. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 31725,
+        "line": 31977,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
@@ -886,14 +1010,14 @@
         "excerpt": "\"[Startup] Failed to initialize Spec 224 input retention job:\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2796,
+        "line": 2758,
         "path": "apps/web/server/_core/index.ts"
       },
       {
         "excerpt": "* dispatch remains gated by the Spec 224 authorization authority.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 196,
+        "line": 238,
         "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
       },
       {
@@ -909,34 +1033,6 @@
         "kind": "SOURCE",
         "line": 623,
         "path": "apps/web/server/routes/jobControlPlane.ts"
-      },
-      {
-        "excerpt": "/** Opaque pointer to immutable Spec 224 input staged outside the job event log. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 44,
-        "path": "apps/web/server/services/agentControlPlaneContracts.ts"
-      },
-      {
-        "excerpt": "explanation: \"Spec 224 approval decision was reconciled through the existing approval authority and Feature 195 control plane.\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 244,
-        "path": "apps/web/server/services/jobReconciler.ts"
-      },
-      {
-        "excerpt": "console.error(\"[Feature186] Spec 224 approval reconciliation failed\", {",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 260,
-        "path": "apps/web/server/services/jobReconciler.ts"
-      },
-      {
-        "excerpt": "console.error(\"[Feature186] Spec 224 approval acknowledgement reconciliation failed\", {",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 444,
-        "path": "apps/web/server/services/jobReconciler.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -961,7 +1057,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       }
@@ -969,28 +1065,49 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+    "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.742409Z",
+      "last_evidence_at": "2026-10-08T02:06:09.264229Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
     },
-    "revision": "21",
+    "revision": "22",
     "slug": "224-Autonomous Development Orchestrator Runtime",
     "spec_id": "224",
     "title": "Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime"
   },
   "implementation": {
-    "checkpoint_shas": [],
-    "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "checkpoint_shas": [
+      "074eb72c5bd3a3c62028e052f60831d451e3f4e9"
+    ],
+    "mapping": [
+      {
+        "coverage": "PARTIAL; not mapped to all 1,244 requirement rows",
+        "scope": "durable DevelopmentRun, phase/requirement closure, Final Verify, and Runner candidate slices",
+        "source_paths": [
+          "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
+          "apps/web/server/services/spec224PhaseController.ts",
+          "apps/web/server/services/spec224RequirementClosurePersistence.ts",
+          "apps/web/server/services/spec224FinalVerify.ts",
+          "apps/runner-app/src/spec224_candidate.rs"
+        ],
+        "source_sha": "074eb72c5bd3a3c62028e052f60831d451e3f4e9"
+      }
+    ],
+    "source_paths": [
+      "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
+      "apps/web/server/services/spec224PhaseController.ts",
+      "apps/web/server/services/spec224RequirementClosurePersistence.ts",
+      "apps/web/server/services/spec224FinalVerify.ts",
+      "apps/runner-app/src/spec224_candidate.rs"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": null,
@@ -999,10 +1116,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.742409Z"
+    "updated_at": "2026-10-08T02:06:09.264229Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -1012,10 +1129,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.742409Z",
+    "reconciled_at": "2026-10-08T02:06:09.264229Z",
     "sources": [
       {
-        "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -1039,6 +1156,34 @@
         "kind": "DOCUMENTATION_OR_CONFIG",
         "line": 3,
         "path": "python-backend/spec224-admission/README.md"
+      },
+      {
+        "excerpt": "When this convergence is evidence for Spec 224 Final Verify, pass that run's",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 70,
+        "path": "skills/canonical-checkout-sync/SKILL.md"
+      },
+      {
+        "excerpt": "the user workspace untouched and report convergence pending. For Spec 224 Final",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 55,
+        "path": "skills/development-lifecycle/SKILL.md"
+      },
+      {
+        "excerpt": "6. Resolve and converge the registered `CANONICAL_USER_WORKSPACE` after each promotion through `scripts/development-lifecycle/workspace_authority.py` (run it on the SSH host that owns that checkout when applicable): `resolve`, then `converg",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 52,
+        "path": "skills/integration-controller/SKILL.md"
+      },
+      {
+        "excerpt": "6. Resolve and converge the registry's `CANONICAL_USER_WORKSPACE` through `scripts/development-lifecycle/workspace_authority.py`, using the integrated SHA. When this is Spec 224 completion evidence, pass the exact development run ID with `-",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 43,
+        "path": "skills/session-finish/SKILL.md"
       },
       {
         "excerpt": "//! Local Spec 224 candidate workspaces. Provider writes remain under the",
@@ -1086,14 +1231,14 @@
         "excerpt": "* Sealed, short-lived input bundles for one canonical Spec 224 Runner command.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 15876,
+        "line": 16066,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Repository-wide Spec 224 FULL verification exclusion with expiring fencing lease. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 31725,
+        "line": 31977,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
@@ -1107,14 +1252,14 @@
         "excerpt": "\"[Startup] Failed to initialize Spec 224 input retention job:\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2796,
+        "line": 2758,
         "path": "apps/web/server/_core/index.ts"
       },
       {
         "excerpt": "* dispatch remains gated by the Spec 224 authorization authority.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 196,
+        "line": 238,
         "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
       },
       {
@@ -1219,14 +1364,14 @@
         "excerpt": "projection.projectionVersion !== \"spec-224-closure-projection-v2\" ||",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 188,
+        "line": 189,
         "path": "apps/web/server/services/spec224DevelopmentRunPersistence.ts"
       },
       {
         "excerpt": "// Canonical generic WorkUnit plus atomic Spec 224 compatibility projection below.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 1478,
+        "line": 1544,
         "path": "apps/web/server/services/spec224DevelopmentRunPersistence.ts"
       },
       {
@@ -1380,7 +1525,7 @@
         "excerpt": "it(\"persists a stable Spec 224 continuation intent with a terminal Runner receipt\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 2646,
+        "line": 2680,
         "path": "apps/web/server/services/__tests__/jobControlPlane.test.ts"
       },
       {
@@ -1391,14 +1536,14 @@
         "path": "apps/web/server/services/__tests__/runnerCancellationCommand.test.ts"
       },
       {
-        "excerpt": "{ workspaceId: \"workspace-1\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64) },",
+        "excerpt": "{ workspaceId: \"workspace-1\", projectId: \"smartspecpro\", repositoryId: \"smartspecpro\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64), taskId: \"task",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 160,
         "path": "apps/web/server/services/__tests__/runnerContracts.test.ts"
       },
       {
-        "excerpt": "{ workspaceId: \"workspace-1\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64) },",
+        "excerpt": "{ workspaceId: \"workspace-1\", projectId: \"smartspecpro\", repositoryId: \"smartspecpro\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64), taskId: \"task",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 165,
@@ -1492,7 +1637,7 @@
         "excerpt": "sourceRef: \"spec:224@1#L1\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 543,
+        "line": 593,
         "path": "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts"
       },
       {
@@ -1611,7 +1756,7 @@
         "excerpt": "describe(\"Spec 224 independent persisted Final Verify\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 177,
+        "line": 207,
         "path": "apps/web/server/services/__tests__/spec224FinalVerify.test.ts"
       },
       {
@@ -1692,34 +1837,6 @@
         "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
       },
       {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16001-L16009\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 73,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16012\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 74,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16062\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 75,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16064-L16068\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 76,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
@@ -1727,11 +1844,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -1761,6 +1883,34 @@
         "kind": "DOCUMENTATION_OR_CONFIG",
         "line": 3,
         "path": "python-backend/spec224-admission/README.md"
+      },
+      {
+        "excerpt": "When this convergence is evidence for Spec 224 Final Verify, pass that run's",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 70,
+        "path": "skills/canonical-checkout-sync/SKILL.md"
+      },
+      {
+        "excerpt": "the user workspace untouched and report convergence pending. For Spec 224 Final",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 55,
+        "path": "skills/development-lifecycle/SKILL.md"
+      },
+      {
+        "excerpt": "6. Resolve and converge the registered `CANONICAL_USER_WORKSPACE` after each promotion through `scripts/development-lifecycle/workspace_authority.py` (run it on the SSH host that owns that checkout when applicable): `resolve`, then `converg",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 52,
+        "path": "skills/integration-controller/SKILL.md"
+      },
+      {
+        "excerpt": "6. Resolve and converge the registry's `CANONICAL_USER_WORKSPACE` through `scripts/development-lifecycle/workspace_authority.py`, using the integrated SHA. When this is Spec 224 completion evidence, pass the exact development run ID with `-",
+        "identity_ambiguous": false,
+        "kind": "DOCUMENTATION_OR_CONFIG",
+        "line": 43,
+        "path": "skills/session-finish/SKILL.md"
       },
       {
         "excerpt": "//! Local Spec 224 candidate workspaces. Provider writes remain under the",
@@ -1808,14 +1958,14 @@
         "excerpt": "* Sealed, short-lived input bundles for one canonical Spec 224 Runner command.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 15876,
+        "line": 16066,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Repository-wide Spec 224 FULL verification exclusion with expiring fencing lease. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 31725,
+        "line": 31977,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
@@ -1829,14 +1979,14 @@
         "excerpt": "\"[Startup] Failed to initialize Spec 224 input retention job:\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2796,
+        "line": 2758,
         "path": "apps/web/server/_core/index.ts"
       },
       {
         "excerpt": "* dispatch remains gated by the Spec 224 authorization authority.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 196,
+        "line": 238,
         "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
       },
       {
@@ -1941,14 +2091,14 @@
         "excerpt": "projection.projectionVersion !== \"spec-224-closure-projection-v2\" ||",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 188,
+        "line": 189,
         "path": "apps/web/server/services/spec224DevelopmentRunPersistence.ts"
       },
       {
         "excerpt": "// Canonical generic WorkUnit plus atomic Spec 224 compatibility projection below.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 1478,
+        "line": 1544,
         "path": "apps/web/server/services/spec224DevelopmentRunPersistence.ts"
       },
       {
@@ -2102,7 +2252,7 @@
         "excerpt": "it(\"persists a stable Spec 224 continuation intent with a terminal Runner receipt\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 2646,
+        "line": 2680,
         "path": "apps/web/server/services/__tests__/jobControlPlane.test.ts"
       },
       {
@@ -2113,14 +2263,14 @@
         "path": "apps/web/server/services/__tests__/runnerCancellationCommand.test.ts"
       },
       {
-        "excerpt": "{ workspaceId: \"workspace-1\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64) },",
+        "excerpt": "{ workspaceId: \"workspace-1\", projectId: \"smartspecpro\", repositoryId: \"smartspecpro\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64), taskId: \"task",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 160,
         "path": "apps/web/server/services/__tests__/runnerContracts.test.ts"
       },
       {
-        "excerpt": "{ workspaceId: \"workspace-1\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64) },",
+        "excerpt": "{ workspaceId: \"workspace-1\", projectId: \"smartspecpro\", repositoryId: \"smartspecpro\", displayName: \"Primary workspace\", gitHead: \"a\".repeat(40), gitBranch: \"feature/spec-224\", dirty: false, contentFingerprint: \"b\".repeat(64), taskId: \"task",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 165,
@@ -2214,7 +2364,7 @@
         "excerpt": "sourceRef: \"spec:224@1#L1\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 543,
+        "line": 593,
         "path": "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts"
       },
       {
@@ -2333,7 +2483,7 @@
         "excerpt": "describe(\"Spec 224 independent persisted Final Verify\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 177,
+        "line": 207,
         "path": "apps/web/server/services/__tests__/spec224FinalVerify.test.ts"
       },
       {
@@ -2881,14 +3031,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       }
@@ -2904,18 +3054,18 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1234,
-    "unresolved": 1234
+    "total": 1244,
+    "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.742409Z",
+  "updated_at": "2026-10-08T02:06:28.238200Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
     "freshness": "UNKNOWN",
     "required_profiles": [],
     "sha": null,
-    "status": "UNKNOWN",
+    "status": "NOT_RUN",
     "task_regressions": []
   }
 }

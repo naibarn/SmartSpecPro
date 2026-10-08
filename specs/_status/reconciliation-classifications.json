@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "baseline_sha": "fe9e8412c3a392aa1905a2e6ca46783bfb1b0075",
+  "baseline_sha": "58f6da1ae46842fcb79c703a082d6b213e02d3f0",
   "inventory_record_count": 472,
-  "reconciliation_review_count": 329,
+  "reconciliation_review_count": 330,
   "relationship_edge_count": 312,
   "renumber_alias_count": 6,
   "canonical_spec_count": 314,
@@ -21,7 +21,7 @@
     "VALID_NON_CANONICAL": 156
   },
   "review_classification_counts": {
-    "CANONICAL_ACTIVE": 301,
+    "CANONICAL_ACTIVE": 302,
     "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -4464,7 +4464,7 @@
       "evidence": [
         {
           "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-          "sha256": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8"
+          "sha256": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994"
         }
       ],
       "in_reconciliation_review": true
@@ -4806,7 +4806,7 @@
       "evidence": [
         {
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "sha256": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c"
+          "sha256": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
         }
       ],
       "in_reconciliation_review": true
@@ -6691,7 +6691,7 @@
       "evidence": [
         {
           "path": "specs/project/canonical-spec-handoff-reconciliation",
-          "sha256": "b31c049a187049e6c0ec7f46613dd89b296292e349e27c9a34df49f636bedbef"
+          "sha256": "f6aa60e5c947c319df89d030102fc8949b06387d626f6160280e7ceffe280a09"
         }
       ],
       "in_reconciliation_review": false
@@ -6805,10 +6805,10 @@
       "evidence": [
         {
           "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
-          "sha256": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
+          "sha256": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce"
         }
       ],
-      "in_reconciliation_review": false
+      "in_reconciliation_review": true
     },
     {
       "record_key": "canonical:specs/quick/001-auto-team-capability-routing",

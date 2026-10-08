@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
+        "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
       }
@@ -22,13 +22,13 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "786466c7b727442b8b653a6ad905d69aa7b5795b",
-    "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
+    "expected_spec_digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce"
   },
   "continuation": {
-    "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
-    "next_ready_workunit": "SPEC06_REQUIREMENT_AND_DEPENDENCY_GRAPH_RECONCILIATION",
+    "next_action": "After protected integration, refresh origin/main and rerun the final exact-SHA validation. Keep the migration-complete marker unset until each applicable R06 requirement has traceable evidence.",
+    "next_ready_workunit": "CANONICAL_FINAL_VALIDATION_AND_INTEGRATION",
     "reactivation_predicate": null,
-    "resume_point": "Canonical main is verified at 0a07293c1f0105bfc92c83cf370549c6e0569db8. Evidence: specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/final-canonical-validation-0a07293c.md (sha256 27f117a89a4dc301a53cc5c81d0b77a7288947c933ecf8c14a30c31a91cf01e2). The 82-test handoff suite, classification check, and index check pass. validate --all remains partial because handoffs 305-307 are missing. The nine candidate relationship cycles still require dependency-vs-reference classification. Migration completion remains unset.",
+    "resume_point": "SPEC-06 R1.1 has nine explicit requirements; canonical handoffs for SPEC-305/306/307 exist with UNKNOWN implementation, verification, and deployment. Source-context review found no normative dependency cycle among the 13 simple cycles from the low-confidence text-candidate graph. Current origin/main baseline is 58f6da1ae46842fcb79c703a082d6b213e02d3f0; this branch is a candidate and has not been integrated. Candidate work is on codex/evidence-execution-reconcile-latest-20261008.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -83,8 +83,8 @@
         "sha": "0a07293c1f0105bfc92c83cf370549c6e0569db8"
       }
     ],
-    "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
-    "rationale": "Inventory, generated views, classification projection, and the focused handoff test suite validate at the audited SHA. The final migration gate remains open because the SPEC-06 requirement is unparsed, canonical handoffs for SPEC-305/306/307 are missing, and candidate relationship cycles have not been classified as dependencies or ordinary references.",
+    "next_action": "Integrate the safe candidate through the protected workflow, then rerun exact-SHA inventory, handoff, index, classification, and focused tests. Keep migration completion unset until all applicable R06 rows have evidence.",
+    "rationale": "Missing handoffs are repaired; SPEC-06 requirement extraction is explicit; source-context review found no normative dependency cycle among the low-confidence text candidates. Runtime, acceptance, and deployment claims remain separately unverified.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -105,7 +105,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
+        "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
       }
@@ -113,18 +113,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 47,
+  "generation": 52,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
-    "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
+    "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:19.043588Z",
+      "last_evidence_at": "2026-10-08T02:07:46.333206Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T08:02:24+07:00",
       "spec_last_changed_at": "2026-10-06T08:02:24+07:00"
     },
-    "revision": null,
+    "revision": "1.1",
     "slug": "06-exhaustive-reconciliation-proof",
     "spec_id": "06",
     "title": "Exhaustive Reconciliation Proof"
@@ -208,8 +208,8 @@
           "sha": "0a07293c1f0105bfc92c83cf370549c6e0569db8"
         }
       ],
-      "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
-      "rationale": "Inventory, generated views, classification projection, and the focused handoff test suite validate at the audited SHA. The final migration gate remains open because the SPEC-06 requirement is unparsed, canonical handoffs for SPEC-305/306/307 are missing, and candidate relationship cycles have not been classified as dependencies or ordinary references.",
+      "next_action": "Integrate the safe candidate through the protected workflow, then rerun exact-SHA inventory, handoff, index, classification, and focused tests. Keep migration completion unset until all applicable R06 rows have evidence.",
+      "rationale": "Missing handoffs are repaired; SPEC-06 requirement extraction is explicit; source-context review found no normative dependency cycle among the low-confidence text candidates. Runtime, acceptance, and deployment claims remain separately unverified.",
       "residual_requirements": []
     },
     "lifecycle": {
@@ -231,17 +231,17 @@
     }
   },
   "reconciliation": {
-    "confidence": "HIGH",
+    "confidence": "LOW",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
       "continuation_assessment.decision"
     ],
-    "mode": "EVIDENCE_LED_RECONCILIATION",
-    "reconciled_at": "2026-10-06T03:28:19.043588Z",
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-08T02:07:46.333206Z",
     "sources": [
       {
-        "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
+        "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
       },
@@ -251,19 +251,19 @@
         "kind": "SOURCE",
         "line": 1281,
         "path": "apps/web/client/src/pages/StoryboardReviewPage.tsx"
-      },
-      {
-        "digest": "20513622e955bd6b66b4adec1afa7d3b83b5304d0b2aa74b1f5146c256b17da6",
-        "kind": "SPEC161_AUTHORITY_RESOLUTION",
-        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-authority-resolution-20261006.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
-      "acceptance",
       "current relevance",
+      "implementation equivalence",
       "deployment reality",
-      "implementation equivalence"
+      "acceptance"
     ]
   },
   "relevance_assessment": {
@@ -284,7 +284,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
+        "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md"
       }
@@ -300,11 +300,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1,
-    "unresolved": 1
+    "total": 9,
+    "unresolved": 9
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T01:39:47.273658Z",
+  "updated_at": "2026-10-08T02:10:56.238986Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
