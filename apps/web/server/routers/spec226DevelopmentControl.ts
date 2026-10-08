@@ -720,7 +720,8 @@ export const spec226DevelopmentControlRouter = router({
     .input(
       providerInput.extend({
         deadline: z.string().datetime({ offset: true }),
-        spendCeilingMicros: z.number().int().positive().max(10_000_000),
+        budgetCapMinorUnits: z.number().int().positive().max(10_000_000),
+        currency: z.string().regex(/^[A-Za-z]{3}$/),
       })
     )
     .mutation(async ({ ctx, input }) => {

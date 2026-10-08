@@ -84,7 +84,8 @@ export type Spec224PolicyBinding = {
   authorizationGrantRef: string;
   approvalRef: string;
   budgetReservationRef: string;
-  spendCeilingMicros: number;
+  budgetCapMinorUnits: number;
+  currency: string;
   workspaceRef: string;
   deadline: string;
 };
@@ -311,6 +312,13 @@ export function evaluateSpec224Authorization(
   if (!budget)
     return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
   if (
+    approval.payload.budgetCapMinorUnits !== budget.amountMinorUnits ||
+    typeof approval.payload.currency !== "string" ||
+    approval.payload.currency.trim().toUpperCase() !== budget.currency.trim().toUpperCase()
+  ) {
+    return result("BUDGET_REQUIRED", ["APPROVAL_BUDGET_BINDING_MISMATCH"]);
+  }
+  if (
     budget.tenantId !== run.tenantId ||
     budget.workerJobId !== run.workerJobId ||
     budget.attemptId !== run.attemptId ||
@@ -330,7 +338,8 @@ export function evaluateSpec224Authorization(
     authorizationGrantRef: tool.authorizationEvidenceRef,
     approvalRef: approval.approvalRef,
     budgetReservationRef: budget.budgetReservationRef,
-    spendCeilingMicros: budget.amountMinorUnits,
+    budgetCapMinorUnits: budget.amountMinorUnits,
+    currency: budget.currency,
     workspaceRef: run.workspaceId,
     deadline: run.deadline,
   };

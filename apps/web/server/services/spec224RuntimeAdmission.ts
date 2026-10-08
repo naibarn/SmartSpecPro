@@ -231,7 +231,8 @@ export function isRunnerCommandBoundToCanonicalAgentManifest(
       requestedCapabilities: manifest.requestedCapabilities,
       approvalRef: policy.approvalRef,
       budgetReservationRef: policy.budgetReservationRef,
-      spendCeilingMicros: policy.spendCeilingMicros,
+      budgetCapMinorUnits: policy.budgetCapMinorUnits,
+      currency: policy.currency,
     },
   };
   const actual = {

@@ -626,7 +626,8 @@ export function UniversalControlPlanePanel({
         runnerId,
         provider: "codex",
         deadline: new Date(Date.now() + 15 * 60_000).toISOString(),
-        spendCeilingMicros: Number(authorizationAmounts[runId] || "500"),
+        budgetCapMinorUnits: Number(authorizationAmounts[runId] || "500"),
+        currency: "USD",
       });
       toast.success(`สร้างคำขออนุมัติแล้ว: ${result.approvalRef}`);
       await authorizationStatusQuery.refetch();
@@ -1528,9 +1529,12 @@ export function UniversalControlPlanePanel({
                                 }))
                               }
                               inputMode="numeric"
-                              aria-label={`Budget ceiling for ${run.runId}`}
+                              aria-label={`Budget cap in USD minor units for ${run.runId}`}
                             />
                           </section>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Cap is submitted as USD minor units (100 units = USD 1.00) and must match the approved budget exactly.
+                          </p>
                           <section className="mt-2 flex flex-wrap gap-2">
                             <Button
                               type="button"

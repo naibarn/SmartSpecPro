@@ -21,7 +21,8 @@ export type AgentTaskPolicyBinding = {
   authorizationGrantRef: string;
   approvalRef: string;
   budgetReservationRef: string;
-  spendCeilingMicros: number;
+  budgetCapMinorUnits: number;
+  currency: string;
   workspaceRef: string;
   deadline: string;
 };
@@ -117,8 +118,10 @@ function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
   const raw = value as Record<string, unknown>;
   const deadline = requiredText(raw.deadline, "policyBinding.deadline", 64);
   if (!Number.isFinite(Date.parse(deadline))) invalid("policy binding deadline is invalid");
-  if (!Number.isSafeInteger(raw.spendCeilingMicros) || (raw.spendCeilingMicros as number) <= 0)
-    invalid("policy binding spend ceiling is invalid");
+  if (!Number.isSafeInteger(raw.budgetCapMinorUnits) || (raw.budgetCapMinorUnits as number) <= 0)
+    invalid("policy binding budget cap is invalid");
+  const currency = requiredText(raw.currency, "policyBinding.currency", 3).toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) invalid("policy binding currency is invalid");
   return {
     runnerId: requiredText(raw.runnerId, "policyBinding.runnerId", 160),
     runnerSessionId: requiredText(raw.runnerSessionId, "policyBinding.runnerSessionId", 160),
@@ -127,7 +130,8 @@ function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
     authorizationGrantRef: requiredText(raw.authorizationGrantRef, "policyBinding.authorizationGrantRef", 200),
     approvalRef: requiredText(raw.approvalRef, "policyBinding.approvalRef", 200),
     budgetReservationRef: requiredText(raw.budgetReservationRef, "policyBinding.budgetReservationRef", 200),
-    spendCeilingMicros: raw.spendCeilingMicros as number,
+    budgetCapMinorUnits: raw.budgetCapMinorUnits as number,
+    currency,
     workspaceRef: requiredText(raw.workspaceRef, "policyBinding.workspaceRef", 200),
     deadline,
   };
