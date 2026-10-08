@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 014 — Feature 014: Core Funnel Dashboard
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Disposition: `ACTIVE_CANONICAL` (MEDIUM)
+- Lifecycle: `PARTIAL_INTEGRATED`
+- Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 1 unresolved of 1
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 12
+- Next action: Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.
+- Manifest generation: 16
 
 ## Source-declared status and relationship claims
 

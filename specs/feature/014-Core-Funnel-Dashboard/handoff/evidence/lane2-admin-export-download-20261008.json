@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "workunit_id": "lane2-admin-funnel-export-20261008",
+  "spec_id": "014",
+  "spec_title": "Feature 014: Core Funnel Dashboard",
+  "state_before": "DISCOVERING",
+  "state_after": "PARTIAL_INTEGRATED",
+  "open_requirements_before": 1,
+  "open_requirements_after": 1,
+  "product_slice": "Make the existing CSV/JSON export control download the authorized tRPC export payload as a named file, using the selected filters, format, MIME type, and filename. Keep export failures visible without triggering a download.",
+  "normative_scope": [
+    "specs/feature/014-Core-Funnel-Dashboard/spec.md#L35",
+    "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1400"
+  ],
+  "acceptance": [
+    "The browser requests export through the typed tRPC client with the existing authenticated session and transformer.",
+    "Successful CSV/JSON response data is downloaded using the server-provided MIME type and filename.",
+    "An authorization or query error is announced in the page and does not create a download.",
+    "Existing server role authorization tests remain runnable without a database or external service."
+  ],
+  "implementation": {
+    "pull_request": 305,
+    "commit": "bdd7a9554aa41ef847264669bb6599ff72ef387d",
+    "integrated_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+    "paths": [
+      "apps/web/client/src/pages/AdminFunnelDashboard.tsx",
+      "apps/web/client/src/pages/__tests__/AdminFunnelDashboard.test.tsx",
+      "apps/web/server/routers/funnelAnalytics.rbac.test.ts"
+    ]
+  },
+  "verification": {
+    "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+    "profile": "quick",
+    "result": "PASS",
+    "tests_passed": 48,
+    "verified_at": "2026-10-08T01:49:38Z",
+    "suites": [
+      {
+        "command": "pnpm --filter @smartspec/web exec vitest run client/src/pages/__tests__/AdminFunnelDashboard.test.tsx",
+        "tests_passed": 14
+      },
+      {
+        "command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 pnpm --filter @smartspec/web exec vitest run server/routers/funnelAnalytics.test.ts server/routers/funnelAnalytics.rbac.test.ts",
+        "tests_passed": 34
+      }
+    ],
+    "git_diff_check": "PASS"
+  },
+  "collision": {
+    "factory_lane": "NONE",
+    "basis": "The changed paths are the existing admin funnel page and its focused tests. Ownership inventory showed no active worktree for Funnel Analytics; no Factory pipeline, runtime, package, migration, or deployment paths were edited."
+  },
+  "remaining_scope": {
+    "open_requirement_ids": ["REQ-F5772188489C"],
+    "description": "The remaining ledger requirement is the query-performance index set declared at spec.md#L117. This product slice does not claim those indexes are implemented or verified.",
+    "next_action": "Keep Feature 014 partial. Select the next collision-free product workunit; only revisit this requirement if its migration ownership is clear."
+  },
+  "canonical_workspace": {
+    "path": "/home/dev/projects/SmartSpecPro",
+    "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+    "dirty": false,
+    "convergence_receipt": "workspace-convergence:5f4e80b4-9a98-478f-be44-c5fa0dfc8c1f"
+  },
+  "deployment": "NOT_PERFORMED",
+  "manual_acceptance": "NOT_CLAIMED"
+}

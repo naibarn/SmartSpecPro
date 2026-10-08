@@ -19,19 +19,19 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
     "expected_spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Reconcile latest origin/main, inspect live workspace/task ownership, then select one independently testable product slice outside Factory-owned paths.",
+    "next_ready_workunit": "LANE2_NEXT_COLLISION_FREE_PRODUCT_WORKUNIT",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Start from origin/main after the Feature 014 export handoff PR is integrated; keep REQ-F5772188489C open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "MEDIUM",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
         "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
@@ -127,11 +127,18 @@
         "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
+      },
+      {
+        "digest": "591e25467914e7acb78eadac0105eed22bcabe7aa23a685df3c6ad13551027d9",
+        "kind": "IMPLEMENTATION_EVIDENCE",
+        "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
+    "rationale": "An authenticated browser download now completes the existing funnel export flow. The Spec remains partial because its required query-performance indexes are still open and unverified.",
+    "residual_requirements": [
+      "REQ-F5772188489C"
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -148,7 +155,7 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
       {
         "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
@@ -244,12 +251,17 @@
         "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
+      },
+      {
+        "digest": "591e25467914e7acb78eadac0105eed22bcabe7aa23a685df3c6ad13551027d9",
+        "kind": "IMPLEMENTATION_EVIDENCE",
+        "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "Current canonical implementation provides the core funnel dashboard; this lane completed a user-visible authenticated export download slice. The query-performance index requirement remains open, so overall Spec completion is not claimed.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
     "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
@@ -266,22 +278,30 @@
     "title": "Feature 014: Core Funnel Dashboard"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "bdd7a9554aa41ef847264669bb6599ff72ef387d"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/client/src/pages/AdminFunnelDashboard.tsx",
+      "apps/web/client/src/pages/__tests__/AdminFunnelDashboard.test.tsx",
+      "apps/web/server/routers/funnelAnalytics.rbac.test.ts"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+    "integrated": true,
+    "integrated_at": "2026-10-08T01:46:52Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
+    "current_state": "PARTIAL_INTEGRATED",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
+    ],
     "updated_at": "2026-10-06T09:57:07.923596Z"
   },
   "manual_decisions": {
@@ -297,6 +317,256 @@
       "predecessors": [],
       "status": "ACTIVE_CANONICAL",
       "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/spec.md"
+        },
+        {
+          "digest": "2a64c2c998f5944b50b17b70c3143ae56e65c4b2837990a8f32385cfe82f22cb",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "65cb449c0969fed453d7883aea2f6e87c911b592146cf11d7cb9956c3d0bf2ab",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/implementation/usage.md"
+        },
+        {
+          "digest": "6aafc857177309456bad5d9b815f42e525343ed8cbb10580fe10326cf5336a8e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/iteration-1-self-review.md"
+        },
+        {
+          "digest": "d52c5710ab1ccb9e643e110b7bb189d666a88f738c226ae893b87ceab418e224",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/iteration-1-summary.md"
+        },
+        {
+          "digest": "f9de1b849cdf8591e04cd9b6f97a8ec3570c4e68b1cd5f60aaa233112ccfee0d",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-01-diff.md"
+        },
+        {
+          "digest": "ac909c9f16f5d82a25b606fea3b1a6b61aec20195e521ffac5283c06433cbcfb",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-01-review.md"
+        },
+        {
+          "digest": "4c1f1db462c63c2672d0781a5e4abd325bbc759accc6b2b828a34f4c25d3f479",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-02-diff.md"
+        },
+        {
+          "digest": "56b5c45bc7d8f416322a40d86cbb648742c29b9ac774eb53819fa4f5127b66db",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-02-review.md"
+        },
+        {
+          "digest": "1f73022a3630abee099e7795ce859a90bfae8b8db4850e0fc556e12a2a737ac2",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/index.md"
+        },
+        {
+          "digest": "7ed753e334027a70d28741c570ca5291f6892c3b5d06343e7924d90f4846a1a6",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-01-data-schema-migration-and-index-foundation.md"
+        },
+        {
+          "digest": "6e0d1c71fcd261f47faa1fcf8cdebd88f1d1e41190d6a19c0ac63d008e5bc34b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-02-tracker-service-dedup-and-analytics-sidechannels.md"
+        },
+        {
+          "digest": "8055b688d6259e87388b16e79b5acd4c3f2c7b59f9cf36f24d6a2bfe0cd8211e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-03-milestone-event-instrumentation-and-idempotency.md"
+        },
+        {
+          "digest": "76000777cc837e59a78384282ccae50c62b8a4ab802f61e23b9938b23ff65a81",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-04-funnel-analytics-router-aggregation-and-caching.md"
+        },
+        {
+          "digest": "a08bc149dd512cc5c0b428ebe319e2538bdbd3a728ade3c4ee102ae04f58f6dd",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-05-admin-dashboard-route-tabs-and-export-ux.md"
+        },
+        {
+          "digest": "8bdc5e96a86833a9ab0ef53f113661ad5dae66caedab1b312d1ba70f3bb41fe5",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-06-backfill-checkpointing-reconciliation-and-consistency-gates.md"
+        },
+        {
+          "digest": "0679596ab1d90f77b2ce0c58145978b933827be1bc5934178d7a75f9197f5371",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-07-security-rbac-tenant-scope-and-privacy-controls.md"
+        },
+        {
+          "digest": "3023078018b741111ae51915414fb0ae2f7eb19b94d8fcfcdb03182a8c0c2e36",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-08-rollout-slo-gates-rollback-and-operational-runbooks.md"
+        },
+        {
+          "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
+        },
+        {
+          "digest": "591e25467914e7acb78eadac0105eed22bcabe7aa23a685df3c6ad13551027d9",
+          "kind": "IMPLEMENTATION_EVIDENCE",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
+        }
+      ],
+      "next_action": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
+      "rationale": "An authenticated browser download now completes the existing funnel export flow. The Spec remains partial because its required query-performance indexes are still open and unverified.",
+      "residual_requirements": [
+        "REQ-F5772188489C"
+      ]
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        {
+          "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/spec.md"
+        },
+        {
+          "digest": "2a64c2c998f5944b50b17b70c3143ae56e65c4b2837990a8f32385cfe82f22cb",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "65cb449c0969fed453d7883aea2f6e87c911b592146cf11d7cb9956c3d0bf2ab",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/implementation/usage.md"
+        },
+        {
+          "digest": "6aafc857177309456bad5d9b815f42e525343ed8cbb10580fe10326cf5336a8e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/iteration-1-self-review.md"
+        },
+        {
+          "digest": "d52c5710ab1ccb9e643e110b7bb189d666a88f738c226ae893b87ceab418e224",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/iteration-1-summary.md"
+        },
+        {
+          "digest": "f9de1b849cdf8591e04cd9b6f97a8ec3570c4e68b1cd5f60aaa233112ccfee0d",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-01-diff.md"
+        },
+        {
+          "digest": "ac909c9f16f5d82a25b606fea3b1a6b61aec20195e521ffac5283c06433cbcfb",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-01-review.md"
+        },
+        {
+          "digest": "4c1f1db462c63c2672d0781a5e4abd325bbc759accc6b2b828a34f4c25d3f479",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-02-diff.md"
+        },
+        {
+          "digest": "56b5c45bc7d8f416322a40d86cbb648742c29b9ac774eb53819fa4f5127b66db",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/reviews/section-02-review.md"
+        },
+        {
+          "digest": "1f73022a3630abee099e7795ce859a90bfae8b8db4850e0fc556e12a2a737ac2",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/index.md"
+        },
+        {
+          "digest": "7ed753e334027a70d28741c570ca5291f6892c3b5d06343e7924d90f4846a1a6",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-01-data-schema-migration-and-index-foundation.md"
+        },
+        {
+          "digest": "6e0d1c71fcd261f47faa1fcf8cdebd88f1d1e41190d6a19c0ac63d008e5bc34b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-02-tracker-service-dedup-and-analytics-sidechannels.md"
+        },
+        {
+          "digest": "8055b688d6259e87388b16e79b5acd4c3f2c7b59f9cf36f24d6a2bfe0cd8211e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-03-milestone-event-instrumentation-and-idempotency.md"
+        },
+        {
+          "digest": "76000777cc837e59a78384282ccae50c62b8a4ab802f61e23b9938b23ff65a81",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-04-funnel-analytics-router-aggregation-and-caching.md"
+        },
+        {
+          "digest": "a08bc149dd512cc5c0b428ebe319e2538bdbd3a728ade3c4ee102ae04f58f6dd",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-05-admin-dashboard-route-tabs-and-export-ux.md"
+        },
+        {
+          "digest": "8bdc5e96a86833a9ab0ef53f113661ad5dae66caedab1b312d1ba70f3bb41fe5",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-06-backfill-checkpointing-reconciliation-and-consistency-gates.md"
+        },
+        {
+          "digest": "0679596ab1d90f77b2ce0c58145978b933827be1bc5934178d7a75f9197f5371",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-07-security-rbac-tenant-scope-and-privacy-controls.md"
+        },
+        {
+          "digest": "3023078018b741111ae51915414fb0ae2f7eb19b94d8fcfcdb03182a8c0c2e36",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-08-rollout-slo-gates-rollback-and-operational-runbooks.md"
+        },
+        {
+          "digest": "efde18a33e3e5c9a044af142c533777fcaa067498feecbdf5e3db9e963795e91",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/sections/section-09-verification-suite-and-release-readiness.md"
+        },
+        {
+          "digest": "591e25467914e7acb78eadac0105eed22bcabe7aa23a685df3c6ad13551027d9",
+          "kind": "IMPLEMENTATION_EVIDENCE",
+          "path": "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
+        }
+      ],
+      "rationale": "Current canonical implementation provides the core funnel dashboard; this lane completed a user-visible authenticated export download slice. The query-performance index requirement remains open, so overall Spec completion is not claimed.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "PARTIAL_INTEGRATED",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
+      ],
+      "updated_at": "2026-10-06T09:57:07.923596Z"
+    },
+    "requirements": {
+      "REQ-F5772188489C": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117"
+        ],
+        "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117",
+        "blocker": null,
+        "current_relevance": "ACTIVE",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "Verify the required users, registration_events, credit_transactions, conversations, and messages indexes against canonical schema/migrations; do not close without focused schema or database evidence.",
+        "requirement_digest": "c9eb0fdd147c8a407d4acb9a356ef88f74fcb1291e16e58ee02dc2196f09ab9f",
+        "requirement_id": "REQ-F5772188489C",
+        "requirement_text": "These indexes are **required** for funnel query performance:",
+        "source_spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      }
     }
   },
   "reconciliation": {
@@ -768,7 +1038,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -777,14 +1047,18 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T09:57:07.923596Z",
+  "updated_at": "2026-10-08T01:50:40.921052Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      "specs/feature/014-Core-Funnel-Dashboard/handoff/evidence/lane2-admin-export-download-20261008.json"
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "quick"
+    ],
+    "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+    "status": "PASS",
     "task_regressions": []
   }
 }
