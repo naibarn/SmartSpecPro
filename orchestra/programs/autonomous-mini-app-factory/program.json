@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "333a5a680d0be4771a26b5370fdae9f08d11e64f",
+    "sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "333a5a680d0be4771a26b5370fdae9f08d11e64f",
-      "canonical_sha": "333a5a680d0be4771a26b5370fdae9f08d11e64f",
-      "canonical_user_workspace_sha": "333a5a680d0be4771a26b5370fdae9f08d11e64f",
+      "integrated_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
+      "canonical_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
+      "canonical_user_workspace_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:1b34c636-b6b8-4099-bdef-d46e19da320e",
-      "verified_at": "2026-10-08T00:32:03.434+00:00"
+      "receipt_id": "workspace-convergence:9a246847-62e0-416e-ac68-c122f08a247f",
+      "verified_at": "2026-10-08T00:40:29.139+00:00"
     },
-    "observedAt": "2026-10-08T00:32:03+00:00",
+    "observedAt": "2026-10-08T00:46:00+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "333a5a680d0be4771a26b5370fdae9f08d11e64f",
-      "canonical_user_workspace_sha": "333a5a680d0be4771a26b5370fdae9f08d11e64f",
+      "integrated_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
+      "canonical_user_workspace_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-08T00:32:03.434+00:00",
-      "receipt_id": "workspace-convergence:1b34c636-b6b8-4099-bdef-d46e19da320e"
+      "verified_at": "2026-10-08T00:40:29.139+00:00",
+      "receipt_id": "workspace-convergence:9a246847-62e0-416e-ac68-c122f08a247f"
     }
   },
   "inventory": {
@@ -60,19 +60,17 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_PACKAGE_VALIDATION_CONTEXT_V5_V6",
+    "id": "RESEARCH_NOTES_AUTHENTICATED_ACTION_WORKER_FULL_RUNTIME_UAT",
     "state": "FAST_GATE_PASSED_PENDING_PR",
-    "objective": "Bind mandatory SPAAS V5 runtime-placement and V6 migration-rollback evidence to the exact Research Notes package digest and resolve needs_context.",
+    "objective": "Prove an authenticated Research Notes summary action in the normal loopback application runtime reaches the canonical PostgreSQL worker/outbox path and settles back through the authenticated API.",
     "implementation": [
-      "apps/web/scripts/build-mini-app-package.ts",
-      "apps/web/scripts/test-mini-app-migration-rollback.sh",
-      "apps/web/scripts/validate-research-notes-package-context.sh",
-      "orchestra/programs/autonomous-mini-app-factory/evidence/research-notes-package-context.json"
+      "apps/web/scripts/test-mini-app-full-runtime.sh",
+      "apps/web/scripts/research-notes-background-worker-runtime.ts"
     ],
-    "sourceSha": "862bbb47e50740040e33d215088b6440f303bf0e",
-    "evidence": "PASS on exact source 862bbb47e507: package digest spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17; SPAAS offline-package status valid with mandatory V5/V6 passed. V5 is a normal server loopback runtime with healthz/readyz/UI/authenticated API checks against disposable PostgreSQL 17 Mini App schema. V6 applied 0393, seeded dependent data, reversed only the 0393-owned schema in disposable PostgreSQL 17, and verified 0392 identity/route-alias data remained. Not deployment or full application schema proof.",
+    "sourceSha": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
+    "evidence": "PASS: SKIP_BROWSER_UAT=1 pnpm --filter @smartspec/web run test:mini-app-full-runtime. Authenticated tRPC requestSummary created the job; separate worker runtime on the same disposable PostgreSQL 17 database confirmed idempotent admission, worker execution and settlement; authenticated summaryJob read succeeded and archive completed. Normal server loopback healthz=200, readyz=200, Research Notes UI=200, authenticated API PASS, unauthenticated API=401. Browser suite intentionally skipped in this placement run; prior PR #280 browser evidence is 8/8 desktop/tablet/mobile. No deployment claim.",
     "integration": "PENDING_PR",
-    "nextAction": "Integrate package context and evidence. Continue full non-production deployment descriptor/runtime ID, same-runtime worker completion, and Factory stage worker binding."
+    "nextAction": "Integrate this evidence and continue Factory stage worker/outbox binding; keep deployment target unselected until a safe non-production target is registered."
   },
   "checkpoints": [
     {
@@ -298,6 +296,13 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "862bbb47e50740040e33d215088b6440f303bf0e",
       "evidence": "Package builder accepted exact digest-bound V5 runtime-placement and V6 0393 rollback evidence. Package digest 8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17; archive SHA-256 69c9fc6f7779a28a598446a82ea2d4a7a0ae0f46f1e9f667ac5d9ed1ea4e0056; V1/V2/V3/V4/V5/V6 valid; V7/V8 not applicable."
+    },
+    {
+      "id": "RESEARCH_NOTES_AUTHENTICATED_ACTION_WORKER_FULL_RUNTIME_UAT",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
+      "evidence": "Authenticated requestSummary tRPC action on the normal loopback app runtime created the job; the separate PostgreSQL worker runtime on the same disposable PostgreSQL 17 DB processed and settled that exact job; authenticated summaryJob readback and archive passed. healthz/readyz/UI/authenticated API passed; browser suite skipped for this run and remains separately evidenced by PR #280 8/8. No deployment.",
+      "integration": "PENDING_PR"
     }
   ],
   "completedWorkunits": [
@@ -455,7 +460,7 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "NONPROD_DEPLOYMENT_ID_FULL_SCHEMA_AND_SAME_RUNTIME_WORKER_COMPLETION; then FACTORY_STAGE_WORKER_JOBS_BINDING.",
+    "nextEligibleWorkunit": "FACTORY_STAGE_WORKER_JOBS_BINDING; NONPROD_DEPLOYMENT_TARGET_REGISTRATION_REMAINS_EXTERNAL",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -491,13 +496,13 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:41:00+00:00",
+  "updatedAt": "2026-10-08T00:46:00+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_DIGEST_AND_REQUIRED_V5_V6_CONTEXT_VALID; V7_V8_NOT_APPLICABLE",
     "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_LOOPBACK_FULL_SERVER_MINIAPP_SCHEMA_RUNTIME_PASS; DEPLOYMENT_AUTHORITY_TARGET_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
-    "M5_RESEARCH_NOTES_UAT_PASS": "PARTIAL_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_API_PASS; SAME_RUNTIME_WORKER_COMPLETION_AND_PACKAGE_REVISION_EVIDENCE_PENDING",
+    "M5_RESEARCH_NOTES_UAT_PASS": "PASS_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_FULL_SERVER_ACTION_WORKER_SETTLEMENT; DEPLOYMENT_REMAINS_SEPARATE_M4_GATE",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_FACTORY_EXECUTOR; DEPLOYMENT_UAT_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
     "M6_FACTORY_EXECUTABLE": "PARTIAL_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_AUTO_RESUME_PASS; FACTORY_STAGE_WORKER_BINDING_PENDING",
@@ -506,8 +511,8 @@
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
-    "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "Normal full server composition and authenticated Research Notes browser acceptance passed on a loopback process using an isolated disposable PostgreSQL 17 Mini App schema. This is not a deployment artifact/runtime ID and does not include the full application schema. Same-runtime background worker completion, package validation context, and real AI provider remain pending.",
+    "targetId": "UNSELECTED",
+    "reason": "The normal full server composition is exercised on loopback against a disposable PostgreSQL 17 Mini App schema. Authenticated action-to-worker settlement, health/readiness/UI/API, and prior browser UAT are evidenced. This is not a registered deployment target, deployment artifact/runtime ID, or full application-schema deployment. Deployment authority/target/runtime identity remain pending; no production service or migration was touched.",
     "productionTouched": false
   },
   "factoryPipeline": {
@@ -516,8 +521,8 @@
     "secondMiniApp": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/miniapp-package-context-20261008",
-    "sourceBranch": "codex/miniapp-package-context",
+    "taskWorktree": "/home/dev/worktrees/miniapp-full-worker-uat-20261008",
+    "sourceBranch": "codex/miniapp-full-worker-uat",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -544,14 +549,16 @@
       "cb59c6b13",
       "f616bf013",
       "0b6acb833",
-      "862bbb47e"
+      "862bbb47e",
+      "af27ee588839816a23f05e56c223e155284abccc",
+      "558d67ab08ee28fc0f5f0c00e82de50971fc7585"
     ],
-    "intendedRemoteBranch": "codex/miniapp-package-context",
+    "intendedRemoteBranch": "codex/miniapp-full-worker-uat",
     "pendingPullRequest": {
       "number": null,
       "url": "PENDING_CREATE",
       "state": "PENDING",
-      "sourceSha": "862bbb47e50740040e33d215088b6440f303bf0e",
+      "sourceSha": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
       "integratedSha": null
     },
     "testEvidence": [
@@ -694,6 +701,11 @@
         "revision": "862bbb47e50740040e33d215088b6440f303bf0e",
         "command": "pnpm --filter @smartspec/web run test:research-notes-package-context",
         "outcome": "PASS: exact digest-bound V5/V6 evidence accepted; package validation valid; digest 8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17; archive SHA-256 69c9fc6f7779a28a598446a82ea2d4a7a0ae0f46f1e9f667ac5d9ed1ea4e0056. Runtime is loopback Mini App schema only; migration rollback is disposable PG17; deployment not claimed."
+      },
+      {
+        "revision": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
+        "command": "SKIP_BROWSER_UAT=1 TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web run test:mini-app-full-runtime",
+        "outcome": "PASS: authenticated tRPC Research Notes requestSummary job was consumed by a separate worker runtime against the same disposable PostgreSQL 17 DB; success settlement and authenticated summaryJob readback passed; note archived; /healthz=200 /readyz=200 UI=200 authenticated API PASS unauthenticated API=401 on loopback. Browser UAT was skipped for this placement run; PR #280 browser UAT remains separate 8/8 evidence. Not deployment."
       }
     ],
     "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",
@@ -715,6 +727,7 @@
         "sourceSha": "c37c8c3d94673821da9248a76eddc1923b6e1d47",
         "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
       }
-    ]
+    ],
+    "taskOutcome": "PARTIAL_INTEGRATED_PENDING_PR"
   }
 }
