@@ -111,11 +111,6 @@ describe("public homepage", () => {
       screen.getAllByText(en["homePublic.illustrationDisclosure"])
     ).toHaveLength(2);
     expect(
-      screen.getAllByRole("generic").filter(element =>
-        element.getAttribute("style")?.includes("margin-inline: auto")
-      ).length
-    ).toBeGreaterThanOrEqual(3);
-    expect(
       screen.getByRole("link", { name: en["homePublic.flagshipCta"] })
     ).toHaveAttribute("href", "/login?returnUrl=%2Fdrama-series");
     expect(
@@ -145,7 +140,15 @@ describe("public homepage", () => {
 
     expect(screen.getByText(en["homePublic.flowValueOne"])).toBeTruthy();
     expect(screen.getByText(en["homePublic.flowValueTwo"])).toBeTruthy();
-    expect(document.querySelectorAll("main img")).toHaveLength(0);
+    expect(document.querySelectorAll("main img")).toHaveLength(5);
+    expect(
+      screen.getByRole("img", { name: en["features.spotlight.chat.imageAlt"] })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("img", {
+        name: en["features.spotlight.vertical.imageAlt"],
+      })
+    ).toBeTruthy();
   });
 
   it("keeps the Thai hero and metadata localized together", () => {
@@ -154,6 +157,9 @@ describe("public homepage", () => {
 
     expect(
       screen.getByRole("heading", { level: 1, name: th["homePublic.title"] })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: th["features.spotlight.chat.imageAlt"] })
     ).toBeTruthy();
     expect(testState.seoProps.at(-1)).toMatchObject({
       title: th["meta.title"],

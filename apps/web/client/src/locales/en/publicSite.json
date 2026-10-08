@@ -29,7 +29,7 @@
   "homePublic.illustrationDisclosure": "Concept illustration, not a product screenshot or customer work.",
   "homePublic.humanImageAlt": "A person reviews storyboard panels beside a laptop in a daylight studio; an illustrative scene, not a SmartAIHub customer.",
   "homePublic.humanImageDisclosure": "Generated editorial illustration. This person is not a SmartAIHub customer, employee, or testimonial.",
-  "homePublic.humanImageFallback": "The editorial image is unavailable. The connected product flow remains available below.",
+  "homePublic.humanImageFallback": "The concept image is unavailable. The connected product flow remains available below.",
   "homePublic.productTitle": "Explore SmartAIHub around the work you want to do",
   "homePublic.productBody": "See the available workspaces, browse public examples, or read the guides. Sign in when you are ready to create and manage work.",
   "homePublic.resourcesTitle": "SmartAIHub resources",

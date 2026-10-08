@@ -1,0 +1,4 @@
+.public-home-showcase-image {
+  display: block;
+  border-radius: var(--radius-container);
+}

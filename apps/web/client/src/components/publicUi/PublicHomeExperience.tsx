@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link as RouterLink } from "wouter";
 import {
   ArrowRight,
@@ -10,6 +11,8 @@ import {
   Sparkles,
   Video,
 } from "lucide-react";
+import "./PublicHomeExperience.css";
+
 import {
   AspectRatio,
   Button,
@@ -45,9 +48,8 @@ export type PublicHomeExperienceCopy = {
   seriesValueTwo: string;
   seriesFlowFootnote: string;
   illustrationDisclosure: string;
-  humanImageAlt: string;
-  humanImageDisclosure: string;
-  humanImageFallback: string;
+  heroImageAlt: string;
+  heroImageFallback: string;
   primaryCta: string;
   secondaryCta: string;
   trust: string;
@@ -80,7 +82,40 @@ export type PublicHomeExperienceCopy = {
   valueCreateBody: string;
   valueContinueTitle: string;
   valueContinueBody: string;
+  showcaseEyebrow: string;
+  showcaseTitle: string;
+  showcases: Array<{
+    key: string;
+    eyebrow: string;
+    title: string;
+    body: string;
+    cta: string;
+    href: string;
+    image: string;
+    imageAlt: string;
+  }>;
 };
+
+function CenteredSection({
+  children,
+  variant,
+}: {
+  children: ReactNode;
+  variant: "section" | "transparent" | "muted";
+}) {
+  return (
+    <HStack width="100%" justify="center">
+      <Section
+        variant={variant}
+        width="100%"
+        maxWidth="var(--public-layout-wide)"
+        padding={8}
+      >
+        {children}
+      </Section>
+    </HStack>
+  );
+}
 
 function ValueCard({
   icon: Icon,
@@ -163,35 +198,103 @@ function ProductFlowPanel({
   );
 }
 
-function HumanProductEvidencePanel({ copy }: { copy: PublicHomeExperienceCopy }) {
+function HeroProductEvidencePanel({
+  copy,
+}: {
+  copy: PublicHomeExperienceCopy;
+}) {
   const [imageAvailable, setImageAvailable] = useState(true);
+  const reduceMotion = useReducedMotion();
 
   return (
     <VStack gap={3}>
       {imageAvailable ? (
         <AspectRatio ratio={3 / 2} fit="cover">
-          <img
-            src="/images/public-home-human-editorial.webp"
-            srcSet="/images/public-home-human-editorial-480.webp 480w, /images/public-home-human-editorial-768.webp 768w, /images/public-home-human-editorial-1020.webp 1020w, /images/public-home-human-editorial.webp 1536w"
-            sizes="(max-width: 45.99rem) calc(100vw - 4rem), (max-width: 80rem) calc((100vw - 6rem) / 2), 38.25rem"
-            alt={copy.humanImageAlt}
+          <motion.img
+            className="public-home-showcase-image"
+            src="/images/smartaihub-home-hero.webp"
+            alt={copy.heroImageAlt}
             fetchPriority="high"
             decoding="async"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1 }}
+            whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+            viewport={{ once: true, amount: 0.2 }}
             onError={() => setImageAvailable(false)}
           />
         </AspectRatio>
       ) : (
         <Section variant="muted" padding={4}>
           <Text type="supporting" color="secondary">
-            {copy.humanImageFallback}
+            {copy.heroImageFallback}
           </Text>
         </Section>
       )}
       <Text type="supporting" color="secondary">
-        {copy.humanImageDisclosure}
+        {copy.illustrationDisclosure}
       </Text>
       <ProductFlowPanel copy={copy} />
     </VStack>
+  );
+}
+
+function ProductSpotlight({
+  item,
+  index,
+}: {
+  item: PublicHomeExperienceCopy["showcases"][number];
+  index: number;
+}) {
+  const reduceMotion = useReducedMotion();
+  const image = (
+    <AspectRatio ratio={16 / 10} fit="cover">
+      <motion.img
+        className="public-home-showcase-image"
+        src={item.image}
+        alt={item.imageAlt}
+        loading="lazy"
+        decoding="async"
+        initial={reduceMotion ? false : { opacity: 0 }}
+        whileInView={reduceMotion ? undefined : { opacity: 1 }}
+        whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+        viewport={{ once: true, amount: 0.2 }}
+      />
+    </AspectRatio>
+  );
+
+  const copy = (
+    <VStack gap={4} as="section" aria-labelledby={`home-showcase-${item.key}`}>
+      <Text type="label" color="accent">
+        {item.eyebrow}
+      </Text>
+      <Heading
+        level={2}
+        id={`home-showcase-${item.key}`}
+        type="display-2"
+        weight="bold"
+        textWrap="balance"
+      >
+        {item.title}
+      </Heading>
+      <Text type="large" color="secondary">
+        {item.body}
+      </Text>
+      <PublicLink href={item.href} isStandalone weight="semibold">
+        <HStack gap={2}>
+          {item.cta}
+          <ArrowRight aria-hidden="true" />
+        </HStack>
+      </PublicLink>
+    </VStack>
+  );
+
+  return (
+    <CenteredSection variant={index % 2 === 0 ? "muted" : "transparent"}>
+      <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
+        {index % 2 === 0 ? image : copy}
+        {index % 2 === 0 ? copy : image}
+      </Grid>
+    </CenteredSection>
   );
 }
 
@@ -206,12 +309,7 @@ export function PublicHomeExperience({
   return (
     <AstryxTheme theme={publicHomeTheme} mode="light">
       <>
-        <Section
-          variant="transparent"
-          maxWidth="var(--public-layout-wide)"
-          padding={8}
-          style={{ marginInline: "auto" }}
-        >
+        <CenteredSection variant="transparent">
           <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="start">
             <VStack gap={4} as="header">
               <Text type="label" color="accent">
@@ -265,16 +363,31 @@ export function PublicHomeExperience({
               </Text>
             </VStack>
 
-            <HumanProductEvidencePanel copy={copy} />
+            <HeroProductEvidencePanel copy={copy} />
           </Grid>
+        </CenteredSection>
+
+        <Section variant="muted" padding={8}>
+          <VStack gap={3}>
+            <Text type="label" color="accent">
+              {copy.showcaseEyebrow}
+            </Text>
+            <Heading
+              level={2}
+              type="display-2"
+              weight="bold"
+              textWrap="balance"
+            >
+              {copy.showcaseTitle}
+            </Heading>
+          </VStack>
         </Section>
 
-        <Section
-          variant="section"
-          maxWidth="var(--public-layout-wide)"
-          padding={8}
-          style={{ marginInline: "auto" }}
-        >
+        {copy.showcases.map((item, index) => (
+          <ProductSpotlight key={item.key} item={item} index={index} />
+        ))}
+
+        <CenteredSection variant="section">
           <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
             <ProductFlowPanel copy={copy} variant="series" />
             <VStack gap={4} as="section" aria-labelledby="home-flagship-title">
@@ -317,14 +430,9 @@ export function PublicHomeExperience({
               </HStack>
             </VStack>
           </Grid>
-        </Section>
+        </CenteredSection>
 
-        <Section
-          variant="muted"
-          maxWidth="var(--public-layout-wide)"
-          padding={8}
-          style={{ marginInline: "auto" }}
-        >
+        <CenteredSection variant="muted">
           <VStack gap={6} as="section" aria-labelledby="home-why-title">
             <VStack gap={3}>
               <Text type="label" color="accent">
@@ -361,7 +469,7 @@ export function PublicHomeExperience({
               />
             </Grid>
           </VStack>
-        </Section>
+        </CenteredSection>
 
         <Section variant="muted" padding={8}>
           <VStack gap={6}>
@@ -438,12 +546,7 @@ export function PublicHomeExperience({
 
         {supportingFeature}
 
-        <Section
-          variant="transparent"
-          maxWidth="var(--public-layout-wide)"
-          padding={8}
-          style={{ marginInline: "auto" }}
-        >
+        <CenteredSection variant="transparent">
           <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
             <VStack gap={4} as="section" aria-labelledby="home-trust-title">
               <Text type="label" color="accent">
@@ -480,7 +583,7 @@ export function PublicHomeExperience({
               </VStack>
             </nav>
           </Grid>
-        </Section>
+        </CenteredSection>
 
         <Section variant="muted" padding={8}>
           <VStack gap={4} hAlign="center">
