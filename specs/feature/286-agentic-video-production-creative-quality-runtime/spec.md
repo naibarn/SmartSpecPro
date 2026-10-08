@@ -8670,3 +8670,90 @@ contracts, runner routing, and quality evidence SHALL remain provider-independen
 **Amendment status:** additive acceptance criteria only; WP0.4 execution and
 runtime certification remain pending until source-bound Runner Authority
 receipts and golden render artifacts exist.
+
+## 166. Prompt Recipe Library and Template-first Motion Routing (R1.7.x)
+
+This bounded addition defines prompt recipes as reusable, rights-governed
+metadata consumed by the existing Motion Template Registry and motion-candidate
+workflow. It does not create another registry, persisted authority, queue,
+executor, timeline, or project document.
+
+### 166.1 Prompt Recipe JSON Schema
+
+The normative machine-readable contract is
+`apps/web/shared/videoIntelligence/promptRecipe.schema.json` (JSON Schema
+Draft-07, `SmartAIHub Prompt Recipe V1`). A recipe SHALL contain a stable
+`recipeId`, positive integer `version`, bounded title and tags, supported aspect
+ratios, a bounded duration interval, a `promptTemplate`, source provenance, and
+reuse scope. Source provenance SHALL include repository, immutable source
+revision, source path and URL, author and author URL, human-readable
+attribution, SHA-256 content digest, and rights status. An approved rights
+status SHALL include a rights evidence reference. Private and tenant scopes
+SHALL require tenant identity; private scope SHALL also require user identity.
+Unknown properties SHALL be rejected. Recipe revisions SHALL be immutable:
+changed content increments the recipe version while an identical source URL
+and content digest is deduplicated.
+Marketplace reuse SHALL additionally carry the existing governance
+promotion-approval reference; importing rights-cleared material alone SHALL
+not promote it to marketplace visibility.
+
+Recipes are derived guidance and are not project state. Applying a recipe
+SHALL produce a candidate in the existing `VideoProjectDocument` and motion
+candidate/revision workflow; it MUST NOT directly mutate the active scene,
+template registry, or saved project. Provider names and embeddings SHALL NOT
+become required persisted fields.
+
+### 166.2 External catalog importer and rights
+
+An offline importer MAY consume
+`yihui-dev/awesome-opus5-5-videos/data/videos.json` as source metadata. It
+SHALL preserve catalog revision, slug/path, author, author URL, original post
+URL, category, and technical tags with attributable source links and a
+content digest. It MUST validate source records, reject truncated/partial
+prompts, deduplicate on canonical source URL plus prompt digest, and create a
+new recipe version only when the same recipe identity has changed content.
+
+The importer SHALL call an explicit rights-check authority for each complete
+prompt before retaining prompt text. Missing, denied, or unverified rights
+MUST fail closed and MUST NOT retain prompt text, media, or executable source.
+The upstream repository license SHALL NOT be treated as permission for linked
+creator content. Missing attribution, invalid URLs, and invalid source records
+SHALL be rejected with a reason. Import is an offline transform; it SHALL NOT
+fetch external assets at runtime, create database records, or execute content.
+
+### 166.3 Semantic retrieval and template-first decision
+
+Semantic discovery SHALL consider intent, style/technical tags, aspect ratio,
+duration, rights status, and the current user/tenant reuse scope. Providers MAY
+add candidate descriptions or embeddings behind provider-independent
+interfaces, but deterministic local ranking SHALL remain available and
+provider failures SHALL not widen visibility or bypass rights checks.
+
+The router SHALL filter the existing Motion Template Registry by its declared
+capabilities and prefer the least costly compatible existing template. Only
+when no compatible template exists, or the user explicitly requests novelty,
+may it return a generation-candidate plan. That plan is not executable code.
+Any AI-generated Remotion component MUST pass the Generated Motion Sandbox
+security gate, dependency/asset policy, and deterministic compilation checks
+before any existing Remotion Executor can receive it. Missing or failed gate
+evidence SHALL fail closed. This requirement creates no new sandbox or
+executor authority.
+
+### 166.4 Verification and bounded acceptance
+
+Unit and integration tests SHALL use checked-in synthetic fixtures and mock
+rights/provider boundaries. They SHALL cover schema rejection, attribution,
+rights default-deny, partial prompts, deduplication, version increments,
+tenant/user isolation, semantic retrieval, template-first routing, novelty
+routing, and the non-execution boundary. Mock tests MUST NOT be reported as
+runtime, render, or visual-quality PASS evidence.
+
+These checks do not discharge WP0.4. WP0.4 SHALL remain PARTIAL/BLOCKED until
+fixtures A/B/C have source-bound real Windows Runner execution receipts and
+rendered visual evidence; Linux readiness and execution remain separately
+evidenced.
+
+**Amendment status:** schema and non-runner recipe logic may be implemented
+behind existing feature-flag authority. Runtime execution, sandbox approval,
+golden-render comparison, production enablement, and WP0.4 completion remain
+pending their existing authorities and evidence.

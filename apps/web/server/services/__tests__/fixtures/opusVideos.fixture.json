@@ -1,0 +1,25 @@
+[
+  {
+    "slug": "fixture-product-launch-123456",
+    "author": "Motion Maker",
+    "author_url": "https://example.test/@motion-maker",
+    "post_url": "https://example.test/post/123456",
+    "category": "motion",
+    "tech_tags": ["canvas", "product"],
+    "prompt": "Create a polished product launch animation with a bold hero reveal.",
+    "prompt_partial": false,
+    "skillry_url": "https://example.test/gallery/fixture-product-launch-123456",
+    "added": "2026-09-26"
+  },
+  {
+    "slug": "fixture-partial-prompt-123457",
+    "author": "Motion Maker",
+    "author_url": "https://example.test/@motion-maker",
+    "post_url": "https://example.test/post/123457",
+    "category": "explainer",
+    "tech_tags": ["svg"],
+    "prompt": "Partial prompt text",
+    "prompt_partial": true,
+    "added": "2026-09-26"
+  }
+]
