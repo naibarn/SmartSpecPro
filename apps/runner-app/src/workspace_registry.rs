@@ -335,6 +335,7 @@ pub struct WorkspaceSnapshotFacts {
 /// Local-only workspace details for the Runner desktop UI. Never include this
 /// type in a control-plane capability snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalWorkspaceDetails {
     pub workspace_id: String,
     pub display_name: String,
