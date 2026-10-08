@@ -37,9 +37,9 @@
     "record_kind.PLANNING_ARTIFACT": 112,
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 2,
-    "verification.PARTIAL": 5,
+    "verification.PARTIAL": 6,
     "verification.PASS": 4,
-    "verification.UNKNOWN": 461
+    "verification.UNKNOWN": 460
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
   "record_count": 472,
@@ -81915,7 +81915,7 @@
       "deployment": "UNKNOWN",
       "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-08T02:19:19.163918Z",
       "lifecycle": "VALIDATION_PENDING",
@@ -82062,7 +82062,7 @@
       "successors": [],
       "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
