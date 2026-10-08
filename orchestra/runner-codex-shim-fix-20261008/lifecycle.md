@@ -4,7 +4,7 @@ Goal: Use the attached Runner diagnostics to repair Windows Codex discovery and 
 Scope/risk: small/medium
 Current stage: FINAL_VERIFY
 Resume from: FINAL_VERIFY
-Stop reason: awaiting Windows hosted proof and canonical promotion
+Stop reason: Windows run exposed a test-only cfg import gap; fix applied and hosted proof must be rerun
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
@@ -30,12 +30,12 @@ Stage ledger:
     stale: false
     next_action: none
   - stage: VERIFY
-    status: COMPLETE
+    status: IN_PROGRESS
     entry_evidence: focused Runner discovery tests
-    exit_evidence: 164 crate tests pass; `cargo fmt --check` and `git diff --check` pass
+    exit_evidence: 164 crate tests and formatting passed on Linux; first Windows-hosted run found E0432 from Linux-only test imports
     attempt: 1
-    stale: false
-    next_action: await Windows workflow result
+    stale: true
+    next_action: rerun Rust crate suite locally and Windows hosted workflow after cfg import repair
   - stage: DEBUG_FIX
     status: COMPLETE
     entry_evidence: expected RED ordering failure
@@ -80,3 +80,24 @@ Gap ledger:
     waiting_predicate: Windows workflow completes for the candidate commit
     reactivation_predicate: workflow completion or failure
     progress_delta: root cause reproduced and candidate ordering fixed
+  - gap_id: GAP-2
+    discovered_at_stage: VERIFY
+    earliest_affected_stage: IMPLEMENT
+    classification: MUST_FIX
+    severity: MEDIUM
+    condition: Windows `cargo test` cannot compile because a shared test module imports Linux-gated symbols unconditionally
+    evidence: GitHub Actions run 37743535996, Windows `Test Runner crate`, compiler E0432 at `apps/runner-app/src/diagnostics.rs:2619`
+    owner: conductor
+    action: cfg-gate Linux-only test imports and re-run the same Windows workflow
+    attempts: 1/3
+    stale_gates: [verify, debug_fix, review, final_verify]
+    status: FIXED
+    resume_from: VERIFY
+    residual_risk: Windows proof remains pending
+    root_cause: test module imports `build_local_session_inventories` and `MAX_SAFE_JS_INTEGER`, which exist only on Linux
+    decision_class: FIX_NOW
+    attempted_strategies: [examined exact hosted compiler log; gated imports to match production definitions]
+    prohibited_retries: [rerun unchanged Windows workflow]
+    waiting_predicate: none
+    reactivation_predicate: Windows workflow re-run completes
+    progress_delta: Windows test compile blocker removed without changing production behavior

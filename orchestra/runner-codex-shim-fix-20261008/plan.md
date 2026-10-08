@@ -8,10 +8,11 @@
 - Root cause: Windows discovery ranks the extensionless npm alias before `codex.cmd`; the process launcher can wrap `.cmd`/`.ps1` shims but sends extensionless paths directly to Windows process creation.
 - Separate unresolved evidence: `runner.lastErrorCode=RUNNER_OPERATION_FAILED` is generic in this report and has no operation detail to correlate with the Codex probe.
 - Confidence: high for Codex probe launch failure because the reported selected path and exact code match source behavior. Real Windows verification remains required.
+- Windows verification uncovered a separate test-only baseline compile error: Linux-only `build_local_session_inventories` and `MAX_SAFE_JS_INTEGER` were imported unconditionally by the shared diagnostics test module (`E0432`). The production calls and test are Linux-gated; their imports now use the same gate so Windows can execute the platform suite.
 
 ## Scope and completion predicate
 
-Change Windows CLI discovery so native executables and supported Windows shims take precedence over extensionless aliases, preserve Unix discovery behavior, and prove a directory containing both `codex` and `codex.cmd` selects `codex.cmd`. Keep Runner protocol and auth behavior unchanged.
+Change Windows CLI discovery so native executables and supported Windows shims take precedence over extensionless aliases, preserve Unix discovery behavior, prove a directory containing both `codex` and `codex.cmd` selects `codex.cmd`, and make the existing Runner test module compile on Windows by gating Linux-only imports. Keep Runner protocol and auth behavior unchanged.
 
 ## Work unit
 

@@ -25,7 +25,9 @@ use crate::{
 use serde::Serialize;
 use serde_json::json;
 use std::fs;
-use std::path::{Path, PathBuf};
+#[cfg(target_os = "linux")]
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -2616,13 +2618,14 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::{
-        build_keepalive_envelope, build_local_session_inventories, cancellation_target_command_id,
-        cancellation_target_matches, capability_snapshot, delivery_transport_label, keepalive_due,
-        parse_refresh_interval, persist_and_send_runner_receipt,
-        recover_interrupted_external_agent_commands, replay_pending_runner_receipts,
-        runner_receipt_payload, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
-        MAX_SAFE_JS_INTEGER,
+        build_keepalive_envelope, cancellation_target_command_id, cancellation_target_matches,
+        capability_snapshot, delivery_transport_label, keepalive_due, parse_refresh_interval,
+        persist_and_send_runner_receipt, recover_interrupted_external_agent_commands,
+        replay_pending_runner_receipts, runner_receipt_payload, semantic_receipt_payload,
+        snapshot_evidence, update_ack_statuses,
     };
+    #[cfg(target_os = "linux")]
+    use super::{build_local_session_inventories, MAX_SAFE_JS_INTEGER};
     use crate::config::{RunnerConfig, RunnerProfile};
     use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
     use crate::discovery::scan_known_tools;
