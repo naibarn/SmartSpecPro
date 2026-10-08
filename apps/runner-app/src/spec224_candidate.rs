@@ -808,7 +808,7 @@ mod tests {
         fs::write(&manifest_path, manifest_bytes).unwrap();
 
         let recovered = Candidate::reattach_for_command(&config, &command).unwrap();
-        assert_eq!(recovered.root, candidate_root);
+        assert_eq!(recovered.root, fs::canonicalize(candidate_root).unwrap());
         recovered.apply().unwrap();
         assert_eq!(
             fs::read_to_string(workspace.join("src.txt")).unwrap(),

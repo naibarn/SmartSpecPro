@@ -334,6 +334,7 @@ impl SessionRegistry {
             .map_err(|_| "RUNNER_SESSION_REGISTRY_SYNC_FAILED")?;
         fs::rename(&temporary_path, &target_path)
             .map_err(|_| "RUNNER_SESSION_REGISTRY_COMMIT_FAILED")?;
+        #[cfg(unix)]
         File::open(&self.root)
             .and_then(|directory| directory.sync_all())
             .map_err(|_| "RUNNER_SESSION_REGISTRY_DIRECTORY_SYNC_FAILED")?;

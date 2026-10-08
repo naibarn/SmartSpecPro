@@ -35,9 +35,18 @@ fn command_for_cli_on_platform(
                     invocation.push_str(arg);
                     invocation.push('"');
                 }
-                command
-                    .args(["/d", "/s", "/c"])
-                    .arg(format!("\"{invocation}\""));
+                command.args(["/d", "/s", "/c"]);
+                #[cfg(windows)]
+                {
+                    use std::os::windows::process::CommandExt;
+
+                    // cmd.exe parses this as a command line. Passing it through
+                    // Command::arg applies CRT escaping, which leaves literal
+                    // backslashes before quotes for cmd.exe to interpret.
+                    command.raw_arg(format!("\"{invocation}\""));
+                }
+                #[cfg(not(windows))]
+                command.arg(format!("\"{invocation}\""));
                 return Ok(command);
             }
             Some("ps1") => {
@@ -491,13 +500,19 @@ mod tests {
     fn windows_cmd_shim_runs_with_the_requested_arguments() {
         let temp = tempfile::tempdir().unwrap();
         let program = temp.path().join("codex.cmd");
-        std::fs::write(&program, "@echo off\r\necho %*\r\n").unwrap();
+        std::fs::write(&program, "@echo off\r\necho %~1 %~2 %~3\r\n").unwrap();
         let args = vec!["exec".into(), "--json".into(), "hello-world".into()];
         let mut command = command_for_cli(&program, &args).unwrap();
         command.current_dir(temp.path());
 
         let output = command.output().unwrap();
-        assert!(output.status.success());
+        assert!(
+            output.status.success(),
+            "cmd shim exited {:?}; stdout={:?}; stderr={:?}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert_eq!(
             String::from_utf8_lossy(&output.stdout).trim(),
             "exec --json hello-world"

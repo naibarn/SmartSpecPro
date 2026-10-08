@@ -506,8 +506,16 @@ fn unsupported_candidate_with_source_reason(
 }
 
 fn find_executable(path_entries: &[PathBuf], name: &str) -> Option<PathBuf> {
+    find_executable_for_platform(path_entries, name, cfg!(windows))
+}
+
+fn find_executable_for_platform(
+    path_entries: &[PathBuf],
+    name: &str,
+    windows: bool,
+) -> Option<PathBuf> {
     for directory in path_entries.iter().take(LOCAL_SCAN_LIMIT) {
-        for candidate in executable_names(directory, name) {
+        for candidate in executable_names_for_platform(directory, name, windows) {
             if let Some(path) = canonical_file(&candidate) {
                 return Some(path);
             }
@@ -557,13 +565,20 @@ fn executable_names_for_platform(directory: &Path, name: &str, windows: bool) ->
         .map(|candidate| directory.join(candidate))
         .collect();
     }
-    let mut candidates = vec![directory.join(name), directory.join(format!("{name}.exe"))];
+    let mut candidates = if windows {
+        vec![directory.join(format!("{name}.exe"))]
+    } else {
+        vec![directory.join(name), directory.join(format!("{name}.exe"))]
+    };
     if windows {
-        // Prefer PowerShell shims: unlike batch files they can receive the
-        // argument vector directly instead of through a command string.
-        candidates.push(directory.join(format!("{name}.ps1")));
+        // Prefer launchable Windows package-manager shims over extensionless
+        // aliases, which CreateProcess cannot launch as npm command wrappers.
         candidates.push(directory.join(format!("{name}.cmd")));
+        candidates.push(directory.join(format!("{name}.ps1")));
         candidates.push(directory.join(format!("{name}.bat")));
+    }
+    if windows {
+        candidates.push(directory.join(name));
     }
     candidates
 }
@@ -686,17 +701,30 @@ mod tests {
         assert_eq!(
             names,
             [
-                directory.join("codex"),
                 directory.join("codex.exe"),
-                directory.join("codex.ps1"),
                 directory.join("codex.cmd"),
+                directory.join("codex.ps1"),
                 directory.join("codex.bat"),
+                directory.join("codex"),
             ]
         );
         assert_eq!(
             executable_names_for_platform(directory, "codex", false),
             [directory.join("codex"), directory.join("codex.exe")]
         );
+    }
+
+    #[test]
+    fn windows_discovery_prefers_launchable_npm_shim_over_extensionless_alias() {
+        let temp = tempfile::tempdir().unwrap();
+        let extensionless = temp.path().join("codex");
+        let command_shim = temp.path().join("codex.cmd");
+        std::fs::write(&extensionless, b"extensionless npm alias").unwrap();
+        std::fs::write(&command_shim, b"@node codex.js %*\r\n").unwrap();
+
+        let found = find_executable_for_platform(&[temp.path().to_path_buf()], "codex", true);
+
+        assert_eq!(found, Some(std::fs::canonicalize(command_shim).unwrap()));
     }
 
     #[test]
