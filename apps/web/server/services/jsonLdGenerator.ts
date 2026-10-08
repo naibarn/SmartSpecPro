@@ -119,6 +119,25 @@ export function generateArticleJsonLd(article: ArticleCMSOutput): string {
 /**
  * Validate a JSON-LD string. Basic structural validation.
  */
+function isValidJsonLdContext(context: unknown): boolean {
+  if (typeof context === "string") return Boolean(context.trim());
+  if (Array.isArray(context)) {
+    return context.length > 0 && context.every(isValidJsonLdContext);
+  }
+  return Boolean(
+    context &&
+      typeof context === "object" &&
+      Object.keys(context).length > 0
+  );
+}
+
+function isValidJsonLdType(type: unknown): boolean {
+  if (typeof type === "string") return Boolean(type.trim());
+  return Array.isArray(type) &&
+    type.length > 0 &&
+    type.every((entry) => typeof entry === "string" && Boolean(entry.trim()));
+}
+
 export function validateJsonLd(
   jsonLd: string
 ): { valid: boolean; errors: string[] } {
@@ -126,9 +145,26 @@ export function validateJsonLd(
   try {
     const parsed = JSON.parse(jsonLd);
     const items = Array.isArray(parsed) ? parsed : [parsed];
+    if (items.length === 0) {
+      errors.push("JSON-LD must contain at least one item");
+    }
     for (const item of items) {
-      if (!item["@context"]) errors.push("Missing @context");
-      if (!item["@type"]) errors.push("Missing @type");
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        errors.push("JSON-LD items must be objects");
+        continue;
+      }
+      const context = item["@context"];
+      if (context === undefined || context === null) {
+        errors.push("Missing @context");
+      } else if (!isValidJsonLdContext(context)) {
+        errors.push("Invalid @context");
+      }
+      const type = item["@type"];
+      if (type === undefined || type === null) {
+        errors.push("Missing @type");
+      } else if (!isValidJsonLdType(type)) {
+        errors.push("Invalid @type");
+      }
     }
   } catch {
     errors.push("Invalid JSON");

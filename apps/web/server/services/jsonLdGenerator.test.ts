@@ -171,4 +171,35 @@ describe("validateJsonLd", () => {
     const result = validateJsonLd(jsonLd);
     expect(result.valid).toBe(true);
   });
+
+  it("rejects an empty JSON-LD array", () => {
+    const result = validateJsonLd("[]");
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("JSON-LD must contain at least one item");
+  });
+
+  it("rejects items with empty context or type values", () => {
+    const result = validateJsonLd(JSON.stringify({ "@context": " ", "@type": "" }));
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("Invalid @context");
+    expect(result.errors).toContain("Invalid @type");
+  });
+
+  it("accepts object contexts and multiple type values", () => {
+    const result = validateJsonLd(JSON.stringify({
+      "@context": { schema: "https://schema.org" },
+      "@type": ["Article", "Thing"],
+    }));
+    expect(result.valid).toBe(true);
+  });
+
+  it("rejects empty values nested in context and type arrays", () => {
+    const result = validateJsonLd(JSON.stringify({
+      "@context": ["https://schema.org", null],
+      "@type": ["Article", " "],
+    }));
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("Invalid @context");
+    expect(result.errors).toContain("Invalid @type");
+  });
 });
