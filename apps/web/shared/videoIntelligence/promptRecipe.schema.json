@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://smartspecpro.dev/schemas/prompt-recipe-v1.json",
+  "title": "SmartAIHub Prompt Recipe V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recipeId", "version", "title", "intentTags", "styleTags", "supportedAspectRatios", "durationMs", "promptTemplate", "source", "reuseScope"],
+  "properties": {
+    "recipeId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "intentTags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 64 }, "uniqueItems": true, "maxItems": 32 },
+    "styleTags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 64 }, "uniqueItems": true, "maxItems": 32 },
+    "supportedAspectRatios": { "type": "array", "items": { "enum": ["16:9", "9:16", "1:1"] }, "uniqueItems": true, "minItems": 1 },
+    "durationMs": { "type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } } },
+    "promptTemplate": { "type": "string", "minLength": 1, "maxLength": 12000 },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "revision", "path", "sourceUrl", "author", "authorUrl", "attribution", "contentDigest", "rightsStatus"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "author": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "authorUrl": { "type": "string", "format": "uri" },
+        "attribution": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "contentDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "rightsStatus": { "enum": ["approved", "denied", "unverified"] },
+        "rightsEvidenceRef": { "type": "string", "minLength": 1, "maxLength": 512 }
+      }
+    },
+    "reuseScope": { "enum": ["user_private", "tenant", "marketplace"] },
+    "tenantId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "promotionApprovalRef": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "ownerUserId": { "type": "string", "minLength": 1, "maxLength": 128 }
+  },
+  "allOf": [
+    { "if": { "properties": { "reuseScope": { "enum": ["user_private", "tenant"] } } }, "then": { "required": ["tenantId"] } },
+    { "if": { "properties": { "reuseScope": { "const": "user_private" } } }, "then": { "required": ["ownerUserId"] } },
+    { "if": { "properties": { "reuseScope": { "const": "marketplace" } } }, "then": { "required": ["promotionApprovalRef"] } },
+    { "if": { "properties": { "source": { "properties": { "rightsStatus": { "const": "approved" } } } } }, "then": { "properties": { "source": { "required": ["rightsEvidenceRef"] } } } }
+  ]
+}

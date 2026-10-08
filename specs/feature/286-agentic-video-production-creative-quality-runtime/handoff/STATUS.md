@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 719 unresolved of 719
-- Next action: Resolve canonical SPEC-286 identity and relationship claims through evidence and the shared writer. WP0.4 remains next: obtain existing Windows Runner Authority readiness and capture fixtures A/B/C; assess Linux separately.
-- Manifest generation: 13
+- Requirements: 0 pass / 746 unresolved of 746
+- Next action: Prompt Recipe Library source/spec/test checkpoint is recorded as PARTIAL. Integrate its isolated PR first. WP0.4 then waits on Lane A Windows Runner repair/readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until the sandbox security gate passes.
+- Manifest generation: 16
 
 ## Source-declared status and relationship claims
 

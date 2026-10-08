@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -48,6 +48,11 @@
         "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+      },
+      {
+        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
       {
         "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
@@ -91,14 +96,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "4616a8aa8fea708c688396c4bb64edb5424cd519",
-    "expected_spec_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058"
+    "expected_canonical_sha": "5f965b9cccbe8849263b177cd0b41514372f4191",
+    "expected_spec_digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41"
   },
   "continuation": {
-    "next_action": "WP0.4 is the next work package. Obtain existing Windows Runner Authority readiness and execute Golden Fixtures A/B/C. Reconcile canonical SPEC-286 identity in parallel; keep Linux separate and generated code disabled until the security gate passes.",
+    "next_action": "After PR integration, Lane A should submit Windows Runner readiness and source-bound Golden Fixture A/B/C receipts through the canonical handoff. Keep Linux readiness separate, preserve WP0.4 as PARTIAL/BLOCKED until real render evidence, and keep generated code non-executable until the sandbox security gate passes.",
     "next_ready_workunit": "WP0.4_WINDOWS_GOLDEN_RENDER_BASELINE",
     "reactivation_predicate": "Runner Authority returns an authorized Windows executor with the required Remotion capability and artifact upload path; all A/B/C job artifacts are visible with exact project revisions and output digests.",
-    "resume_point": "PR #338 and follow-up PR #339 are integrated; latest canonical source is 4616a8aa8fea708c688396c4bb64edb5424cd519. SPEC-286 amendment is docs-only, implementation PARTIAL and runtime verification PARTIAL. Start WP0.4 with Windows Runner Authority readiness; keep Linux separate and generated motion code disabled.",
+    "resume_point": "Prompt Recipe code/spec checkpoint 7ac5707058fb77e93cbdf20c4d2a6de067766f30 is ready for PR integration. The recipe lane is partial; no rights authority, sandbox runtime, or render evidence was exercised. Next: integrate this isolated lane, then wait for Lane A readiness evidence for WP0.4; do not overlap Runner worktrees.",
     "waiting_predicate": "Resume render work when an authorized Windows Runner capability/readiness receipt with a verified Remotion runtime pack is available. Do not claim baseline complete until A/B/C each have a durable worker job and output/QA evidence."
   },
   "continuation_assessment": {
@@ -156,7 +161,7 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
       }
     ],
-    "next_action": "Resolve canonical SPEC-286 identity and relationship claims through evidence and the shared writer. WP0.4 remains next: obtain existing Windows Runner Authority readiness and capture fixtures A/B/C; assess Linux separately.",
+    "next_action": "Prompt Recipe Library source/spec/test checkpoint is recorded as PARTIAL. Integrate its isolated PR first. WP0.4 then waits on Lane A Windows Runner repair/readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until the sandbox security gate passes.",
     "rationale": "The user explicitly directed SPEC-286 continuation. Runtime work is held at WP0.4 because no Windows execution receipt is available; canonical identity and prior successor-candidate claims remain unresolved in generated repository status.",
     "residual_requirements": []
   },
@@ -178,7 +183,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -218,6 +223,11 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
+        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
+      },
+      {
         "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
@@ -231,13 +241,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 13,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-    "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+    "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-08T07:06:27.246372Z",
+      "last_evidence_at": "2026-10-08T07:34:24.673162Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -250,7 +260,8 @@
   "implementation": {
     "checkpoint_shas": [
       "1840029cf88f76d177069a194508667248965574",
-      "f2f30bd2937ce25da76bcbd13590f1a66a776c60"
+      "f2f30bd2937ce25da76bcbd13590f1a66a776c60",
+      "7ac5707058fb77e93cbdf20c4d2a6de067766f30"
     ],
     "mapping": [
       {
@@ -272,6 +283,20 @@
           "specs/feature/286-agentic-video-production-creative-quality-runtime/handoff/manifest.json"
         ],
         "source_sha": "f2f30bd2937ce25da76bcbd13590f1a66a776c60"
+      },
+      {
+        "coverage": "PARTIAL; Prompt Recipe schema, fixture-backed offline importer, scoped deterministic retrieval, and template-first candidate routing implemented. No live rights provider, Studio integration, sandbox execution, or runtime render evidence.",
+        "scope": "SPEC-286 §166 Prompt Recipe Library / template-first routing",
+        "source_paths": [
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+          "apps/web/shared/videoIntelligence/promptRecipe.schema.json",
+          "apps/web/server/services/promptRecipeLibrary.ts",
+          "apps/web/server/services/__tests__/promptRecipeLibrary.test.ts",
+          "apps/web/server/services/__tests__/fixtures/opusVideos.fixture.json",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/prompt-recipe-qa-rounds-2026-10-08.md"
+        ],
+        "source_sha": "7ac5707058fb77e93cbdf20c4d2a6de067766f30"
       }
     ],
     "source_paths": [
@@ -279,22 +304,28 @@
       "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md",
       "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md",
       "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md",
-      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md"
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md",
+      "apps/web/shared/videoIntelligence/promptRecipe.schema.json",
+      "apps/web/server/services/promptRecipeLibrary.ts",
+      "apps/web/server/services/__tests__/promptRecipeLibrary.test.ts",
+      "apps/web/server/services/__tests__/fixtures/opusVideos.fixture.json",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/prompt-recipe-qa-rounds-2026-10-08.md"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4616a8aa8fea708c688396c4bb64edb5424cd519",
+    "canonical_sha": "5f965b9cccbe8849263b177cd0b41514372f4191",
     "integrated": true,
-    "integrated_at": "2026-10-08T07:07:27Z"
+    "integrated_at": "2026-10-08T14:09:20+07:00"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-08T07:06:27.246372Z"
+    "updated_at": "2026-10-08T07:34:24.673162Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -352,7 +383,7 @@
           "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
         }
       ],
-      "next_action": "Resolve canonical SPEC-286 identity and relationship claims through evidence and the shared writer. WP0.4 remains next: obtain existing Windows Runner Authority readiness and capture fixtures A/B/C; assess Linux separately.",
+      "next_action": "Prompt Recipe Library source/spec/test checkpoint is recorded as PARTIAL. Integrate its isolated PR first. WP0.4 then waits on Lane A Windows Runner repair/readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until the sandbox security gate passes.",
       "rationale": "The user explicitly directed SPEC-286 continuation. Runtime work is held at WP0.4 because no Windows execution receipt is available; canonical identity and prior successor-candidate claims remain unresolved in generated repository status.",
       "residual_requirements": []
     }
@@ -365,10 +396,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-08T07:06:27.246372Z",
+    "reconciled_at": "2026-10-08T07:34:24.673162Z",
     "sources": [
       {
-        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -408,6 +439,11 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
+        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
+      },
+      {
         "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
@@ -425,7 +461,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-        "source_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+        "source_digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
         "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
       }
     ],
@@ -456,14 +492,14 @@
         "excerpt": "status: ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION",
         "line": 7,
         "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-        "source_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+        "source_digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
         "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
+        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -503,6 +539,11 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
+        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
+      },
+      {
         "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
@@ -524,23 +565,26 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 719,
-    "unresolved": 719
+    "total": 746,
+    "unresolved": 746
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T07:08:01.117249Z",
+  "updated_at": "2026-10-08T07:34:58.703623Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "After PR #339 integration at 4616a8aa8fea708c688396c4bb64edb5424cd519: python3 -m tools.spec_handoff validate --spec-dir specs/feature/286-agentic-video-production-creative-quality-runtime returned valid=true, validation_errors=[], completion_eligible=false.",
       "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md — eleven bounded source/document checks; no render/runtime/sandbox PASS.",
-      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md — WP0.4 A/B/C all NOT RUN; Windows authorization/receipt absent and Linux readiness separate."
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md — WP0.4 A/B/C all NOT RUN; Windows authorization/receipt absent and Linux readiness separate.",
+      "At source SHA 7ac5707058fb77e93cbdf20c4d2a6de067766f30: focused Vitest files passed 14/14 tests in 10 post-fix QA iterations; fixture/mocked rights boundary only, no Runner/runtime/render/visual-quality PASS.",
+      "At source SHA 7ac5707058fb77e93cbdf20c4d2a6de067766f30: python3 -m tools.spec_handoff validate --spec-dir specs/feature/286-agentic-video-production-creative-quality-runtime returned valid=true, zero validation errors, completion_eligible=false after §166 ledger reconciliation.",
+      "WP0.4 remains PARTIAL/BLOCKED: no Golden Fixture A/B/C real Windows execution receipts or rendered visual artifacts; Lane A Runner repair is external."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "4616a8aa8fea708c688396c4bb64edb5424cd519",
+    "sha": "7ac5707058fb77e93cbdf20c4d2a6de067766f30",
     "status": "PARTIAL",
     "task_regressions": []
   }
