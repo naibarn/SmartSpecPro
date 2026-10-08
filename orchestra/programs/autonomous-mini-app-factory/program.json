@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+    "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
-      "canonical_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
-      "canonical_user_workspace_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "integrated_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "canonical_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "canonical_user_workspace_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482",
-      "verified_at": "2026-10-08T18:10:19.806Z"
+      "receipt_id": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
+      "verified_at": "2026-10-08T18:14:11.894Z"
     },
-    "observedAt": "2026-10-08T18:10:19.806Z",
+    "observedAt": "2026-10-08T18:14:11.894Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "canonical_user_workspace_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
       "dirty": false,
-      "reason": "PR #380 merged normally; canonical workspace convergence and verify passed."
+      "reason": "PR #381 merged normally; canonical workspace convergence and verify passed."
     },
     "latestIntegratedProgramChange": "PR #380 merged verifier-outside-transaction settlement hardening and PostgreSQL-backed concurrency/rollback/replay evidence. Live Windows dispatch, owner authorization, and live economic settlement remain unverified.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482",
-      "verifiedAt": "2026-10-08T18:10:19.806Z"
+      "convergenceReceipt": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
+      "verifiedAt": "2026-10-08T18:14:11.894Z"
     }
   },
   "inventory": {
@@ -649,7 +649,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T18:10:19.806Z",
+  "updatedAt": "2026-10-08T18:14:11.894Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -953,17 +953,22 @@
         "revision": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
         "command": "workspace_authority.py resolve, converge --integrated-sha, verify --integrated-sha",
         "outcome": "PASS: workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482; /home/dev/projects/SmartSpecPro clean and verified at 7ca6dacb5773c1b2eaf4e29dd139220d6018bac0."
+      },
+      {
+        "revision": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+        "command": "workspace_authority.py converge and verify --integrated-sha dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+        "outcome": "PASS: workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994; canonical user workspace clean and verified at dfe21a86d7b0a5e232851c3faf5f04317835fa6e."
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+    "canonicalAtCheckpoint": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
       "dirty": false,
-      "verifiedAt": "2026-10-08T18:10:19.806Z"
+      "verifiedAt": "2026-10-08T18:14:11.894Z"
     },
     "previousPullRequests": [
       {
@@ -1053,6 +1058,13 @@
         "integration": "SQUASH_MERGED_NORMALLY",
         "sourceSha": "78b969182c3cf3bb7d5b4e60433fe8743db0d73e",
         "integratedSha": "903f53558a2d69e25d38d244932e443288238835"
+      },
+      {
+        "number": 381,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/381",
+        "state": "MERGED",
+        "sourceSha": "73bee043392d7fb821eb3688de99407494aa1a85",
+        "integratedSha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e"
       }
     ],
     "taskOutcome": "CHECKPOINT_PROMOTED_PARTIAL",
@@ -1076,18 +1088,18 @@
       "windowsGuiUat": "PENDING_INSTALL_AND_RUNNER_START"
     },
     "latestHandoffPullRequest": {
-      "number": 380,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/380",
+      "number": 381,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/381",
       "state": "MERGED",
-      "sourceSha": "1ac47dc0cb488e11ef441fe09714f0acd15d545f",
-      "integratedSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0"
+      "sourceSha": "73bee043392d7fb821eb3688de99407494aa1a85",
+      "integratedSha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e"
     },
     "canonicalWorkspaceConvergence": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receiptId": "workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482",
-      "verifiedAt": "2026-10-08T18:10:19.806Z"
+      "receiptId": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
+      "verifiedAt": "2026-10-08T18:14:11.894Z"
     }
   },
   "authorityResolution": {
@@ -1301,7 +1313,14 @@
       "liveEconomicSettlement": "NOT_OBSERVED",
       "windowsReadiness": "NOT_OBSERVED_SSH_TIMEOUT",
       "ownerApproval": "NOT_ISSUED",
-      "dispatch": "NOT_RUN"
+      "dispatch": "NOT_RUN",
+      "metadataPr381": {
+        "state": "MERGED_NORMALLY",
+        "sourceSha": "73bee043392d7fb821eb3688de99407494aa1a85",
+        "integratedSha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+        "canonicalWorkspaceReceipt": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
+        "verifiedAt": "2026-10-08T18:14:11.894Z"
+      }
     },
     "latestWindowsAccessAttempt": {
       "host": "192.168.1.123",

@@ -3,11 +3,11 @@
 **State:** `CHECKPOINT_PROMOTED_PARTIAL`
 **Repository:** `naibarn/SmartSpecPro`
 **Settlement implementation SHA:** `d8791f7a7bd71c47506d46fffabce5c2c820d3e6`
-**Latest integrated SHA:** `7ca6dacb5773c1b2eaf4e29dd139220d6018bac0`
-**PRs:** [#375](https://github.com/naibarn/SmartSpecPro/pull/375) implementation, [#376](https://github.com/naibarn/SmartSpecPro/pull/376) program handoff, [#377](https://github.com/naibarn/SmartSpecPro/pull/377) transaction tests, and [#380](https://github.com/naibarn/SmartSpecPro/pull/380) verifier-lock fix/PostgreSQL evidence; all merged normally
+**Latest integrated SHA:** `dfe21a86d7b0a5e232851c3faf5f04317835fa6e`
+**PRs:** [#375](https://github.com/naibarn/SmartSpecPro/pull/375) implementation, [#376](https://github.com/naibarn/SmartSpecPro/pull/376) program handoff, [#377](https://github.com/naibarn/SmartSpecPro/pull/377) transaction tests, and [#380](https://github.com/naibarn/SmartSpecPro/pull/380) verifier-lock fix/PostgreSQL evidence, plus [#381](https://github.com/naibarn/SmartSpecPro/pull/381) evidence metadata; all merged normally
 **Task commits:** `2ecbe20b9d8967ef236a07c21f08c76f32e7b660` (implementation), `130bf5e90f08b3682dedaf20b5fd3c91bf61a410` (transaction tests), `1ac47dc0cb488e11ef441fe09714f0acd15d545f` (verifier-lock fix)
-**Canonical workspace:** `/home/dev/projects/SmartSpecPro`, clean at the latest integrated SHA
-**Latest convergence receipt:** `workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b`
+**Canonical workspace:** `/home/dev/projects/SmartSpecPro`, clean at `dfe21a86d7b0a5e232851c3faf5f04317835fa6e`
+**Latest convergence receipt:** `workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994`
 **Program:** `AUTONOMOUS_MINI_APP_FACTORY_PROGRAM`
 
 ## Implemented in this checkpoint
@@ -83,3 +83,10 @@ PR #375 implementation and PR #377 transaction tests were integrated at `42f2e62
 - `origin/main` was refreshed to `7ca6dacb5773c1b2eaf4e29dd139220d6018bac0`.
 - The registered canonical user workspace `/home/dev/projects/SmartSpecPro` was clean, converged, and verified at that SHA. Receipt: `workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482`; verified `2026-10-08T18:10:19.806Z`.
 - Program metadata records this partial integration. The open work remains Windows physical readiness, owner-issued scope/budget/funding/account authority, production verifier registration, and a real authorized dispatch/receipt/settlement.
+
+
+## PR #381 integration and canonical workspace
+
+- PR #381 merged normally. Candidate commit: `73bee043392d7fb821eb3688de99407494aa1a85`; merge commit and integrated SHA: `dfe21a86d7b0a5e232851c3faf5f04317835fa6e`.
+- The canonical user workspace `/home/dev/projects/SmartSpecPro` was converged and verified clean at that SHA. Receipt: `workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994`; verification: `2026-10-08T18:14:11.894Z`.
+- PR #381 records the PR #380 PostgreSQL settlement evidence; it does not change live readiness or authorization status.
