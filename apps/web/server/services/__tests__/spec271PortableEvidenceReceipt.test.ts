@@ -54,8 +54,10 @@ const decision: Spec271AcceptanceEvidence = {
 
 function dependencies(overrides: Partial<Spec271PortableReceiptDependencies> = {}): Spec271PortableReceiptDependencies {
   return {
+    authorizeScope: async () => true,
     resolveArtifact: async () => artifact,
     resolveAcceptance: async () => decision,
+    maxEvidenceAgeMs: 60 * 60 * 1000,
     ...overrides,
   };
 }
@@ -113,11 +115,14 @@ describe("SPEC-271 portable source-bound evidence receipt WP2A", () => {
   it("rejects missing, unauthorized, stale, run-mismatched, and duplicate artifact evidence", async () => {
     await expectCode(create(dependencies({ resolveArtifact: async () => null })), "ARTIFACT_NOT_FOUND_OR_UNAUTHORIZED");
     await expectCode(create(dependencies({ maxEvidenceAgeMs: 1 })), "ARTIFACT_STALE");
+    await expectCode(create(dependencies({ maxEvidenceAgeMs: undefined } as unknown as Partial<Spec271PortableReceiptDependencies>)), "EVIDENCE_AGE_POLICY_INVALID");
     await expectCode(create(dependencies({ resolveArtifact: async () => ({ ...artifact, attemptId: "attempt-old" }) })), "ARTIFACT_RUN_IDENTITY_MISMATCH");
     await expectCode(create(dependencies(), { artifactRefs: [{ artifactId: "artifact-1" }, { artifactId: "artifact-1" }] }), "DUPLICATE_ARTIFACT_REFERENCE");
   });
 
   it("fails closed when a tenant or project boundary is crossed", async () => {
+    await expectCode(create(dependencies({ authorizeScope: async () => false })), "SCOPE_ACCESS_DENIED");
+    await expectCode(create(dependencies({ authorizeScope: async () => { throw new Error("policy unavailable"); } })), "SCOPE_AUTHORIZATION_UNAVAILABLE");
     await expectCode(create(dependencies({ resolveArtifact: async () => ({ ...artifact, tenantId: "tenant-b" }) })), "ARTIFACT_SCOPE_MISMATCH");
     await expectCode(create(dependencies({ resolveArtifact: async () => ({ ...artifact, projectId: "project-b" }) })), "ARTIFACT_SCOPE_MISMATCH");
   });

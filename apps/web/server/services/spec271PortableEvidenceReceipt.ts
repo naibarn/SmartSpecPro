@@ -101,7 +101,8 @@ export function verifySpec271PortableEvidenceReceipt(
 ): boolean {
   if (!receipt || receipt.contractVersion !== "spec271.portable-evidence-receipt.v1" ||
       receipt.evidenceStatus !== "VALIDATED_UNPERSISTED" || !SOURCE_SHA.test(receipt.sourceSha) ||
-      !SHA256.test(receipt.receiptDigest) || !SHA256.test(receipt.provenance.evidenceManifestDigest) ||
+      !SHA256.test(receipt.receiptDigest) || !receipt.provenance ||
+      !SHA256.test(receipt.provenance.evidenceManifestDigest) ||
       !SHA256.test(receipt.oracleEvidenceDigest) || !SHA256.test(receipt.environmentFingerprint) ||
       !receipt.oracleId || !Array.isArray(receipt.evidenceArtifacts) || receipt.evidenceArtifacts.length === 0 ||
       receipt.evidenceArtifacts.some(artifact => !artifact.artifactId || !SHA256.test(artifact.contentSha256)) ||
@@ -168,6 +169,7 @@ export function assertSpec271ReceiptReplay(
 
 export type Spec271PortableReceiptDependencies = Readonly<{
   /** Must authorize the actor for both tenant and project before returning bytes. */
+  authorizeScope(scope: Spec271ReceiptScope): Promise<boolean>;
   resolveArtifact(
     artifactId: string,
     scope: Spec271ReceiptScope
@@ -183,7 +185,8 @@ export type Spec271PortableReceiptDependencies = Readonly<{
     attestationRef: string;
   }): Promise<boolean>;
   attestationRequired?: boolean;
-  maxEvidenceAgeMs?: number;
+  /** Required tenant/data-class freshness policy; callers must not invent a default. */
+  maxEvidenceAgeMs: number;
 }>;
 
 function fail(code: string): never {
@@ -224,6 +227,13 @@ export async function createSpec271PortableEvidenceReceipt(input: {
   attestationRef?: string;
 }, dependencies: Spec271PortableReceiptDependencies): Promise<Spec271PortableEvidenceReceipt> {
   validateScope(input.scope, input.verifiedAt);
+  let authorized = false;
+  try {
+    authorized = await dependencies.authorizeScope(input.scope);
+  } catch {
+    fail("SCOPE_AUTHORIZATION_UNAVAILABLE");
+  }
+  if (!authorized) fail("SCOPE_ACCESS_DENIED");
   if (!Array.isArray(input.artifactRefs) || input.artifactRefs.length === 0) fail("EVIDENCE_ARTIFACTS_REQUIRED");
   const ids = input.artifactRefs.map(ref => ref.artifactId);
   if (ids.some(id => typeof id !== "string" || !id.trim())) fail("ARTIFACT_ID_INVALID");
@@ -246,7 +256,7 @@ export async function createSpec271PortableEvidenceReceipt(input: {
   }
 
   const maxAge = dependencies.maxEvidenceAgeMs;
-  if (maxAge !== undefined && (!Number.isFinite(maxAge) || maxAge < 0)) fail("EVIDENCE_AGE_POLICY_INVALID");
+  if (!Number.isFinite(maxAge) || maxAge < 0) fail("EVIDENCE_AGE_POLICY_INVALID");
   const resolved = await Promise.all(input.artifactRefs.map(async ref => {
     let artifact: Spec271ResolvedEvidenceArtifact | null;
     try {
@@ -261,9 +271,10 @@ export async function createSpec271PortableEvidenceReceipt(input: {
       fail("ARTIFACT_RUN_IDENTITY_MISMATCH");
     }
     if (artifact.sourceSha !== input.scope.sourceSha) fail("ARTIFACT_SOURCE_SHA_MISMATCH");
+    if (!(artifact.bytes instanceof Uint8Array)) fail("ARTIFACT_BYTES_UNAVAILABLE");
     if (!isIsoTimestamp(artifact.createdAt) || Date.parse(artifact.createdAt) < Date.parse(input.scope.runStartedAt) ||
         Date.parse(artifact.createdAt) > Date.parse(input.verifiedAt)) fail("ARTIFACT_TIMESTAMP_INVALID");
-    if (maxAge !== undefined && Date.parse(input.verifiedAt) - Date.parse(artifact.createdAt) > maxAge) {
+    if (Date.parse(input.verifiedAt) - Date.parse(artifact.createdAt) > maxAge) {
       fail("ARTIFACT_STALE");
     }
     const contentSha256 = sha256(artifact.bytes);
