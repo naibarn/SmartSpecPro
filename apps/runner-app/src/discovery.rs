@@ -148,17 +148,15 @@ fn include_windows_user_tool_roots(
     path_entries: &[PathBuf],
     user_roots: Vec<PathBuf>,
 ) -> Vec<PathBuf> {
-    let reserved = user_roots.len().min(LOCAL_SCAN_LIMIT);
-    let mut entries = path_entries
-        .iter()
-        .take(LOCAL_SCAN_LIMIT.saturating_sub(reserved))
-        .cloned()
+    let mut entries = user_roots
+        .into_iter()
+        .take(LOCAL_SCAN_LIMIT)
         .collect::<Vec<_>>();
-    entries.extend(
-        user_roots
-            .into_iter()
-            .take(LOCAL_SCAN_LIMIT - entries.len()),
-    );
+    for path_entry in path_entries.iter().take(LOCAL_SCAN_LIMIT - entries.len()) {
+        if !entries.contains(path_entry) {
+            entries.push(path_entry.clone());
+        }
+    }
     entries
 }
 
@@ -725,7 +723,7 @@ mod tests {
     }
 
     #[test]
-    fn windows_user_cli_roots_remain_scannable_when_path_is_at_limit() {
+    fn windows_user_cli_roots_are_prioritized_and_remain_scannable_when_path_is_at_limit() {
         let path_entries = (0..LOCAL_SCAN_LIMIT)
             .map(|index| PathBuf::from(format!("C:\\tools\\{index}")))
             .collect::<Vec<_>>();
@@ -736,7 +734,10 @@ mod tests {
         let merged = include_windows_user_tool_roots(&path_entries, user_roots.clone());
 
         assert_eq!(merged.len(), LOCAL_SCAN_LIMIT);
-        assert_eq!(&merged[merged.len() - 2..], user_roots);
+        assert_eq!(&merged[..2], user_roots);
+        assert!(!merged
+            .iter()
+            .any(|path| path == &path_entries[LOCAL_SCAN_LIMIT - 1]));
     }
 
     #[test]
