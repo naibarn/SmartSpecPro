@@ -1,7 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { resolveAppRouteForTenant } from "../services/appIdentityRepository";
+import {
+  resolveActiveAppByPublicId,
+  resolveAppRouteForTenant,
+} from "../services/appIdentityRepository";
 
 type AppIdentityService = Pick<typeof import("../services/appIdentityRepository"), "resolveAppRouteForTenant" | "resolveActiveAppByPublicId">;
 
@@ -11,7 +14,10 @@ function authenticatedTenant(ctx: { user: { currentTenantId?: string | number | 
   return tenantId;
 }
 
-export function createAppIdentityRouter(service: AppIdentityService = { resolveAppRouteForTenant }) {
+export function createAppIdentityRouter(service: AppIdentityService = {
+  resolveAppRouteForTenant,
+  resolveActiveAppByPublicId,
+}) {
   return router({
     resolveRoute: protectedProcedure
       .input(z.object({

@@ -87,4 +87,23 @@ describe("ResearchNotesPage", () => {
       noteId: "note-one",
     }));
   });
+
+  it("searches note titles and content within the selected project", () => {
+    mocks.notesQuery = {
+      data: [
+        { noteId: "note-one", title: "Interview", content: "Exports are important.", aiSummary: null },
+        { noteId: "note-two", title: "Roadmap", content: "Quarterly launch plan.", aiSummary: null },
+      ],
+      isLoading: false,
+      isError: false,
+    };
+    render(<ResearchNotesPage />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Search notes" }), {
+      target: { value: "exports" },
+    });
+
+    expect(screen.getByRole("button", { name: "Interview" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Roadmap" })).toBeNull();
+  });
 });
