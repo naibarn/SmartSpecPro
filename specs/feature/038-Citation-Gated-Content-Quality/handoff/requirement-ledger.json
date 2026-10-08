@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 9,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -823,30 +823,28 @@
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L514"
       ],
       "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L514",
-      "blocker": {
-        "classification": "BASELINE_FAILURE",
-        "description": "All 15 reviewer frontmatter assertions fail; reviewer CMS section assertions fail for 13 skills."
-      },
+      "blocker": null,
       "current_relevance": "CONFIRMED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-      "final_state": "FAIL",
+      "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/skills/",
         "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Implement the missing skill metadata/output sections in a separate feature WorkUnit, then rerun the focused suite.",
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further action for REQ-82D72A4A21B6; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
       "requirement_digest": "a9ac06642ed632056b0fd7ceb083bab75cf90742c19d580dfa0f0090e07490ae",
       "requirement_id": "REQ-82D72A4A21B6",
       "requirement_text": "**Goal**: อัพเกรด reviewer ทั้ง 15 ตัวให้รองรับ ProductReviewCMS.v1",
       "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
       ],
-      "verification_method": "Run focused Spec 038 package Vitest suite against the exact main SHA."
+      "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
     },
     {
       "applicability": "UNASSESSED",
@@ -1339,30 +1337,28 @@
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L632"
       ],
       "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L632",
-      "blocker": {
-        "classification": "BASELINE_FAILURE",
-        "description": "Article writer tests fail for missing CMS sections in 7 skills and policy metadata in 3."
-      },
+      "blocker": null,
       "current_relevance": "CONFIRMED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-      "final_state": "FAIL",
+      "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/skills/",
         "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Implement the missing skill metadata/output sections in a separate feature WorkUnit, then rerun the focused suite.",
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further action for REQ-AFBE9F138116; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
       "requirement_digest": "cb43c802693192efc752861e0ab372934e3d202b80b9eb689a0d43cd402b1766",
       "requirement_id": "REQ-AFBE9F138116",
       "requirement_text": "**Goal**: อัพเกรด article writers 8 ตัวให้รองรับ ArticleCMS.v1",
       "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
       ],
-      "verification_method": "Run focused Spec 038 package Vitest suite against the exact main SHA."
+      "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
     },
     {
       "applicability": "UNASSESSED",
@@ -2207,30 +2203,28 @@
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875"
       ],
       "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875",
-      "blocker": {
-        "classification": "BASELINE_FAILURE",
-        "description": "The normative 23/23 success criterion is not met; the focused suite has 39 failing assertions."
-      },
+      "blocker": null,
       "current_relevance": "CONFIRMED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-      "final_state": "FAIL",
+      "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/skills/",
         "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Implement the missing skill metadata/output sections in a separate feature WorkUnit, then rerun the focused suite.",
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further action for REQ-706E5F6CC7D5; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
       "requirement_digest": "24da66744dcf709a6077a50e994d68786666aa9db1c69cd24ec345ef9f3a9f65",
       "requirement_id": "REQ-706E5F6CC7D5",
       "requirement_text": "| Skills with CMS output support | 23/23 (100%) | Schema validation test |",
       "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
       ],
-      "verification_method": "Run focused Spec 038 package Vitest suite against the exact main SHA."
+      "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
     },
     {
       "applicability": "UNASSESSED",
