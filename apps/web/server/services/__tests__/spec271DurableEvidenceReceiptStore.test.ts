@@ -138,11 +138,12 @@ describe("SPEC-271 durable receipt object adapter WP2B", () => {
     const result = await createSpec271DurableEvidenceReceiptStore(deps).persist(receipt);
 
     expect(result).toMatchObject({
-      status: "PERSISTED_VERIFIED",
+      status: "OBJECT_PERSISTED_REVALIDATED",
       receipt: { receiptId: receipt.receiptId, receiptDigest: receipt.receiptDigest },
       storedContentSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       created: true,
     });
+    expect(result.receipt.evidenceStatus).toBe("VALIDATED_UNPERSISTED");
     expect(deps.storage.objects.size).toBe(1);
   });
 
