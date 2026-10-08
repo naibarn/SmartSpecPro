@@ -26,7 +26,7 @@ pnpm exec tsx scripts/write-mini-app-validation-evidence.ts \
 pnpm exec tsx scripts/build-mini-app-package.ts \
   --output-dir "$OUTPUT_DIR" --evidence-file "$EVIDENCE_FILE"
 node --input-type=module - "$PACKAGE_REPORT" "$CONTEXT_REPORT" <<'JS'
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 const report = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const context = JSON.parse(readFileSync(process.argv[3], "utf8"));
 if (report.validation.status !== "valid" || report.digest.value !== context.packageDigest) {
@@ -37,6 +37,18 @@ for (const stage of ["V5", "V6"]) {
     throw new Error(`PACKAGE_CONTEXT_STAGE_${stage}_NOT_PASS`);
   }
 }
+context.validation = {
+  profile: report.validation.profile,
+  status: report.validation.status,
+  stages: report.validation.stages.map(({ stage, status, mandatory, evidenceIds }) => ({ stage, status, mandatory, evidenceIds })),
+};
+context.archiveSha256 = report.archive.sha256;
+context.archiveFormat = report.archive.format;
+context.validatedAt = new Date().toISOString();
+const durableEvidencePath = new URL("../../orchestra/programs/autonomous-mini-app-factory/evidence/research-notes-package-context.json", `file://${process.cwd()}/`).pathname;
+mkdirSync(new URL("../../orchestra/programs/autonomous-mini-app-factory/evidence", `file://${process.cwd()}/`).pathname, { recursive: true });
+writeFileSync(process.argv[3], `${JSON.stringify(context, null, 2)}\n`);
+writeFileSync(durableEvidencePath, `${JSON.stringify(context, null, 2)}\n`);
 console.log(JSON.stringify({
   result: "PACKAGE_CONTEXT_VALIDATION_PASS",
   appId: report.appId,
