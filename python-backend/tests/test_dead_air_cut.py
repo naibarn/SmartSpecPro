@@ -64,7 +64,10 @@ class TestDeadAirCutInputValidation:
 
     @patch("app.tasks.media_job_worker._probe_media_info")
     @patch("app.tasks.media_job_worker._resolve_asset_path")
-    def test_rejects_end_ms_exceeding_duration(self, mock_resolve, mock_probe, tmp_path):
+    @patch("app.tasks.media_job_worker.report_progress")
+    def test_rejects_end_ms_exceeding_duration(
+        self, mock_report, mock_resolve, mock_probe, tmp_path
+    ):
         """Reject segment with endMs exceeding file duration."""
         mock_resolve.return_value = "/tmp/test.mp4"
         mock_probe.return_value = {

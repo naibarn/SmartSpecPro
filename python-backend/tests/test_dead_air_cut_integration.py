@@ -14,6 +14,16 @@ import pytest
 
 from app.tasks.media_job_worker import handle_dead_air_cut
 
+
+@pytest.fixture(autouse=True)
+def mock_worker_lease_progress(monkeypatch):
+    """Keep media-pipeline tests independent from the canonical job lease."""
+    monkeypatch.setitem(
+        handle_dead_air_cut.__globals__,
+        "report_progress",
+        lambda *_args, **_kwargs: None,
+    )
+
 # Skip integration tests if FFmpeg is not available
 try:
     import subprocess
@@ -139,10 +149,9 @@ class TestDeadAirCutIntegration:
 
         result = handle_dead_air_cut(spec, str(tmp_path))
 
-        # Verify buffer reduces removed duration
-        # Original silence: 3000ms, with 200ms buffer: 2600ms removed
-        assert result["derived"]["removedMs"] == 3000
-        # Output should be ~7.4s (10s - 2.6s, accounting for buffer expansion)
+        # The 200ms buffer retains 400ms across the cut boundaries.
+        assert result["derived"]["removedMs"] == 2600
+        assert result["derived"]["outputDurationMs"] == 7400
 
     def test_silence_removal_with_crossfade(self, sample_video, tmp_path):
         """Test silence removal with audio crossfade."""
