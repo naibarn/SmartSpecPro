@@ -59,8 +59,8 @@ export type Spec271DurableReceiptStoreDependencies = Readonly<{
 }>;
 
 export type Spec271PersistedEvidenceReceipt = Readonly<{
-  /** This wrapper records verified durable bytes; the embedded WP2A receipt remains VALIDATED_UNPERSISTED. */
-  status: "PERSISTED_VERIFIED";
+  /** Object-level read-back/revalidation only; this does not advance authoritative acceptance state. */
+  status: "OBJECT_PERSISTED_REVALIDATED";
   receipt: Spec271PortableEvidenceReceipt;
   storageKey: string;
   storedContentSha256: string;
@@ -255,7 +255,7 @@ export function createSpec271DurableEvidenceReceiptStore(
     assertRetentionGrant(retention, expectedPolicyRef ?? record.retentionPolicyRef);
     await revalidate(scope, record.receipt);
     return Object.freeze({
-      status: "PERSISTED_VERIFIED",
+      status: "OBJECT_PERSISTED_REVALIDATED",
       receipt: record.receipt,
       storageKey: key,
       storedContentSha256: sha256(bytes),
