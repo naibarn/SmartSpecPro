@@ -4,15 +4,29 @@
   "title": "SmartAIHub Prompt Recipe V1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["recipeId", "version", "title", "intentTags", "styleTags", "supportedAspectRatios", "durationMs", "promptTemplate", "source", "reuseScope"],
+  "required": ["recipeId", "version", "title", "intentTags", "styleTags", "compatibility", "promptTemplate", "source", "reuseScope"],
   "properties": {
     "recipeId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$" },
     "version": { "type": "integer", "minimum": 1 },
     "title": { "type": "string", "minLength": 1, "maxLength": 160 },
     "intentTags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 64 }, "uniqueItems": true, "maxItems": 32 },
     "styleTags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 64 }, "uniqueItems": true, "maxItems": 32 },
-    "supportedAspectRatios": { "type": "array", "items": { "enum": ["16:9", "9:16", "1:1"] }, "uniqueItems": true, "minItems": 1 },
-    "durationMs": { "type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } } },
+    "compatibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["aspectRatioStatus", "durationStatus"],
+      "properties": {
+        "aspectRatioStatus": { "enum": ["unverified", "verified"] },
+        "supportedAspectRatios": { "type": "array", "items": { "enum": ["16:9", "9:16", "1:1"] }, "uniqueItems": true, "minItems": 1 },
+        "durationStatus": { "enum": ["unverified", "verified"] },
+        "durationMs": { "type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } } }
+      },
+      "allOf": [
+        { "if": { "properties": { "aspectRatioStatus": { "const": "verified" } } }, "then": { "required": ["supportedAspectRatios"] } },
+        { "if": { "properties": { "aspectRatioStatus": { "const": "unverified" } } }, "then": { "not": { "required": ["supportedAspectRatios"] } } },
+        { "if": { "properties": { "durationStatus": { "const": "verified" } } }, "then": { "required": ["durationMs"] } },
+        { "if": { "properties": { "durationStatus": { "const": "unverified" } } }, "then": { "not": { "required": ["durationMs"] } } }
+      ]
+    },
     "promptTemplate": { "type": "string", "minLength": 1, "maxLength": 12000 },
     "source": {
       "type": "object", "additionalProperties": false,

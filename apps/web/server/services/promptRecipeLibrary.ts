@@ -15,8 +15,12 @@ export type PromptRecipe = {
   title: string;
   intentTags: string[];
   styleTags: string[];
-  supportedAspectRatios: AspectRatio[];
-  durationMs: { min: number; max: number };
+  compatibility: {
+    aspectRatioStatus: "unverified" | "verified";
+    supportedAspectRatios?: AspectRatio[];
+    durationStatus: "unverified" | "verified";
+    durationMs?: { min: number; max: number };
+  };
   promptTemplate: string;
   source: {
     repository: string;
@@ -51,6 +55,10 @@ export type OpusVideoSource = {
 };
 
 export type RightsDecision = { status: "approved"; evidenceRef: string } | { status: "denied" | "unverified" };
+export type RightsUseDecision = { status: "approved" | "denied" | "unverified" | "revoked"; evidenceRef?: string; checkedAt?: string; expiresAt?: string };
+export type PromptRecipeRightsAuthority = (input: { recipe: PromptRecipe; tenantId: string; ownerUserId?: string; purpose: "motion_recipe_retrieval" }) => Promise<RightsUseDecision>;
+export type VectorRecipeCandidate = { recipeId: string; score: number; tenantId: string };
+export type PromptRecipeMetadata = { sourceSlug: string; title: string; author: string; authorUrl: string; sourceUrl: string; category: string; techTags: string[]; promptPartial: boolean; added?: string };
 export type RecipeImportResult = {
   accepted: PromptRecipe[];
   rejected: Array<{ sourceSlug: string; reason: "invalid_source" | "rights_not_approved" | "missing_attribution" | "partial_prompt" | "missing_scope" }>;
@@ -87,6 +95,46 @@ function parseSource(value: unknown): OpusVideoSource | undefined {
     typeof source.prompt_partial !== "boolean"
   ) return undefined;
   return source as OpusVideoSource;
+}
+
+function parseSourceMetadata(value: unknown): PromptRecipeMetadata | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const source = value as Partial<OpusVideoSource>;
+  if (
+    typeof source.slug !== "string" || !/^[a-z0-9][a-z0-9-]{1,127}$/i.test(source.slug) ||
+    typeof source.author !== "string" || !source.author.trim() ||
+    typeof source.author_url !== "string" || !safeUrl(source.author_url) ||
+    typeof source.post_url !== "string" || !safeUrl(source.post_url) ||
+    typeof source.category !== "string" || !source.category.trim() ||
+    !Array.isArray(source.tech_tags) || !source.tech_tags.every(tag => typeof tag === "string") ||
+    typeof source.prompt_partial !== "boolean"
+  ) return undefined;
+  const sourceUrl = source.skillry_url && safeUrl(source.skillry_url) ? source.skillry_url : source.post_url;
+  return {
+    sourceSlug: source.slug,
+    title: `${source.category}: ${source.author}`.slice(0, 160),
+    author: source.author,
+    authorUrl: source.author_url,
+    sourceUrl,
+    category: source.category,
+    techTags: source.tech_tags,
+    promptPartial: source.prompt_partial,
+    ...(source.added ? { added: source.added } : {}),
+  };
+}
+
+/** Searchable source metadata only; never returns or copies prompt/media/code fields. */
+export function discoverOpusVideoMetadata(input: unknown, query: string, limit = 10): PromptRecipeMetadata[] {
+  if (!Array.isArray(input)) throw new Error("Source catalog must be a JSON array");
+  const queryTokens = tokenize(query);
+  return input
+    .map(parseSourceMetadata)
+    .filter((row): row is PromptRecipeMetadata => Boolean(row))
+    .map(row => ({ row, score: lexicalScore(queryTokens, [row.title, row.category, ...row.techTags]) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.row.sourceSlug.localeCompare(b.row.sourceSlug))
+    .slice(0, limit)
+    .map(item => item.row);
 }
 
 /** Offline transform only. It does not fetch, persist, execute, or trust source code. */
@@ -159,8 +207,7 @@ export async function importOpusVideoRecipes(input: unknown, options: {
       title: `${source.category}: ${source.author}`.slice(0, 160),
       intentTags: [source.category.toLowerCase(), ...source.tech_tags.map(tag => tag.toLowerCase())].slice(0, 32),
       styleTags: source.tech_tags.map(tag => tag.toLowerCase()).slice(0, 32),
-      supportedAspectRatios: ["16:9", "9:16", "1:1"],
-      durationMs: { min: 1000, max: 120000 },
+      compatibility: { aspectRatioStatus: "unverified", durationStatus: "unverified" },
       promptTemplate: source.prompt.trim(),
       source: {
         repository: SOURCE_REPOSITORY,
@@ -185,26 +232,96 @@ export async function importOpusVideoRecipes(input: unknown, options: {
   return { accepted, rejected, duplicates };
 }
 
-export function retrievePromptRecipes(recipes: PromptRecipe[], query: {
+export async function retrievePromptRecipes(recipes: PromptRecipe[], query: {
   text: string;
   aspectRatio: AspectRatio;
   durationMs: number;
   tenantId?: string;
   ownerUserId?: string;
   limit?: number;
-}): Array<{ recipe: PromptRecipe; score: number }> {
-  const words = new Set(query.text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(word => word.length > 1));
-  return recipes
-    .filter(recipe => recipe.source.rightsStatus === "approved" && recipe.supportedAspectRatios.includes(query.aspectRatio) && query.durationMs >= recipe.durationMs.min && query.durationMs <= recipe.durationMs.max)
-    .filter(recipe => recipe.reuseScope === "marketplace" ? Boolean(recipe.promotionApprovalRef) : (recipe.tenantId === query.tenantId && (recipe.reuseScope === "tenant" || recipe.ownerUserId === query.ownerUserId)))
-    .map(recipe => {
-      const terms = [...recipe.intentTags, ...recipe.styleTags, recipe.title].flatMap(value => value.toLowerCase().split(/[^\p{L}\p{N}]+/u));
-      const score = terms.reduce((total, term) => total + (words.has(term) ? 1 : 0), 0);
-      return { recipe, score };
-    })
+  rightsAuthority?: PromptRecipeRightsAuthority;
+  vectorCandidates?: VectorRecipeCandidate[];
+  now?: Date;
+}): Promise<Array<{ recipe: PromptRecipe; score: number }>> {
+  if (!query.tenantId || !query.rightsAuthority) return [];
+  const queryTokens = tokenize(query.text);
+  const scoped = recipes.filter(recipe =>
+    recipe.source.rightsStatus === "approved" &&
+    (recipe.compatibility.aspectRatioStatus !== "verified" || recipe.compatibility.supportedAspectRatios?.includes(query.aspectRatio)) &&
+    (recipe.compatibility.durationStatus !== "verified" || Boolean(recipe.compatibility.durationMs && query.durationMs >= recipe.compatibility.durationMs.min && query.durationMs <= recipe.compatibility.durationMs.max)) &&
+    (recipe.reuseScope === "marketplace" ? Boolean(recipe.promotionApprovalRef) : (recipe.tenantId === query.tenantId && (recipe.reuseScope === "tenant" || recipe.ownerUserId === query.ownerUserId)))
+  );
+  const authorized: PromptRecipe[] = [];
+  for (const recipe of scoped) {
+    try {
+      const decision = await query.rightsAuthority({ recipe, tenantId: query.tenantId, ownerUserId: query.ownerUserId, purpose: "motion_recipe_retrieval" });
+      const now = (query.now ?? new Date()).getTime();
+      const checkedAt = decision.checkedAt ? new Date(decision.checkedAt).getTime() : Number.NaN;
+      const isFresh = Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= 60_000;
+      if (decision.status === "approved" && decision.evidenceRef?.trim() && isFresh && decision.expiresAt && new Date(decision.expiresAt).getTime() > now) authorized.push(recipe);
+    } catch {
+      // Rights authority outages fail closed; metadata discovery remains separate.
+    }
+  }
+
+  const lexical = authorized
+    .map(recipe => ({ recipe, score: lexicalScore(queryTokens, [...recipe.intentTags, ...recipe.styleTags, recipe.title]) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.recipe.recipeId.localeCompare(b.recipe.recipeId));
+  const vector = (query.vectorCandidates ?? [])
+    .filter(candidate => candidate.tenantId === query.tenantId && Number.isFinite(candidate.score))
+    .sort((a, b) => b.score - a.score || a.recipeId.localeCompare(b.recipeId));
+  const lexicalRanks = new Map(lexical.map((item, index) => [item.recipe.recipeId, index + 1]));
+  const vectorRanks = new Map(vector.map((item, index) => [item.recipeId, index + 1]));
+  const byId = new Map(authorized.map(recipe => [recipe.recipeId, recipe]));
+  return [...byId.values()]
+    .map(recipe => ({
+      recipe,
+      score: (lexicalRanks.has(recipe.recipeId) ? 1 / (60 + lexicalRanks.get(recipe.recipeId)!) : 0) +
+        (vectorRanks.has(recipe.recipeId) ? 1 / (60 + vectorRanks.get(recipe.recipeId)!) : 0),
+    }))
     .filter(item => item.score > 0)
     .sort((a, b) => b.score - a.score || a.recipe.recipeId.localeCompare(b.recipe.recipeId))
     .slice(0, query.limit ?? 5);
+}
+
+const INTENT_EQUIVALENTS: Record<string, string[]> = {
+  launch: ["เปิดตัว", "สินค้า", "product", "release"],
+  product: ["สินค้า", "เปิดตัว", "launch", "item"],
+  infographic: ["อินโฟกราฟิก", "ข้อมูล", "อธิบาย", "explainer"],
+  explain: ["อธิบาย", "สอน", "how", "infographic"],
+  logo: ["โลโก้", "ตราสินค้า", "brand", "reveal"],
+  reveal: ["เปิดตัว", "โลโก้", "logo", "brand"],
+  ad: ["โฆษณา", "โปรโมต", "advert", "commercial"],
+  promotional: ["โปรโมต", "โฆษณา", "สินค้า", "ad"],
+  "เปิดตัวสินค้า": ["product", "launch", "reveal"],
+  "สินค้า": ["product", "launch", "item"],
+  "เปิดตัว": ["launch", "reveal"],
+  "อินโฟกราฟิก": ["infographic", "explainer"],
+  "อธิบาย": ["explain", "explainer"],
+  "โลโก้": ["logo", "brand", "reveal"],
+  "โฆษณา": ["ad", "advert", "commercial"],
+  "โปรโมต": ["promotional", "ad"],
+};
+
+function tokenize(value: string): Set<string> {
+  const normalized = value.toLocaleLowerCase().normalize("NFKC");
+  const tokens = new Set(normalized.split(/[^\p{L}\p{N}]+/u).filter(token => token.length > 1));
+  for (const [phrase, equivalents] of Object.entries(INTENT_EQUIVALENTS)) {
+    if (normalized.includes(phrase)) for (const equivalent of equivalents) tokens.add(equivalent);
+  }
+  // Thai has no required word spaces; deterministic bigrams provide local overlap without a model.
+  for (const chunk of normalized.match(/[\u0E00-\u0E7F]+/gu) ?? []) {
+    const chars = Array.from(chunk);
+    for (let index = 0; index < chars.length - 1; index++) tokens.add(chars.slice(index, index + 2).join(""));
+  }
+  for (const token of [...tokens]) for (const equivalent of INTENT_EQUIVALENTS[token] ?? []) tokens.add(equivalent);
+  return tokens;
+}
+
+function lexicalScore(queryTokens: Set<string>, fields: string[]): number {
+  const fieldTokens = fields.flatMap(value => [...tokenize(value)]);
+  return fieldTokens.reduce((total, token) => total + (queryTokens.has(token) ? 1 : 0), 0);
 }
 
 export type MotionRoute =
@@ -212,7 +329,7 @@ export type MotionRoute =
   | { route: "generate_candidate"; recipe?: PromptRecipe; reason: "no_compatible_template" | "user_requested_novelty" };
 
 /** Template-first decision; generate_candidate is only a plan and never executes code. */
-export function routePromptToMotion(input: {
+export async function routePromptToMotion(input: {
   text: string;
   categories: string[];
   aspectRatio: AspectRatio;
@@ -221,14 +338,15 @@ export function routePromptToMotion(input: {
   recipes?: PromptRecipe[];
   tenantId?: string;
   ownerUserId?: string;
-}): MotionRoute {
+  rightsAuthority?: PromptRecipeRightsAuthority;
+}): Promise<MotionRoute> {
   if (!input.userRequestedNovelty) {
     const costOrder = { low: 0, medium: 1, high: 2 } as const;
     const compatible = selectTemplatesFor({ categories: input.categories, aspectRatio: input.aspectRatio, durationMs: input.durationMs })
       .sort((a, b) => costOrder[a.renderCost] - costOrder[b.renderCost] || a.id.localeCompare(b.id))[0];
     if (compatible) return { route: "template", template: compatible, reason: "compatible_registry_template" };
   }
-  const recipe = retrievePromptRecipes(input.recipes ?? [], input)[0]?.recipe;
+  const recipe = (await retrievePromptRecipes(input.recipes ?? [], { ...input, rightsAuthority: input.rightsAuthority }))[0]?.recipe;
   return {
     route: "generate_candidate",
     ...(recipe ? { recipe } : {}),

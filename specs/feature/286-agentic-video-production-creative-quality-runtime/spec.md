@@ -8683,9 +8683,11 @@ executor, timeline, or project document.
 The normative machine-readable contract is
 `apps/web/shared/videoIntelligence/promptRecipe.schema.json` (JSON Schema
 Draft-07, `SmartAIHub Prompt Recipe V1`). A recipe SHALL contain a stable
-`recipeId`, positive integer `version`, bounded title and tags, supported aspect
-ratios, a bounded duration interval, a `promptTemplate`, source provenance, and
-reuse scope. Source provenance SHALL include repository, immutable source
+`recipeId`, positive integer `version`, bounded title and tags, a `compatibility`
+object, a `promptTemplate`, source provenance, and reuse scope. Compatibility
+SHALL distinguish `verified` from `unverified` aspect-ratio and duration claims.
+An unverified field SHALL NOT carry values or be used as a confirmed recipe
+capability; unknown compatibility does not exclude metadata discovery. Source provenance SHALL include repository, immutable source
 revision, source path and URL, author and author URL, human-readable
 attribution, SHA-256 content digest, and rights status. An approved rights
 status SHALL include a rights evidence reference. Private and tenant scopes
@@ -8716,6 +8718,14 @@ new recipe version only when the same recipe identity has changed content.
 The importer SHALL call an explicit rights-check authority for each complete
 prompt before retaining prompt text. Missing, denied, or unverified rights
 MUST fail closed and MUST NOT retain prompt text, media, or executable source.
+If that authority is not wired to a source-catalog-specific Rights Authority,
+full-prompt import/retrieval SHALL remain unavailable. A mock callback is test
+evidence only. Every use that returns full prompt text SHALL perform a fresh
+rights check scoped to tenant, user, and purpose; expired, revoked, unknown,
+denied, or unavailable decisions SHALL fail closed. Revocation SHALL remove the
+prompt from results immediately on the next authorized retrieval. Metadata-only
+discovery MAY expose validated public attribution and source links when prompt
+copy rights are absent, but SHALL omit prompt text, media, and executable code.
 The upstream repository license SHALL NOT be treated as permission for linked
 creator content. Missing attribution, invalid URLs, and invalid source records
 SHALL be rejected with a reason. Import is an offline transform; it SHALL NOT
@@ -8723,11 +8733,19 @@ fetch external assets at runtime, create database records, or execute content.
 
 ### 166.3 Semantic retrieval and template-first decision
 
-Semantic discovery SHALL consider intent, style/technical tags, aspect ratio,
-duration, rights status, and the current user/tenant reuse scope. Providers MAY
-add candidate descriptions or embeddings behind provider-independent
-interfaces, but deterministic local ranking SHALL remain available and
-provider failures SHALL not widen visibility or bypass rights checks.
+Semantic discovery SHALL consider intent, style/technical tags, verified
+compatibility (when present), rights status, and the current user/tenant reuse
+scope. Unverified aspect ratio or duration SHALL remain unknown and SHALL NOT
+be presented as a confirmed match. Retrieval MAY fuse candidates from the
+existing Vectorize/Retrieval Broker authority with deterministic local results
+(for example reciprocal-rank fusion); it SHALL NOT create a vector database or
+another Broker. The canonical Retrieval Broker integration MUST be used when
+available. Until it is available, only the deterministic fallback and isolated
+mock candidate seam may be implemented; this is not live Vectorize evidence.
+Provider-independent interfaces and deterministic local ranking SHALL remain
+available, and provider failures SHALL fall back without widening visibility or
+bypassing rights checks. Tenant and rights filtering SHALL happen before any
+prompt text is returned and before fused rankings are exposed.
 
 The router SHALL filter the existing Motion Template Registry by its declared
 capabilities and prefer the least costly compatible existing template. Only
@@ -8744,9 +8762,11 @@ executor authority.
 Unit and integration tests SHALL use checked-in synthetic fixtures and mock
 rights/provider boundaries. They SHALL cover schema rejection, attribution,
 rights default-deny, partial prompts, deduplication, version increments,
-tenant/user isolation, semantic retrieval, template-first routing, novelty
-routing, and the non-execution boundary. Mock tests MUST NOT be reported as
-runtime, render, or visual-quality PASS evidence.
+tenant/user isolation, Thai and English intent retrieval, hybrid ranking and
+deterministic fallback, rights grant/deny/revocation/expiry/outage, metadata-only
+discovery, unverified compatibility, template-first routing, novelty routing,
+and the non-execution boundary. Mock tests MUST NOT be reported as live Broker,
+Rights Authority, runtime, render, or visual-quality PASS evidence.
 
 These checks do not discharge WP0.4. WP0.4 SHALL remain PARTIAL/BLOCKED until
 fixtures A/B/C have source-bound real Windows Runner execution receipts and

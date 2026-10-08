@@ -3,10 +3,10 @@
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 746 unresolved of 746
-- Next action: PR #342 and PR #344 recipe code checkpoints are integrated and focused tests pass. WP0.4 remains PARTIAL/BLOCKED until Lane A provides Windows readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until sandbox gate evidence passes.
-- Manifest generation: 18
+- Continuation: `CONTINUE_REQUIRED` (MEDIUM)
+- Requirements: 0 pass / 756 unresolved of 756
+- Next action: Continue only bounded Recipe Library work with deterministic fallback and mock seams. Reconcile this manifest after integration to the exact main SHA. Keep live Broker/Rights work blocked until their authorities are evidenced; keep generated code non-executable and WP0.4 PARTIAL/BLOCKED.
+- Manifest generation: 24
 
 ## Source-declared status and relationship claims
 
