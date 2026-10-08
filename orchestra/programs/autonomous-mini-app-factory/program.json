@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+    "sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
-      "canonical_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
-      "canonical_user_workspace_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "integrated_sha": "5d99ab048a8ba719a145893a360c404aba585d92",
+      "canonical_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+      "canonical_user_workspace_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:d8f0a5aa-fc6e-46ee-b079-717a4af7d393",
-      "verified_at": "2026-10-08T00:57:27.789+00:00"
+      "receipt_id": "workspace-convergence:2c99cd12-eda1-4a17-8c9c-472746f684e9",
+      "verified_at": "2026-10-08T01:00:25.349+00:00"
     },
-    "observedAt": "2026-10-08T00:58:00+00:00",
+    "observedAt": "2026-10-08T01:00:33+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
-      "canonical_user_workspace_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "integrated_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+      "canonical_user_workspace_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-08T00:57:27.789+00:00",
-      "receipt_id": "workspace-convergence:d8f0a5aa-fc6e-46ee-b079-717a4af7d393"
+      "verified_at": "2026-10-08T01:00:33.006+00:00",
+      "receipt_id": "workspace-convergence:2c99cd12-eda1-4a17-8c9c-472746f684e9"
     }
   },
   "inventory": {
@@ -60,22 +60,19 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FACTORY_STAGE_WORKER_JOBS_OUTBOX_BINDING",
+    "id": "FACTORY_STAGE_WORKER_CROSS_PROCESS_RESUME",
     "state": "FAST_GATE_PASSED_PENDING_PR",
-    "objective": "Run one dependency-ready Mini App Factory stage as a canonical worker_jobs/outbox task, persist the DevelopmentRun checkpoint before settlement, automatically enqueue the next ready stage, and prove retry/recovery.",
+    "objective": "Prove a Factory stage producer can exit after durable enqueue and fresh PostgreSQL worker processes can select the next stage, retry transient failure, recover, and settle the durable DevelopmentRun.",
     "implementation": [
       "apps/web/server/services/miniAppFactoryStageWorker.ts",
-      "apps/web/server/services/miniAppFactoryRunExecutor.ts",
-      "apps/web/server/services/jobExecutorRegistry.ts",
-      "apps/web/server/services/jobTransportAdapters.ts",
-      "apps/web/server/jobs/feature186JobTypes.ts",
       "apps/web/scripts/mini-app-factory-stage-worker-runtime.ts",
-      "apps/web/scripts/test-mini-app-factory-stage-worker-runtime.sh"
+      "apps/web/scripts/test-mini-app-factory-stage-worker-runtime.sh",
+      "orchestra/programs/autonomous-mini-app-factory/test-design-factory-stage-worker-binding.md"
     ],
-    "sourceSha": "402b089f0a198b773350ce7b66a246f7d16dbe23",
-    "evidence": "PASS on exact source 402b089f0a198b773350ce7b66a246f7d16dbe23: focused Vitest 3 files/13 tests and test:mini-app-factory-stage-worker-runtime on disposable PostgreSQL 17. Canonical job admission was idempotent; SPEC checkpoint automatically enqueued TEST; TEST transient failure was scheduled, made due, republished, recovered on attempt 2, and settled; outbox dispatch consumed; DevelopmentRun and Factory durable state completed SPEC/TEST. Stage callback was synthetic and cost-free.",
+    "sourceSha": "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
+    "evidence": "PASS on exact source ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8: 3 focused Vitest files/13 tests and multi-process disposable PostgreSQL 17 runtime. Producer exited after idempotent SPEC enqueue; fresh worker executed SPEC and auto-enqueued TEST; another worker hit synthetic retry; recovery process made it due and published outbox; fresh worker completed TEST on attempt 2; verifier process confirmed durable DevelopmentRun, Factory state, and consumed dispatch. Synthetic cost-free stage handler only.",
     "integration": "PENDING_PR",
-    "nextAction": "Integrate this safe worker binding. Continue trusted server/worker startup wiring for real stage handlers and non-production deployment target registration; keep AI provider configuration separately waiting."
+    "nextAction": "Integrate this process-boundary evidence. Continue wiring trusted real stage handlers into production worker startup, and keep M4 non-production target/runtime registration as its separate wait."
   },
   "checkpoints": [
     {
@@ -313,9 +310,18 @@
     },
     {
       "id": "FACTORY_STAGE_WORKER_JOBS_OUTBOX_BINDING",
-      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "state": "PARTIAL_INTEGRATED",
       "sourceSha": "402b089f0a198b773350ce7b66a246f7d16dbe23",
       "evidence": "Canonical PostgreSQL node-worker registry and Postgres-pull outbox execute one dependency-ready stage, checkpoint it, automatically enqueue the next stage, recover a transient error, and settle the canonical job. Focused tests 13/13; disposable PostgreSQL 17 runtime PASS. Real trusted stage-handler composition remains pending.",
+      "integration": "SQUASH_MERGED_NORMALLY",
+      "sha": "5d99ab048a8ba719a145893a360c404aba585d92",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/290"
+    },
+    {
+      "id": "FACTORY_STAGE_WORKER_CROSS_PROCESS_RESUME",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
+      "evidence": "Producer exit and fresh PostgreSQL worker/recovery/verifier processes proved SPEC\u2192TEST auto-selection, retry/recovery, exact source SHA, durable Factory/DevelopmentRun checkpoint, and consumed outbox dispatch. Focused tests 13/13; synthetic stage callback only.",
       "integration": "PENDING_PR"
     }
   ],
@@ -475,9 +481,9 @@
     ]
   },
   "autonomy": {
-    "durableProgramState": "PARTIAL_DEVELOPMENTRUN_METADATA_AND_WORKUNIT_CHECKPOINTS; Factory worker stage jobs now use canonical worker_jobs/outbox, persist source-bound stage checkpoints, retry/recover, and auto-select the next stage; program-level external blocker synchronization and trusted runtime composition remain pending.",
-    "autoNextWorkSelection": "PARTIAL_CANONICAL_STAGE_JOB_AUTO_ENQUEUE_AND_DEPENDENCY_SELECTOR; synthetic worker stage pipeline passed PostgreSQL runtime; trusted real stage handlers remain to be wired.",
-    "autoResume": "PASS_POSTGRESQL_CROSS_PROCESS_FACTORY_PROGRAM_AND_MINI_APP_IDENTITY_RESUME; stage metadata/artifacts verified and next eligible TEST selected automatically.",
+    "durableProgramState": "PARTIAL_DEVELOPMENTRUN_METADATA_AND_WORKUNIT_CHECKPOINTS; worker_jobs/outbox carries each stage attempt, DevelopmentRun carries source-bound stage progress/artifacts, and fresh worker processes resume/advance idempotently; trusted runtime composition and program-level external blocker synchronization remain pending.",
+    "autoNextWorkSelection": "PARTIAL_CANONICAL_STAGE_JOB_AUTO_ENQUEUE_AND_DEPENDENCY_SELECTOR; process-separated PostgreSQL proof passed with synthetic handlers; real stage handlers remain to be wired.",
+    "autoResume": "PASS_POSTGRESQL_CROSS_PROCESS_FACTORY_PROGRAM_AND_MINI_APP_IDENTITY_RESUME; stage worker producer/worker/recovery/verifier processes separately prove durable stage resume and auto-next with synthetic handlers.",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
@@ -485,9 +491,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "PR #286 merged normally; canonical user workspace converged and verified.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/286",
-      "integratedSha": "eb59058d9273f839c41c94f86c13ff5396503a9d"
+      "lastScenario": "PR #290 merged normally; canonical workspace verified at current SHA 3dc725d after concurrent integration.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/290",
+      "integratedSha": "5d99ab048a8ba719a145893a360c404aba585d92"
     },
     "waitingWorkunits": [
       {
@@ -517,7 +523,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:58:00+00:00",
+  "updatedAt": "2026-10-08T01:01:00+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -526,8 +532,8 @@
     "M5_RESEARCH_NOTES_UAT_PASS": "PASS_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_FULL_SERVER_ACTION_WORKER_SETTLEMENT; DEPLOYMENT_REMAINS_SEPARATE_M4_GATE",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_FACTORY_EXECUTOR; DEPLOYMENT_UAT_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
-    "M6_FACTORY_EXECUTABLE": "PARTIAL_CANONICAL_WORKER_JOBS_OUTBOX_BINDING_AUTOMATIC_NEXT_STAGE_AND_RETRY_RECOVERY_PASS; REAL_STAGE_HANDLER_RUNTIME_COMPOSITION_PENDING",
-    "M7_FACTORY_AUTO_RESUME_PASS": "PASS_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_WITH_FACTORY_PROGRAM_ID_MINI_APP_ID_SOURCE_SHA_ARTIFACTS_AND_AUTOMATIC_NEXT_STAGE",
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_CANONICAL_WORKER_JOBS_OUTBOX_BINDING_AUTOMATIC_NEXT_STAGE_RETRY_RECOVERY_AND_CROSS_PROCESS_RESUME_PASS; REAL_STAGE_HANDLER_RUNTIME_COMPOSITION_PENDING",
+    "M7_FACTORY_AUTO_RESUME_PASS": "PASS_POSTGRESQL_CROSS_PROCESS_DEVELOPMENTRUN_AND_FRESH_WORKER_STAGE_RESUME_WITH_AUTOMATIC_NEXT_STAGE_AND_RETRY; SYNTHETIC_STAGE_HANDLER_ONLY",
     "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_PROJECT_WIKI_SHARED_FACTORY_STAGE_CHAIN_TO_PACKAGE; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "deployment": {
@@ -538,12 +544,12 @@
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "WORKER_JOBS_OUTBOX_STAGE_EXECUTOR_AND_AUTOMATIC_NEXT_STAGE_TESTED; TRUSTED_STAGE_HANDLER_RUNTIME_COMPOSITION_PENDING",
+    "state": "WORKER_JOBS_OUTBOX_STAGE_EXECUTOR_AND_CROSS_PROCESS_RETRY_RESUME_TESTED; TRUSTED_STAGE_HANDLER_RUNTIME_COMPOSITION_PENDING",
     "secondMiniApp": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "executionCheckpoint": {
     "taskWorktree": "/home/dev/worktrees/factory-stage-worker-binding-20261008",
-    "sourceBranch": "codex/factory-stage-worker-binding-20261008",
+    "sourceBranch": "codex/factory-stage-worker-cross-process-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -573,14 +579,15 @@
       "862bbb47e",
       "af27ee588839816a23f05e56c223e155284abccc",
       "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
-      "402b089f0a198b773350ce7b66a246f7d16dbe23"
+      "402b089f0a198b773350ce7b66a246f7d16dbe23",
+      "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8"
     ],
-    "intendedRemoteBranch": "codex/factory-stage-worker-binding-20261008",
+    "intendedRemoteBranch": "codex/factory-stage-worker-cross-process-20261008",
     "pendingPullRequest": {
       "number": null,
       "url": "PENDING_CREATE",
       "state": "PENDING",
-      "sourceSha": "402b089f0a198b773350ce7b66a246f7d16dbe23",
+      "sourceSha": "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
       "integratedSha": null
     },
     "testEvidence": [
@@ -733,17 +740,27 @@
         "revision": "402b089f0a198b773350ce7b66a246f7d16dbe23",
         "command": "TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryStageWorker.test.ts server/services/miniAppFactoryRunExecutor.test.ts server/services/__tests__/jobTransportAdapters.test.ts && TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web run test:mini-app-factory-stage-worker-runtime",
         "outcome": "PASS: 3 Vitest files/13 tests; disposable PostgreSQL 17 runtime exercised canonical worker_jobs/outbox admission, auto-selected SPEC then TEST, idempotent admission, synthetic transient failure, retry/recovery, consumed dispatch, and DevelopmentRun/Factory state settlement. Synthetic stage callback only; no external provider/deployment."
+      },
+      {
+        "revision": "3dc725d9fe66328d87aeb4a469caac0747b28b06 (post-integration after PR #290)",
+        "command": "TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryStageWorker.test.ts server/services/miniAppFactoryRunExecutor.test.ts server/services/__tests__/jobTransportAdapters.test.ts && TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web run test:mini-app-factory-stage-worker-runtime",
+        "outcome": "PASS on canonical workspace: 3 Vitest files/13 tests and PostgreSQL 17 worker runtime; this validates the PR #290 implementation at the latest canonical SHA before the added multi-process enhancement."
+      },
+      {
+        "revision": "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
+        "command": "TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryStageWorker.test.ts server/services/miniAppFactoryRunExecutor.test.ts server/services/__tests__/jobTransportAdapters.test.ts && TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web run test:mini-app-factory-stage-worker-runtime",
+        "outcome": "PASS: 3 Vitest files/13 tests; disposable PostgreSQL 17 producer, worker, recovery, fresh worker, and verifier processes. SPEC\u2192TEST auto-enqueue, synthetic transient retry/recovery on worker attempt 2, durable source-bound DevelopmentRun/Factory state, and consumed outbox dispatch verified."
       }
     ],
     "githubIntegration": "IDLE_AFTER_PR_286_MERGE",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "eb59058d9273f839c41c94f86c13ff5396503a9d",
+    "canonicalAtCheckpoint": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
+      "sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:88c6560b-7294-43b9-b44d-b1713ac91984"
+      "receiptId": "workspace-convergence:2c99cd12-eda1-4a17-8c9c-472746f684e9"
     },
     "previousPullRequests": [
       {
@@ -761,6 +778,14 @@
         "integration": "SQUASH_MERGED_NORMALLY",
         "sourceSha": "95d926066f22afe27e0b45c407ee46e4db665e3d",
         "integratedSha": "eb59058d9273f839c41c94f86c13ff5396503a9d"
+      },
+      {
+        "number": 290,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/290",
+        "state": "MERGED",
+        "integration": "SQUASH_MERGED_NORMALLY",
+        "sourceSha": "14184917726edc116f72418e0616df8e4a0a73ae",
+        "integratedSha": "5d99ab048a8ba719a145893a360c404aba585d92"
       }
     ],
     "taskOutcome": "PARTIAL_CHECKPOINT_PENDING_PR"
