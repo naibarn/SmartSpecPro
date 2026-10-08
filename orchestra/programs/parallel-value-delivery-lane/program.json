@@ -2,20 +2,20 @@
   "schema_version": 1,
   "program_id": "PARALLEL_VALUE_DELIVERY_LANE",
   "lane": 2,
-  "updated_at": "2026-10-08T02:07:04Z",
+  "updated_at": "2026-10-08T02:27:03Z",
   "canonical": {
     "ref": "origin/main",
-    "sha": "6e22b67afa4ee7dff2b3ae5ef308221f5ec27266",
+    "sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
     "workspace": "/home/dev/projects/SmartSpecPro",
     "workspace_state": "CANONICAL_CONVERGENCE_VERIFIED",
-    "convergence_receipt": "workspace-convergence:0893ce40-2e06-49e2-a33e-3b8b40b7ebd6"
+    "convergence_receipt": "workspace-convergence:51b289ec-de53-49f6-91b0-66e1fa037ac1"
   },
   "scorecard": {
     "specs_moved_to_implemented_verified": 1,
-    "specs_partially_advanced": 1,
-    "product_vertical_slices_completed": 1,
-    "working_capabilities_delivered": 1,
-    "focused_tests_passed": 268
+    "specs_partially_advanced": 2,
+    "product_vertical_slices_completed": 3,
+    "working_capabilities_delivered": 3,
+    "focused_tests_passed": 416
   },
   "completed_workunits": [
     {
@@ -29,7 +29,10 @@
       "product_capability": true,
       "collision_with_factory_lane": false,
       "verified_code_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
-      "pull_requests": ["https://github.com/naibarn/SmartSpecPro/pull/305", "https://github.com/naibarn/SmartSpecPro/pull/306"],
+      "pull_requests": [
+        "https://github.com/naibarn/SmartSpecPro/pull/305",
+        "https://github.com/naibarn/SmartSpecPro/pull/306"
+      ],
       "tests_passed": 48,
       "remaining": "One query-performance index requirement; migration ownership is reserved/unclear, so it remains open."
     },
@@ -44,7 +47,11 @@
       "product_capability": false,
       "collision_with_factory_lane": false,
       "verified_code_sha": "3099b819dad92fa45a0643aad3b6bc1cb53b9eb2",
-      "pull_requests": ["https://github.com/naibarn/SmartSpecPro/pull/307", "https://github.com/naibarn/SmartSpecPro/pull/311", "https://github.com/naibarn/SmartSpecPro/pull/313"],
+      "pull_requests": [
+        "https://github.com/naibarn/SmartSpecPro/pull/307",
+        "https://github.com/naibarn/SmartSpecPro/pull/311",
+        "https://github.com/naibarn/SmartSpecPro/pull/313"
+      ],
       "tests_passed": 220,
       "test_breakdown": {
         "web_regression_tests": 134,
@@ -52,6 +59,42 @@
         "spec_handoff_tool_tests": 83
       },
       "handoff_evidence": "specs/security/20260211/handoff/evidence/lane2-external-image-security-verification-20261008.json"
+    },
+    {
+      "workunit": "SPEC-038 JSON-LD quality gate",
+      "spec": "specs/feature/038-Citation-Gated-Content-Quality",
+      "state_before": "PARTIAL_INTEGRATED",
+      "state_after": "PARTIAL_INTEGRATED",
+      "open_requirements_before": 103,
+      "open_requirements_after": 100,
+      "product_outcome": "CMS output now validates supplied or generated JSON-LD and reports actionable failures; invalid or missing structured data fails the existing artifact quality gate.",
+      "product_capability": true,
+      "collision_with_factory_lane": false,
+      "verified_code_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
+      "pull_requests": [
+        "https://github.com/naibarn/SmartSpecPro/pull/317"
+      ],
+      "tests_passed": 148,
+      "handoff_evidence": "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json",
+      "remaining": "SPEC-038 remains partial; 100 requirements remain OPEN. Basic structural validation does not replace an external Rich Results Test."
+    },
+    {
+      "workunit": "SPEC-038 Content Quality Dashboard structured-data counters",
+      "spec": "specs/feature/038-Citation-Gated-Content-Quality",
+      "state_before": "PARTIAL_INTEGRATED",
+      "state_after": "PARTIAL_INTEGRATED",
+      "open_requirements_before": 103,
+      "open_requirements_after": 100,
+      "product_outcome": "Tenant admins can see the number of artifacts with valid and invalid structured data on the Content Quality Dashboard.",
+      "product_capability": true,
+      "collision_with_factory_lane": false,
+      "verified_code_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
+      "pull_requests": [
+        "https://github.com/naibarn/SmartSpecPro/pull/319"
+      ],
+      "tests_passed": 148,
+      "handoff_evidence": "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json",
+      "remaining": "Historical artifacts without the structured_data_valid field are excluded from both counts."
     }
   ],
   "excluded_candidates": [
@@ -94,11 +137,133 @@
   ],
   "active_workunit": null,
   "next_eligible_workunit": null,
-  "resume_predicate": "Re-evaluate canonical inventory and active path ownership after a new collision-free product gap appears or a reserved owner releases its paths.",
+  "resume_predicate": "Re-evaluate fresh canonical inventory and exact path ownership after a reserved authority is released or a new independently testable app-local product gap is identified; do not bulk-reconcile SPEC-038.",
   "guardrails": {
     "feature_296_reopened": false,
     "spec_038_resumed": false,
     "factory_reserved_paths_modified": false,
     "force_push_used": false
-  }
+  },
+  "candidate_evaluations": [
+    {
+      "spec": "SPEC-038",
+      "slice": "Validate JSON-LD before artifact persistence",
+      "value": "HIGH",
+      "readiness": "READY",
+      "ownership": "apps/web/server/services/contentOutputProcessor.ts; jsonLdGenerator.ts",
+      "factory_collision": "LOW",
+      "dependencies": "Existing generator and artifact quality gate",
+      "testability": "FOCUSED_UNIT",
+      "scope": "SMALL",
+      "result": "SELECTED_AND_MERGED"
+    },
+    {
+      "spec": "SPEC-038",
+      "slice": "Tenant valid/invalid structured-data dashboard counts",
+      "value": "HIGH",
+      "readiness": "READY",
+      "ownership": "apps/web/server/routers/contentQuality.ts; ContentQualityDashboard.tsx",
+      "factory_collision": "LOW",
+      "dependencies": "qualityScore JSONB already stores structured_data_valid",
+      "testability": "API_AND_UI_FOCUSED",
+      "scope": "SMALL",
+      "result": "SELECTED_AND_MERGED"
+    },
+    {
+      "spec": "Feature 014",
+      "slice": "Remaining query-performance index",
+      "value": "MEDIUM",
+      "readiness": "BLOCKED",
+      "ownership": "feature query and migration path",
+      "factory_collision": "MEDIUM",
+      "dependencies": "Migration ownership is reserved or unclear",
+      "testability": "PACKAGE",
+      "scope": "SMALL",
+      "result": "DEFERRED_OWNER_UNCLEAR"
+    },
+    {
+      "spec": "Feature 143",
+      "slice": "Video Studio layer/timeline remaining behavior",
+      "value": "HIGH",
+      "readiness": "NO_NARROW_GAP_FOUND",
+      "ownership": "Video Studio editor/layer code",
+      "factory_collision": "LOW",
+      "dependencies": "Existing timeline and one-click launchers already present",
+      "testability": "FOCUSED_UI_AND_UNIT",
+      "scope": "MEDIUM_TO_LARGE",
+      "result": "DEFERRED_IMPLEMENTATION_ALREADY_PRESENT"
+    },
+    {
+      "spec": "Feature 018",
+      "slice": "Slideshow/canvas editor",
+      "value": "MEDIUM",
+      "readiness": "UNRESOLVED",
+      "ownership": "presentation/canvas app files",
+      "factory_collision": "LOW",
+      "dependencies": "Dormant unresolved inventory; zero source/test references",
+      "testability": "UNKNOWN",
+      "scope": "LARGE",
+      "result": "DEFERRED_NO_VERIFIED_GAP"
+    },
+    {
+      "spec": "Feature 161",
+      "slice": "Async skill job acceptance",
+      "value": "HIGH",
+      "readiness": "BLOCKED",
+      "ownership": "shared worker/outbox execution",
+      "factory_collision": "HIGH",
+      "dependencies": "Factory-owned control plane",
+      "testability": "INTEGRATION",
+      "scope": "LARGE",
+      "result": "EXCLUDED_RESERVED"
+    },
+    {
+      "spec": "SPEC-268 and SPEC-269",
+      "slice": "Memory and App/Project context runtime bindings",
+      "value": "HIGH",
+      "readiness": "BLOCKED",
+      "ownership": "shared memory/context/assistant runtime",
+      "factory_collision": "HIGH",
+      "dependencies": "shared runtime authority",
+      "testability": "INTEGRATION",
+      "scope": "LARGE",
+      "result": "EXCLUDED_RESERVED"
+    },
+    {
+      "spec": "Feature 287",
+      "slice": "UI governance conformance",
+      "value": "MEDIUM",
+      "readiness": "BLOCKED",
+      "ownership": "shared Mini App rendering contract",
+      "factory_collision": "HIGH",
+      "dependencies": "Factory-owned UI contract; 205 open requirements",
+      "testability": "CROSS_APP",
+      "scope": "LARGE",
+      "result": "EXCLUDED_RESERVED_BROAD"
+    },
+    {
+      "spec": "SPEC-302 through SPEC-304",
+      "slice": "Project/app identity, asset registry, routing and hosting",
+      "value": "HIGH",
+      "readiness": "BLOCKED",
+      "ownership": "shared identity/context/asset/routing/deployment surfaces",
+      "factory_collision": "HIGH",
+      "dependencies": "Factory-owned contracts, migration and deployment gates",
+      "testability": "INTEGRATION",
+      "scope": "LARGE",
+      "result": "EXCLUDED_RESERVED"
+    },
+    {
+      "spec": "SPEC-305 through SPEC-307",
+      "slice": "Artifact mutation, omnichannel command ingress, edge inference",
+      "value": "HIGH",
+      "readiness": "BLOCKED",
+      "ownership": "shared Factory artifact/registration/inference fabric",
+      "factory_collision": "HIGH",
+      "dependencies": "Factory-owned shared authorities; 598 open requirements combined",
+      "testability": "INTEGRATION",
+      "scope": "LARGE",
+      "result": "EXCLUDED_RESERVED"
+    }
+  ]
 }

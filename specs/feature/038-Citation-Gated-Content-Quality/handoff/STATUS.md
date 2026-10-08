@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 3 pass / 103 unresolved of 106
-- Next action: Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.
-- Manifest generation: 19
+- Requirements: 6 pass / 100 unresolved of 106
+- Next action: Select an independent app-local product slice from fresh inventory; preserve the 100 OPEN rows for future requirement-led slices and avoid broad historical reconciliation.
+- Manifest generation: 22
 
 ## Source-declared status and relationship claims
 
