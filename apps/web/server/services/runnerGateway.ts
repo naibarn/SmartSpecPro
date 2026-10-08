@@ -20,6 +20,7 @@ type RunnerGatewayAuth = Pick<
   | "profile"
   | "nodeKind"
   | "deviceId"
+  | "machineFingerprintHash"
   | "ownerUserId"
   | "runnerSessionId"
 >;
@@ -31,6 +32,7 @@ export type RunnerGatewayNode = {
   nodeKind: RunnerNodeKind;
   profile: RunnerProfile;
   deviceId: string | null;
+  machineFingerprintHash?: string | null;
   displayName: string;
   trustState: "pending" | "trusted" | "revoked" | "quarantined";
   status: "offline" | "online" | "degraded" | "revoked";
@@ -92,6 +94,29 @@ function sameSnapshot(left: RunnerCapabilitySnapshot | null, right: RunnerCapabi
   return left !== null && stableSnapshotJson(left) === stableSnapshotJson(right);
 }
 
+function snapshotJsonWithoutMachineIdentity(
+  value: unknown
+): RunnerCapabilitySnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const snapshot = { ...(value as Record<string, unknown>) };
+  delete snapshot._machineFingerprintHash;
+  return snapshot as RunnerCapabilitySnapshot;
+}
+
+function runnerSnapshotJsonWithIdentity(
+  node: RunnerGatewayNode
+): Record<string, unknown> | null {
+  if (!node.currentSnapshot && !node.machineFingerprintHash) return null;
+  return {
+    ...(node.currentSnapshot
+      ? (node.currentSnapshot as unknown as Record<string, unknown>)
+      : {}),
+    ...(node.machineFingerprintHash
+      ? { _machineFingerprintHash: node.machineFingerprintHash }
+      : {}),
+  };
+}
+
 export class InMemoryRunnerRepository implements RunnerRepository {
   readonly nodes = new Map<string, RunnerGatewayNode>();
   readonly snapshots = new Map<
@@ -149,6 +174,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
       )
       .limit(1);
     if (!row) return null;
+    const storedSnapshot = row.currentSnapshotJson as (Record<string, unknown> & RunnerCapabilitySnapshot) | null;
     return {
       runnerId: row.runnerId,
       tenantId: row.tenantId,
@@ -160,8 +186,11 @@ export class DrizzleRunnerRepository implements RunnerRepository {
       trustState: row.trustState as RunnerGatewayNode["trustState"],
       status: row.status as RunnerGatewayNode["status"],
       currentSnapshotRevision: row.currentSnapshotRevision,
-      currentSnapshot:
-        row.currentSnapshotJson as RunnerCapabilitySnapshot | null,
+      machineFingerprintHash:
+        typeof storedSnapshot?._machineFingerprintHash === "string"
+          ? storedSnapshot._machineFingerprintHash
+          : null,
+      currentSnapshot: snapshotJsonWithoutMachineIdentity(storedSnapshot),
       lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
       revokedAt: row.revokedAt?.toISOString() ?? null,
       activeSessionId: row.activeSessionId ?? null,
@@ -183,10 +212,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
         trustState: node.trustState,
         status: node.status,
         currentSnapshotRevision: node.currentSnapshotRevision,
-        currentSnapshotJson: node.currentSnapshot as Record<
-          string,
-          unknown
-        > | null,
+        currentSnapshotJson: runnerSnapshotJsonWithIdentity(node),
         snapshotObservedAt: node.currentSnapshot
           ? new Date(node.currentSnapshot.observedAt)
           : null,
@@ -206,10 +232,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
           trustState: node.trustState,
           status: node.status,
           currentSnapshotRevision: node.currentSnapshotRevision,
-          currentSnapshotJson: node.currentSnapshot as Record<
-            string,
-            unknown
-          > | null,
+          currentSnapshotJson: runnerSnapshotJsonWithIdentity(node),
           snapshotObservedAt: node.currentSnapshot
             ? new Date(node.currentSnapshot.observedAt)
             : null,
@@ -312,7 +335,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
         );
       }
       if (current.currentSnapshotRevision === snapshot.revision &&
-          !sameSnapshot(current.currentSnapshotJson as RunnerCapabilitySnapshot | null, snapshot))
+          !sameSnapshot(snapshotJsonWithoutMachineIdentity(current.currentSnapshotJson), snapshot))
         throw new RunnerGatewayError("RUNNER_SNAPSHOT_REVISION_CONFLICT", "Snapshot facts conflict at the current revision");
       await tx
         .insert(runnerCapabilitySnapshots)
@@ -330,10 +353,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
         .update(runnerNodes)
         .set({
           currentSnapshotRevision: node.currentSnapshotRevision,
-          currentSnapshotJson: node.currentSnapshot as Record<
-            string,
-            unknown
-          > | null,
+          currentSnapshotJson: runnerSnapshotJsonWithIdentity(node),
           snapshotObservedAt: new Date(snapshot.observedAt),
           snapshotExpiresAt: new Date(snapshot.expiresAt),
           status: node.status,
@@ -413,6 +433,7 @@ export class RunnerGateway {
       nodeKind: input.auth.nodeKind,
       profile: input.auth.profile,
       deviceId: input.deviceId,
+      machineFingerprintHash: input.auth.machineFingerprintHash ?? null,
       displayName: input.displayName.trim().slice(0, 255),
       trustState: "trusted",
       status: "online",
@@ -423,6 +444,8 @@ export class RunnerGateway {
       activeSessionId: null,
     };
     node.status = "online";
+    node.machineFingerprintHash =
+      input.auth.machineFingerprintHash ?? node.machineFingerprintHash ?? null;
     node.lastSeenAt = now;
     await this.repository.saveNode(node);
     return node;
@@ -443,6 +466,8 @@ export class RunnerGateway {
         "Runner is not enrolled"
       );
     this.assertSessionBinding(node, input.auth);
+    node.machineFingerprintHash =
+      input.auth.machineFingerprintHash ?? node.machineFingerprintHash ?? null;
     if (node.revokedAt || node.trustState === "revoked")
       throw new RunnerGatewayError("RUNNER_REVOKED", "Runner is revoked");
     const snapshot = validateRunnerCapabilitySnapshot(input.snapshot);
@@ -465,7 +490,8 @@ export class RunnerGateway {
     );
     if (duplicate && !sameSnapshot(duplicate, snapshot))
       throw new RunnerGatewayError("RUNNER_SNAPSHOT_IDEMPOTENCY_CONFLICT", "Snapshot idempotency key was reused with different facts");
-    if (duplicate)
+    if (duplicate) {
+      if (input.auth.machineFingerprintHash) await this.repository.saveNode(node);
       return {
         status: "duplicate",
         runnerId: snapshot.runnerId,
@@ -473,6 +499,7 @@ export class RunnerGateway {
         expiresAt: duplicate.expiresAt,
         staleEntriesMarkedUnavailable: 0,
       };
+    }
     if (
       node.currentSnapshotRevision &&
       compareRevisions(snapshot.revision, node.currentSnapshotRevision) < 0
@@ -484,6 +511,7 @@ export class RunnerGateway {
     if (node.currentSnapshotRevision === snapshot.revision) {
       if (!sameSnapshot(node.currentSnapshot, snapshot))
         throw new RunnerGatewayError("RUNNER_SNAPSHOT_REVISION_CONFLICT", "Snapshot facts conflict at the current revision");
+      if (input.auth.machineFingerprintHash) await this.repository.saveNode(node);
       return {
         status: "duplicate",
         runnerId: snapshot.runnerId,
@@ -537,6 +565,8 @@ export class RunnerGateway {
         "Runner is not enrolled"
       );
     this.assertSessionBinding(node, auth);
+    node.machineFingerprintHash =
+      auth.machineFingerprintHash ?? node.machineFingerprintHash ?? null;
     if (node.revokedAt || node.trustState === "revoked")
       throw new RunnerGatewayError("RUNNER_REVOKED", "Runner is revoked");
     node.status =

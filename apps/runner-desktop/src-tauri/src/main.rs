@@ -13,6 +13,7 @@ use smartaihub_runner::{
 use std::{
     fs,
     path::PathBuf,
+    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -298,6 +299,170 @@ async fn verify_runner_tool(
     tauri::async_runtime::spawn_blocking(move || verify_local_tool(&config, &tool_id))
         .await
         .map_err(|_| "RUNNER_TOOL_VERIFY_TASK_FAILED".to_string())?
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DebugVerificationSummary {
+    tool_id: String,
+    state: Option<String>,
+    reason_code: Option<String>,
+}
+
+fn redact_user_paths(value: &str) -> String {
+    let mut redacted = value.to_string();
+    for key in ["USERPROFILE", "HOME"] {
+        if let Some(home) = std::env::var_os(key) {
+            let home = home.to_string_lossy();
+            if !home.is_empty() {
+                redacted = redacted.replace(home.as_ref(), "<USER_HOME>");
+            }
+        }
+    }
+    redacted
+}
+
+fn safe_debug_code(value: Option<&str>) -> Option<String> {
+    let code = value?
+        .split(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
+        .next()?;
+    let has_safe_prefix = [
+        "RUNNER_", "task_", "auth_", "probe_", "version_", "tool_", "cli_",
+    ]
+    .iter()
+    .any(|prefix| code.starts_with(prefix));
+    if has_safe_prefix
+        && code.len() <= 100
+        && code
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        Some(code.to_string())
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+async fn export_runner_debug_report(
+    verification_results: Vec<DebugVerificationSummary>,
+    state: State<'_, RunnerState>,
+) -> Result<serde_json::Value, String> {
+    let config = state.config.clone();
+    let app_version = state.app_version.clone();
+    let build_date = state.build_date.clone();
+    let running = state.running.load(Ordering::Acquire);
+    let runner_id = config.runner_id.clone();
+    let last_error = state.last_error.lock().ok().and_then(|value| value.clone());
+    let refresh_error = state
+        .last_refresh_error
+        .lock()
+        .ok()
+        .and_then(|value| value.clone());
+    tauri::async_runtime::spawn_blocking(move || {
+        let tools = discover_local_tools(&config);
+        let path_entries = std::env::var_os("PATH")
+            .map(|path| {
+                std::env::split_paths(&path)
+                    .take(128)
+                    .map(|entry| redact_user_paths(&entry.to_string_lossy()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let current_directory = std::env::current_dir()
+            .ok()
+            .map(|path| redact_user_paths(&path.to_string_lossy()));
+        let tool_reports = tools
+            .into_iter()
+            .map(|tool| {
+                let verification = verification_results
+                    .iter()
+                    .find(|result| result.tool_id == tool.tool_id);
+                serde_json::json!({
+                    "toolId": tool.tool_id,
+                    "displayName": tool.display_name,
+                    "version": tool.version,
+                    "adapterId": tool.adapter_id,
+                    "discoverySource": tool.discovery_source,
+                    "executablePath": tool.executable_path.as_ref().map(|path| redact_user_paths(&path.to_string_lossy())),
+                    "trustState": tool.trust_state,
+                    "reasonCodes": tool.reason_codes,
+                    "testState": verification.and_then(|result| result.state.as_deref()).filter(|state| matches!(*state, "passed" | "failed" | "unsupported")),
+                    "testReasonCode": verification.and_then(|result| safe_debug_code(result.reason_code.as_deref())),
+                })
+            })
+            .collect::<Vec<_>>();
+        let now_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        let saved_connection = load_connection(&config.data_root).ok().flatten();
+        let access_token_expires_at_ms = saved_connection
+            .as_ref()
+            .and_then(|saved| token_expiry_ms(&saved.control_token));
+        let refresh_token_expires_at_ms = saved_connection
+            .as_ref()
+            .and_then(|saved| token_expiry_ms(&saved.refresh_token));
+        let report = serde_json::json!({
+            "schemaVersion": 1,
+            "generatedAtUnixMs": now_ms,
+            "app": { "version": app_version, "buildDate": build_date },
+            "runner": {
+                "runnerId": runner_id,
+                "hasStoredConnection": saved_connection.is_some(),
+                "accessTokenExpiresAtMs": access_token_expires_at_ms,
+                "reauthRequiredByMs": refresh_token_expires_at_ms,
+                "running": running,
+                "lastErrorCode": safe_debug_code(last_error.as_deref()),
+                "credentialRefreshErrorCode": safe_debug_code(refresh_error.as_deref()),
+            },
+            "environment": {
+                "os": std::env::consts::OS,
+                "architecture": std::env::consts::ARCH,
+                "currentDirectory": current_directory,
+                "pathEntries": path_entries,
+                "secretsIncluded": false,
+            },
+            "tools": tool_reports,
+        });
+        let debug_directory = PathBuf::from(&config.data_root).join("debug");
+        fs::create_dir_all(&debug_directory).map_err(safe_io_error)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&debug_directory, fs::Permissions::from_mode(0o700)).map_err(safe_io_error)?;
+        }
+        let file_name = format!("runner-debug-{now_ms}.json");
+        let report_path = debug_directory.join(&file_name);
+        let bytes = serde_json::to_vec_pretty(&report).map_err(|_| "RUNNER_DEBUG_REPORT_SERIALIZE_FAILED")?;
+        fs::write(&report_path, bytes).map_err(safe_io_error)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&report_path, fs::Permissions::from_mode(0o600)).map_err(safe_io_error)?;
+        }
+        Ok(serde_json::json!({ "path": report_path.to_string_lossy(), "fileName": file_name, "generatedAtUnixMs": now_ms }))
+    })
+    .await
+    .map_err(|_| "RUNNER_DEBUG_REPORT_TASK_FAILED".to_string())?
+}
+
+#[tauri::command]
+fn open_runner_debug_folder(state: State<'_, RunnerState>) -> Result<(), String> {
+    let folder = PathBuf::from(&state.config.data_root).join("debug");
+    fs::create_dir_all(&folder).map_err(safe_io_error)?;
+    #[cfg(target_os = "windows")]
+    let mut command = Command::new("explorer.exe");
+    #[cfg(target_os = "macos")]
+    let mut command = Command::new("open");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = Command::new("xdg-open");
+    command.arg(folder);
+    command
+        .spawn()
+        .map_err(|_| "RUNNER_DEBUG_FOLDER_OPEN_FAILED")?;
+    Ok(())
 }
 
 fn start_runner_inner(state: &RunnerState) -> Result<(), String> {
@@ -601,6 +766,8 @@ fn main() {
             connect_runner,
             rescan_runner,
             verify_runner_tool,
+            export_runner_debug_report,
+            open_runner_debug_folder,
             start_runner,
             stop_runner,
             list_workspaces,
@@ -612,4 +779,22 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SmartAIHub Runner");
+}
+
+#[cfg(test)]
+mod debug_report_tests {
+    use super::safe_debug_code;
+
+    #[test]
+    fn debug_report_keeps_only_known_error_code_shapes() {
+        assert_eq!(
+            safe_debug_code(Some("RUNNER_CREDENTIAL_REFRESH_FAILED: details")),
+            Some("RUNNER_CREDENTIAL_REFRESH_FAILED".into())
+        );
+        assert_eq!(
+            safe_debug_code(Some("probe_timeout: details")),
+            Some("probe_timeout".into())
+        );
+        assert_eq!(safe_debug_code(Some("secret-token-value")), None);
+    }
 }

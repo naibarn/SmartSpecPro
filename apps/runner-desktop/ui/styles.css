@@ -89,6 +89,9 @@ h2 { font-size: 1.2rem; }
 .path { display: block; overflow-wrap: anywhere; margin-top: 0.25rem; color: var(--color-text-secondary, slategray); font-size: 0.86rem; }
 .tool-row { display: grid; grid-template-columns: minmax(8rem, 0.7fr) minmax(14rem, 1.8fr) auto auto; align-items: center; gap: 0.7rem; }
 .tool-actions { justify-self: end; }
+.debug-export { margin-top: 1rem; border-top: 1px solid var(--color-border, #d7dde4); padding-top: 0.8rem; }
+.debug-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.7rem; }
+.debug-path { display: block; margin-top: 0.55rem; color: var(--color-text-secondary, slategray); font-size: 0.82rem; overflow-wrap: anywhere; }
 .verify-tool { min-height: 2.25rem; padding: 0.4rem 0.7rem; }
 .tool-title { font-weight: 700; }
 .tool-detail { color: var(--color-text-secondary, slategray); }

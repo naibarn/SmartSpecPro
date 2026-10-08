@@ -92,6 +92,14 @@
         </header>
         <p class="body-copy">สแกนพบโปรแกรมก่อนโดยไม่เรียกใช้งาน จากนั้นเลือกทดสอบแยกเป็นรายตัว เครื่องมือ AI ที่รองรับจะได้รับข้อความทดสอบจริงและต้องตอบกลับจึงผ่าน การทดสอบใช้บัญชีและการตั้งค่าปัจจุบัน อาจใช้โควตาหรือเรียกความสามารถที่ตั้งไว้ ส่วนเครื่องมือที่ยังไม่มีวิธีทดสอบที่รองรับจะแสดงสถานะชัดเจน</p>
         <ul class="tool-list" id="tool-list" aria-live="polite"></ul>
+        <section class="debug-export" aria-label="ไฟล์ตรวจสอบ Runner">
+          <p class="body-copy">สร้างไฟล์ตรวจสอบในเครื่องเพื่อส่งให้ทีมช่วยวิเคราะห์ ไฟล์มีสถานะ error code, PATH และตำแหน่ง CLI ที่พบ โดยตัด token และคำตอบจากเครื่องมือออก</p>
+          <div class="debug-actions">
+            <button class="button quiet" id="export-debug-button" type="button">สร้างไฟล์ Debug</button>
+            <button class="button quiet" id="open-debug-folder-button" type="button" hidden>เปิดตำแหน่งไฟล์</button>
+          </div>
+          <output class="debug-path" id="debug-file-path" aria-live="polite"></output>
+        </section>
       </section>
 
       <footer class="settings panel">

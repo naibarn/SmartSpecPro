@@ -103,19 +103,24 @@ function updatePhaseLabel(phase: string, t: (key: string) => string): string {
 export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
   const { t } = useScopedTranslation(["dashboard"]);
   const { catalog, runners, isLoading, error, checkedAt, desktopDownloads, desktopDownloadError, refresh, requestUpdate } = useRunnerReleaseCatalog(enabled);
-  const latestRunners = useMemo(() => {
-    const byDevice = new Map<string, typeof runners[number]>();
+  const runnerGroups = useMemo(() => {
+    const byDevice = new Map<string, typeof runners>();
     for (const runner of runners) {
-      const key = runner.deviceId ? `device:${runner.deviceId}` : `runner:${runner.runnerId}`;
-      const previous = byDevice.get(key);
-      const runnerSeenAt = Date.parse(runner.lastSeenAt ?? "") || 0;
-      const previousSeenAt = Date.parse(previous?.lastSeenAt ?? "") || 0;
-      if (!previous || runnerSeenAt > previousSeenAt) byDevice.set(key, runner);
+      const platform = `${runner.platform?.os ?? "unknown"}:${runner.platform?.architecture ?? "unknown"}`.toLowerCase();
+      const key = runner.machineFingerprintHash
+        ? `machine:${runner.machineFingerprintHash}`
+        : runner.platform?.os && runner.platform.architecture
+          ? `unverified:${runner.profile}:${platform}:${runner.displayName.trim().toLowerCase() || runner.runnerId}`
+          : `runner:${runner.runnerId}`;
+      byDevice.set(key, [...(byDevice.get(key) ?? []), runner]);
     }
-    return [...byDevice.values()].sort(
+    return [...byDevice.values()].map(group => group.sort(
       (left, right) => (Date.parse(right.lastSeenAt ?? "") || 0) - (Date.parse(left.lastSeenAt ?? "") || 0),
+    )).sort(
+      (left, right) => (Date.parse(right[0]?.lastSeenAt ?? "") || 0) - (Date.parse(left[0]?.lastSeenAt ?? "") || 0),
     );
   }, [runners]);
+  const latestRunners = useMemo(() => runnerGroups.map(group => group[0]), [runnerGroups]);
   const desktopDownloadsByVersion = useMemo(() => {
     const groups = new Map<string, typeof desktopDownloads>();
     for (const download of desktopDownloads) {
@@ -131,12 +136,15 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
   const [isRequestingUpdate, setIsRequestingUpdate] = useState(false);
 
   const localRunner = useMemo(() => latestRunners.find(runner => runner.profile === "local_device") ?? null, [latestRunners]);
+  const localRunnerGroup = runnerGroups.find(group => group[0]?.runnerId === localRunner?.runnerId) ?? [];
   const preferredTarget = catalog?.latestByTarget.find(target => targetMatches(target, preferred.platform, preferred.architecture)) ?? null;
   const preferredLatest = preferredTarget ? latestVersion(preferredTarget) : null;
   const currentVersion = localRunner?.runnerVersion ?? null;
   const updateAvailable = Boolean(preferredLatest && isNewerVersion(preferredLatest, currentVersion));
   const updateBlockReason = !localRunner
     ? "notConnected"
+    : !localRunner.machineFingerprintHash && localRunnerGroup.length > 1
+      ? "identityAmbiguous"
     : localRunner.trustState === "revoked" || localRunner.status === "revoked"
       ? "revoked"
       : localRunner.trustState !== "trusted"
@@ -326,7 +334,7 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
           <p className="mt-2 text-sm text-slate-500">{t("dashboard:runnerReleases.noConnectedRunners")}</p>
         ) : (
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {latestRunners.map(runner => (
+            {runnerGroups.map(([runner, ...previousRegistrations]) => (
               <article key={runner.runnerId} className="rounded-lg border border-slate-200 bg-white p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -339,6 +347,21 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
                   {t("dashboard:runnerReleases.toolReadiness", { ready: runner.readyToolCount, total: runner.toolCount })} · {t("dashboard:runnerReleases.capabilityReadiness", { ready: runner.readyCapabilityCount, total: runner.capabilityCount })}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">{runner.lastSeenAt ? new Date(runner.lastSeenAt).toLocaleString() : t("dashboard:runnerReleases.neverSeen")}</p>
+                {previousRegistrations.length > 0 && (
+                  <details className="mt-3 border-t border-amber-100 pt-2">
+                    <summary className="cursor-pointer text-xs font-medium text-amber-800">
+                      {t(runner.machineFingerprintHash
+                        ? "dashboard:runnerReleases.previousMachineRegistrations"
+                        : "dashboard:runnerReleases.possibleDuplicateRegistrations", { count: previousRegistrations.length })}
+                    </summary>
+                    {!runner.machineFingerprintHash && <p className="mt-2 text-xs text-amber-700">{t("dashboard:runnerReleases.identityUnverified")}</p>}
+                    <ul className="mt-2 space-y-1 text-xs text-slate-500">
+                      {previousRegistrations.map(previous => (
+                        <li key={previous.runnerId}>{previous.runnerVersion ?? t("dashboard:runnerReleases.versionUnknown")} · {runnerStatusLabel(previous.status, previous.trustState, t)} · {previous.lastSeenAt ? new Date(previous.lastSeenAt).toLocaleString() : t("dashboard:runnerReleases.neverSeen")}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 <details className="mt-3 border-t border-slate-100 pt-2">
                   <summary className="cursor-pointer text-xs font-medium text-sky-700">
                     {t("dashboard:runnerReleases.inspectTools", { ready: runner.readyToolCount, total: runner.toolCount })}
