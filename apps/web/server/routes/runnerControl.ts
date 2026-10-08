@@ -1789,6 +1789,10 @@ export function registerRunnerControlRoutes(
           return {
             runnerId: row.runnerId,
             deviceId: row.deviceId,
+            machineFingerprintHash:
+              typeof row.currentSnapshotJson?._machineFingerprintHash === "string"
+                ? row.currentSnapshotJson._machineFingerprintHash
+                : null,
             displayName: row.displayName,
             profile: row.profile,
             nodeKind: row.nodeKind,

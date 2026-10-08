@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RunnerReleasePanel } from "../RunnerReleasePanel";
 
-const runnerState = vi.hoisted(() => ({ status: "online", trustState: "trusted" }));
+const runnerState = vi.hoisted(() => ({ status: "online", trustState: "trusted", runners: [] as Array<Record<string, unknown>> }));
 const requestUpdateMock = vi.hoisted(() => vi.fn());
 const desktopDownloadState = vi.hoisted(() => ({
   downloads: [] as Array<{
@@ -38,8 +38,12 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key.endsWith("connectedRunners")) return "Connected Runners";
       if (key.endsWith("toolReadiness")) return `Tools ready ${values?.ready ?? ""}/${values?.total ?? ""}`;
       if (key.endsWith("capabilityReadiness")) return `Capabilities allowed ${values?.ready ?? ""}/${values?.total ?? ""}`;
+      if (key.endsWith("previousMachineRegistrations")) return `Show ${values?.count ?? 0} previous registrations for this verified machine`;
+      if (key.endsWith("possibleDuplicateRegistrations")) return `Show ${values?.count ?? 0} older registrations with the same name and platform`;
+      if (key.endsWith("identityUnverified")) return "Machine identity is unavailable for these older registrations; they may be separate machines.";
       if (key.endsWith("status.revoked")) return "Revoked";
       if (key.endsWith("updateDisabled.offline")) return "Update is disabled while this Runner is offline or degraded.";
+      if (key.endsWith("updateDisabled.identityAmbiguous")) return "Updates are disabled because this Runner shares its name with registrations whose machine identity is unknown.";
       if (key.endsWith("updateDisabled.revoked")) return "Update is disabled because this Runner has been revoked.";
       if (key.endsWith("phase.downloading")) return "Downloading";
       return key;
@@ -114,8 +118,10 @@ vi.mock("../useRunnerReleaseCatalog", () => ({
         },
       }],
     },
-    runners: [{
+    runners: runnerState.runners.length ? runnerState.runners : [{
       runnerId: "runner-linux",
+      deviceId: "device-linux",
+      machineFingerprintHash: null,
       displayName: "Linux Runner",
       profile: "local_device",
       nodeKind: "local_device",
@@ -146,6 +152,7 @@ describe("RunnerReleasePanel", () => {
     desktopDownloadState.downloads = [];
     desktopDownloadState.error = null;
     requestUpdateMock.mockReset();
+    runnerState.runners = [];
   });
 
   it("renders same-origin download and version check controls without GitHub details", () => {
@@ -160,6 +167,36 @@ describe("RunnerReleasePanel", () => {
     expect(screen.getByText(/last checked:/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /update runner to 0\.2\.0/i })).toBeEnabled();
     expect(screen.queryByText(/github/i)).not.toBeInTheDocument();
+  });
+
+  it("shows only the newest registration for a verified machine identity", () => {
+    runnerState.runners = [
+      { runnerId: "old", deviceId: "old-install", machineFingerprintHash: "a".repeat(64), displayName: "Shared workstation", profile: "local_device", nodeKind: "local_device", status: "offline", trustState: "trusted", lastSeenAt: "2026-09-01T00:00:00.000Z", runnerVersion: "0.1.0", platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0, readyToolCount: 0, capabilityCount: 0, readyCapabilityCount: 0 },
+      { runnerId: "new", deviceId: "new-install", machineFingerprintHash: "a".repeat(64), displayName: "Shared workstation", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", lastSeenAt: "2026-10-08T00:00:00.000Z", runnerVersion: "0.2.15", platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0, readyToolCount: 0, capabilityCount: 0, readyCapabilityCount: 0 },
+      { runnerId: "other", deviceId: "other-device", machineFingerprintHash: "b".repeat(64), displayName: "Shared workstation", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", lastSeenAt: "2026-10-07T00:00:00.000Z", runnerVersion: "0.2.14", platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0, readyToolCount: 0, capabilityCount: 0, readyCapabilityCount: 0 },
+    ];
+
+    render(<RunnerReleasePanel />);
+
+    expect(screen.getAllByText("Shared workstation")).toHaveLength(2);
+    expect(screen.getAllByText(/0\.2\.15/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/0\.1\.0/).closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Show 1 previous registrations for this verified machine")).toBeInTheDocument();
+  });
+
+  it("collapses older same-name registrations with unverified identity and keeps them in history", () => {
+    runnerState.runners = [
+      { runnerId: "legacy-old", deviceId: "old-id", machineFingerprintHash: null, displayName: "SmartAIHub Runner", profile: "local_device", nodeKind: "local_device", status: "offline", trustState: "trusted", lastSeenAt: "2026-09-01T00:00:00.000Z", runnerVersion: "0.1.0", platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0, readyToolCount: 0, capabilityCount: 0, readyCapabilityCount: 0 },
+      { runnerId: "legacy-new", deviceId: "new-id", machineFingerprintHash: null, displayName: "SmartAIHub Runner", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", lastSeenAt: "2026-10-08T00:00:00.000Z", runnerVersion: "0.1.0", platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0, readyToolCount: 0, capabilityCount: 0, readyCapabilityCount: 0 },
+    ];
+
+    render(<RunnerReleasePanel />);
+
+    expect(screen.getAllByText("SmartAIHub Runner")).toHaveLength(1);
+    expect(screen.getByText("Show 1 older registrations with the same name and platform")).toBeInTheDocument();
+    expect(screen.getByText("Machine identity is unavailable for these older registrations; they may be separate machines.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update runner to 0\.2\.0/i })).toBeDisabled();
+    expect(screen.getByText("Updates are disabled because this Runner shares its name with registrations whose machine identity is unknown.")).toBeInTheDocument();
   });
 
   it("shows no more than five recent desktop versions with platform downloads grouped by version", () => {

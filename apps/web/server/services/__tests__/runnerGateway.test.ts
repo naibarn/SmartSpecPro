@@ -354,6 +354,10 @@ describe("RunnerGateway", () => {
       deviceId: "device-1",
       displayName: "Test Runner",
     });
+    await expect(gateway.getStatus(auth)).resolves.toMatchObject({
+      machineFingerprintHash: auth.machineFingerprintHash,
+    });
+    await gateway.heartbeat(auth);
     await expect(
       gateway.publishCapabilities({
         auth,

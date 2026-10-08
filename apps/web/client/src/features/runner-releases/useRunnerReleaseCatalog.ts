@@ -14,6 +14,7 @@ import {
 export type RunnerSummary = {
   runnerId: string;
   deviceId: string | null;
+  machineFingerprintHash: string | null;
   displayName: string;
   profile: string;
   nodeKind: string;
