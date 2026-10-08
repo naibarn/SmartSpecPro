@@ -2101,7 +2101,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
+      "canonical_sha": "3fa80c98aa2bcaf2a718a818a25d65a04c04c9e7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -2189,7 +2189,6 @@
         "requirement REQ-D127D5DDD3C3 is OPEN",
         "requirement REQ-4ADF58D9FC3B is OPEN",
         "requirement REQ-28D93C3DBC72 is OPEN",
-        "requirement REQ-316FB9B1F7C4 is OPEN",
         "requirement REQ-E4C76461299C is OPEN",
         "requirement REQ-E932270F4AB3 is OPEN",
         "requirement REQ-796E7A62B45B is OPEN",
@@ -2377,7 +2376,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Select an independent app-local product slice from fresh inventory; preserve the 100 OPEN rows for future requirement-led slices and avoid broad historical reconciliation.",
+      "next_action": "Evaluate the remaining 99 OPEN requirements for independent CMS vertical slices. For the structured-data 100% target, obtain representative Google Rich Results Test evidence; keep dashboard and API work app-local and do not resume broad historical reconciliation.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "primary_blocker": null,
       "problem": null,
@@ -2870,8 +2869,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 100,
-        "pass": 6,
+        "open": 99,
+        "pass": 7,
         "total": 106
       },
       "review_priority": "R1_RUNTIME_REFERENCE",
