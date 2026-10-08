@@ -20,7 +20,7 @@ for (const runnerLabel of ["macos-15-intel", "macos-14"]) {
   if (!workflow.includes(`"os":"${runnerLabel}"`)) throw new Error(`RUNNER_RELEASE_RUNNER_LABEL_MISSING:${runnerLabel}`);
 }
 if (workflow.includes("os: macos-13")) throw new Error("RUNNER_RELEASE_STALE_MACOS_INTEL_LABEL");
-for (const required of ["profile:", "publish:", "release_id:", "release_notes:", "signing_mode:", "SHA256SUMS", "Copy-Item", "openssl dgst -sha256 -sign", "git rev-parse HEAD", "actions/download-artifact@v4", "gh release create", "gh release upload", "shared-container-manifest", "sourceCommit", "sah-runner-v1", "release_id is required", "publish requires required-secret signing"]) {
+for (const required of ["profile:", "publish:", "release_id:", "release_notes:", "signing_mode:", "SHA256SUMS", "cd dist && shasum -a 256", "Copy-Item", "openssl dgst -sha256 -sign", "git rev-parse HEAD", "actions/download-artifact@v4", "gh release create", "gh release upload", "shared-container-manifest", "sourceCommit", "sah-runner-v1", "release_id is required", "publish requires required-secret signing"]) {
   if (!workflow.includes(required)) throw new Error(`RUNNER_RELEASE_REQUIREMENT_MISSING:${required}`);
 }
 for (const linuxBundleEntry of ["apps/runner-app/install-linux-runner.sh", "apps/runner-app/systemd/smartaihub-runner.service", "smartaihub-runner install-linux-runner.sh smartaihub-runner.service"]) {
