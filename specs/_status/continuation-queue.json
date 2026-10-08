@@ -255,7 +255,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
       "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
@@ -4227,7 +4227,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 9,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
       "path": "specs/feature/014-Core-Funnel-Dashboard",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/014-Core-Funnel-Dashboard",
@@ -4828,6 +4828,15 @@
     }
   ],
   "records": [
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/014-Core-Funnel-Dashboard",
+      "priority": "P1",
+      "rationale": "Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.",
+      "record_key": "canonical:specs/feature/014-Core-Funnel-Dashboard",
+      "spec_id": "014"
+    },
     {
       "confidence": "LOW",
       "decision": "CONTINUE_REQUIRED",
