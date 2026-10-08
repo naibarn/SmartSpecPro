@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "074eb72c5bd3a3c62028e052f60831d451e3f4e9",
+    "sha": "5c713e89004f166a8018e49bdc388460fef7fe33",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": false,
     "convergenceReceipt": {
@@ -25,7 +25,7 @@
       "dirty": true,
       "reason": "Unrelated dirty Spec 208 work preserved; do not advance this checkout until its owner permits convergence."
     },
-    "latestIntegratedProgramChange": "PR #309 merged normally at 5c5a0a23822bc447cc4aeef753d49d018d463979; latest observed origin/main is 074eb72c5bd3a3c62028e052f60831d451e3f4e9. Canonical user workspace has unrelated dirty Spec 208 work and was preserved; it remains at 6f19b9a2b33872a53629919e3ed648ee064bae75 and was not converged."
+    "latestIntegratedProgramChange": "PR #309 merged normally at 5c5a0a23822bc447cc4aeef753d49d018d463979; latest observed origin/main is 5c713e89004f166a8018e49bdc388460fef7fe33. Canonical user workspace has unrelated dirty Spec 208 work and was preserved; it remains at 6f19b9a2b33872a53629919e3ed648ee064bae75 and was not converged."
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -799,7 +799,7 @@
     ],
     "githubIntegration": "PR_309_MERGED_NORMALLY; origin/main advanced after merge",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "074eb72c5bd3a3c62028e052f60831d451e3f4e9",
+    "canonicalAtCheckpoint": "5c713e89004f166a8018e49bdc388460fef7fe33",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
