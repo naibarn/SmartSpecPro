@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 357 unresolved of 357
-- Next action: Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.
-- Manifest generation: 24
+- Requirements: 0 pass / 358 unresolved of 358
+- Next action: Reconcile unresolved Spec authority and requirement applicability. For Moli Phase 1, implement the Runner-owned browser cancellation, active lease/fencing/deadline checks, connection-time destination enforcement, resource accounting, audit receipts, and per-attempt profile cleanup before wiring the CDP-only adapter; resolve applicable upstream advisories and complete provenance/license review.
+- Manifest generation: 30
 
 ## Source-declared status and relationship claims
 

@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -25,7 +25,17 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
-        "digest": "53e01ff7d9a74fbd62101cc2e1f8d9af380136ac72f7e6918cc86477fea48bf8",
+        "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-license-inventory.json"
+      },
+      {
+        "digest": "2171f95f414f6c5a16c6837e75406500f1369e0a98907e4197f066c623aa2c51",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-security-report.json"
       },
@@ -94,16 +104,41 @@
     "status": "UNRESOLVED",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "evidence": "11 OSV records / 7 distinct issues in pinned v1.1.15 graph; publisher attestation and complete license/notice review not verified.",
+      "id": "MOLI_OSV_AND_PROVENANCE",
+      "severity": "security",
+      "status": "OPEN"
+    },
+    {
+      "evidence": "Adapter remains unconnected; browser cancellation, live fencing/egress and durable cleanup receipts are absent.",
+      "id": "RUNNER_VERTICAL_SLICE",
+      "severity": "security",
+      "status": "OPEN"
+    },
+    {
+      "evidence": "Pinned moli serve exposes CDP, WebDriver Classic and BiDi on one listener with no disable switch; Runner must enforce a CDP-only network boundary or keep Moli unavailable.",
+      "id": "WEBDRIVER_PROTOCOL_EXPOSURE",
+      "severity": "security",
+      "status": "OPEN"
+    },
+    {
+      "evidence": "Package typecheck resource-deferred; no real Runner end-to-end or browser crash/timeout test.",
+      "id": "TYPECHECK_AND_E2E",
+      "severity": "verification",
+      "status": "OPEN"
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": "95dada85ce966aeee745499a982aae84f39503dc",
-    "expected_spec_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155"
+    "expected_canonical_sha": "6f16fdcb75b075f35b638d31fbc42d02a1a8bf08",
+    "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "Wire the prototype into the paired Runner so Moli launch, pinned version proof, existing worker_jobs authorization/audit, egress proxy policy, cancellation, and per-attempt profile cleanup are provided by the authoritative execution boundary; then remediate/review dependency advisories and licenses.",
-    "next_ready_workunit": "SPEC208_MOLI_RUNNER_ADAPTER_AND_SECURITY_GATE",
-    "reactivation_predicate": "Paired Runner source/runtime and its authorization, egress-policy, audit, cancellation, and profile-cleanup interfaces are available for scoped integration.",
-    "resume_point": "Moli v1.1.15 is pinned and a disabled CDP adapter prototype exists. All 13 focused tests passed including a live loopback Moli session. The adapter is not connected to job dispatch; WebDriver sessions shared storage and CDP BrowserContext is the only tested session-isolation mode.",
+    "next_action": "Implement Runner-owned browser job cancellation, lease/fencing/deadline enforcement, connection-time egress checks, resource accounting, audit receipts, and profile cleanup; then wire CDP-only Moli through existing worker_jobs authorization and run end-to-end verification. Resolve applicable upstream advisories and complete artifact provenance/license review before production consideration.",
+    "next_ready_workunit": "SPEC208_MOLI_RUNNER_CONTROL_PLANE_VERTICAL_SLICE",
+    "reactivation_predicate": "Runner browser-command cancellation and process/profile cleanup are implemented with live job lease, policy, audit, and egress enforcement; supply-chain findings have a verified remediation path.",
+    "resume_point": "Phase 1 checkpoint d3e13f2 records CDP-only hardening, a 19-test focused pass, and 80 unexecuted benchmark cases. It is not integrated. Runner is present in apps/runner-app; its browser cancellation/lease/egress/cleanup contract remains incomplete. Keep WebDriver disabled and production on Chromium.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -186,7 +221,7 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-browser-integration-audit-2026-10-08.md"
       }
     ],
-    "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
+    "next_action": "Reconcile unresolved Spec authority and requirement applicability. For Moli Phase 1, implement the Runner-owned browser cancellation, active lease/fencing/deadline checks, connection-time destination enforcement, resource accounting, audit receipts, and per-attempt profile cleanup before wiring the CDP-only adapter; resolve applicable upstream advisories and complete provenance/license review.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -208,7 +243,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -223,7 +258,17 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
-        "digest": "53e01ff7d9a74fbd62101cc2e1f8d9af380136ac72f7e6918cc86477fea48bf8",
+        "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-license-inventory.json"
+      },
+      {
+        "digest": "2171f95f414f6c5a16c6837e75406500f1369e0a98907e4197f066c623aa2c51",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-security-report.json"
       },
@@ -291,25 +336,27 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 24,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-    "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+    "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-08T02:19:19.163918Z",
+      "last_evidence_at": "2026-10-08T02:59:01.823328Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "7",
+    "revision": "8",
     "slug": "208-hybrid-computer-use-dynamic-capability-routing",
     "spec_id": "208",
     "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing"
   },
   "implementation": {
     "checkpoint_shas": [
-      "82da2e8a81193a9b2eaaf974c843489313dd659c"
+      "82da2e8a81193a9b2eaaf974c843489313dd659c",
+      "d3e13f2c6a2c77beb4553e4585b3e108bc49b3ef",
+      "7f86f554a91cde2c0cd5ba24ad705f4d89f90b5c"
     ],
     "mapping": [],
     "source_paths": [
@@ -317,17 +364,17 @@
       "apps/web/server/services/moliCdpBrowserAdapter.ts",
       "apps/web/server/services/__tests__/moliBrowserEngine.test.ts",
       "apps/web/server/services/__tests__/moliCdpBrowserAdapter.test.ts",
-      "tools/moli-prototype/generate_sbom.py",
-      "tools/moli-prototype/license_inventory.py",
-      "tools/moli-prototype/scan_osv.py",
-      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-phase0-prototype-2026-10-08.md"
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-phase0-prototype-2026-10-08.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-phase1-security-runner-verification-2026-10-08.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "95dada85ce966aeee745499a982aae84f39503dc",
+    "canonical_sha": "6f16fdcb75b075f35b638d31fbc42d02a1a8bf08",
     "integrated": true,
     "integrated_at": "2026-10-08T02:29:10Z"
   },
@@ -335,7 +382,7 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-08T02:19:19.163918Z"
+    "updated_at": "2026-10-08T02:59:01.823328Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -418,7 +465,7 @@
           "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-browser-integration-audit-2026-10-08.md"
         }
       ],
-      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
+      "next_action": "Reconcile unresolved Spec authority and requirement applicability. For Moli Phase 1, implement the Runner-owned browser cancellation, active lease/fencing/deadline checks, connection-time destination enforcement, resource accounting, audit receipts, and per-attempt profile cleanup before wiring the CDP-only adapter; resolve applicable upstream advisories and complete provenance/license review.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     }
@@ -431,10 +478,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-08T02:19:19.163918Z",
+    "reconciled_at": "2026-10-08T02:59:01.823328Z",
     "sources": [
       {
-        "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -449,7 +496,17 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
-        "digest": "53e01ff7d9a74fbd62101cc2e1f8d9af380136ac72f7e6918cc86477fea48bf8",
+        "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-license-inventory.json"
+      },
+      {
+        "digest": "2171f95f414f6c5a16c6837e75406500f1369e0a98907e4197f066c623aa2c51",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-security-report.json"
       },
@@ -521,7 +578,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "value": "Architecture Freeze Candidate / Ready for Implementation"
       },
       {
@@ -532,7 +589,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 10,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "value": "Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use."
       }
     ],
@@ -563,7 +620,7 @@
         "excerpt": "**Status:** Architecture Freeze Candidate / Ready for Implementation",
         "line": 3,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "value": "Architecture Freeze Candidate / Ready for Implementation"
       },
       {
@@ -573,14 +630,14 @@
         "excerpt": "**Implementation status:** Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use.",
         "line": 10,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "value": "Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use."
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
+        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -595,7 +652,17 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
-        "digest": "53e01ff7d9a74fbd62101cc2e1f8d9af380136ac72f7e6918cc86477fea48bf8",
+        "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-license-inventory.json"
+      },
+      {
+        "digest": "2171f95f414f6c5a16c6837e75406500f1369e0a98907e4197f066c623aa2c51",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-security-report.json"
       },
@@ -671,41 +738,70 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 357,
-    "unresolved": 357
+    "total": 358,
+    "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T02:30:36.985864Z",
+  "updated_at": "2026-10-08T03:00:55.266479Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       {
-        "passed": 6,
+        "passed": 7,
         "path": "apps/web/server/services/__tests__/moliBrowserEngine.test.ts",
-        "result": "PASS"
+        "result": "PASS",
+        "sha": "7f86f554a91cde2c0cd5ba24ad705f4d89f90b5c"
       },
       {
         "live_moli_version": "1.1.15",
-        "passed": 5,
+        "passed": 10,
         "path": "apps/web/server/services/__tests__/moliCdpBrowserAdapter.test.ts",
-        "result": "PASS"
+        "process_profile_isolation": true,
+        "result": "PASS",
+        "sha": "7f86f554a91cde2c0cd5ba24ad705f4d89f90b5c"
       },
       {
         "passed": 2,
         "path": "apps/web/server/services/__tests__/computerUseRunnerJobExecutor.test.ts",
+        "result": "PASS",
+        "scope": "existing executor regression tests, not Moli dispatch",
+        "sha": "7f86f554a91cde2c0cd5ba24ad705f4d89f90b5c"
+      },
+      {
+        "case_count": 80,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json",
+        "result": "IMPLEMENTED_NOT_EXECUTED"
+      },
+      {
+        "path": "apps/web/package.json",
+        "reason": "8 GiB configured heap; 13 GiB host available while unrelated workloads were active",
+        "result": "TYPECHECK_RESOURCE_DEFERRED"
+      },
+      {
+        "canonical_specs": 314,
+        "discovered_records": 472,
+        "invalid_manifests": 0,
+        "missing_handoffs": 0,
+        "path": "tools.spec_handoff validate --all",
         "result": "PASS"
       },
       {
-        "advisory_records": 11,
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-v1.1.15-security-report.json",
-        "result": "FINDINGS_PRESENT"
+        "drift": [
+          "spec-index.json",
+          "reconciliation-report.json",
+          "ambiguity-review.json"
+        ],
+        "path": "tools.spec_handoff index --check",
+        "result": "BASELINE_DRIFT",
+        "scope": "global generated views, unchanged in this task"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
-      "quick"
+      "quick",
+      "package"
     ],
-    "sha": "82da2e8a81193a9b2eaaf974c843489313dd659c",
+    "sha": "7f86f554a91cde2c0cd5ba24ad705f4d89f90b5c",
     "status": "PARTIAL",
     "task_regressions": []
   }
