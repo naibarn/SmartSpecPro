@@ -8556,4 +8556,91 @@ to:
 
 ---
 
-**End of Spec 286 R1.7 — contract-normalized architecture-frozen candidate; cumulative architecture audit remains 93 passes; G0 physical reconciliation and runtime certification pending.**
+**End of Spec 286 R1.7 body — contract-normalized architecture-frozen candidate; cumulative architecture audit remains 93 passes; G0 physical reconciliation and runtime certification pending.**
+
+## 165. Additive Amendment — AI Generated Motion Enhancement (WP0.4 gate)
+
+This amendment narrows the existing R1.7 motion-generation and quality contracts for
+Video Studio / Motion Studio. It adds acceptance evidence and does not authorize a
+new project model, timeline, job queue, QA ledger, billing authority, renderer, or
+template registry. The existing Motion Template Registry, `VideoProjectDocument`,
+motion candidates, `worker_jobs`, Remotion executor, revision system, approval,
+asset-rights, and tenant boundaries remain authoritative.
+
+### 165.1 Template-first and generated-motion routing
+
+For a prompt-to-motion request, the existing Motion Template Registry SHALL be
+searched semantically using the requested purpose, visual style, aspect ratio,
+duration, required assets, and supported motion capabilities. The plan SHALL
+prefer a compatible existing template when its declared capabilities satisfy the
+request. Generation SHALL be selected only when no compatible template exists,
+the user explicitly requests a novel treatment, or rendered evidence identifies a
+defect that the existing template cannot repair. The selected route and reason
+SHALL be recorded with the existing project revision/job evidence.
+
+An AI-generated Remotion component SHALL be a candidate in the existing motion
+candidate/revision workflow. It MUST pass the Generated Motion Sandbox security
+gate, deterministic compile checks, asset and dependency policy, and rendered
+visual QA before it can be used for an ephemeral project render. It MUST NOT be
+registered as a trusted reusable template as a side effect of generation.
+
+### 165.2 Reuse, safety, and user control
+
+Reuse SHALL preserve tenant ownership, source-asset rights, approval state,
+revision provenance, and existing billing authority. User-private and tenant
+templates SHALL remain scoped to their existing owners. Marketplace promotion
+SHALL use the existing approval/governance path and SHALL include license,
+dependency, security, provenance, and quality evidence. A generated component
+that fails any sandbox gate MUST fail closed and MUST NOT reach a render worker.
+
+The implementation SHALL remain provider-independent: prompts, template
+selection, normalized motion candidates, sandbox inputs, and quality evidence
+MUST use SmartAIHub-owned contracts. A model/provider name MAY be recorded as
+provenance, but MUST NOT become a durable schema, routing contract, or required
+runtime dependency.
+
+### 165.3 WP0.4 Golden Render Baseline acceptance
+
+Before behavior-changing motion enhancements, WP0.4 SHALL capture three fresh
+golden fixtures through the current Remotion path on the first available
+authorized Windows Runner:
+
+| Fixture | Required profile |
+|---|---|
+| A — Product Motion Ad | 15 seconds, 9:16 |
+| B — Motion Infographic | 20 seconds, 16:9 |
+| C — Logo / 3D Motion | 10 seconds, 1:1 |
+
+Each execution record SHALL bind the exact project revision, fixture/input
+digest, Remotion/runtime and runner versions, job identity, output digest, render
+duration and billed cost (or an explicit zero-cost basis), existing QA result,
+representative key frames/contact sheet, and observed visual defects. The record
+SHALL distinguish an execution result from a queued, unavailable, or
+authorization-blocked attempt. Windows is the first test target; Linux is a
+separate target and MUST have its own readiness and execution evidence.
+
+No visual-quality or cost improvement SHALL be claimed without comparable
+baseline and candidate execution records for the same fixture/profile. The report
+SHALL compare render time and cost alongside legibility, composition, motion
+continuity, brand fidelity, and defect/repair burden. If a runner or authorization
+is unavailable, WP0.4 remains BLOCKED; synthetic renders, static compilation,
+historical evidence, and GitHub search results are not substitutes for golden
+render execution evidence.
+
+### 165.4 Video Studio review acceptance
+
+Video Studio SHALL expose template-first and generation route explanations,
+candidate preview, revision-aware apply/discard, and QA evidence through its
+existing project and timeline surfaces. Phone and tablet users SHALL be able to
+initiate, monitor, review, and approve a candidate without requiring the full
+desktop timeline. Responsive review SHALL preserve the same tenant, revision,
+asset-rights, approval, and billing decisions as desktop.
+
+This amendment does not authorize a production deployment, new database
+migration, or enabling a new feature flag. New behavior remains disabled behind
+the existing feature-flag authority until its applicable security, runner,
+render, and acceptance evidence passes.
+
+**Amendment status:** additive acceptance criteria only; WP0.4 execution and
+runtime certification remain pending until source-bound Runner Authority
+receipts and golden render artifacts exist.
