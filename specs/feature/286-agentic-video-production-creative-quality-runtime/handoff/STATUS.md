@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 746 unresolved of 746
-- Next action: Lane A should submit Windows Runner readiness and source-bound Golden Fixture A/B/C receipts through the canonical handoff when the external Runner repair is complete. Assess Linux separately; keep WP0.4 PARTIAL/BLOCKED until real render evidence, and keep generated code non-executable until the sandbox gate passes.
-- Manifest generation: 17
+- Next action: PR #342 and PR #344 recipe code checkpoints are integrated and focused tests pass. WP0.4 remains PARTIAL/BLOCKED until Lane A provides Windows readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until sandbox gate evidence passes.
+- Manifest generation: 18
 
 ## Source-declared status and relationship claims
 
