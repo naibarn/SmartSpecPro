@@ -34,7 +34,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+    "expected_canonical_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
     "expected_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99"
   },
   "continuation": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
     "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
@@ -103,13 +103,14 @@
   "implementation": {
     "checkpoint_shas": [
       "098640900adb798d33d2b8b60e8a24e1268f43c8",
-      "2683115b5508fdffa17d48e851c526e1194a8871"
+      "2683115b5508fdffa17d48e851c526e1194a8871",
+      "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
     ],
     "mapping": [
       {
         "requirement_id": "REQ-962CDCE30AEF",
-        "scope": "WP2A deterministic source-bound receipt contract integrated; WP2B persistence, UAT wiring and non-production read-back remain open.",
-        "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "scope": "WP2A deterministic source-bound receipt contract integrated; WP2B persistence, UAT wiring and non-production read-back remain open. Oracle decision and artifact references now require exact run/attempt/scenario/schema/environment identity.",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "status": "PARTIAL"
       },
       {
@@ -120,20 +121,20 @@
       },
       {
         "requirement_id": "REQ-378D26AF8464",
-        "scope": "WP2A binds exact run/source/environment and resolved evidence hashes; immutable receipt storage/retention remains open.",
-        "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "scope": "WP2A binds exact run/source/environment and resolved evidence hashes; immutable receipt storage/retention remains open. Oracle decision and artifact references now require exact run/attempt/scenario/schema/environment identity.",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "status": "PARTIAL"
       },
       {
         "requirement_id": "REQ-A2E47461A85A",
-        "scope": "WP2A rejects source mismatch; canonical SPEC-224 run identity adapter remains open.",
-        "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "scope": "WP2A rejects source mismatch; canonical SPEC-224 run identity adapter remains open. Oracle decision and artifact references now require exact run/attempt/scenario/schema/environment identity.",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "status": "PARTIAL"
       },
       {
         "requirement_id": "REQ-F5F18EFA857C",
-        "scope": "WP2A requires authorization and enforces scope; production tenant/project policy adapter remains open.",
-        "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "scope": "WP2A requires authorization and enforces scope; production tenant/project policy adapter remains open. Oracle decision and artifact references now require exact run/attempt/scenario/schema/environment identity.",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "status": "PARTIAL"
       }
     ],
@@ -148,9 +149,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+    "canonical_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
     "integrated": true,
-    "integrated_at": "2026-10-08T05:59:53Z"
+    "integrated_at": "2026-10-08T06:08:52Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -164,6 +165,11 @@
       {
         "evidence": "WP2A contract and targeted tests integrated. WP2B durable receipt persistence, process-restart recovery, live UAT wiring and non-production persisted receipt remain open.",
         "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "state": "VALIDATION_PENDING"
+      },
+      {
+        "evidence": "WP2A receipt, oracle decision and artifact run/scenario/schema/environment bindings are integrated and focused tests pass. WP2B persistence, process-restart recovery, concrete UAT/tenant/artifact authority adapters and a persisted non-production sample remain open.",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "state": "VALIDATION_PENDING"
       }
     ],
@@ -183,6 +189,11 @@
           "evidence": "WP2A contract and targeted tests integrated. WP2B durable receipt persistence, process-restart recovery, live UAT wiring and non-production persisted receipt remain open.",
           "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
           "state": "VALIDATION_PENDING"
+        },
+        {
+          "evidence": "WP2A receipt, oracle decision and artifact run/scenario/schema/environment bindings are integrated and focused tests pass. WP2B persistence, process-restart recovery, concrete UAT/tenant/artifact authority adapters and a persisted non-production sample remain open.",
+          "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
+          "state": "VALIDATION_PENDING"
         }
       ],
       "updated_at": "2026-10-06T03:28:18.748354Z"
@@ -201,7 +212,7 @@
         },
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "evidence_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -215,6 +226,12 @@
             "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
             "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+          },
+          {
+            "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+            "pr": "https://github.com/naibarn/SmartSpecPro/pull/334",
+            "scope": "Rejects mismatched oracle/artifact UAT run, attempt, scenario, schema revision and environment fingerprint without changing the WP1 evaluator contract.",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
           }
         ],
         "implementation_status": "PARTIAL",
@@ -243,6 +260,22 @@
             "result": "PASS",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
             "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+          },
+          {
+            "cases": [
+              "exact UAT run/attempt binding",
+              "scenario and schema revision binding",
+              "environment fingerprint binding",
+              "oracle decision provenance and source binding",
+              "artifact bytes hashed against authority metadata",
+              "tenant/project authorization fail closed",
+              "deterministic receipt replay and conflict rejection"
+            ],
+            "failed": 0,
+            "passed": 24,
+            "result": "PASS",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
+            "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
           }
         ],
         "verification_method": "Focused WP2A receipt and WP1 independent-acceptance Vitest plus scoped TypeScript check at exact integrated SHA; durable persistence/restart and live UAT are separate gates."
@@ -260,7 +293,7 @@
         },
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "evidence_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -280,6 +313,12 @@
             "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
             "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+          },
+          {
+            "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+            "pr": "https://github.com/naibarn/SmartSpecPro/pull/334",
+            "scope": "Rejects mismatched oracle/artifact UAT run, attempt, scenario, schema revision and environment fingerprint without changing the WP1 evaluator contract.",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
           }
         ],
         "implementation_status": "PARTIAL",
@@ -327,6 +366,22 @@
             "result": "PASS",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
             "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+          },
+          {
+            "cases": [
+              "exact UAT run/attempt binding",
+              "scenario and schema revision binding",
+              "environment fingerprint binding",
+              "oracle decision provenance and source binding",
+              "artifact bytes hashed against authority metadata",
+              "tenant/project authorization fail closed",
+              "deterministic receipt replay and conflict rejection"
+            ],
+            "failed": 0,
+            "passed": 24,
+            "result": "PASS",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
+            "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
           }
         ],
         "verification_method": "Focused WP2A receipt and WP1 independent-acceptance Vitest plus scoped TypeScript check at exact integrated SHA; durable persistence/restart and live UAT are separate gates."
@@ -344,7 +399,7 @@
         },
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "evidence_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -358,6 +413,12 @@
             "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
             "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+          },
+          {
+            "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+            "pr": "https://github.com/naibarn/SmartSpecPro/pull/334",
+            "scope": "Rejects mismatched oracle/artifact UAT run, attempt, scenario, schema revision and environment fingerprint without changing the WP1 evaluator contract.",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
           }
         ],
         "implementation_status": "PARTIAL",
@@ -385,6 +446,22 @@
             "passed": 23,
             "result": "PASS",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+            "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+          },
+          {
+            "cases": [
+              "exact UAT run/attempt binding",
+              "scenario and schema revision binding",
+              "environment fingerprint binding",
+              "oracle decision provenance and source binding",
+              "artifact bytes hashed against authority metadata",
+              "tenant/project authorization fail closed",
+              "deterministic receipt replay and conflict rejection"
+            ],
+            "failed": 0,
+            "passed": 24,
+            "result": "PASS",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
             "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
           }
         ],
@@ -450,7 +527,7 @@
         },
         "current_relevance": "UNASSESSED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+        "evidence_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -464,6 +541,12 @@
             "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
             "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+          },
+          {
+            "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+            "pr": "https://github.com/naibarn/SmartSpecPro/pull/334",
+            "scope": "Rejects mismatched oracle/artifact UAT run, attempt, scenario, schema revision and environment fingerprint without changing the WP1 evaluator contract.",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
           }
         ],
         "implementation_status": "PARTIAL",
@@ -491,6 +574,22 @@
             "passed": 23,
             "result": "PASS",
             "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+            "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+          },
+          {
+            "cases": [
+              "exact UAT run/attempt binding",
+              "scenario and schema revision binding",
+              "environment fingerprint binding",
+              "oracle decision provenance and source binding",
+              "artifact bytes hashed against authority metadata",
+              "tenant/project authorization fail closed",
+              "deterministic receipt replay and conflict rejection"
+            ],
+            "failed": 0,
+            "passed": 24,
+            "result": "PASS",
+            "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
             "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
           }
         ],
@@ -574,7 +673,7 @@
     "unresolved": 287
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T06:01:56.854897Z",
+  "updated_at": "2026-10-08T06:09:31.573202Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -619,6 +718,27 @@
         "kind": "GITHUB_PR",
         "merge_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
         "reference": "https://github.com/naibarn/SmartSpecPro/pull/332"
+      },
+      {
+        "command": "node_modules/.bin/vitest run server/services/__tests__/spec271PortableEvidenceReceipt.test.ts server/services/__tests__/spec271IndependentAcceptance.test.ts --config vitest.config.ts",
+        "failed": 0,
+        "kind": "TARGETED_VITEST",
+        "passed": 24,
+        "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts",
+        "result": "PASS",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
+      },
+      {
+        "command": "node_modules/.bin/tsc --noEmit --skipLibCheck --strict --target ES2022 --module ESNext --moduleResolution Bundler --esModuleInterop --types node,vitest/globals server/services/spec271PortableEvidenceReceipt.ts server/services/__tests__/spec271PortableEvidenceReceipt.test.ts",
+        "kind": "SCOPED_TYPESCRIPT_CHECK",
+        "result": "PASS",
+        "source_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64"
+      },
+      {
+        "build_preview": "SKIPPED",
+        "kind": "GITHUB_PR",
+        "merge_sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
+        "reference": "https://github.com/naibarn/SmartSpecPro/pull/334"
       }
     ],
     "freshness": "FRESH",
@@ -626,7 +746,7 @@
       "quick",
       "integration"
     ],
-    "sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+    "sha": "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
     "status": "PARTIAL",
     "task_regressions": []
   }
