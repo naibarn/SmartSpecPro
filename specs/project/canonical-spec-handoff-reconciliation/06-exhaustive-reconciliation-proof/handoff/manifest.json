@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "786466c7b727442b8b653a6ad905d69aa7b5795b",
+    "expected_canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
     "expected_spec_digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce"
   },
   "continuation": {
     "next_action": "After protected integration, refresh origin/main and rerun the final exact-SHA validation. Keep the migration-complete marker unset until each applicable R06 requirement has traceable evidence.",
     "next_ready_workunit": "CANONICAL_FINAL_VALIDATION_AND_INTEGRATION",
     "reactivation_predicate": null,
-    "resume_point": "SPEC-06 R1.1 has nine explicit requirements; canonical handoffs for SPEC-305/306/307 exist with UNKNOWN implementation, verification, and deployment. Source-context review found no normative dependency cycle among the 13 simple cycles from the low-confidence text-candidate graph. Current origin/main baseline is 58f6da1ae46842fcb79c703a082d6b213e02d3f0; this branch is a candidate and has not been integrated. Candidate work is on codex/evidence-execution-reconcile-latest-20261008.",
+    "resume_point": "SPEC-06 R1.1 and the repaired 305-307 handoffs integrated through PR #315 at 0565e8c4e0c92025362b11bec26496056231b2aa. Handoff validation, generated index, classifications, and 83 focused tests passed on the identical candidate tree. Nine SPEC-06 requirements remain OPEN; migration completion is not claimed.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -113,7 +113,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 52,
+  "generation": 53,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
@@ -138,9 +138,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "786466c7b727442b8b653a6ad905d69aa7b5795b",
+    "canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
     "integrated": true,
-    "integrated_at": "2026-10-08T01:33:47Z"
+    "integrated_at": "2026-10-08T02:12:22Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -304,7 +304,7 @@
     "unresolved": 9
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T02:10:56.238986Z",
+  "updated_at": "2026-10-08T02:13:46.356405Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

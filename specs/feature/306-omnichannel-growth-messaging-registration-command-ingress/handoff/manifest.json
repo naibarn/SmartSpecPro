@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
     "expected_spec_digest": "281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05"
   },
   "continuation": {
     "next_action": "Map each channel/provider registration and command-ingress requirement to existing adapter code and unit/integration evidence; separately verify provider-account production readiness and deployments.",
     "next_ready_workunit": "SPEC306_REQUIREMENT_EVIDENCE_MAPPING",
     "reactivation_predicate": null,
-    "resume_point": "Handoff initialized and reconciled on candidate branch codex/evidence-execution-reconcile-20261008. Base origin/main is 074eb72c5bd3a3c62028e052f60831d451e3f4e9. Implementation, verification, and deployment remain UNKNOWN; no completion receipts were created.",
+    "resume_point": "Canonical handoff initialized and integrated through PR #315 at 0565e8c4e0c92025362b11bec26496056231b2aa. Requirement ledger remains OPEN; implementation, verification, and deployment remain UNKNOWN.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md",
     "digest": "281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05",
@@ -95,10 +95,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
+    "integrated": true,
+    "integrated_at": "2026-10-08T02:12:22Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -182,7 +182,7 @@
     "unresolved": 313
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T02:04:03.440517Z",
+  "updated_at": "2026-10-08T02:13:46.451176Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
