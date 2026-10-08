@@ -52,6 +52,7 @@ export async function executeMiniAppFactoryStages(input: {
     artifacts: string[];
     canonicalRevision: string;
   }) => Promise<MiniAppFactoryStageOutput>;
+  beforeCheckpoint?: (stageId: string) => Promise<void>;
   maxStages?: number;
   occurredAt?: string;
 }): Promise<MiniAppFactoryRunResult> {
@@ -94,6 +95,7 @@ export async function executeMiniAppFactoryStages(input: {
       canonicalRevision: workUnit.progress.canonicalRevision,
     });
     assertArtifactRefs(output.artifacts);
+    await input.beforeCheckpoint?.(stageId);
     const completedScope = [...new Set([...workUnit.progress.completedScope, stageId])];
     const remainingScope = workUnit.progress.remainingScope.filter(scope => scope !== stageId);
     const outputDigest = createHash("sha256").update(JSON.stringify({ stageId, output }), "utf8").digest("hex");

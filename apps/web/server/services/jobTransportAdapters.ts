@@ -23,6 +23,7 @@ export const CANONICAL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
 const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   ...CANONICAL_JOB_CONTRACT_VERSIONS,
   RESEARCH_NOTES_SUMMARY_CONTRACT,
+  "mini-app-factory-stage-v1",
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";

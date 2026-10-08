@@ -363,6 +363,18 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "mini_app_factory.stage",
+  executionClass: "long",
+  contractVersions: new Set(["mini-app-factory-stage-v1"]),
+  executor: async input => {
+    const factory = await import("./miniAppFactoryStageWorker");
+    return factory.createMiniAppFactoryStageJobExecutor(
+      factory.getConfiguredMiniAppFactoryStageWorkerRuntime,
+    )(input);
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "computer_use.browser",
   executionClass: "external",
   contractVersions: new Set(["feature-186-v1"]),
