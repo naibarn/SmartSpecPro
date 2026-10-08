@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+    "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
-      "canonical_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
-      "canonical_user_workspace_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+      "integrated_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "canonical_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "canonical_user_workspace_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b",
-      "verified_at": "2026-10-08T17:29:21.981Z"
+      "receipt_id": "workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482",
+      "verified_at": "2026-10-08T18:10:19.806Z"
     },
-    "observedAt": "2026-10-08T17:29:21.981Z",
+    "observedAt": "2026-10-08T18:10:19.806Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+      "canonical_user_workspace_sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
       "dirty": false,
-      "reason": "PR #377 merged normally; workspace converge and verify passed."
+      "reason": "PR #380 merged normally; canonical workspace convergence and verify passed."
     },
-    "latestIntegratedProgramChange": "PR #375 integrated receipt-backed settlement and budget binding; PR #377 integrated deterministic orchestration retry/reconciliation tests. Live settlement still lacks registered policy verifier and authorized ledger source.",
+    "latestIntegratedProgramChange": "PR #380 merged verifier-outside-transaction settlement hardening and PostgreSQL-backed concurrency/rollback/replay evidence. Live Windows dispatch, owner authorization, and live economic settlement remain unverified.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+      "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b",
-      "verifiedAt": "2026-10-08T17:29:21.981Z"
+      "convergenceReceipt": "workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482",
+      "verifiedAt": "2026-10-08T18:10:19.806Z"
     }
   },
   "inventory": {
@@ -67,7 +67,7 @@
   },
   "currentWorkunit": {
     "id": "LANE1_RECEIPT_BACKED_SETTLEMENT_AND_WINDOWS_RUNNER_AUTHORITY",
-    "state": "PARTIAL_INTEGRATED_SETTLEMENT_PORT; REAL_DISPATCH_WAITING_FRESH_RUNNER_AND_OWNER_AUTHORITY",
+    "state": "PARTIAL_INTEGRATED_POSTGRES_SETTLEMENT_VERIFIED; REAL_DISPATCH_WAITING_WINDOWS_AND_OWNER_AUTHORITY",
     "objective": "Bind real Windows Codex execution and receipt-backed accounting to existing trusted Runner, DevelopmentRun, authorization, and economic ledger authority.",
     "implementation": [
       "apps/web/server/services/economicReceiptSettlement.ts",
@@ -75,14 +75,17 @@
       "apps/web/server/services/spec224AuthorizationBinding.ts",
       "apps/web/server/services/spec224AuthorizationService.ts",
       "apps/web/server/services/externalAgentRunnerDispatcher.ts",
-      "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json"
+      "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json",
+      "apps/web/server/services/__tests__/economicReceiptSettlement.test.ts",
+      "apps/web/server/services/__tests__/economicReceiptSettlementTransaction.test.ts",
+      "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
     ],
-    "sourceSha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
-    "evidence": "PR #375 merged normally at d8791f7a7bd71c47506d46fffabce5c2c820d3e6. Focused Vitest 8 files/63 tests passed; Windows launcher safety tests 3/3 passed on Linux only; disposable PostgreSQL 17 migrations 0389–0394 passed; Linux installer lifecycle passed but registered Linux runtime remains unverified. Exact approved budget-cap/currency binding and receipt-backed economic settlement port are integrated. Settlement port has no registered production verifier/account source. Last read-only control-plane evidence is 2026-10-08T16:17:17Z and is stale: Windows capability snapshot expired, no job-specific source binding, no DevelopmentRun/job/attempt, and zero budget/account/hold rows. No owner grant, budget, ledger account, dispatch, receipt, settlement, or deployment was created. UI assertion failure reproduces on canonical baseline; ESLint unavailable because resolved ESLint 6.4.0 has no configuration. Follow-on PR #377 adds deterministic transaction-orchestration tests; combined focused Vitest is 9 files/68 tests, including actual-only capture/release, idempotent replay, untrusted reconciliation, verifier failure, retry after transient capture failure, and attempt mismatch. These tests mock repository/ledger boundaries; they are not PostgreSQL transaction or live settlement evidence.",
-    "integration": "PR #375 implementation, PR #376 metadata handoff, PR #377 transaction tests merged normally",
-    "integratedSha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
-    "nextAction": "Refresh Windows Runner and Codex auth/capability snapshot; create a real DevelopmentRun/job/attempt and attested workspace binding; obtain exact owner-issued P-RECOVERY grant plus owner-authorized non-production budget, funding source, and ledger accounts. Register the policy-backed accounting verifier/account source, then dispatch and verify receipt, artifact, settlement, retry, and resume. Continue registered Linux Runner readiness and non-production target as independent workunits.",
-    "pr": "https://github.com/naibarn/SmartSpecPro/pull/377",
+    "sourceSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+    "evidence": "PR #380 merged normally: source 1ac47dc0cb488e11ef441fe09714f0acd15d545f, integrated 7ca6dacb5773c1b2eaf4e29dd139220d6018bac0. Five focused Vitest files passed 33 tests; disposable PostgreSQL 17 economic integration suite passed 8 tests. The PG test used separate Drizzle/postgres client pools and a controlled two-verifier barrier; while both verifiers were paused, a separate connection acquired FOR UPDATE NOWAIT on the hold. It verified concurrent duplicate replay, single actual capture and remaining-cap release, receipt mutation rejection, verifier-timeout reconciliation/retry, distinct-receipt duplicate rejection, and transaction rollback. The disposable DB used the Spec 224 baseline plus test-only compatibility columns; the historical full migration journal failed at its first workflow_templates ALTER on an empty DB. No full migration or live settlement claim. Fresh local Linux scan: local-runner 0.2.13 state ready but readyToolCount=0 and Codex auth/health/availability unknown, trust discovered, probe_required. SSH to Windows 192.168.1.123:22 timed out. No Windows identity/session/snapshot, job binding, DevelopmentRun/job/attempt, owner grant/approval, budget/funding/account, dispatch, receipt, artifact, or live settlement was created or freshly verified.",
+    "integration": "PR #380 merged normally",
+    "integratedSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+    "nextAction": "Restore authorized access to the Windows Runner host or use its supported Desktop/control-plane path; obtain a fresh authenticated Codex capability snapshot and job-specific source/workspace attestation. Only then create the DevelopmentRun/job/attempt and request owner-issued P-RECOVERY, budget, funding, accounts, and accounting policy. Keep dispatch blocked until every gate passes. Continue Linux registered Runner acceptance and registered non-production deployment independently.",
+    "pr": "https://github.com/naibarn/SmartSpecPro/pull/380",
     "ownerActionManifest": "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json",
     "handoff": "orchestra/programs/autonomous-mini-app-factory/lane1-authority-settlement-handoff.v1.md",
     "independentWorkunits": [
@@ -386,6 +389,14 @@
       "artifactName": "smarthub-runner-windows-x64-0.2.24-unsigned-review",
       "installerSha256": "28aba4810479d7c3d1c37dcbda75bf6858cb20c429f82f3c996fc9ae0481d663",
       "evidence": "Windows x64 installer build and Runner release admin UI/API checks passed. Artifact is unsigned review build; Windows install, folder rendering and started Runner heartbeat UAT are pending."
+    },
+    {
+      "id": "LANE1_VERIFIER_OUTSIDE_TRANSACTION_20261009",
+      "state": "PARTIAL_INTEGRATED_POSTGRES_SETTLEMENT_TESTED_LIVE_SETTLEMENT_UNVERIFIED",
+      "sourceSha": "1ac47dc0cb488e11ef441fe09714f0acd15d545f",
+      "integratedSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "pr": 380,
+      "evidence": "External verifier executes outside the hold transaction with a bounded timeout; in-transaction receipt digest and tenant/job/attempt/hold/state are revalidated; separate-connection PostgreSQL concurrency and rollback/retry tests passed. Windows readiness, owner authority, production verifier/account provisioning, live dispatch and live settlement remain pending."
     }
   ],
   "completedWorkunits": [
@@ -638,7 +649,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T17:29:21.981Z",
+  "updatedAt": "2026-10-08T18:10:19.806Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -664,18 +675,18 @@
     "secondMiniApp": "PASS_PROJECT_WIKI_THROUGH_PACKAGE_USING_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/.cache/codex/worktrees/lane1-receipt-settlement",
-    "sourceBranch": "codex/runner-economic-transaction-tests",
+    "taskWorktree": "/home/dev/.cache/codex/worktrees/lane1-verifier-lockfix-20261009",
+    "sourceBranch": "codex/lane1-verifier-lockfix-20261009",
     "localCommits": [
-      "130bf5e90f08b3682dedaf20b5fd3c91bf61a410"
+      "1ac47dc0cb488e11ef441fe09714f0acd15d545f"
     ],
-    "intendedRemoteBranch": "codex/runner-economic-transaction-tests",
+    "intendedRemoteBranch": "codex/lane1-verifier-lockfix-20261009",
     "pendingPullRequest": {
-      "number": 377,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/377",
+      "number": 380,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/380",
       "state": "MERGED",
-      "sourceSha": "130bf5e90f08b3682dedaf20b5fd3c91bf61a410",
-      "integratedSha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181"
+      "sourceSha": "1ac47dc0cb488e11ef441fe09714f0acd15d545f",
+      "integratedSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0"
     },
     "testEvidence": [
       {
@@ -932,17 +943,27 @@
         "revision": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
         "command": "pnpm exec prettier --check server/services/__tests__/economicReceiptSettlementTransaction.test.ts; git diff --check",
         "outcome": "PASS"
+      },
+      {
+        "revision": "1ac47dc0cb488e11ef441fe09714f0acd15d545f (PR #380 merged as 7ca6dacb5773c1b2eaf4e29dd139220d6018bac0)",
+        "command": "5 focused Vitest files; spec224EconomicPostgres.integration.test.ts against disposable loopback PostgreSQL 17",
+        "outcome": "PASS: 33 focused Vitest tests and 8 PostgreSQL integration tests. Controlled separate-connection verifier barrier acquired hold FOR UPDATE NOWAIT; rollback, receipt mutation, verifier timeout, retry/replay, duplicate receipt, actual-only capture, unused release, and journal invariants verified. Disposable baseline included test-only compatibility DDL; no live/Windows settlement proof."
+      },
+      {
+        "revision": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+        "command": "workspace_authority.py resolve, converge --integrated-sha, verify --integrated-sha",
+        "outcome": "PASS: workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482; /home/dev/projects/SmartSpecPro clean and verified at 7ca6dacb5773c1b2eaf4e29dd139220d6018bac0."
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "fd5f9f2e1af4354e421077a12e217a094dcc46be",
+    "canonicalAtCheckpoint": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "fd5f9f2e1af4354e421077a12e217a094dcc46be",
+      "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
       "dirty": false,
-      "verifiedAt": "2026-10-08T15:12:09.278+00:00"
+      "verifiedAt": "2026-10-08T18:10:19.806Z"
     },
     "previousPullRequests": [
       {
@@ -1055,18 +1076,18 @@
       "windowsGuiUat": "PENDING_INSTALL_AND_RUNNER_START"
     },
     "latestHandoffPullRequest": {
-      "number": 367,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/367",
+      "number": 380,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/380",
       "state": "MERGED",
-      "sourceSha": "3d4159ea7bde45c3bc9498a827e986ce1283948b",
-      "integratedSha": "98ec7c9645cdceaa3ba534622e86db06f47defd4"
+      "sourceSha": "1ac47dc0cb488e11ef441fe09714f0acd15d545f",
+      "integratedSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0"
     },
     "canonicalWorkspaceConvergence": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+      "sha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receiptId": "workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b",
-      "verifiedAt": "2026-10-08T17:29:21.981Z"
+      "receiptId": "workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482",
+      "verifiedAt": "2026-10-08T18:10:19.806Z"
     }
   },
   "authorityResolution": {
@@ -1256,6 +1277,56 @@
         "result": "PASS",
         "outcome": "Install/upgrade rollback/uninstall lifecycle passed in isolated temporary HOME; enrollment data preservation verified. This is installer QA only, not a registered or live Linux Runner acceptance."
       }
+    },
+    "lane1SettlementFollowup": {
+      "observedAt": "2026-10-08T18:06:17Z",
+      "sourceSha": "1ac47dc0cb488e11ef441fe09714f0acd15d545f",
+      "integratedSha": "7ca6dacb5773c1b2eaf4e29dd139220d6018bac0",
+      "pr": 380,
+      "testSummary": {
+        "focusedVitest": "5 files, 33 tests passed",
+        "postgresql": "8 integration tests passed",
+        "database": "disposable PostgreSQL 17 loopback only",
+        "fullHistoricalMigration": "NOT_PASSED: first migration expected workflow_templates on empty DB"
+      },
+      "concurrencyProof": "Two settlement calls paused at verifier barrier. A separate PostgreSQL client acquired FOR UPDATE NOWAIT on the same hold before release. After barrier release, one settlement captured actual usage and released the remainder; the concurrent caller replayed the same settlement.",
+      "transactionProof": [
+        "receipt mutation between verify and commit rejected by digest recheck",
+        "verifier timeout enters reconciliation without hold mutation",
+        "invalid ledger account rolled back capture/journal/event/hold changes",
+        "retry settled once; duplicate replay did not add journal entries",
+        "distinct receipt for same hold/attempt rejected"
+      ],
+      "qaReviewPasses": 13,
+      "liveEconomicSettlement": "NOT_OBSERVED",
+      "windowsReadiness": "NOT_OBSERVED_SSH_TIMEOUT",
+      "ownerApproval": "NOT_ISSUED",
+      "dispatch": "NOT_RUN"
+    },
+    "latestWindowsAccessAttempt": {
+      "host": "192.168.1.123",
+      "protocol": "SSH",
+      "port": 22,
+      "result": "CONNECT_TIMEOUT",
+      "implication": "No fresh Windows process, Codex authentication/policy, Runner session, or capability acknowledgement was observed."
+    },
+    "latestLocalLinuxRunnerScan": {
+      "observedAt": "2026-10-08T18:03:08Z",
+      "runnerId": "local-runner",
+      "runnerVersion": "0.2.13",
+      "state": "ready",
+      "readyToolCount": 0,
+      "codex": {
+        "install_state": "ready",
+        "auth_state": "unknown",
+        "availability_state": "unknown",
+        "health_state": "unknown",
+        "trust_state": "discovered",
+        "reason_codes": [
+          "probe_required"
+        ]
+      },
+      "scope": "Local Linux discovery only; not registered Linux Runner acceptance or Windows evidence."
     }
   }
 }

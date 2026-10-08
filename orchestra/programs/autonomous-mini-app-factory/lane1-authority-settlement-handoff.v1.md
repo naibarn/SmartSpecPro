@@ -3,9 +3,9 @@
 **State:** `CHECKPOINT_PROMOTED_PARTIAL`
 **Repository:** `naibarn/SmartSpecPro`
 **Settlement implementation SHA:** `d8791f7a7bd71c47506d46fffabce5c2c820d3e6`
-**Latest integrated SHA:** `42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181`
-**PRs:** [#375](https://github.com/naibarn/SmartSpecPro/pull/375) implementation, [#376](https://github.com/naibarn/SmartSpecPro/pull/376) program handoff, [#377](https://github.com/naibarn/SmartSpecPro/pull/377) transaction tests; all merged normally
-**Task commits:** `2ecbe20b9d8967ef236a07c21f08c76f32e7b660` (implementation), `130bf5e90f08b3682dedaf20b5fd3c91bf61a410` (transaction tests)
+**Latest integrated SHA:** `7ca6dacb5773c1b2eaf4e29dd139220d6018bac0`
+**PRs:** [#375](https://github.com/naibarn/SmartSpecPro/pull/375) implementation, [#376](https://github.com/naibarn/SmartSpecPro/pull/376) program handoff, [#377](https://github.com/naibarn/SmartSpecPro/pull/377) transaction tests, and [#380](https://github.com/naibarn/SmartSpecPro/pull/380) verifier-lock fix/PostgreSQL evidence; all merged normally
+**Task commits:** `2ecbe20b9d8967ef236a07c21f08c76f32e7b660` (implementation), `130bf5e90f08b3682dedaf20b5fd3c91bf61a410` (transaction tests), `1ac47dc0cb488e11ef441fe09714f0acd15d545f` (verifier-lock fix)
 **Canonical workspace:** `/home/dev/projects/SmartSpecPro`, clean at the latest integrated SHA
 **Latest convergence receipt:** `workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b`
 **Program:** `AUTONOMOUS_MINI_APP_FACTORY_PROGRAM`
@@ -56,7 +56,7 @@ At that observation, no DevelopmentRun/job/attempt existed to authorize; economi
 
 ## Integration obligations
 
-PR #375 implementation and PR #377 transaction tests are integrated and reachable from `origin/main` at `42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181`. The canonical user workspace was resolved, converged, and verified at that SHA. Temporary dependency symlinks created for focused tests were removed. This handoff and `program.json` record the integrated SHA and latest convergence receipt. Do not mark live dispatch, settlement, or deployment `PASS` without corresponding real receipts.
+PR #375 implementation and PR #377 transaction tests were integrated at `42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181`; PR #380 extends that implementation and is integrated at `7ca6dacb5773c1b2eaf4e29dd139220d6018bac0`. The latest canonical user workspace convergence and verification are recorded below. Do not mark live dispatch, settlement, or deployment `PASS` without corresponding real receipts.
 
 ## 2026-10-09 verifier-lock and PostgreSQL follow-up
 
@@ -76,3 +76,10 @@ PR #375 implementation and PR #377 transaction tests are integrated and reachabl
 **Fresh local discovery, not Windows evidence:** On `2026-10-08T18:03:08Z`, the Linux `local-runner` CLI reported version `0.2.13`, state `ready`, `readyToolCount=0`; its Codex entry was installed but auth, availability, and health were `unknown`, trust was `discovered`, and reason was `probe_required`. This is a local Linux scan only. SSH from this execution environment to Windows host `192.168.1.123:22` timed out; no Windows process, Codex auth/policy, Runner registration/session, capability acknowledgement, or source/workspace attestation was freshly observed. The stored Windows session/snapshot figures earlier in this handoff remain historical and stale.
 
 **Still separate and unverified:** No DevelopmentRun/job/attempt was prepared because Windows identity, workspace, and source attestation could not be refreshed. No P-RECOVERY grant, owner approval, budget/funding source, ledger account, production accounting verifier, dispatch, Windows receipt, artifact collection, or live economic settlement was created or observed. Linux registered Runner acceptance and non-production deployment remain independent gates. Disposable PostgreSQL evidence does not satisfy any of those gates.
+
+## PR #380 integration and canonical workspace
+
+- PR #380 merged normally. Candidate commit: `1ac47dc0cb488e11ef441fe09714f0acd15d545f`; merge commit and integrated SHA: `7ca6dacb5773c1b2eaf4e29dd139220d6018bac0`.
+- `origin/main` was refreshed to `7ca6dacb5773c1b2eaf4e29dd139220d6018bac0`.
+- The registered canonical user workspace `/home/dev/projects/SmartSpecPro` was clean, converged, and verified at that SHA. Receipt: `workspace-convergence:804ac55f-0e1b-416a-80c2-1debc1ec2482`; verified `2026-10-08T18:10:19.806Z`.
+- Program metadata records this partial integration. The open work remains Windows physical readiness, owner-issued scope/budget/funding/account authority, production verifier registration, and a real authorized dispatch/receipt/settlement.
