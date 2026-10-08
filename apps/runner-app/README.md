@@ -27,6 +27,15 @@ that has completed browser approval does not need them. The Runner signs the
 request proof required by the control gateway for both the WSS handshake and
 HTTPS fallback; private material never enters protocol payloads or diagnostics.
 
+The Linux x86_64 release bundle includes `install-linux-runner.sh` and a
+systemd user unit. Run `./install-linux-runner.sh install`, complete
+enrollment with `~/.local/bin/smartaihub-runner connect`, then start the unit
+with `systemctl --user enable --now smartaihub-runner.service`. Installation
+does not start the service before approval and does not enable systemd lingering
+or change account permissions. `upgrade` restores the previous binary and unit
+if reload/restart fails; `uninstall` removes only those installed files and
+preserves enrollment and workspace data.
+
 `SAH_RUNNER_PROFILE=shared_container` requires a Job/attempt/lease scope and
 cannot persist a user-device identity. The local control URL defaults to
 `https://smartaihub.app` and may be overridden with `SAH_RUNNER_CONTROL_URL`.
