@@ -71,7 +71,7 @@ describe("Settings Panel: Slider Configuration", () => {
     });
   });
 
-  it("should render threshold slider with range -60 to -10 and default -30", () => {
+  it("should render threshold slider with range -60 to -20 and default -40", () => {
     const project = createTestProject();
     render(
       <SilenceDetectionDialog
@@ -84,9 +84,9 @@ describe("Settings Panel: Slider Configuration", () => {
     const thresholdSlider = screen.getByTestId("threshold-slider") as HTMLInputElement;
     expect(thresholdSlider).toBeTruthy();
     expect(thresholdSlider.getAttribute("min")).toBe("-60");
-    expect(thresholdSlider.getAttribute("max")).toBe("-10");
+    expect(thresholdSlider.getAttribute("max")).toBe("-20");
     expect(thresholdSlider.getAttribute("step")).toBe("1");
-    expect(thresholdSlider.value).toBe("-30");
+    expect(thresholdSlider.value).toBe("-40");
   });
 
   it("should show both dB and percentage values for threshold", () => {
@@ -99,10 +99,10 @@ describe("Settings Panel: Slider Configuration", () => {
       />
     );
 
-    // At default -30 dB, percentage should be 60%
+    // At default -40 dB, percentage should be 50%.
     const thresholdLabel = screen.getByTestId("threshold-label");
-    expect(thresholdLabel.textContent).toContain("-30");
-    expect(thresholdLabel.textContent).toContain("60%");
+    expect(thresholdLabel.textContent).toContain("-40");
+    expect(thresholdLabel.textContent).toContain("50%");
   });
 
   it("should update percentage when threshold slider changes", () => {
@@ -123,18 +123,18 @@ describe("Settings Panel: Slider Configuration", () => {
     expect(thresholdLabel.textContent).toContain("-60");
     expect(thresholdLabel.textContent).toContain("0%");
 
-    // Change to -20 dB => 80%
+    // Change to -20 dB => 100%
     fireEvent.change(thresholdSlider, { target: { value: "-20" } });
     expect(thresholdLabel.textContent).toContain("-20");
-    expect(thresholdLabel.textContent).toContain("80%");
+    expect(thresholdLabel.textContent).toContain("100%");
 
-    // Change to -50 dB => 20%
+    // Change to -50 dB => 25%
     fireEvent.change(thresholdSlider, { target: { value: "-50" } });
     expect(thresholdLabel.textContent).toContain("-50");
-    expect(thresholdLabel.textContent).toContain("20%");
+    expect(thresholdLabel.textContent).toContain("25%");
   });
 
-  it("should render minimum duration slider with range 0.1 to 5.0 and default 0.3", () => {
+  it("should render minimum duration slider with range 0.1 to 5.0 and default 0.5", () => {
     const project = createTestProject();
     render(
       <SilenceDetectionDialog
@@ -149,7 +149,7 @@ describe("Settings Panel: Slider Configuration", () => {
     expect(durationSlider.getAttribute("min")).toBe("0.1");
     expect(durationSlider.getAttribute("max")).toBe("5.0");
     expect(durationSlider.getAttribute("step")).toBe("0.1");
-    expect(durationSlider.value).toBe("0.3");
+    expect(durationSlider.value).toBe("0.5");
   });
 
   it("should render softening buffer slider with range 0.0 to 2.0 and default 0.2", () => {
@@ -257,6 +257,7 @@ describe("Settings Panel: Analyze Flow", () => {
     (createMediaJobClient as any).mockResolvedValue({
       detectDeadAir: mockDetectDeadAir,
       getWaveformPeaks: mockGetWaveformPeaks,
+      probe: vi.fn().mockResolvedValue({ derived: { streams: [] } }),
     });
 
     render(
@@ -274,10 +275,9 @@ describe("Settings Panel: Analyze Flow", () => {
       expect(mockDetectDeadAir).toHaveBeenCalledWith(
         "/test/audio.mp3",
         expect.objectContaining({
-          thresholdDb: -30,
-          minSilenceMs: 300,
-        })
-        ,
+          thresholdDb: -40,
+          minSilenceMs: 500,
+        }),
         expect.any(Function)
       );
     });
