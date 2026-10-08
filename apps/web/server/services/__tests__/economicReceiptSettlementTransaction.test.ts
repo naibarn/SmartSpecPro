@@ -63,10 +63,26 @@ function makeDatabase() {
   };
   const events: Array<Record<string, any>> = [];
   const reconciliations: Array<Record<string, any>> = [];
+  let currentReceipt = { ...receiptRow, payload: { ...receiptRow.payload } };
+  let inTransaction = false;
+  let outsideSelectIndex = 0;
+
+  const selectReceipt = () => {
+    const selected = outsideSelectIndex++ % 2 === 0 ? hold : currentReceipt;
+    const query: any = {
+      from: () => query,
+      innerJoin: () => query,
+      where: () => query,
+      limit: async () => [selected],
+    };
+    return query;
+  };
 
   const database = {
+    select: selectReceipt,
     transaction: async (callback: (tx: any) => Promise<unknown>) => {
       let selectIndex = 0;
+      inTransaction = true;
       const tx: any = {
         select: () => {
           const query: any = {
@@ -80,9 +96,9 @@ function makeDatabase() {
               if (index === 1)
                 return [
                   {
-                    ...receiptRow,
-                    jobStatus: receiptRow.jobStatus,
-                    payload: receiptRow.payload,
+                    ...currentReceipt,
+                    jobStatus: currentReceipt.jobStatus,
+                    payload: currentReceipt.payload,
                   },
                 ];
               if (index === 2) {
@@ -159,11 +175,34 @@ function makeDatabase() {
           return builder;
         },
       };
-      return callback(tx);
+      try {
+        return await callback(tx);
+      } finally {
+        inTransaction = false;
+      }
     },
   };
 
-  return { database, hold, events, reconciliations };
+  return {
+    database,
+    hold,
+    events,
+    reconciliations,
+    isInTransaction: () => inTransaction,
+    mutateReceipt: () => {
+      currentReceipt = {
+        ...currentReceipt,
+        payload: { ...currentReceipt.payload, sourceDigest: "changed" },
+      };
+    },
+    replaceReceipt: () => {
+      currentReceipt = {
+        ...currentReceipt,
+        eventId: "receipt-distinct",
+        payload: { ...currentReceipt.payload, eventId: "receipt-distinct" },
+      };
+    },
+  };
 }
 
 function meteredEvidence(): VerifiedRunnerAccountingEvidence {
@@ -220,7 +259,12 @@ describe("receipt-backed economic settlement transaction orchestration", () => {
 
   it("captures only verified actual provider use, releases the remainder, and replays idempotently", async () => {
     const state = makeDatabase();
-    const verifier = { verify: vi.fn().mockResolvedValue(meteredEvidence()) };
+    const verifier = {
+      verify: vi.fn().mockImplementation(async () => {
+        expect(state.isInTransaction()).toBe(false);
+        return meteredEvidence();
+      }),
+    };
 
     const first = await settleRunnerEconomicReceipt(
       state.database as never,
@@ -242,7 +286,9 @@ describe("receipt-backed economic settlement transaction orchestration", () => {
       eventId: first.eventId,
       replayed: true,
     });
-    expect(verifier.verify).toHaveBeenCalledTimes(1);
+    // The service verifies before both the first settlement and replay, with
+    // neither external verification occurring under a hold row lock.
+    expect(verifier.verify).toHaveBeenCalledTimes(2);
     expect(durableMocks.capture).toHaveBeenCalledTimes(1);
     expect(durableMocks.capture.mock.calls[0][1]).toMatchObject({
       amountMinorUnits: 120,
@@ -360,5 +406,65 @@ describe("receipt-backed economic settlement transaction orchestration", () => {
     } satisfies Partial<EconomicReceiptSettlementError>);
     expect(verifier.verify).not.toHaveBeenCalled();
     expect(durableMocks.capture).not.toHaveBeenCalled();
+  });
+
+  it("rejects a receipt that changes while external verification is in flight", async () => {
+    const state = makeDatabase();
+    const verifier = {
+      verify: vi.fn().mockImplementation(async () => {
+        expect(state.isInTransaction()).toBe(false);
+        state.mutateReceipt();
+        return meteredEvidence();
+      }),
+    };
+
+    await expect(
+      settleRunnerEconomicReceipt(state.database as never, scope, verifier)
+    ).rejects.toMatchObject({ code: "SETTLEMENT_RECEIPT_CONFLICT" });
+    expect(durableMocks.capture).not.toHaveBeenCalled();
+    expect(durableMocks.release).not.toHaveBeenCalled();
+    expect(state.events).toHaveLength(0);
+  });
+
+  it("does not settle a distinct receipt against an already settled hold attempt", async () => {
+    const state = makeDatabase();
+    const verifier = { verify: vi.fn().mockResolvedValue(meteredEvidence()) };
+
+    await settleRunnerEconomicReceipt(state.database as never, scope, verifier);
+    state.replaceReceipt();
+    await expect(
+      settleRunnerEconomicReceipt(
+        state.database as never,
+        { ...scope, receiptEventId: "receipt-distinct" },
+        verifier
+      )
+    ).rejects.toMatchObject({ code: "SETTLEMENT_DUPLICATE_RECEIPT" });
+    expect(state.events).toHaveLength(1);
+    expect(durableMocks.capture).toHaveBeenCalledTimes(1);
+    expect(durableMocks.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("times out a slow verifier into reconciliation without touching the hold", async () => {
+    const state = makeDatabase();
+    const verifier = { verify: vi.fn(() => new Promise<never>(() => {})) };
+
+    const result = await settleRunnerEconomicReceipt(
+      state.database as never,
+      { ...scope, verifierTimeoutMs: 5 },
+      verifier
+    );
+
+    expect(result.status).toBe("reconciliation_required");
+    expect(state.events[0]).toMatchObject({
+      eventType: "runner_receipt_reconciliation_required",
+      payloadJson: { reasonCode: "ACCOUNTING_VERIFIER_TIMEOUT" },
+    });
+    expect(state.hold).toMatchObject({
+      status: "held",
+      capturedMinorUnits: 0,
+      releasedMinorUnits: 0,
+    });
+    expect(durableMocks.capture).not.toHaveBeenCalled();
+    expect(durableMocks.release).not.toHaveBeenCalled();
   });
 });
