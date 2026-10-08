@@ -101,6 +101,13 @@ def main(argv: list[str] | None = None) -> int:
     update_req.add_argument("--expected-canonical-sha")
     update_req.add_argument("--requirement-id", required=True)
     update_req.add_argument("--changes-json", required=True)
+    update_reqs = commands.add_parser("requirements-batch-update", help="atomically update multiple canonical requirement rows")
+    update_reqs.add_argument("--spec-dir", type=Path, required=True)
+    update_reqs.add_argument("--expected-manifest-generation", type=int, required=True)
+    update_reqs.add_argument("--expected-ledger-generation", type=int, required=True)
+    update_reqs.add_argument("--expected-spec-digest", required=True)
+    update_reqs.add_argument("--expected-canonical-sha")
+    update_reqs.add_argument("--changes-json", required=True, help="JSON object mapping requirement IDs to writable field objects")
     args = parser.parse_args(argv)
     args.repo = args.repo.resolve()
     if getattr(args, "spec_dir", None) is not None and not args.spec_dir.is_absolute():
@@ -296,6 +303,20 @@ def main(argv: list[str] | None = None) -> int:
             expected_canonical_sha=args.expected_canonical_sha,
             requirement_id=args.requirement_id, changes=changes)
         print(json.dumps({"manifest_generation": manifest["generation"], "ledger_generation": ledger["generation"], "canonical_sha": manifest["integration"].get("canonical_sha")}, indent=2))
+        return 0
+    if args.command == "requirements-batch-update":
+        from .store import update_requirement_ledger_batch
+        changes_path = Path(args.changes_json)
+        changes = json.loads(changes_path.read_text(encoding="utf-8") if changes_path.is_file() else args.changes_json)
+        if not isinstance(changes, dict) or not changes or not all(isinstance(row, dict) for row in changes.values()):
+            parser.error("--changes-json must map requirement IDs to non-empty field objects")
+        manifest, ledger = update_requirement_ledger_batch(args.spec_dir,
+            expected_manifest_generation=args.expected_manifest_generation,
+            expected_ledger_generation=args.expected_ledger_generation,
+            expected_spec_digest=args.expected_spec_digest,
+            expected_canonical_sha=args.expected_canonical_sha,
+            changes_by_requirement=changes)
+        print(json.dumps({"manifest_generation": manifest["generation"], "ledger_generation": ledger["generation"], "canonical_sha": manifest["integration"].get("canonical_sha"), "updated_requirement_ids": sorted(changes)}, indent=2))
         return 0
     return 2
 
