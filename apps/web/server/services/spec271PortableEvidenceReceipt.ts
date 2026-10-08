@@ -32,10 +32,25 @@ export type Spec271ResolvedEvidenceArtifact = Readonly<{
   uatRunId: string;
   attemptId: string;
   sourceSha: string;
+  scenarioId: string;
+  scenarioRevision: string;
+  schemaRevision: string;
+  environmentFingerprint: string;
   createdAt: string;
   /** Metadata written by the artifact authority; checked against the bytes. */
   recordedSha256: string;
   bytes: Uint8Array;
+}>;
+
+/** Run identity added by the UAT/run authority without changing the WP1 evaluator contract. */
+export type Spec271RunBoundAcceptanceDecision = Readonly<{
+  decision: Spec271AcceptanceEvidence;
+  uatRunId: string;
+  attemptId: string;
+  scenarioId: string;
+  scenarioRevision: string;
+  schemaRevision: string;
+  environmentFingerprint: string;
 }>;
 
 export type Spec271PortableEvidenceReceipt = Readonly<{
@@ -177,7 +192,7 @@ export type Spec271PortableReceiptDependencies = Readonly<{
   /** Resolves the decision from the independent SPEC-271 evaluator authority. */
   resolveAcceptance(
     scope: Spec271ReceiptScope
-  ): Promise<Spec271AcceptanceEvidence | null>;
+  ): Promise<Spec271RunBoundAcceptanceDecision | null>;
   /** Must verify an existing approved attestation; this adapter never signs. */
   verifyAttestation?(input: {
     scope: Spec271ReceiptScope;
@@ -239,13 +254,22 @@ export async function createSpec271PortableEvidenceReceipt(input: {
   if (ids.some(id => typeof id !== "string" || !id.trim())) fail("ARTIFACT_ID_INVALID");
   if (new Set(ids).size !== ids.length) fail("DUPLICATE_ARTIFACT_REFERENCE");
 
-  let decision: Spec271AcceptanceEvidence | null;
+  let resolvedDecision: Spec271RunBoundAcceptanceDecision | null;
   try {
-    decision = await dependencies.resolveAcceptance(input.scope);
+    resolvedDecision = await dependencies.resolveAcceptance(input.scope);
   } catch {
     return fail("ORACLE_DECISION_UNAVAILABLE");
   }
-  if (!decision) fail("ORACLE_DECISION_MISSING");
+  if (!resolvedDecision) fail("ORACLE_DECISION_MISSING");
+  if (resolvedDecision.uatRunId !== input.scope.uatRunId ||
+      resolvedDecision.attemptId !== input.scope.attemptId ||
+      resolvedDecision.scenarioId !== input.scope.scenarioId ||
+      resolvedDecision.scenarioRevision !== input.scope.scenarioRevision ||
+      resolvedDecision.schemaRevision !== input.scope.schemaRevision ||
+      resolvedDecision.environmentFingerprint !== input.scope.environmentFingerprint) {
+    fail("ORACLE_RUN_IDENTITY_MISMATCH");
+  }
+  const decision = resolvedDecision.decision;
   if (decision.requirementId !== input.scope.requirementId || decision.sourceSha !== input.scope.sourceSha ||
       decision.tenantId !== input.scope.tenantId || decision.projectId !== input.scope.projectId) {
     fail("ORACLE_DECISION_SCOPE_MISMATCH");
@@ -269,6 +293,12 @@ export async function createSpec271PortableEvidenceReceipt(input: {
         artifact.projectId !== input.scope.projectId) fail("ARTIFACT_SCOPE_MISMATCH");
     if (artifact.uatRunId !== input.scope.uatRunId || artifact.attemptId !== input.scope.attemptId) {
       fail("ARTIFACT_RUN_IDENTITY_MISMATCH");
+    }
+    if (artifact.scenarioId !== input.scope.scenarioId ||
+        artifact.scenarioRevision !== input.scope.scenarioRevision ||
+        artifact.schemaRevision !== input.scope.schemaRevision ||
+        artifact.environmentFingerprint !== input.scope.environmentFingerprint) {
+      fail("ARTIFACT_SCENARIO_OR_ENVIRONMENT_MISMATCH");
     }
     if (artifact.sourceSha !== input.scope.sourceSha) fail("ARTIFACT_SOURCE_SHA_MISMATCH");
     if (!(artifact.bytes instanceof Uint8Array)) fail("ARTIFACT_BYTES_UNAVAILABLE");

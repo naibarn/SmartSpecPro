@@ -35,6 +35,10 @@ const artifact: Spec271ResolvedEvidenceArtifact = {
   uatRunId: scope.uatRunId,
   attemptId: scope.attemptId,
   sourceSha: scope.sourceSha,
+  scenarioId: scope.scenarioId,
+  scenarioRevision: scope.scenarioRevision,
+  schemaRevision: scope.schemaRevision,
+  environmentFingerprint: scope.environmentFingerprint,
   createdAt: "2026-10-08T11:20:00.000Z",
   recordedSha256: hash,
   bytes,
@@ -51,12 +55,21 @@ const decision: Spec271AcceptanceEvidence = {
   reasons: [],
   evidenceDigest: "c".repeat(64),
 };
+const runBoundDecision = {
+  decision,
+  uatRunId: scope.uatRunId,
+  attemptId: scope.attemptId,
+  scenarioId: scope.scenarioId,
+  scenarioRevision: scope.scenarioRevision,
+  schemaRevision: scope.schemaRevision,
+  environmentFingerprint: scope.environmentFingerprint,
+};
 
 function dependencies(overrides: Partial<Spec271PortableReceiptDependencies> = {}): Spec271PortableReceiptDependencies {
   return {
     authorizeScope: async () => true,
     resolveArtifact: async () => artifact,
-    resolveAcceptance: async () => decision,
+    resolveAcceptance: async () => runBoundDecision,
     maxEvidenceAgeMs: 60 * 60 * 1000,
     ...overrides,
   };
@@ -127,10 +140,15 @@ describe("SPEC-271 portable source-bound evidence receipt WP2A", () => {
     await expectCode(create(dependencies({ resolveArtifact: async () => ({ ...artifact, projectId: "project-b" }) })), "ARTIFACT_SCOPE_MISMATCH");
   });
 
+  it("requires oracle and artifact evidence to match the receipt scenario, schema, and environment", async () => {
+    await expectCode(create(dependencies({ resolveAcceptance: async () => ({ ...runBoundDecision, scenarioRevision: "scenario-old" }) })), "ORACLE_RUN_IDENTITY_MISMATCH");
+    await expectCode(create(dependencies({ resolveArtifact: async () => ({ ...artifact, environmentFingerprint: "d".repeat(64) }) })), "ARTIFACT_SCENARIO_OR_ENVIRONMENT_MISMATCH");
+  });
+
   it("requires an independently resolved oracle decision and keeps test PASS distinct from acceptance", async () => {
     await expectCode(create(dependencies({ resolveAcceptance: async () => null })), "ORACLE_DECISION_MISSING");
-    await expectCode(create(dependencies({ resolveAcceptance: async () => ({ ...decision, acceptanceOutcome: "BLOCKED" }) })), "ORACLE_ACCEPTANCE_NOT_PASSED");
-    await expectCode(create(dependencies({ resolveAcceptance: async () => ({ ...decision, sourceSha: "e".repeat(40) }) })), "ORACLE_DECISION_SCOPE_MISMATCH");
+    await expectCode(create(dependencies({ resolveAcceptance: async () => ({ ...runBoundDecision, decision: { ...decision, acceptanceOutcome: "BLOCKED" } }) })), "ORACLE_ACCEPTANCE_NOT_PASSED");
+    await expectCode(create(dependencies({ resolveAcceptance: async () => ({ ...runBoundDecision, decision: { ...decision, sourceSha: "e".repeat(40) } }) })), "ORACLE_DECISION_SCOPE_MISMATCH");
   });
 
   it("preserves stable receipt identity for exact replay and rejects conflicting evidence for the same run", async () => {
