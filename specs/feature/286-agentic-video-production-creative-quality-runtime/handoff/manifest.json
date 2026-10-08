@@ -91,14 +91,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2",
+    "expected_canonical_sha": "4616a8aa8fea708c688396c4bb64edb5424cd519",
     "expected_spec_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058"
   },
   "continuation": {
     "next_action": "WP0.4 is the next work package. Obtain existing Windows Runner Authority readiness and execute Golden Fixtures A/B/C. Reconcile canonical SPEC-286 identity in parallel; keep Linux separate and generated code disabled until the security gate passes.",
     "next_ready_workunit": "WP0.4_WINDOWS_GOLDEN_RENDER_BASELINE",
     "reactivation_predicate": "Runner Authority returns an authorized Windows executor with the required Remotion capability and artifact upload path; all A/B/C job artifacts are visible with exact project revisions and output digests.",
-    "resume_point": "SPEC-286 additive amendment and WP0.4 baseline report are integrated at PR #338 merge SHA eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2. Runtime baseline is not run. Begin with Windows Runner Authority readiness; assess Linux separately.",
+    "resume_point": "PR #338 and follow-up PR #339 are integrated; latest canonical source is 4616a8aa8fea708c688396c4bb64edb5424cd519. SPEC-286 amendment is docs-only, implementation PARTIAL and runtime verification PARTIAL. Start WP0.4 with Windows Runner Authority readiness; keep Linux separate and generated motion code disabled.",
     "waiting_predicate": "Resume render work when an authorized Windows Runner capability/readiness receipt with a verified Remotion runtime pack is available. Do not claim baseline complete until A/B/C each have a durable worker job and output/QA evidence."
   },
   "continuation_assessment": {
@@ -231,7 +231,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
     "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
@@ -249,18 +249,29 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "1840029cf88f76d177069a194508667248965574"
+      "1840029cf88f76d177069a194508667248965574",
+      "f2f30bd2937ce25da76bcbd13590f1a66a776c60"
     ],
     "mapping": [
       {
         "coverage": "PARTIAL; documentation/spec checkpoint only. No runtime feature implementation or golden render execution.",
-        "scope": "R1.7 motion-enhancement acceptance delta, current source/handoff audit, and WP0.4 baseline specification",
+        "scope": "R1.7 motion-enhancement acceptance delta and WP0.4 baseline specification",
         "source_paths": [
           "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
           "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md",
           "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
         ],
         "source_sha": "1840029cf88f76d177069a194508667248965574"
+      },
+      {
+        "coverage": "PARTIAL; documented reference/rights boundary, reconciled ledger, no generated source import or execution.",
+        "scope": "Amendment 165.5 external code-animation reference rights and refreshed canonical handoff",
+        "source_paths": [
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/handoff/manifest.json"
+        ],
+        "source_sha": "f2f30bd2937ce25da76bcbd13590f1a66a776c60"
       }
     ],
     "source_paths": [
@@ -275,9 +286,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2",
+    "canonical_sha": "4616a8aa8fea708c688396c4bb64edb5424cd519",
     "integrated": true,
-    "integrated_at": "2026-10-08T07:01:26Z"
+    "integrated_at": "2026-10-08T07:07:27Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -517,19 +528,20 @@
     "unresolved": 719
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T07:06:31.739707Z",
+  "updated_at": "2026-10-08T07:08:01.117249Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md — eleven bounded source/document review rounds; these are not render or runtime QA",
-      "The SPEC-286 source digest changed again for amendment 165.5 after the PR #338 verification snapshot; post-integration scoped validation remains pending. WP0.4 render evidence remains NOT RUN."
+      "After PR #339 integration at 4616a8aa8fea708c688396c4bb64edb5424cd519: python3 -m tools.spec_handoff validate --spec-dir specs/feature/286-agentic-video-production-creative-quality-runtime returned valid=true, validation_errors=[], completion_eligible=false.",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md — eleven bounded source/document checks; no render/runtime/sandbox PASS.",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md — WP0.4 A/B/C all NOT RUN; Windows authorization/receipt absent and Linux readiness separate."
     ],
-    "freshness": "STALE",
+    "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": null,
-    "status": "NOT_RUN",
+    "sha": "4616a8aa8fea708c688396c4bb64edb5424cd519",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
