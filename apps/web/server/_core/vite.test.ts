@@ -80,7 +80,7 @@ describe("vite production static serving", () => {
 
       expect(response.status).toBe(200);
       expect(response.text).toContain('<main id="smartaihub-prerender" data-seo-prerender="true">');
-      expect(response.text).toContain("Turn one idea into work you can keep building");
+      expect(response.text).toContain("One AI workspace to move your idea forward");
       expect(response.text).toContain('<div id="root">');
     } finally {
       fs.rmSync(publicRoot, { recursive: true, force: true });

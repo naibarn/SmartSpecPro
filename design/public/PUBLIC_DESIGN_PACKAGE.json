@@ -5,7 +5,7 @@
   "experience_authority": "Spec 263 revision 263.8",
   "artifact_status": "repository-owned public UI candidate v1.2.1; awaits Spec 270 native artifact/catalog authority",
   "package_digest_algorithm": "sha256(canonical-json(file-path-and-sha256-list))",
-  "package_digest": "2f3e69357fd8ba4d6c53ca182d46e4ae5ccab7745f02b5f673e7a8d0e99e92ea",
+  "package_digest": "d92ad02e0e0a5e8f1c173b452fd26c68a76283ddc8ac63d0a6a24b967ceb68f0",
   "files": [
     {
       "path": "apps/web/client/public/images/public-home-human-editorial-1020.webp",
@@ -101,7 +101,7 @@
     },
     {
       "path": "SMARTAIHUB_PUBLIC_DESIGN.md",
-      "sha256": "085f20bd71c7e60175c1dee70eefdd0fa5de2f1a267280589ef992f87add87bf"
+      "sha256": "31cf8ee73eb7cb2db6bda6a0d20577917e32bf287883d659aec224bc17db59a5"
     },
     {
       "path": "assets/public-home-human-editorial-source.png",
@@ -131,7 +131,7 @@
   "source_authorities": [
     {
       "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
-      "sha256": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53"
+      "sha256": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6"
     },
     {
       "path": "specs/feature/263-smartaihub-public-website-experience-modernization/implementation/public-route-inventory.json",

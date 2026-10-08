@@ -41,10 +41,12 @@ describe("publicSite homepage contract", () => {
   });
 
   it("leads with a supported creation outcome instead of generic product information", () => {
-    expect(en["homePublic.title"]).toBe("Turn one idea into work you can keep building");
-    expect(th["homePublic.title"]).toBe("เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้");
+    expect(en["homePublic.title"]).toMatch(/one AI workspace/i);
+    expect(th["homePublic.title"]).toMatch(/พื้นที่ทำงาน AI/);
     expect(en["homePublic.description"]).toMatch(/chat, media creation, and vertical series/i);
     expect(th["homePublic.description"]).toMatch(/แชต สร้างสื่อ และซีรีส์แนวตั้ง/);
+    expect(en["homePublic.whyTitle"]).toMatch(/Start with the work/i);
+    expect(th["homePublic.whyTitle"]).toMatch(/เริ่มจากงานที่อยากทำ/);
     expect(en["homePublic.title"]).not.toMatch(/product information/i);
     expect(th["homePublic.title"]).not.toMatch(/ข้อมูลผลิตภัณฑ์/);
   });

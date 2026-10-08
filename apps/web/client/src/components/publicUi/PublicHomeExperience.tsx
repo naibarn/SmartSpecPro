@@ -6,7 +6,9 @@ import {
   Clapperboard,
   Compass,
   LifeBuoy,
+  MessageSquareText,
   Sparkles,
+  Video,
 } from "lucide-react";
 import {
   AspectRatio,
@@ -69,7 +71,40 @@ export type PublicHomeExperienceCopy = {
   closingTitle: string;
   closingBody: string;
   closingCta: string;
+  whyEyebrow: string;
+  whyTitle: string;
+  whyBody: string;
+  valueStartTitle: string;
+  valueStartBody: string;
+  valueCreateTitle: string;
+  valueCreateBody: string;
+  valueContinueTitle: string;
+  valueContinueBody: string;
 };
+
+function ValueCard({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: typeof Sparkles;
+  title: string;
+  body: string;
+}) {
+  return (
+    <Card>
+      <VStack gap={3}>
+        <Icon aria-hidden="true" />
+        <Heading level={3} weight="semibold">
+          {title}
+        </Heading>
+        <Text type="supporting" color="secondary">
+          {body}
+        </Text>
+      </VStack>
+    </Card>
+  );
+}
 
 function ProductFlowPanel({
   copy,
@@ -163,10 +198,10 @@ function HumanProductEvidencePanel({ copy }: { copy: PublicHomeExperienceCopy })
 /** SmartAIHub-owned public page pattern; Astryx remains an internal implementation detail. */
 export function PublicHomeExperience({
   copy,
-  afterHero,
+  supportingFeature,
 }: {
   copy: PublicHomeExperienceCopy;
-  afterHero?: ReactNode;
+  supportingFeature?: ReactNode;
 }) {
   return (
     <AstryxTheme theme={publicHomeTheme} mode="light">
@@ -284,7 +319,49 @@ export function PublicHomeExperience({
           </Grid>
         </Section>
 
-        {afterHero}
+        <Section
+          variant="muted"
+          maxWidth="var(--public-layout-wide)"
+          padding={8}
+          style={{ marginInline: "auto" }}
+        >
+          <VStack gap={6} as="section" aria-labelledby="home-why-title">
+            <VStack gap={3}>
+              <Text type="label" color="accent">
+                {copy.whyEyebrow}
+              </Text>
+              <Heading
+                level={2}
+                id="home-why-title"
+                type="display-2"
+                weight="bold"
+                textWrap="balance"
+              >
+                {copy.whyTitle}
+              </Heading>
+              <Text type="large" color="secondary">
+                {copy.whyBody}
+              </Text>
+            </VStack>
+            <Grid columns={{ minWidth: 240, max: 3 }} gap={4}>
+              <ValueCard
+                icon={MessageSquareText}
+                title={copy.valueStartTitle}
+                body={copy.valueStartBody}
+              />
+              <ValueCard
+                icon={Video}
+                title={copy.valueCreateTitle}
+                body={copy.valueCreateBody}
+              />
+              <ValueCard
+                icon={Compass}
+                title={copy.valueContinueTitle}
+                body={copy.valueContinueBody}
+              />
+            </Grid>
+          </VStack>
+        </Section>
 
         <Section variant="muted" padding={8}>
           <VStack gap={6}>
@@ -358,6 +435,8 @@ export function PublicHomeExperience({
             </nav>
           </VStack>
         </Section>
+
+        {supportingFeature}
 
         <Section
           variant="transparent"

@@ -1,9 +1,9 @@
 export const PUBLIC_HOME_SEO = {
   en: {
-    title: "SmartAIHub | From idea to your next creation",
-    h1: "Turn one idea into work you can keep building",
+    title: "SmartAIHub | One AI workspace to move ideas forward",
+    h1: "One AI workspace to move your idea forward",
     description:
-      "Start with the work you want to do and explore SmartAIHub spaces for chat, media creation, and vertical series.",
+      "Start with the work you want to do, then explore SmartAIHub spaces for chat, media creation, and vertical series.",
     keywords: [
       "SmartAIHub",
       "AI creation tools",
@@ -13,10 +13,10 @@ export const PUBLIC_HOME_SEO = {
     ],
   },
   th: {
-    title: "SmartAIHub | เปลี่ยนไอเดียให้กลายเป็นผลงาน",
-    h1: "เปลี่ยนไอเดียให้เป็นผลงานที่ต่อยอดได้",
+    title: "SmartAIHub | พื้นที่ทำงาน AI สำหรับไอเดียที่ไปต่อได้",
+    h1: "พื้นที่ทำงาน AI เดียว ที่พาไอเดียไปต่อได้",
     description:
-      "เริ่มจากงานที่อยากทำ แล้วสำรวจพื้นที่ทำงานของ SmartAIHub สำหรับแชต สร้างสื่อ และซีรีส์แนวตั้ง",
+      "เริ่มจากงานที่อยากทำ แล้วสำรวจพื้นที่ทำงาน SmartAIHub สำหรับแชต สร้างสื่อ และซีรีส์แนวตั้ง",
     keywords: [
       "SmartAIHub",
       "เครื่องมือสร้างสรรค์ด้วย AI",

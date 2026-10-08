@@ -134,8 +134,17 @@ export default function Home() {
             closingTitle: t("homePublic.closingTitle"),
             closingBody: t("homePublic.closingBody"),
             closingCta: t("homePublic.closingCta"),
+            whyEyebrow: t("homePublic.whyEyebrow"),
+            whyTitle: t("homePublic.whyTitle"),
+            whyBody: t("homePublic.whyBody"),
+            valueStartTitle: t("homePublic.valueStartTitle"),
+            valueStartBody: t("homePublic.valueStartBody"),
+            valueCreateTitle: t("homePublic.valueCreateTitle"),
+            valueCreateBody: t("homePublic.valueCreateBody"),
+            valueContinueTitle: t("homePublic.valueContinueTitle"),
+            valueContinueBody: t("homePublic.valueContinueBody"),
           }}
-          afterHero={<EmergencyPublicEntry variant="home" />}
+          supportingFeature={<EmergencyPublicEntry variant="home" />}
         />
       </main>
 

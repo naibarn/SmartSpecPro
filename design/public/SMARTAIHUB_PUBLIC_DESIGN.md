@@ -12,18 +12,19 @@ SmartAIHub helps people move from an idea to work they can continue building. Th
 
 The implemented React composition and candidate browser captures are the responsive reference. These SVGs show information architecture and component relationships; they are not approved fixed-pixel designs:
 
-- [Desktop (1440 × 900)](references/home-desktop.svg): centered 1320px page frame, two-column outcome hero with generated human editorial context paired with product-flow evidence, flagship section, capability discovery, trust/help, final CTA.
-- [Tablet (768 × 1024)](references/home-tablet.svg): same narrative order, stacked hero and flagship media, two-column capability discovery.
-- [Mobile (390 × 844)](references/home-mobile.svg): single-column hero, full-width actions, human editorial context and product-flow evidence after the lead, one-column capability discovery, no horizontal scrolling.
+- [Desktop (1440 × 900)](references/home-desktop.svg): centered 1320px page frame, two-column outcome hero with generated human editorial context paired with product-flow evidence, Vertical Series flagship, an explicit SmartAIHub value section, capability discovery, supporting public entry, trust/help, and final CTA.
+- [Tablet (768 × 1024)](references/home-tablet.svg): same narrative order, stacked hero and flagship media, reflowing value cards, and two-column capability discovery.
+- [Mobile (390 × 844)](references/home-mobile.svg): single-column hero, full-width actions, human editorial context and product-flow evidence after the lead, stacked value cards and capability discovery, no horizontal scrolling.
 
 ## Layout and section order
 
 1. Existing SmartAIHub public navigation.
 2. Hero: one outcome H1, brief supported explanation, primary signup action, feature discovery action, and a product-flow diagram beside the copy on wide screens.
 3. Vertical Series flagship: connected continuation of the hero narrative, with the supported signed-out login handoff and feature details link.
-4. Emergency public entry owned by Spec 260.
+4. Why SmartAIHub: explain the practical value in plain language through starting from a goal, exploring creative spaces, and choosing a next step. Keep the examples source-backed and avoid outcome guarantees.
 5. Capability/resource discovery: Features, Gallery, and Docs; do not present live user gallery content as curated customer proof.
-6. Truthful trust/help links, final signup action, existing footer.
+6. Supporting public entry owned by Spec 260, placed after the core SmartAIHub story so it does not interrupt product discovery.
+7. Truthful trust/help links, final signup action, existing footer.
 
 The page frame uses Astryx `Section`, `Grid`, `VStack`, `HStack`, `Card`, `Heading`, `Text`, `Button`, `Link`, and `Theme`. Main sections are limited to 1320px and align to the same frame. At wide desktop, use balanced columns and preserve deliberate negative space only around content groups, never as an unexplained blank half-screen.
 
