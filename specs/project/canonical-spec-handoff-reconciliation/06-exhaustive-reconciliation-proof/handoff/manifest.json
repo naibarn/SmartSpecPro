@@ -25,10 +25,10 @@
     "expected_spec_digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f"
   },
   "continuation": {
-    "next_action": "REPOSITORY_WIDE_SPEC_RECONCILIATION_COMPLETE = TRUE. CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE. NEXT_WORKUNIT = P0_WORKSPACE_AUTHORITY_AND_CONVERGENCE_HARDENING. Individual Spec implementation, acceptance, deployment, and completion remain separately governed.",
-    "next_ready_workunit": "P0_WORKSPACE_AUTHORITY_AND_CONVERGENCE_HARDENING",
+    "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
+    "next_ready_workunit": "SPEC06_REQUIREMENT_AND_DEPENDENCY_GRAPH_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": "Final canonical handoff gate passed against origin/main 07e8ca3ec5f5cacbb81eb0feb15f043c0705a332: 463 discovered/indexed records, 306 canonical Specs, 302 relationship edges, 6 validated aliases, 0 unresolved classifications, 82 handoff tests and 330 skill audit tests passed. Specs 006 and 226 are DORMANT_VALID; their open proposal requirements remain unimplemented and do not block migration closeout.",
+    "resume_point": "Partial audit evidence is specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/autonomous-execution-meat-proxy-audit-2026-10-08.md (sha256 1522d4ebbda8109a302af95eb78dafae60af4a1c1985a2694f6a069c4f9024f4), bound to origin/main b4a955bb1ca460b6ec8e3937c9669a01a232b853. Inventory: 314 canonical Specs / 472 records. validate --all: exit 2 due to missing handoffs for 305-307; no invalid manifests, no generated status drift, global index equal. The 312-edge candidate relation graph contains 9 cycles that are not yet classified as dependencies. Classification/index checks and 82 focused handoff tests pass. Historical full-gate PASS at 07e8ca3ec5f5cacbb81eb0feb15f043c0705a332 does not prove the current gate.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -49,10 +49,18 @@
         "digest": "f39e8b07b5ceb4914f98fc5f2e52e602dd63810fe5b33d72a5b7be9849398260",
         "kind": "SPEC161_POSTINTEGRATION_VALIDATION",
         "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-postintegration-validation-20261006.md"
+      },
+      {
+        "command": "tools.spec_handoff inventory --dry-run; validate --all; classifications --check; index --check; python3 -m unittest discover -s tools/spec_handoff/tests -q",
+        "digest": "1522d4ebbda8109a302af95eb78dafae60af4a1c1985a2694f6a069c4f9024f4",
+        "kind": "SCOPED_HANDOFF_AUDIT",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/autonomous-execution-meat-proxy-audit-2026-10-08.md",
+        "result": "PARTIAL gate: 314 canonical Specs / 472 records; missing handoffs 305-307; 9 candidate relationship cycles require classification; classification/index checks and 82 focused tests pass",
+        "sha": "b4a955bb1ca460b6ec8e3937c9669a01a232b853"
       }
     ],
-    "next_action": "Proceed to FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on current canonical main. Do not set CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE until that gate passes.",
-    "rationale": "SPEC-161 authority has a deterministic evidence-backed disposition and all current repository integrity checks pass. This closes REVIEW_REMAINING_RECONCILIATION_RECORDS only; the final canonical handoff migration gate and migration-complete outcome remain open.",
+    "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
+    "rationale": "Inventory, generated views, classification projection, and the focused handoff test suite validate at the audited SHA. The final migration gate remains open because the SPEC-06 requirement is unparsed, canonical handoffs for SPEC-305/306/307 are missing, and candidate relationship cycles have not been classified as dependencies or ordinary references.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -81,7 +89,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 41,
+  "generation": 44,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "837596067ef5e1c401426dee13f3b293c2350cf3f2918a1d91538510f9627a8f",
@@ -111,7 +119,7 @@
     "integrated_at": "2026-10-06T16:06:00Z"
   },
   "lifecycle": {
-    "current_state": "VERIFIED",
+    "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [
       {
@@ -142,14 +150,22 @@
           "digest": "f39e8b07b5ceb4914f98fc5f2e52e602dd63810fe5b33d72a5b7be9849398260",
           "kind": "SPEC161_POSTINTEGRATION_VALIDATION",
           "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/spec161-postintegration-validation-20261006.md"
+        },
+        {
+          "command": "tools.spec_handoff inventory --dry-run; validate --all; classifications --check; index --check; python3 -m unittest discover -s tools/spec_handoff/tests -q",
+          "digest": "1522d4ebbda8109a302af95eb78dafae60af4a1c1985a2694f6a069c4f9024f4",
+          "kind": "SCOPED_HANDOFF_AUDIT",
+          "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/autonomous-execution-meat-proxy-audit-2026-10-08.md",
+          "result": "PARTIAL gate: 314 canonical Specs / 472 records; missing handoffs 305-307; 9 candidate relationship cycles require classification; classification/index checks and 82 focused tests pass",
+          "sha": "b4a955bb1ca460b6ec8e3937c9669a01a232b853"
         }
       ],
-      "next_action": "Proceed to FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on current canonical main. Do not set CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE until that gate passes.",
-      "rationale": "SPEC-161 authority has a deterministic evidence-backed disposition and all current repository integrity checks pass. This closes REVIEW_REMAINING_RECONCILIATION_RECORDS only; the final canonical handoff migration gate and migration-complete outcome remain open.",
+      "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
+      "rationale": "Inventory, generated views, classification projection, and the focused handoff test suite validate at the audited SHA. The final migration gate remains open because the SPEC-06 requirement is unparsed, canonical handoffs for SPEC-305/306/307 are missing, and candidate relationship cycles have not been classified as dependencies or ordinary references.",
       "residual_requirements": []
     },
     "lifecycle": {
-      "current_state": "VERIFIED",
+      "current_state": "VALIDATION_PENDING",
       "previous_state": "VALIDATION_PENDING",
       "state_evidence": [
         {
@@ -240,7 +256,7 @@
     "unresolved": 1
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T16:08:30.140899Z",
+  "updated_at": "2026-10-08T01:29:18.926398Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -267,12 +283,20 @@
         "kind": "SKILL_AUDIT",
         "result": "330 passed; skill audit passed",
         "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332"
+      },
+      {
+        "command": "tools.spec_handoff inventory --dry-run; validate --all; classifications --check; index --check; python3 -m unittest discover -s tools/spec_handoff/tests -q",
+        "digest": "1522d4ebbda8109a302af95eb78dafae60af4a1c1985a2694f6a069c4f9024f4",
+        "kind": "SCOPED_HANDOFF_AUDIT",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/handoff/evidence/autonomous-execution-meat-proxy-audit-2026-10-08.md",
+        "result": "PARTIAL gate: 314 canonical Specs / 472 records; missing handoffs 305-307; 9 candidate relationship cycles require classification; classification/index checks and 82 focused tests pass",
+        "sha": "b4a955bb1ca460b6ec8e3937c9669a01a232b853"
       }
     ],
     "freshness": "EXACT_SHA",
     "required_profiles": [],
-    "sha": "07e8ca3ec5f5cacbb81eb0feb15f043c0705a332",
-    "status": "PASS",
+    "sha": "b4a955bb1ca460b6ec8e3937c9669a01a232b853",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "baseline_sha": "2287490fddfa4008bca30e8920be2426b62f6ba8",
-  "inventory_record_count": 463,
-  "reconciliation_review_count": 327,
-  "relationship_edge_count": 302,
+  "baseline_sha": "b4a955bb1ca460b6ec8e3937c9669a01a232b853",
+  "inventory_record_count": 472,
+  "reconciliation_review_count": 330,
+  "relationship_edge_count": 312,
   "renumber_alias_count": 6,
-  "canonical_spec_count": 306,
+  "canonical_spec_count": 314,
   "duplicate_canonical_authority_count": 0,
   "classification_counts": {
-    "CANONICAL_ACTIVE": 305,
+    "CANONICAL_ACTIVE": 313,
     "DUPLICATE_REVISION": 1,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -18,10 +18,10 @@
     "STALE_REFERENCE": 0,
     "SUPERSEDED": 1,
     "UNRESOLVED_AUTHORITY": 0,
-    "VALID_NON_CANONICAL": 155
+    "VALID_NON_CANONICAL": 156
   },
   "review_classification_counts": {
-    "CANONICAL_ACTIVE": 299,
+    "CANONICAL_ACTIVE": 302,
     "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -3628,7 +3628,7 @@
       "evidence": [
         {
           "path": "specs/feature/166-credit-context-polymorphic-lineage/spec.md",
-          "sha256": "29025861a3f0fa47a1e1a6ead7ae5192d57de6869c5be03f477893f30bf1e505"
+          "sha256": "c9ae1c425f0a6fba7fb063446eeca89dd49c47e5711f16959a3efdffa2d62009"
         }
       ],
       "in_reconciliation_review": true
@@ -4977,7 +4977,7 @@
       "evidence": [
         {
           "path": "specs/feature/233-Living Project Intelligence, Continuous Product Evolution & Adaptive Knowledge Lifecycle/spec.md",
-          "sha256": "4bfc4a293eae9ffad3a2dd19ece68364ed3f6ec859e2344c2464b7b4a7f62992"
+          "sha256": "195be86be0e5e619f2e26b015b8e8a023df762b4b56e53838bf7a7a6a51bad2e"
         }
       ],
       "in_reconciliation_review": true
@@ -5110,7 +5110,7 @@
       "evidence": [
         {
           "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
-          "sha256": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc"
+          "sha256": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889"
         }
       ],
       "in_reconciliation_review": true
@@ -5551,7 +5551,7 @@
       "evidence": [
         {
           "path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
-          "sha256": "1874b479dc70d48cfd681c26d512e0a5df2eee152ab986e7bf8de7266428ea53"
+          "sha256": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6"
         }
       ],
       "in_reconciliation_review": true
@@ -5608,7 +5608,7 @@
       "evidence": [
         {
           "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
-          "sha256": "c82e968fd553df754a03b4ff815ad0aec45b2c80e6830fdb3dcfd05d1bb04f2c"
+          "sha256": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9"
         }
       ],
       "in_reconciliation_review": true
@@ -5631,6 +5631,44 @@
         }
       ],
       "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
+      "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "268",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
+          "sha256": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
+        }
+      ],
+      "in_reconciliation_review": false
+    },
+    {
+      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "269",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
+          "sha256": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
+        }
+      ],
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime",
@@ -5836,7 +5874,7 @@
       "evidence": [
         {
           "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-          "sha256": "8138f71c5337a3f424390ff2dae8ef7fb12bb67a577ddbce03d2862e1e8eec30"
+          "sha256": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e"
         }
       ],
       "in_reconciliation_review": true
@@ -5912,7 +5950,7 @@
       "evidence": [
         {
           "path": "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md",
-          "sha256": "b54cdedb2260c5a481e928112c186294370381fbd73a23e006b22f7fda995647"
+          "sha256": "785d9632b21124befc6ec06aae42aac5aa67dcf36ce9d147a3498b64bca5e762"
         }
       ],
       "in_reconciliation_review": true
@@ -5969,7 +6007,7 @@
       "evidence": [
         {
           "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-          "sha256": "d35836f364148c2174cb0c74b260c71cbc8e091408f5645a960f628b10bf6ba4"
+          "sha256": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936"
         }
       ],
       "in_reconciliation_review": true
@@ -6064,7 +6102,7 @@
       "evidence": [
         {
           "path": "specs/feature/292-adaptive-work-context-organizational-collaboration-federated-exchange-r1-0/spec.md",
-          "sha256": "11b4baccbd9401f1d80a8a134041c455b8eb63dedd1767515fa261be7e8085a4"
+          "sha256": "a3ebfbea14f1b4b0d4091c797c30dd059e9cd6aa017c5e5b6b72bf1b32de3aea"
         }
       ],
       "in_reconciliation_review": true
@@ -6083,7 +6121,7 @@
       "evidence": [
         {
           "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-          "sha256": "3881a488aeafd4b3cc851aedc6e678dc5ea977fe11fb5e4153dba6e825320f5a"
+          "sha256": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
         }
       ],
       "in_reconciliation_review": true
@@ -6102,7 +6140,7 @@
       "evidence": [
         {
           "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "sha256": "d09d97058d4c9134b2001509b910af67b16d87b9b2cdd4d0d1b31c33c241d298"
+          "sha256": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
         }
       ],
       "in_reconciliation_review": true
@@ -6121,7 +6159,7 @@
       "evidence": [
         {
           "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-          "sha256": "bb1ca0046957653609a9af95230551ce546f1da2c775bae50f95d2bc79fc82a5"
+          "sha256": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
         }
       ],
       "in_reconciliation_review": true
@@ -6201,6 +6239,139 @@
         }
       ],
       "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "302",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
+          "sha256": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
+        }
+      ],
+      "in_reconciliation_review": false
+    },
+    {
+      "record_key": "canonical:specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+      "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "303",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover/spec.md",
+          "sha256": "601c35bc1f872f1aefe6ae9985f3853bba67dcdc105f53a0f8ec78d3cf419b38"
+        }
+      ],
+      "in_reconciliation_review": false
+    },
+    {
+      "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "304",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
+          "sha256": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
+        }
+      ],
+      "in_reconciliation_review": false
+    },
+    {
+      "record_key": "canonical:specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric",
+      "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "305",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/305-smartaihub-artifact-intelligence-semantic-mutation-versioning-fabric/spec.md",
+          "sha256": "6cf15d021f0c025468c9e83f4bd411630905da17129035d654b534dccfcb186f"
+        }
+      ],
+      "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/306-omnichannel-growth-messaging-registration-command-ingress",
+      "path": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "306",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/306-omnichannel-growth-messaging-registration-command-ingress/spec.md",
+          "sha256": "281691d1fb3a63c8e9cfc689fd8f1c85d34d5fc3879b3e529b6ad4fc5b4ffd05"
+        }
+      ],
+      "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/307-smartaihub-local-edge-inference-access-fabric",
+      "path": "specs/feature/307-smartaihub-local-edge-inference-access-fabric",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "307",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
+          "sha256": "ddb109ab2128a85dd2651d267dc90f2961850acf0749f9e1f17b5af24981d5e1"
+        }
+      ],
+      "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/_candidates",
+      "path": "specs/feature/_candidates",
+      "record_kind": "COLLECTION_ENTRY_NO_SPEC",
+      "spec_id": null,
+      "classification": "VALID_NON_CANONICAL",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "COLLECTION_ENTRY_NO_SPEC is a legitimate planning, project-requirement, or collection artifact outside canonical Spec authority.",
+      "action_taken": "Retain as supporting inventory evidence; do not count as an independent canonical Spec.",
+      "validation_state": "PASS_INVENTORY_RECORD_KIND",
+      "evidence": [
+        {
+          "path": "specs/feature/_candidates",
+          "sha256": "d8940bf0e384a62bb7d13d1efa99d53d176630af7455247aa07783d46177831f"
+        }
+      ],
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/project/012-chat-agency-control-plane",
