@@ -39,11 +39,52 @@ set -euo pipefail
 # dedicated scope lets oomd stop only the build while leaving its terminal
 # session alive. CI and hosts without a user systemd manager keep the normal
 # direct execution path.
+check_inotify_headroom() {
+  local max_watches current_watches
+  if [ ! -r /proc/sys/fs/inotify/max_user_watches ]; then
+    return 0
+  fi
+  max_watches="$(cat /proc/sys/fs/inotify/max_user_watches)"
+  current_watches="$(python3 - <<'PY'
+from pathlib import Path
+import os
+
+watch_count = 0
+for process in Path('/proc').iterdir():
+    if not process.name.isdigit():
+        continue
+    try:
+        if process.stat().st_uid != os.getuid():
+            continue
+        for info in (process / 'fdinfo').glob('*'):
+            try:
+                watch_count += info.read_text(errors='ignore').count('inotify wd:')
+            except OSError:
+                pass
+    except OSError:
+        pass
+print(watch_count)
+PY
+)"
+  if [ -z "${max_watches}" ] || [ -z "${current_watches}" ]; then
+    echo "[build-atomic] Resource preflight: unable to measure inotify watch usage; continuing." >&2
+    return 0
+  fi
+  echo "[build-atomic] Inotify watch usage: ${current_watches}/${max_watches}." >&2
+  if [ "$((current_watches * 10))" -ge "$((max_watches * 9))" ]; then
+    echo "[build-atomic] RESOURCE_BLOCKED: inotify watches are at least 90% of the per-user limit; exclude generated workspace folders and reload the editor before building." >&2
+    return 1
+  fi
+}
+
 if [ "${SSP_BUILD_SYSTEMD_SCOPE:-0}" != "1" ] \
   && [ "$(uname -s)" = "Linux" ] \
   && command -v systemd-run >/dev/null 2>&1 \
   && [ -n "${XDG_RUNTIME_DIR:-}" ] \
   && systemctl --user show-environment >/dev/null 2>&1; then
+  if ! check_inotify_headroom; then
+    exit 137
+  fi
   SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
   BUILD_SCOPE_SUFFIX="$(date +%s)-$$"
   exec systemd-run --user --scope \
@@ -111,6 +152,74 @@ cleanup_stale_staging() {
 }
 
 cleanup_stale_staging
+
+# Admission gate for the shared development host. A full Vite build can peak
+# near 8 GiB; starting while the user slice is already at its memory/swap cap
+# causes sustained PSI and systemd-oomd to kill this build. Keep the production
+# service headroom intact and fail before Vite transforms 13k modules.
+resource_preflight() {
+  local user_cgroup="/sys/fs/cgroup/user.slice/user-$(id -u).slice"
+  local memory_current memory_high memory_max swap_current swap_max
+  local available_kb psi_avg10 memory_high_headroom memory_max_headroom swap_headroom
+  local gib=$((1024 * 1024 * 1024))
+  local minimum_memory_headroom=$((6 * gib))
+  local minimum_memory_max_headroom=$((8 * gib))
+  local minimum_swap_headroom=$((512 * 1024 * 1024))
+  local minimum_host_available_kb=$((6 * 1024 * 1024))
+
+  available_kb="$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null || true)"
+  psi_avg10="$(awk '$1 == "some" { for (i = 2; i <= NF; i++) if ($i ~ /^avg10=/) { split($i, value, "="); print value[2] } }' /proc/pressure/memory 2>/dev/null || true)"
+  echo "[build-atomic] Resource preflight: host_available_kb=${available_kb:-unknown}, memory_psi_some_avg10=${psi_avg10:-unknown}."
+
+  if [ -n "${available_kb}" ] && [ "${available_kb}" -lt "${minimum_host_available_kb}" ]; then
+    echo "[build-atomic] RESOURCE_BLOCKED: host has less than 6 GiB available RAM; no build was started." >&2
+    return 1
+  fi
+  if [ -n "${psi_avg10}" ] && awk -v value="${psi_avg10}" 'BEGIN { exit !(value >= 50) }'; then
+    echo "[build-atomic] RESOURCE_BLOCKED: memory PSI is already at least 50%; no build was started." >&2
+    return 1
+  fi
+
+  if [ ! -r "${user_cgroup}/memory.current" ] || [ ! -r "${user_cgroup}/memory.high" ] \
+    || [ ! -r "${user_cgroup}/memory.max" ]; then
+    echo "[build-atomic] Resource preflight: user-slice cgroup limits unavailable; continuing with host RAM/PSI checks."
+    return 0
+  fi
+
+  memory_current="$(cat "${user_cgroup}/memory.current")"
+  memory_high="$(cat "${user_cgroup}/memory.high")"
+  memory_max="$(cat "${user_cgroup}/memory.max")"
+  swap_current="$(cat "${user_cgroup}/memory.swap.current" 2>/dev/null || echo max)"
+  swap_max="$(cat "${user_cgroup}/memory.swap.max" 2>/dev/null || echo max)"
+  echo "[build-atomic] Resource preflight: user_slice_memory_current=${memory_current}, high=${memory_high}, max=${memory_max}, swap_current=${swap_current}, swap_max=${swap_max}."
+
+  if [ "${memory_high}" != "max" ]; then
+    memory_high_headroom=$((memory_high - memory_current))
+    if [ "${memory_high_headroom}" -lt "${minimum_memory_headroom}" ]; then
+      echo "[build-atomic] RESOURCE_BLOCKED: user slice has less than 6 GiB headroom below MemoryHigh; no build was started." >&2
+      return 1
+    fi
+  fi
+  if [ "${memory_max}" != "max" ]; then
+    memory_max_headroom=$((memory_max - memory_current))
+    if [ "${memory_max_headroom}" -lt "${minimum_memory_max_headroom}" ]; then
+      echo "[build-atomic] RESOURCE_BLOCKED: user slice has less than 8 GiB headroom below MemoryMax; no build was started." >&2
+      return 1
+    fi
+  fi
+  if [ "${swap_max}" != "max" ]; then
+    swap_headroom=$((swap_max - swap_current))
+    if [ "${swap_headroom}" -lt "${minimum_swap_headroom}" ]; then
+      echo "[build-atomic] RESOURCE_BLOCKED: user slice has less than 512 MiB swap headroom; no build was started." >&2
+      return 1
+    fi
+  fi
+  return 0
+}
+
+if ! resource_preflight; then
+  exit 137
+fi
 
 AVAILABLE_KB="$(df -Pk "${WEB_DIR}" | awk 'NR == 2 { print $4 }')"
 if [ -z "${AVAILABLE_KB}" ] || [ "${AVAILABLE_KB}" -lt "${MIN_FREE_KB}" ]; then
