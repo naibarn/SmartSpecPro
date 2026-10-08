@@ -5,9 +5,9 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
+    "sha": "5c713e89004f166a8018e49bdc388460fef7fe33",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
-    "userWorkspaceClean": true,
+    "userWorkspaceClean": false,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
       "integrated_sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
@@ -20,14 +20,12 @@
     },
     "observedAt": "2026-10-08T01:25:57.511+00:00",
     "latestVerify": {
-      "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
-      "canonical_user_workspace_sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
-      "dirty": false,
-      "reasons": [],
-      "verified_at": "2026-10-08T01:26:21.822+00:00",
-      "receipt_id": "workspace-convergence:cfc1135e-2a6d-443f-aa7d-20de8774a2d5"
-    }
+      "status": "STALE_DIRTY_WORKSPACE_PRESERVED",
+      "canonical_user_workspace_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+      "dirty": true,
+      "reason": "Unrelated dirty Spec 208 work preserved; do not advance this checkout until its owner permits convergence."
+    },
+    "latestIntegratedProgramChange": "PR #309 merged normally at 5c5a0a23822bc447cc4aeef753d49d018d463979; latest observed origin/main is 5c713e89004f166a8018e49bdc388460fef7fe33. Canonical user workspace has unrelated dirty Spec 208 work and was preserved; it remains at 6f19b9a2b33872a53629919e3ed648ee064bae75 and was not converged."
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -60,17 +58,18 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FULL_APP_RUNTIME_OUTBOX_RACE_CLOSURE",
-    "state": "PARTIAL_INTEGRATED",
-    "objective": "Make the full server runtime harness publish and observe the authenticated API-created Research Notes job through the canonical worker_jobs/outbox path before the isolated PostgreSQL worker executes it.",
+    "id": "LANE1_TRUSTED_RUNNER_BINDING_AND_NONPROD_DEPLOYMENT",
+    "state": "PARTIAL_INTEGRATED_EXTERNAL_AUTHORITY_WAIT",
+    "objective": "Bind Factory execution to the existing authenticated DevelopmentRun/Runner control plane and deploy Research Notes through a registered non-production target.",
     "implementation": [
-      "apps/web/scripts/research-notes-background-worker-runtime.ts"
+      "apps/web/server/services/jobControlPlane.ts",
+      "apps/web/server/services/__tests__/jobControlPlane.test.ts"
     ],
-    "sourceSha": "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c",
-    "evidence": "PR #296 added publication of the API-created summary job outbox. PR #297 made the harness tolerate a concurrent canonical publisher lease by waiting for durable publishedAt. Post-integration run on exact canonical SHA 3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e passed: healthz=200, readyz=200, Research Notes UI=200, authenticated API, separate worker summary settlement, headless settlement readback, and synthetic retry/failure recovery. Browser UAT was skipped in this placement-only run; prior authenticated browser evidence remains 8/8. This is loopback runtime evidence, not deployment.",
-    "integration": "PR #297 MERGED_NORMALLY",
-    "integratedSha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
-    "nextAction": "Continue trusted Factory stage-handler runtime composition when the existing Runner session, capability snapshot, authorization grant, approval, budget reservation, and workspace binding are available. Keep non-production deployment target registration and real AI provider configuration as separate gates."
+    "sourceSha": "ada93bda6fca71a4ce059f63f982bafa1291e88a",
+    "evidence": "PR #309 merged normally at 5c5a0a23822bc447cc4aeef753d49d018d463979. Deferred DevelopmentRun admission persists pending without dispatch outbox; release requires a job-bound READY_FOR_LIVE binding and current trusted Runner session/capability snapshot. Focused jobControlPlane suite: 70/70 passed; git diff --check passed. This is control-plane groundwork only, not Factory stage execution or runtime acceptance.",
+    "integration": "PR #309 MERGED_NORMALLY",
+    "integratedSha": "5c5a0a23822bc447cc4aeef753d49d018d463979",
+    "nextAction": "Continue Factory-to-external_agent_task composition and receipt settlement. Resume live execution only when actual Runner session, fresh capability snapshot, grant, approval, budget reservation, and workspace binding are valid. Deployment waits for an authorized registered non-production target."
   },
   "checkpoints": [
     {
@@ -323,6 +322,14 @@
       "integration": "SQUASH_MERGED_NORMALLY",
       "sha": "059f3b86138546ae91c725778ac49f1a517b1b68",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/293"
+    },
+    {
+      "id": "LANE1_DEFERRED_EXTERNAL_RUN_AUTHORIZATION_HOLD",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "ada93bda6fca71a4ce059f63f982bafa1291e88a",
+      "sha": "5c5a0a23822bc447cc4aeef753d49d018d463979",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/309",
+      "evidence": "70/70 focused jobControlPlane tests passed after rebase; deferred external runs remain pending and create no outbox dispatch until persisted READY_FOR_LIVE binding is verified against current Runner authority. Real Runner dispatch, Factory stage settlement, auto-next, deployment, and UAT not claimed."
     }
   ],
   "completedWorkunits": [
@@ -356,7 +363,20 @@
       "pr": "PENDING"
     }
   ],
-  "blockedWorkunits": [],
+  "blockedWorkunits": [
+    {
+      "id": "FACTORY_LIVE_RUNNER_AUTHORITY",
+      "state": "WAITING_EXTERNAL_AUTHORITY",
+      "rootCause": "The loopback environment has no trusted Runner with an unexpired capability snapshot (0 eligible at observation). Economic budget debit/credit account IDs are absent. A live session, capability grant, approval, budget reservation, and workspace binding cannot be fabricated.",
+      "reactivationPredicate": "An authorized Runner is registered and trusted; active session and capability snapshot are current/nonexpired; an authentic capability grant, owner approval, budget reservation, and workspace authority can be bound to the same DevelopmentRun/job."
+    },
+    {
+      "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
+      "state": "WAITING_EXTERNAL_AUTHORITY",
+      "rootCause": "The observed loopback database has no provider_deployment_targets or provider_deployment_credentials tables. Existing target authority is Cloudflare-only; Cloudflare account ID, API token, and runtime token are absent. No authoritative target ID/runtime identity/deployment authorization exists.",
+      "reactivationPredicate": "An approved non-production target is registered under existing deployment authority with tenant/project/environment, runtime identity, isolated DB, package reference, and deployment authorization."
+    }
+  ],
   "criticalPath": [
     {
       "order": 1,
@@ -523,7 +543,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T01:26:43+00:00",
+  "updatedAt": "2026-10-08T01:59:16+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -539,17 +559,17 @@
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "UNSELECTED",
-    "reason": "The normal full server composition is exercised on loopback against a disposable PostgreSQL 17 Mini App schema. Authenticated action-to-worker settlement, health/readiness/UI/API, and prior browser UAT are evidenced. This is not a registered deployment target, deployment artifact/runtime ID, or full application-schema deployment. Deployment authority/target/runtime identity remain pending; no production service or migration was touched.",
+    "reason": "Existing disposable PostgreSQL/pgvector runtime is test infrastructure, not an authorized deployment target. Observed DB lacks provider deployment target/credential tables; Cloudflare target authority configuration lacks account/API/runtime credentials. No deployment or production mutation performed.",
     "productionTouched": false
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "WORKER_JOBS_OUTBOX_STAGE_EXECUTOR_AND_CROSS_PROCESS_RETRY_RESUME_TESTED; TRUSTED_STAGE_HANDLER_RUNTIME_COMPOSITION_PENDING",
-    "secondMiniApp": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
+    "state": "WORKER_JOBS_OUTBOX_STAGE_EXECUTOR_AND_CROSS_PROCESS_SYNTHETIC_RESUME_TESTED; DEFERRED_RUN_AUTHORIZATION_HOLD_FIXED; TRUSTED_FACTORY_STAGE_COMPOSITION_AND_LIVE_RECEIPT_SETTLEMENT_PENDING",
+    "secondMiniApp": "PASS_PROJECT_WIKI_THROUGH_PACKAGE_USING_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/factory-handoff-post297-20261008",
-    "sourceBranch": "codex/factory-handoff-post297-20261008",
+    "taskWorktree": "/home/dev/worktrees/factory-lane1-20261008",
+    "sourceBranch": "codex/factory-lane1-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -584,15 +604,16 @@
       "65a4d47ee98ee12b0dbe5dee820a9d6734637984",
       "04894ce3df64218e42cacd81cfb11bca919e660f",
       "357341fad2f45ce192ae6c1af86d36c584bfc5bd",
-      "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c"
+      "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c",
+      "ada93bda6fca71a4ce059f63f982bafa1291e88a"
     ],
-    "intendedRemoteBranch": "codex/factory-handoff-post297-20261008",
+    "intendedRemoteBranch": "codex/factory-lane1-20261008",
     "pendingPullRequest": {
-      "number": 297,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/297",
+      "number": 309,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/309",
       "state": "MERGED",
-      "sourceSha": "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c",
-      "integratedSha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e"
+      "sourceSha": "ada93bda6fca71a4ce059f63f982bafa1291e88a",
+      "integratedSha": "5c5a0a23822bc447cc4aeef753d49d018d463979"
     },
     "testEvidence": [
       {
@@ -764,17 +785,27 @@
         "revision": "post-integration canonical 3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e (PR #297)",
         "command": "TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp SKIP_BROWSER_UAT=1 bash apps/web/scripts/test-mini-app-full-runtime.sh",
         "outcome": "PASS: disposable PostgreSQL 17 and isolated normal server composition on loopback; healthz=200, readyz=200, Research Notes UI=200, unauthenticated API=401, authenticated API PASS, canonical outbox publication, separate PostgreSQL worker summary settlement, headless settlement readback, retry/recovery/permanent-failure evidence PASS. Runtime instance stopped by the disposable harness; not deployment. Browser UAT skipped because this was runtime placement verification."
+      },
+      {
+        "revision": "5c5a0a23822bc447cc4aeef753d49d018d463979 (PR #309)",
+        "command": "TMPDIR=/home/dev/.cache/codex/miniapp-runtime-tmp pnpm --filter @smartspec/web exec vitest run server/services/__tests__/jobControlPlane.test.ts",
+        "outcome": "PASS: 1 file, 70 tests. Deferred authorization hold/release tests included."
+      },
+      {
+        "revision": "5c5a0a23822bc447cc4aeef753d49d018d463979 (PR #309)",
+        "command": "git diff --check",
+        "outcome": "PASS"
       }
     ],
-    "githubIntegration": "IDLE_AFTER_PR_297_MERGE",
-    "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
+    "githubIntegration": "PR_309_MERGED_NORMALLY; origin/main advanced after merge",
+    "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
+    "canonicalAtCheckpoint": "5c713e89004f166a8018e49bdc388460fef7fe33",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
-      "clean": true,
-      "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:cfc1135e-2a6d-443f-aa7d-20de8774a2d5"
+      "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+      "clean": false,
+      "verifyState": "DIRTY_UNRELATED_SPEC_208_WORK_PRESERVED",
+      "receiptId": null
     },
     "previousPullRequests": [
       {
@@ -832,6 +863,14 @@
         "integration": "SQUASH_MERGED_NORMALLY",
         "sourceSha": "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c",
         "integratedSha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e"
+      },
+      {
+        "number": 309,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/309",
+        "state": "MERGED",
+        "integration": "MERGED_NORMALLY",
+        "sourceSha": "ada93bda6fca71a4ce059f63f982bafa1291e88a",
+        "integratedSha": "5c5a0a23822bc447cc4aeef753d49d018d463979"
       }
     ],
     "taskOutcome": "CHECKPOINT_PROMOTED_PARTIAL"
