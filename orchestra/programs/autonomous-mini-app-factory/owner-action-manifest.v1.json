@@ -5,8 +5,9 @@
   "repository": "naibarn/SmartSpecPro",
   "canonicalSourceAtPreparation": {
     "ref": "origin/main",
-    "sha": "34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab",
-    "warning": "This SHA is not yet attested into the Windows workspace and is not an authorization binding. Rebuild the manifest after the implementation checkpoint is integrated."
+    "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+    "integratedBy": "PR #375",
+    "warning": "This integrated SHA is not attested into the Windows workspace and is not an authorization binding. Rebuild the runtime binding after a fresh Runner snapshot and job-specific source attestation exist."
   },
   "execution": {
     "tenantId": "tenant-ZCSKEM9s",
@@ -17,6 +18,14 @@
     "provider": "codex",
     "requestedCapability": "tool.execute.codex",
     "state": "NOT_CREATED_NO_DISPATCH"
+  },
+  "sourceBinding": {
+    "sourceCommit": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+    "sourceTree": null,
+    "sourceManifestDigest": null,
+    "packageDigest": null,
+    "attestationId": null,
+    "state": "INTEGRATED_SOURCE_NOT_ATTESTED_IN_WINDOWS_WORKSPACE"
   },
   "runnerEvidence": {
     "runnerId": "local-runner",
@@ -77,7 +86,13 @@
       "cloudflare_migration",
       "shared_worktree"
     ],
-    "expiry": "Set by the authenticated owner workflow to no later than 15 minutes or the fresh capability snapshot expiry, whichever occurs first.",
+    "expiry": {
+      "status": "UNSET_NO_GRANT_ISSUED",
+      "absoluteExpiry": null,
+      "maximumLifetimeSeconds": 900,
+      "mustNotExceedFreshCapabilitySnapshotExpiry": true,
+      "setBy": "authenticated tenant-owner issuance workflow"
+    },
     "state": "CANNOT_ISSUE_UNTIL_RUN_JOB_ATTEMPT_AND_FRESH_ATTESTATION_EXIST"
   },
   "economicAuthorization": {
