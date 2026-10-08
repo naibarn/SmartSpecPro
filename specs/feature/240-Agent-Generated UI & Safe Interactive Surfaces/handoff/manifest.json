@@ -18,8 +18,8 @@
           "R0.5",
           "R0.6"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L17",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L18",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -30,8 +30,8 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L807",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -44,8 +44,8 @@
         "requirement_ids": [
           "R0.5"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L983",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L984",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -56,8 +56,8 @@
         "referencing_spec_id": "240",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L422",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -68,8 +68,8 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L807",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -80,8 +80,8 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1619",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -92,8 +92,8 @@
         "referencing_spec_id": "240",
         "relation_text": "replacement",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L421",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L422",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -106,8 +106,8 @@
         "requirement_ids": [
           "R0.2"
         ],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L335",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L336",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -118,8 +118,8 @@
         "referencing_spec_id": "240",
         "relation_text": "supersede",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L806",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L807",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -130,8 +130,8 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1126",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1127",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -142,8 +142,8 @@
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1619",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       },
       {
@@ -228,13 +228,27 @@
       {
         "confidence": "LOW",
         "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "287",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R1.5"
+        ],
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+        "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+        "successor_spec_id": "287"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
         "predecessor_spec_id": "251",
         "referenced_spec_id": "251",
         "referencing_spec_id": "240",
         "relation_text": "merge",
         "requirement_ids": [],
-        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1618",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L1619",
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "successor_spec_id": "240"
       }
     ],
@@ -242,7 +256,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
       }
@@ -254,7 +268,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc"
+    "expected_spec_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889"
   },
   "continuation": {
     "next_action": null,
@@ -268,7 +282,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
       }
@@ -295,7 +309,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
       }
@@ -303,21 +317,21 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
-    "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+    "digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.073415Z",
+      "last_evidence_at": "2026-10-08T00:54:19.773518Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-28T00:04:37+07:00"
     },
-    "revision": "0.7",
+    "revision": "0.8",
     "slug": "240-Agent-Generated UI & Safe Interactive Surfaces",
     "spec_id": "240",
-    "title": "Spec 240 (PROVISIONAL) — SmartAIHub Agent-Generated UI & Safe Interactive Surfaces"
+    "title": "Spec 240 — SmartAIHub Agent-Generated UI & Safe Interactive Surfaces"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -333,10 +347,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.073415Z"
+    "updated_at": "2026-10-08T00:54:19.773518Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -346,10 +360,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.073415Z",
+    "reconciled_at": "2026-10-08T00:54:19.773518Z",
     "sources": [
       {
-        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
       },
@@ -357,15 +371,20 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED",
+        "excerpt": "status: R0.8 CANONICAL INVENTORY IDENTITY CONFIRMED; DESIGN PROPOSED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED",
         "kind": "AUTHOR_DECLARED_CLAIM",
-        "line": 4,
+        "line": 5,
         "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
-        "value": "R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED"
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
+        "value": "R0.8 CANONICAL INVENTORY IDENTITY CONFIRMED; DESIGN PROPOSED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -384,17 +403,17 @@
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
-        "excerpt": "status: R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED",
-        "line": 4,
+        "excerpt": "status: R0.8 CANONICAL INVENTORY IDENTITY CONFIRMED; DESIGN PROPOSED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED",
+        "line": 5,
         "source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md",
-        "source_digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
-        "value": "R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED"
+        "source_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
+        "value": "R0.8 CANONICAL INVENTORY IDENTITY CONFIRMED; DESIGN PROPOSED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "e7b306c7a8b1f066ac1152099d376631f145f7a35177ae9fd24cde20fb1674bc",
+        "digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md"
       }
@@ -414,7 +433,7 @@
     "unresolved": 248
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.073415Z",
+  "updated_at": "2026-10-08T00:54:19.773518Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

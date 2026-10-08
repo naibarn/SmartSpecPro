@@ -1,11 +1,12 @@
 ---
-title: Spec 240 (PROVISIONAL) — SmartAIHub Agent-Generated UI & Safe Interactive Surfaces
-version: "0.7 — Creator Shared-Revision UI Extension (original R0.6 retained)"
-status: R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED
-review_date: 2026-09-27
+title: Spec 240 — SmartAIHub Agent-Generated UI & Safe Interactive Surfaces
+spec_id: 240
+version: "0.8 — Canonical Spec identity and SPEC-287 integration (original R0.7 retained)"
+status: R0.8 CANONICAL INVENTORY IDENTITY CONFIRMED; DESIGN PROPOSED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED
+review_date: 2026-10-08
 previous_version: "0.6 (original source preserved below)"
-proposed_path: specs/feature/240-agent-generated-ui/spec.md
-numbering_rule: Check the canonical SmartSpecPro spec registry, branches and open worktrees before reserving 240. Reallocate if already occupied.
+canonical_path: specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md
+numbering_rule: Spec ID 240 was confirmed as one canonical inventory record with no duplicate canonical ID at source SHA eb59058d9273f839c41c94f86c13ff5396503a9d; this confirms identity only, not authority resolution or implementation.
 implementation_baseline: Preserve code built through Spec 213; P213 certification and Spec 224 gates must be checked in the actual repository. No retroactive rewrites or implicit migration authorization.
 standards: A2UI v0.9.1 current production (v1.0 candidate separate); MCP Apps extension 2026-01-26 stable; optional AG-UI event adapter
 ---
@@ -1638,4 +1639,12 @@ A creator session is always scoped to an **authorized exact** Project and curren
 | C240-11 | UI shows locale undocumented in real account | Disabled with honest status; no assumed 101-language parity |
 | C240-12 | Consent/asset deletion reaches connected UI | Revoked action tokens, no cached stale private previews |
 
-**Promotion:** These are design gates; actual Spec 240 R0.7 adoption needs source/schema review and tests on the canonical current branch, not just a document update.
+**Promotion:** These are design gates; actual Spec 240 R0.8 adoption needs source/schema review and tests on the canonical current branch, not just a document update.
+
+## 96. R0.8 Canonical identity and SPEC-287 governance alignment — 2026-10-08
+
+The repository's configured canonical Spec inventory at `eb59058d9273f839c41c94f86c13ff5396503a9d` returns this exact directory as the single canonical Spec ID `240`, with no duplicate canonical ID/revision candidate. The former “number unverified” and proposed-path frontmatter is stale and is corrected above. This identity result does **not** resolve the handoff's broader authority disposition or prove implementation, deployment, or acceptance.
+
+Ownership alignment: SPEC-240 owns the declarative generated-surface contract, allowlisted component registry/compiler, streaming revisions, server-issued action bindings, and transient/persistent Mini App surface behavior. SPEC-287 owns Design Contract governance, visual/rendered conformance, browser/accessibility evidence, and migration safety. SPEC-270 owns provider-neutral design-time generation and design-artifact lifecycle. Client actions remain mapped through SPEC-226, agent-originated command ingress through SPEC-279, authorization through SPEC-220, economic controls through SPEC-207, and durable work through Feature 195. These boundaries add no second runtime or action authority.
+
+SPEC-240 R0.8 is a source/ownership correction only. Its implementation and production status remain unverified; all conformance and runtime acceptance still requires fresh exact-SHA evidence.
