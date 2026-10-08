@@ -209,7 +209,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "4b9228c3c03aee9ce990db11e0219ce9f55997dd",
     "expected_spec_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994"
   },
   "continuation": {
@@ -394,7 +394,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 18,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
@@ -419,9 +419,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_sha": "4b9228c3c03aee9ce990db11e0219ce9f55997dd",
+    "integrated": true,
+    "integrated_at": "2026-10-08T01:57:17Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -958,7 +958,7 @@
     "unresolved": 357
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T01:56:14.995564Z",
+  "updated_at": "2026-10-08T01:57:50.887574Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

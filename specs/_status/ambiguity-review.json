@@ -7256,7 +7256,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "4b9228c3c03aee9ce990db11e0219ce9f55997dd",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -7620,8 +7620,7 @@
         "requirement REQ-C528F21A02A4 is OPEN",
         "requirement REQ-9A6C4E54E69C is OPEN",
         "requirement REQ-3CBCA347DB3F is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",

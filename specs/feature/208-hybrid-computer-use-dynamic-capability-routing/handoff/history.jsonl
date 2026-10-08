@@ -12,3 +12,4 @@
 {"changes": ["integration.canonical_ref"], "event_type": "CURRENT_TRANSITION", "generation": 16, "observed_at": "2026-10-08T01:55:16.249858Z", "provenance": "OBSERVED"}
 {"confidence": "LOW", "event_type": "RECONCILIATION_SNAPSHOT", "evidence_count": 14, "fingerprint": "60ae3db8d7cec144745bc5bc6b44b997db9677b2d7f26a95811f09b3516a6567", "observed_at": "2026-10-08T01:55:44.846195Z", "provenance": "INFERRED", "spec_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994"}
 {"changes": ["continuation_assessment.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 18, "observed_at": "2026-10-08T01:56:14.995564Z", "provenance": "OBSERVED"}
+{"changes": ["integration.canonical_ref", "integration.canonical_sha", "integration.integrated", "integration.integrated_at"], "event_type": "CURRENT_TRANSITION", "generation": 19, "observed_at": "2026-10-08T01:57:50.887574Z", "provenance": "OBSERVED"}
