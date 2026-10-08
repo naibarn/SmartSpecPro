@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "baseline_sha": "b4a955bb1ca460b6ec8e3937c9669a01a232b853",
+  "baseline_sha": "fe9e8412c3a392aa1905a2e6ca46783bfb1b0075",
   "inventory_record_count": 472,
-  "reconciliation_review_count": 330,
+  "reconciliation_review_count": 329,
   "relationship_edge_count": 312,
   "renumber_alias_count": 6,
   "canonical_spec_count": 314,
@@ -21,7 +21,7 @@
     "VALID_NON_CANONICAL": 156
   },
   "review_classification_counts": {
-    "CANONICAL_ACTIVE": 302,
+    "CANONICAL_ACTIVE": 301,
     "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -6181,7 +6181,7 @@
           "sha256": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54"
         }
       ],
-      "in_reconciliation_review": true
+      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/feature/297-social-ads-management",
