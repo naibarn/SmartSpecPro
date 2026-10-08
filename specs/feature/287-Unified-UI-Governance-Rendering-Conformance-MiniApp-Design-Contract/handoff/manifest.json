@@ -67,7 +67,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "b2cca14e4d7d9697396205b6e2fa721b219980b74529fca29dcfa7ffc57dc407",
+        "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
       }
@@ -78,7 +78,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "expected_canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
     "expected_spec_digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936"
   },
   "continuation": {
@@ -93,7 +93,7 @@
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "b2cca14e4d7d9697396205b6e2fa721b219980b74529fca29dcfa7ffc57dc407",
+        "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
       }
@@ -120,7 +120,7 @@
     "confidence": "MEDIUM",
     "evidence": [
       {
-        "digest": "b2cca14e4d7d9697396205b6e2fa721b219980b74529fca29dcfa7ffc57dc407",
+        "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
       }
@@ -128,7 +128,7 @@
     "rationale": "The user explicitly designated SPEC-287 as the starting UI governance authority; R1.5 defines its supporting role in rendering conformance while leaving generated surface/runtime ownership with SPEC-240 and implementation status unresolved.",
     "value": "ACTIVE_SUPPORTING"
   },
-  "generation": 15,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
     "digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
@@ -153,9 +153,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:21:12Z"
+    "integrated_at": "2026-10-08T00:59:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -227,7 +227,7 @@
       "conflicts": [],
       "evidence": [
         {
-          "digest": "b2cca14e4d7d9697396205b6e2fa721b219980b74529fca29dcfa7ffc57dc407",
+          "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
           "kind": "SUPPORTING_ARTIFACT",
           "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
         }
@@ -241,7 +241,7 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         {
-          "digest": "b2cca14e4d7d9697396205b6e2fa721b219980b74529fca29dcfa7ffc57dc407",
+          "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
           "kind": "SUPPORTING_ARTIFACT",
           "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
         }
@@ -254,7 +254,7 @@
       "confidence": "MEDIUM",
       "evidence": [
         {
-          "digest": "b2cca14e4d7d9697396205b6e2fa721b219980b74529fca29dcfa7ffc57dc407",
+          "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
           "kind": "SUPPORTING_ARTIFACT",
           "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
         }
@@ -344,7 +344,7 @@
     "unresolved": 205
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T00:58:04.547802Z",
+  "updated_at": "2026-10-08T00:59:33.255504Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

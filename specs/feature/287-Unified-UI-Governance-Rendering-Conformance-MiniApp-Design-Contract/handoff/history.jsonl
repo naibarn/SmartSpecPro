@@ -14,3 +14,4 @@
 {"changes": ["authority", "continuation_assessment", "disposition"], "event_type": "CURRENT_TRANSITION", "generation": 13, "observed_at": "2026-10-08T00:57:11.926458Z", "provenance": "OBSERVED"}
 {"changes": ["authority", "continuation_assessment", "disposition"], "event_type": "CURRENT_TRANSITION", "generation": 14, "observed_at": "2026-10-08T00:57:44.844107Z", "provenance": "OBSERVED"}
 {"changes": ["authority.evidence", "continuation_assessment.evidence", "disposition.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 15, "observed_at": "2026-10-08T00:58:04.547802Z", "provenance": "OBSERVED"}
+{"changes": ["authority.evidence", "continuation_assessment.evidence", "disposition.evidence", "integration"], "event_type": "CURRENT_TRANSITION", "generation": 16, "observed_at": "2026-10-08T00:59:33.255504Z", "provenance": "OBSERVED"}
