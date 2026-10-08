@@ -148619,18 +148619,12 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
-      "completion_eligible": false,
-      "completion_reasons": [
-        "lifecycle has not reached implementation completion",
-        "requirement REQ-716ABD462B56 is PARTIAL",
-        "requirement REQ-165894D8FE94 is VALIDATION_PENDING",
-        "requirement REQ-4A9C3CE1319F is VALIDATION_PENDING",
-        "required verification evidence is missing"
-      ],
+      "canonical_sha": "3099b819dad92fa45a0643aad3b6bc1cb53b9eb2",
+      "completion_eligible": true,
+      "completion_reasons": [],
       "confidence": "MEDIUM",
       "configured_root": "specs/security",
-      "continuation": "VALIDATION_ONLY",
+      "continuation": "MAINTENANCE_ONLY",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
@@ -148645,8 +148639,8 @@
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:19.064890Z",
-      "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Complete focused editor insertion verification and rerun normalized external URL validation with deterministic DNS fixtures.",
+      "lifecycle": "VERIFIED",
+      "next_action": "No further implementation work is required for the external-image security acceptance criteria. Keep focused library/editor and URL policy regressions in the regression set.",
       "path": "specs/security/20260211",
       "primary_blocker": null,
       "problem": null,
@@ -148793,8 +148787,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 3,
-        "pass": 4,
+        "open": 0,
+        "pass": 7,
         "total": 7
       },
       "revision": null,
@@ -148808,7 +148802,7 @@
       "successors": [],
       "title": "Security Hardening Spec (2026-02-11)",
       "true_blockers": 0,
-      "verification": "PARTIAL"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",

@@ -2,8 +2,8 @@
   "canonical_spec_count": 314,
   "counts": {
     "acceptance.UNKNOWN": 472,
-    "completion.ELIGIBLE": 1,
-    "completion.INELIGIBLE": 313,
+    "completion.ELIGIBLE": 2,
+    "completion.INELIGIBLE": 312,
     "completion.NOT_APPLICABLE": 158,
     "confidence.HIGH": 7,
     "confidence.LOW": 299,
@@ -12,10 +12,10 @@
     "confidence.UNRESOLVED": 30,
     "continuation.CONTINUE_REQUIRED": 8,
     "continuation.DO_NOT_CONTINUE_SUPERSEDED": 1,
-    "continuation.MAINTENANCE_ONLY": 3,
+    "continuation.MAINTENANCE_ONLY": 4,
     "continuation.NOT_APPLICABLE": 131,
     "continuation.RECONCILIATION_REQUIRED": 326,
-    "continuation.VALIDATION_ONLY": 3,
+    "continuation.VALIDATION_ONLY": 2,
     "deployment.UNKNOWN": 472,
     "disposition.ACTIVE_CANONICAL": 11,
     "disposition.ACTIVE_SUPPORTING": 1,
@@ -27,8 +27,8 @@
     "lifecycle.DORMANT_VALID": 2,
     "lifecycle.NOT_A_CANONICAL_SPEC": 158,
     "lifecycle.PARTIAL_INTEGRATED": 6,
-    "lifecycle.VALIDATION_PENDING": 32,
-    "lifecycle.VERIFIED": 1,
+    "lifecycle.VALIDATION_PENDING": 31,
+    "lifecycle.VERIFIED": 2,
     "record_kind.CANONICAL_SPEC": 314,
     "record_kind.COLLECTION_ENTRY_NO_SPEC": 1,
     "record_kind.DUPLICATE_SPEC_COPY": 1,
@@ -37,8 +37,8 @@
     "record_kind.PLANNING_ARTIFACT": 112,
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 1,
-    "verification.PARTIAL": 6,
-    "verification.PASS": 3,
+    "verification.PARTIAL": 5,
+    "verification.PASS": 4,
     "verification.UNKNOWN": 462
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
@@ -140126,18 +140126,12 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "6b2314d9681280b9d4e0329c4cad9c1d71ce4406",
-      "completion_eligible": false,
-      "completion_reasons": [
-        "lifecycle has not reached implementation completion",
-        "requirement REQ-716ABD462B56 is PARTIAL",
-        "requirement REQ-165894D8FE94 is VALIDATION_PENDING",
-        "requirement REQ-4A9C3CE1319F is VALIDATION_PENDING",
-        "required verification evidence is missing"
-      ],
+      "canonical_sha": "3099b819dad92fa45a0643aad3b6bc1cb53b9eb2",
+      "completion_eligible": true,
+      "completion_reasons": [],
       "confidence": "MEDIUM",
       "configured_root": "specs/security",
-      "continuation": "VALIDATION_ONLY",
+      "continuation": "MAINTENANCE_ONLY",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
@@ -140152,8 +140146,8 @@
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:19.064890Z",
-      "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Complete focused editor insertion verification and rerun normalized external URL validation with deterministic DNS fixtures.",
+      "lifecycle": "VERIFIED",
+      "next_action": "No further implementation work is required for the external-image security acceptance criteria. Keep focused library/editor and URL policy regressions in the regression set.",
       "path": "specs/security/20260211",
       "primary_blocker": null,
       "problem": null,
@@ -140300,8 +140294,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 3,
-        "pass": 4,
+        "open": 0,
+        "pass": 7,
         "total": 7
       },
       "revision": null,
@@ -140315,7 +140309,7 @@
       "successors": [],
       "title": "Security Hardening Spec (2026-02-11)",
       "true_blockers": 0,
-      "verification": "PARTIAL"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",
