@@ -4,7 +4,8 @@ import { renderHook } from "@testing-library/react";
 import { useEditor } from "@tiptap/react";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { Extension } from "@tiptap/core";
-import { getDefaultExtensions, parse } from "./TiptapMarkdownBridge";
+import { Editor } from "@tiptap/core";
+import { getDefaultExtensions, parse, serialize } from "./TiptapMarkdownBridge";
 
 describe("TiptapEditor", () => {
   const sampleContent = parse("# Hello\n\nSome content here.");
@@ -82,5 +83,32 @@ describe("TiptapEditor", () => {
   it("editor applies .tiptap-editor CSS class to wrapper", async () => {
     // Verify the CSS import resolves (editor.css exists and is importable)
     await expect(import("./editor.css")).resolves.toBeDefined();
+  });
+
+  it("inserts and renders an external HTTPS image through the editor extensions", () => {
+    const editor = new Editor({ extensions: getDefaultExtensions(), content: "" });
+    try {
+      editor.commands.setImage({
+        src: "https://cdn.example.com/editor-image.png",
+        alt: "Product preview",
+      });
+
+      const document = editor.getJSON();
+      expect(document.content?.[0]).toMatchObject({
+        type: "image",
+        attrs: {
+          src: "https://cdn.example.com/editor-image.png",
+          alt: "Product preview",
+        },
+      });
+      expect(editor.getHTML()).toContain(
+        '<img src="https://cdn.example.com/editor-image.png"',
+      );
+      expect(serialize(document)).toContain(
+        "![Product preview](https://cdn.example.com/editor-image.png)",
+      );
+    } finally {
+      editor.destroy();
+    }
   });
 });
