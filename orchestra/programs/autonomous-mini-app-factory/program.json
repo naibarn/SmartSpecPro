@@ -5,7 +5,7 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "003a791ecd5b17b74853750279c011b67663f844",
+    "sha": "903f53558a2d69e25d38d244932e443288238835",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
@@ -18,21 +18,21 @@
       "receipt_id": "workspace-convergence:ad2d5215-9ef4-4a74-82fc-1ed295df47b2",
       "verified_at": "2026-10-08T02:24:16.362+00:00"
     },
-    "observedAt": "2026-10-08T13:54:03+00:00",
+    "observedAt": "2026-10-08T15:12:09+00:00",
     "latestVerify": {
-      "status": "CANONICAL_VERIFIED",
-      "canonical_user_workspace_sha": "003a791ecd5b17b74853750279c011b67663f844",
+      "status": "CANONICAL_CONVERGENCE_VERIFIED",
+      "canonical_user_workspace_sha": "903f53558a2d69e25d38d244932e443288238835",
       "dirty": false,
-      "reason": "workspace_authority.py verify confirmed the registered canonical workspace at this latest main SHA; direct git status was clean."
+      "reason": "PR #362 integrated; workspace_authority.py converge and verify succeeded."
     },
-    "latestIntegratedProgramChange": "Latest origin/main 003a791ecd5b17b74853750279c011b67663f844. Canonical user workspace /home/dev/projects/SmartSpecPro observed clean at the same SHA. Factory implementation remains PR #318 integrated at 0f218918f8c1c48915718020dfc522fcbf7f8cc1.",
+    "latestIntegratedProgramChange": "PR #362 merged normally at 903f53558a2d69e25d38d244932e443288238835; canonical user workspace converged and verified clean at this SHA. It fixes Windows Runner local workspace response serialization; Windows desktop rebuild/install and live Factory UAT remain pending.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "003a791ecd5b17b74853750279c011b67663f844",
+      "sha": "903f53558a2d69e25d38d244932e443288238835",
       "dirty": false,
-      "verification": "workspace_authority.py verify plus direct git status",
-      "verifiedAt": "2026-10-08T13:54:03+00:00"
+      "convergenceReceipt": "workspace-convergence:35355923-7730-46b7-be8b-bf64b0a39ff1",
+      "verifiedAt": "2026-10-08T15:12:09.278+00:00"
     }
   },
   "inventory": {
@@ -67,7 +67,7 @@
   },
   "currentWorkunit": {
     "id": "LANE1_TRUSTED_RUNNER_BINDING_AND_NONPROD_DEPLOYMENT",
-    "state": "PARTIAL_INTEGRATED_WINDOWS_RUNNER_DISCOVERED_SNAPSHOT_EXPIRED",
+    "state": "PARTIAL_INTEGRATED_WINDOWS_RUNNER_SNAPSHOT_EXPIRED_UI_FIX_INSTALLED_SOURCE_PENDING",
     "objective": "Bind Factory execution to the existing authenticated DevelopmentRun/Runner control plane and deploy Research Notes through a registered non-production target.",
     "implementation": [
       "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
@@ -79,10 +79,10 @@
       "apps/web/server/jobs/postgresNodeJobWorker.ts"
     ],
     "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
-    "evidence": "PR #318 squash-merged normally at 0f218918f8c1c48915718020dfc522fcbf7f8cc1 (implementation source 4e7d7d751fe988aa19273f2f8d3080a964357476). Exact integrated SHA verification: 7 focused Vitest files, 93 tests passed; git diff --check passed. workspace_authority.py converge and verify both passed for /home/dev/projects/SmartSpecPro at 0f218918f8c1c48915718020dfc522fcbf7f8cc1. No real Runner ID or stage dispatch/receipt exists; no target deployment/UAT claimed. New evidence: user-supplied Windows Runner UI shows codex-cli 0.161.0 and a successful local prompt test. The application DB registers candidate runnerId local-runner as trusted Windows x86_64 and its last snapshot advertises tool.execute.codex, but status is degraded; lastSeenAt=2026-10-08T10:22:42.881Z, snapshotObservedAt=10:11:49.329Z, expiresAt=10:16:49.329Z while DB now=13:54:03Z (0 eligible fresh snapshots). SSH to 192.168.1.123:22 timed out. This proves local CLI availability, not current control-plane dispatch or a Factory receipt.",
+    "evidence": "PR #318 squash-merged normally at 0f218918f8c1c48915718020dfc522fcbf7f8cc1 (implementation source 4e7d7d751fe988aa19273f2f8d3080a964357476). Exact integrated SHA verification: 7 focused Vitest files, 93 tests passed; git diff --check passed. workspace_authority.py converge and verify both passed for /home/dev/projects/SmartSpecPro at 0f218918f8c1c48915718020dfc522fcbf7f8cc1. No real Runner ID or stage dispatch/receipt exists; no target deployment/UAT claimed. New evidence: user-supplied Windows Runner UI shows codex-cli 0.161.0 and a successful local prompt test. The application DB registers candidate runnerId local-runner as trusted Windows x86_64 and its last snapshot advertises tool.execute.codex, but status is degraded; lastSeenAt=2026-10-08T10:22:42.881Z, snapshotObservedAt=10:11:49.329Z, expiresAt=10:16:49.329Z while DB now=13:54:03Z (0 eligible fresh snapshots). SSH to 192.168.1.123:22 timed out. This proves local CLI availability, not current control-plane dispatch or a Factory receipt. PR #362 merged at 903f53558a2d69e25d38d244932e443288238835 fixes the directly observed folder display defect: LocalWorkspaceDetails previously serialized snake_case while UI reads camelCase. rustfmt check, cargo check of runner library, and git diff check passed on source 78b969182c3cf3bb7d5b4e60433fe8743db0d73e. Installed Windows Runner v0.2.23 was not rebuilt/replaced and GUI retest remains pending; source fix is not UI acceptance.",
     "integration": "PR #318 MERGED_NORMALLY",
     "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
-    "nextAction": "Wait for the Windows Runner to reconnect/send a fresh capability snapshot and establish current session/workspace authority. Then use persisted local-runner authority for real Factory stage dispatch if current same-job grant, approval, budget reservation and workspace binding also pass. Do not retry SSH absent a changed network/SSH setup. Deployment remains gated by registered approved non-production target."
+    "nextAction": "Build/install the corrected Windows Runner and confirm selected folder name/path and default-workspace option render. Reconnect the Runner so a fresh capability snapshot is persisted; then perform actual Factory dispatch/receipt and cross-process resume with real same-job grant, approval, budget and workspace authority. Deployment still waits for approved target."
   },
   "checkpoints": [
     {
@@ -353,6 +353,15 @@
       "sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
       "integration": "SQUASH_MERGED_NORMALLY",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/318"
+    },
+    {
+      "id": "RUNNER_WINDOWS_WORKSPACE_SELECTION_CAMELCASE_CONTRACT",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "78b969182c3cf3bb7d5b4e60433fe8743db0d73e",
+      "sha": "903f53558a2d69e25d38d244932e443288238835",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/362",
+      "integration": "SQUASH_MERGED_NORMALLY",
+      "evidence": "Fixed LocalWorkspaceDetails serialization to camelCase to match desktop UI contract. rustfmt check and runner library cargo check passed; Windows GUI rebuild/install/retest pending."
     }
   ],
   "completedWorkunits": [
@@ -392,7 +401,7 @@
       "state": "WAITING_EXTERNAL_AUTHORITY",
       "rootCause": "Windows candidate runnerId local-runner is now observed as trusted and its last snapshot advertises Codex, matching the supplied UI test. Its Runner status is degraded; the only persisted capability snapshot expired at 2026-10-08T10:16:49.329Z, lastSeenAt is 10:22:42.881Z, and DB now is 13:54:03Z, so zero fresh snapshots are eligible. SSH to 192.168.1.123:22 timed out. Prior observation also found no budget debit/credit account IDs. Do not synthesize a heartbeat, session, grant, approval, budget reservation or workspace binding.",
       "reactivationPredicate": "Runner local-runner reconnects and persists a nonexpired capability snapshot including tool.execute.codex, trusted/online status and current session; then an authentic grant, owner approval, budget reservation, and workspace authority bind to the same DevelopmentRun/job. Recheck the DB predicates before dispatch.",
-      "evidence": "User screenshot proves codex-cli 0.161.0 and a successful local prompt test only. DB projection for local-runner: Windows x86_64, trusted/degraded, codex capability in expired snapshot, lastSeenAt 2026-10-08T10:22:42.881Z, snapshot expired at 10:16:49.329Z, DB now 13:54:03Z; zero eligible capability snapshots. Strict SSH check to 192.168.1.123:22 timed out. Windows Runner session refresh was not remotely reachable over SSH; the supplied UI only demonstrates local CLI execution. Current main/workspace remained clean during investigation."
+      "evidence": "User screenshot proves codex-cli 0.161.0 and a successful local prompt test only. DB projection for local-runner: Windows x86_64, trusted/degraded, codex capability in expired snapshot, lastSeenAt 2026-10-08T10:22:42.881Z, snapshot expired at 10:16:49.329Z, DB now 13:54:03Z; zero eligible capability snapshots. Strict SSH check to 192.168.1.123:22 timed out. Windows Runner session refresh was not remotely reachable over SSH; the supplied UI only demonstrates local CLI execution. Current main/workspace remained clean during investigation. PR #362 also fixes local workspace details serialization so the authorized folder can render in the desktop UI. The installed v0.2.23 app still needs a corrected build and GUI retest; current control-plane snapshot remains expired."
     },
     {
       "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
@@ -567,7 +576,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T13:54:03+00:00",
+  "updatedAt": "2026-10-08T15:12:09+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -847,17 +856,23 @@
         "revision": "control-plane observation at DB time 2026-10-08T13:54:03Z; canonical main 003a791ecd5b17b74853750279c011b67663f844",
         "command": "Read-only runner registry/snapshot query; strict SSH connectivity check; canonical workspace authority verification",
         "outcome": "Registered Windows Runner local-runner is trusted and last snapshot advertises Codex but snapshot expired at 10:16:49Z and Runner status is degraded; lastSeenAt 10:22:42Z; zero eligible snapshots at 13:54:03Z. SSH to 192.168.1.123:22 timed out. Screenshot local CLI test is not Factory dispatch evidence. Canonical user workspace was verified clean at 003a791ecd5b17b74853750279c011b67663f844."
+      },
+      {
+        "revision": "78b969182c3cf3bb7d5b4e60433fe8743db0d73e; integrated by PR #362 as 903f53558a2d69e25d38d244932e443288238835",
+        "command": "rustfmt --check apps/runner-app/src/workspace_registry.rs && cargo check --manifest-path apps/runner-app/Cargo.toml --lib -j 2 && git diff --check",
+        "outcome": "PASS: focused Rust formatting and runner library compilation; no Windows GUI test. Selected-folder serialization mismatch fixed in source; release/install required for the installed app."
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "003a791ecd5b17b74853750279c011b67663f844",
+    "canonicalAtCheckpoint": "903f53558a2d69e25d38d244932e443288238835",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "003a791ecd5b17b74853750279c011b67663f844",
+      "sha": "903f53558a2d69e25d38d244932e443288238835",
       "dirty": false,
-      "verification": "workspace_authority.py verify and direct git status"
+      "convergenceReceipt": "workspace-convergence:35355923-7730-46b7-be8b-bf64b0a39ff1",
+      "verifiedAt": "2026-10-08T15:12:09.278+00:00"
     },
     "previousPullRequests": [
       {
@@ -931,8 +946,31 @@
         "integration": "SQUASH_MERGED_NORMALLY",
         "sourceSha": "98291cc166767f6b5ed330e58b791290e2d2081c",
         "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1"
+      },
+      {
+        "number": 361,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/361",
+        "state": "MERGED",
+        "integration": "SQUASH_MERGED_NORMALLY",
+        "sourceSha": "bb30224de752343a469ad665abb474a38a11f428",
+        "integratedSha": "fc9949cfe1f91723f00a20e7e7f320f408fecb79"
+      },
+      {
+        "number": 362,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/362",
+        "state": "MERGED",
+        "integration": "SQUASH_MERGED_NORMALLY",
+        "sourceSha": "78b969182c3cf3bb7d5b4e60433fe8743db0d73e",
+        "integratedSha": "903f53558a2d69e25d38d244932e443288238835"
       }
     ],
-    "taskOutcome": "CHECKPOINT_PROMOTED_PARTIAL"
+    "taskOutcome": "CHECKPOINT_PROMOTED_PARTIAL",
+    "lastHandoffPullRequest": {
+      "number": 362,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/362",
+      "state": "MERGED",
+      "sourceSha": "78b969182c3cf3bb7d5b4e60433fe8743db0d73e",
+      "integratedSha": "903f53558a2d69e25d38d244932e443288238835"
+    }
   }
 }
