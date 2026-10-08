@@ -14826,7 +14826,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "3fa80c98aa2bcaf2a718a818a25d65a04c04c9e7",
+      "canonical_sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -14921,7 +14921,6 @@
         "requirement REQ-80910D9B529A is OPEN",
         "requirement REQ-028588461FFC is OPEN",
         "requirement REQ-75F629D444E5 is OPEN",
-        "requirement REQ-B71AF72845D1 is OPEN",
         "requirement REQ-08E195E1F593 is OPEN",
         "requirement REQ-CF7A649A051B is OPEN",
         "requirement REQ-04D9AE8459BB is OPEN",
@@ -15101,7 +15100,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Evaluate the remaining 99 OPEN requirements for independent CMS vertical slices. For the structured-data 100% target, obtain representative Google Rich Results Test evidence; keep dashboard and API work app-local and do not resume broad historical reconciliation.",
+      "next_action": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "primary_blocker": null,
       "problem": null,
@@ -15594,8 +15593,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 99,
-        "pass": 7,
+        "open": 98,
+        "pass": 8,
         "total": 106
       },
       "revision": null,

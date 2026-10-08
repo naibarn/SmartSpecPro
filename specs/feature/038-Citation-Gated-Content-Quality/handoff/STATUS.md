@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 7 pass / 99 unresolved of 106
-- Next action: Evaluate the remaining 99 OPEN requirements for independent CMS vertical slices. For the structured-data 100% target, obtain representative Google Rich Results Test evidence; keep dashboard and API work app-local and do not resume broad historical reconciliation.
-- Manifest generation: 26
+- Requirements: 8 pass / 98 unresolved of 106
+- Next action: No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.
+- Manifest generation: 30
 
 ## Source-declared status and relationship claims
 
