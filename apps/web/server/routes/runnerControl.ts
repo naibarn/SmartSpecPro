@@ -1788,6 +1788,7 @@ export function registerRunnerControlRoutes(
             : [];
           return {
             runnerId: row.runnerId,
+            deviceId: row.deviceId,
             displayName: row.displayName,
             profile: row.profile,
             nodeKind: row.nodeKind,
@@ -1799,18 +1800,24 @@ export function registerRunnerControlRoutes(
                 ? row.currentSnapshotJson.runnerVersion
                 : null,
             platform: row.currentSnapshotJson?.platform ?? null,
+            toolInventory: toolInventory.map(item => {
+              const tool = item && typeof item === "object" ? item as Record<string, unknown> : {};
+              return {
+                toolId: typeof tool.toolId === "string" ? tool.toolId : "unknown",
+                displayName: typeof tool.displayName === "string" ? tool.displayName : String(tool.toolId ?? "Unknown tool"),
+                version: typeof tool.version === "string" ? tool.version : null,
+                availabilityState: typeof tool.availabilityState === "string" ? tool.availabilityState : "unknown",
+                trustState: typeof tool.trustState === "string" ? tool.trustState : "unknown",
+                reasonCodes: Array.isArray(tool.reasonCodes) ? tool.reasonCodes.filter((code): code is string => typeof code === "string") : [],
+              };
+            }),
             toolCount: toolInventory.length,
             readyToolCount: toolInventory.filter(
               item =>
                 item &&
                 typeof item === "object" &&
-                ["ready", "available"].includes(
-                  String(
-                    (item as Record<string, unknown>).trustState ??
-                      (item as Record<string, unknown>).availabilityState ??
-                      ""
-                  )
-                )
+                String((item as Record<string, unknown>).trustState ?? "") === "ready" &&
+                String((item as Record<string, unknown>).availabilityState ?? "") === "available"
             ).length,
             capabilityCount: capabilityInventory.length,
             readyCapabilityCount: capabilityInventory.filter(
