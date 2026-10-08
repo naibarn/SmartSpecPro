@@ -68,7 +68,7 @@ fi
 SMOKE_FILE="$APP_DIR/scripts/.mini-app-full-runtime-smoke-$$.tmp.ts"
 cat > "$SMOKE_FILE" <<'TS'
 import { createTRPCProxyClient, httpLink } from "@trpc/client";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import superjson from "superjson";
 import { COOKIE_NAME } from "../shared/const";
 import { sdk } from "../server/_core/sdk";
@@ -88,18 +88,35 @@ const projects = await client.researchNotes.listProjects.query({ appId: "app_res
 if (!projects.some((project: { projectId: string }) => project.projectId === "miniapp-runtime-project")) {
   throw new Error("FULL_APP_RESEARCH_NOTES_PROJECT_CONTEXT_FAILED");
 }
-const runId = crypto.randomUUID();
-const created = await client.researchNotes.createNote.mutate({
-  appId: "app_research_notes", projectId: "miniapp-runtime-project",
-  title: `Full app ${runId}`, content: `Synthetic full app runtime ${runId}`,
-});
-await client.researchNotes.archiveNote.mutate({
-  appId: "app_research_notes", projectId: "miniapp-runtime-project", noteId: created.noteId,
-});
-console.log("FULL_APP_AUTHENTICATED_API_PASS");
+const requestFile = process.env.FULL_APP_SUMMARY_REQUEST_FILE!;
+if (!requestFile) throw new Error("FULL_APP_SUMMARY_REQUEST_FILE_REQUIRED");
+if (process.env.FULL_APP_SMOKE_MODE === "verify-summary") {
+  const request = JSON.parse(await readFile(requestFile, "utf8")) as { jobId: string; noteId: string };
+  const summary = await client.researchNotes.summaryJob.query({
+    appId: "app_research_notes", projectId: "miniapp-runtime-project", ...request,
+  });
+  if (summary?.status !== "succeeded") throw new Error("FULL_APP_HEADLESS_SUMMARY_NOT_SETTLED");
+  await client.researchNotes.archiveNote.mutate({
+    appId: "app_research_notes", projectId: "miniapp-runtime-project", noteId: request.noteId,
+  });
+  console.log("FULL_APP_HEADLESS_SUMMARY_SETTLEMENT_PASS");
+} else {
+  const runId = crypto.randomUUID();
+  const created = await client.researchNotes.createNote.mutate({
+    appId: "app_research_notes", projectId: "miniapp-runtime-project",
+    title: `Full app ${runId}`, content: `Synthetic full app runtime ${runId}`,
+  });
+  const summary = await client.researchNotes.requestSummary.mutate({
+    appId: "app_research_notes", projectId: "miniapp-runtime-project", noteId: created.noteId,
+  });
+  await writeFile(requestFile, JSON.stringify({ jobId: summary.jobId, noteId: created.noteId }), { mode: 0o600 });
+  console.log("FULL_APP_AUTHENTICATED_API_PASS");
+}
 TS
-NODE_ENV=test JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FULL_APP_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" pnpm exec tsx "$SMOKE_FILE"
-env -i PATH="$PATH" HOME="$HOME" USER="$USER" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FEATURE_186_NODE_WORKER_HEARTBEAT_FILE="$RUNTIME_DIR/worker.heartbeat" pnpm exec tsx scripts/research-notes-background-worker-runtime.ts
+FULL_APP_SUMMARY_REQUEST_FILE="$RUNTIME_DIR/research-notes-summary.json"
+NODE_ENV=test JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FULL_APP_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" FULL_APP_SUMMARY_REQUEST_FILE="$FULL_APP_SUMMARY_REQUEST_FILE" pnpm exec tsx "$SMOKE_FILE"
+env -i PATH="$PATH" HOME="$HOME" USER="$USER" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FEATURE_186_NODE_WORKER_HEARTBEAT_FILE="$RUNTIME_DIR/worker.heartbeat" FULL_APP_SUMMARY_REQUEST_FILE="$FULL_APP_SUMMARY_REQUEST_FILE" pnpm exec tsx scripts/research-notes-background-worker-runtime.ts
+NODE_ENV=test JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FULL_APP_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" FULL_APP_SUMMARY_REQUEST_FILE="$FULL_APP_SUMMARY_REQUEST_FILE" FULL_APP_SMOKE_MODE=verify-summary pnpm exec tsx "$SMOKE_FILE"
 echo "FULL_APP_SAME_RUNTIME_BACKGROUND_WORKER_PASS"
 if [[ "${SKIP_BROWSER_UAT:-0}" == "1" ]]; then
   echo "FULL_APP_BROWSER_UAT_SKIPPED_FOR_RUNTIME_PLACEMENT_ONLY"
