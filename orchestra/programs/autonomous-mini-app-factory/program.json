@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
+    "sha": "379ec8dc8680882a248f289d631c6f7f9c68dc55",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
-      "canonical_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
-      "canonical_user_workspace_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
+      "integrated_sha": "379ec8dc8680882a248f289d631c6f7f9c68dc55",
+      "canonical_sha": "379ec8dc8680882a248f289d631c6f7f9c68dc55",
+      "canonical_user_workspace_sha": "379ec8dc8680882a248f289d631c6f7f9c68dc55",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:6e032654-c06b-42a9-8de9-95a2a67c2d75",
-      "verified_at": "2026-10-08T00:24:44.972+00:00"
+      "receipt_id": "workspace-convergence:4beaa878-9045-409c-9177-7d3e39b5f49e",
+      "verified_at": "2026-10-08T00:29:26.842+00:00"
     },
-    "observedAt": "2026-10-08T00:24:44+00:00",
+    "observedAt": "2026-10-08T00:29:26+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
-      "canonical_user_workspace_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
+      "integrated_sha": "379ec8dc8680882a248f289d631c6f7f9c68dc55",
+      "canonical_user_workspace_sha": "379ec8dc8680882a248f289d631c6f7f9c68dc55",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-08T00:24:44.972+00:00",
-      "receipt_id": "workspace-convergence:6e032654-c06b-42a9-8de9-95a2a67c2d75"
+      "verified_at": "2026-10-08T00:29:26.842+00:00",
+      "receipt_id": "workspace-convergence:4beaa878-9045-409c-9177-7d3e39b5f49e"
     }
   },
   "inventory": {
@@ -60,19 +60,16 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "FACTORY_DURABLE_PROGRAM_ID_MINIAPP_STAGE_STATE_CROSS_PROCESS_RESUME",
+    "id": "PROJECT_WIKI_FACTORY_SPEC_TO_PACKAGE_REUSE",
     "state": "FAST_GATE_PASSED_PENDING_PR",
-    "objective": "Persist Factory program/app identity and stage/artifact state in the existing DevelopmentRun checkpoint, then prove a fresh process resumes and selects the next stage.",
+    "objective": "Run Project Wiki through the same Mini App Factory stage executor from SPEC through PACKAGE and build its portable artifact from the stage callback.",
     "implementation": [
-      "apps/web/server/services/miniAppFactoryDurableState.ts",
-      "apps/web/server/services/miniAppFactoryRunExecutor.ts",
-      "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
-      "apps/web/scripts/mini-app-factory-cross-process-resume.ts"
+      "apps/web/server/services/projectWikiFactoryPipeline.test.ts"
     ],
-    "sourceSha": "cb59c6b13",
-    "evidence": "PASS on exact source commit cb59c6b13: PostgreSQL 17 two-process resume. Process A persisted SPEC/SCAFFOLD/IMPLEMENT with program ID, app_research_notes ID, source SHA, and artifacts then exited; fresh process B loaded and verified them, selected TEST automatically, and completed. Focused state/executor tests 6/6. Durable metadata has package/migration/deployment/retry/blocker fields; live retry/blocker-stage projection still needs wiring.",
+    "sourceSha": "f616bf013",
+    "evidence": "PASS on exact source commit f616bf013: shared executeMiniAppFactoryStages ran SPEC → SCAFFOLD → IMPLEMENT → TEST → PACKAGE for app_project_wiki_pages. TEST stage executed the actual service/router/page focused Vitest suite; PACKAGE stage invoked build-mini-app-package.ts and recorded a deterministic SPAAS digest. Durable DevelopmentRun projection recorded all stages/artifacts and the app identity. Package build succeeds but remains needs_context for runtime/migration evidence.",
     "integration": "PENDING_PR",
-    "nextAction": "Integrate the cross-process durable state checkpoint. Continue package V5/V6 evidence and deployment descriptor/runtime identity; wire Factory stage execution through the approved worker_jobs/outbox binding and prove Project Wiki traverses the same Factory stages."
+    "nextAction": "Integrate the generic Factory reuse evidence. Continue V5/V6 package evidence, non-production deployment identity, same-runtime worker completion, and actual Factory-stage worker binding."
   },
   "checkpoints": [
     {
@@ -286,6 +283,12 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "cb59c6b13",
       "evidence": "DevelopmentRun metadata durably binds program ID, Mini App ID and source SHA; checkpoint advances completed/next stages and artifacts. PostgreSQL 17 process A/B test passes through automatic TEST selection/completion. Retry/blocker transitions are represented but their program-level lifecycle updates remain partial."
+    },
+    {
+      "id": "PROJECT_WIKI_FACTORY_SPEC_TO_PACKAGE_REUSE",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "f616bf013",
+      "evidence": "Project Wiki passed SPEC/SCAFFOLD/IMPLEMENT/TEST/PACKAGE through shared executeMiniAppFactoryStages; focused service/router/UI tests ran in TEST and the canonical package builder produced a digest in PACKAGE."
     }
   ],
   "completedWorkunits": [
@@ -443,7 +446,7 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "PACKAGE_VALIDATION_V5_V6_AND_NONPROD_DEPLOYMENT_ID; then FACTORY_STAGE_WORKER_JOBS_BINDING_AND_PROJECT_WIKI_STAGE_CHAIN.",
+    "nextEligibleWorkunit": "PACKAGE_VALIDATION_V5_V6_AND_NONPROD_DEPLOYMENT_ID; then SAME_RUNTIME_BACKGROUND_COMPLETION_AND_FACTORY_STAGE_WORKER_BINDING.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -479,18 +482,18 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:27:00+00:00",
+  "updatedAt": "2026-10-08T00:31:00+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PARTIAL_PACKAGE_BUILT; VALIDATION_NEEDS_CONTEXT_V5_RUNTIME_PLACEMENT_AND_V6_MIGRATION_ROLLBACK_EVIDENCE",
     "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_FULL_SERVER_MINIAPP_SCHEMA_RUNTIME_AND_BROWSER_PASS; DEPLOYMENT_DESCRIPTOR_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
     "M5_RESEARCH_NOTES_UAT_PASS": "PARTIAL_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_API_PASS; SAME_RUNTIME_WORKER_COMPLETION_AND_PACKAGE_REVISION_EVIDENCE_PENDING",
-    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_PROJECT_WIKI_IMPLEMENTED_TESTED_PACKAGE_BUILT; FACTORY_STAGE_CHAIN_PROOF_PENDING",
+    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_FACTORY_EXECUTOR; DEPLOYMENT_UAT_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
     "M6_FACTORY_EXECUTABLE": "PARTIAL_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_AUTO_RESUME_PASS; FACTORY_STAGE_WORKER_BINDING_PENDING",
     "M7_FACTORY_AUTO_RESUME_PASS": "PASS_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_WITH_FACTORY_PROGRAM_ID_MINI_APP_ID_SOURCE_SHA_ARTIFACTS_AND_AUTOMATIC_NEXT_STAGE",
-    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_PROJECT_WIKI_PACKAGE_REBUILT_TWICE; SAME_FACTORY_STAGE_EXECUTION_REQUIRED"
+    "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_PROJECT_WIKI_SHARED_FACTORY_STAGE_CHAIN_TO_PACKAGE; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
@@ -501,11 +504,11 @@
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
     "state": "DEPENDENCY_READY_SELECTOR_EXECUTOR_AND_PROGRAM_ID_APP_ID_CROSS_PROCESS_RESUME_TESTED; FACTORY_STAGE_WORKER_BINDING_PENDING",
-    "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE; FACTORY_STAGE_CHAIN_DEPLOYMENT_UAT_PENDING"
+    "secondMiniApp": "PASS_PROJECT_WIKI_SPEC_SCAFFOLD_IMPLEMENT_TEST_PACKAGE_THROUGH_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/factory-durable-state-20261008",
-    "sourceBranch": "codex/factory-durable-state",
+    "taskWorktree": "/home/dev/worktrees/project-wiki-factory-stage-chain-20261008",
+    "sourceBranch": "codex/project-wiki-factory-stage-chain",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -529,14 +532,15 @@
       "7095848218ca39076413e2afa12f6b18eecad999",
       "3efdedd6e",
       "fa09dfa865610f64fce3e91494d7e88dc1838d91",
-      "cb59c6b13"
+      "cb59c6b13",
+      "f616bf013"
     ],
-    "intendedRemoteBranch": "codex/factory-durable-state",
+    "intendedRemoteBranch": "codex/project-wiki-factory-stage-chain",
     "pendingPullRequest": {
       "number": null,
       "url": "PENDING_CREATE",
       "state": "PENDING",
-      "sourceSha": "cb59c6b13",
+      "sourceSha": "f616bf013",
       "integratedSha": null
     },
     "testEvidence": [
@@ -669,6 +673,11 @@
         "revision": "cb59c6b13",
         "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryDurableState.test.ts server/services/miniAppFactoryRunExecutor.test.ts",
         "outcome": "PASS: 2 files, 6 tests."
+      },
+      {
+        "revision": "f616bf013",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/projectWikiFactoryPipeline.test.ts",
+        "outcome": "PASS: shared Factory executor traversed SPEC/SCAFFOLD/IMPLEMENT/TEST/PACKAGE for Project Wiki, ran focused service/router/UI tests within TEST, and invoked portable package builder within PACKAGE; SPAAS digest recorded, validation remains needs_context."
       }
     ],
     "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",
