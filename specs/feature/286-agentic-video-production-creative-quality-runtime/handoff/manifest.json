@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+        "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -50,7 +50,7 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
-        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "digest": "6d2da5d49cd67d648c06d86c0575b4b6cc6011d03446886af40664b35792fe58",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
@@ -93,77 +93,74 @@
       "id": "GENERATED_MOTION_SANDBOX",
       "next_action": "Keep generated motion code execution disabled. Design and pass the isolated sandbox security gate only after WP0.4 baseline evidence.",
       "root_cause": "No generated-motion code execution sandbox implementation or passing security evidence was found in the scoped source audit."
+    },
+    {
+      "class": "RETRIEVAL_AUTHORITY",
+      "id": "SPEC229_RETRIEVAL_BROKER",
+      "next_action": "Bind Recipe discovery to the canonical RetrievalBroker and its approved recipe index contract when that authority is available; keep mock candidate fusion and deterministic fallback only until then.",
+      "root_cause": "SPEC-229 source explicitly reports no canonical RetrievalBroker runtime or unified consumer migration; direct Vectorize helpers do not establish the Broker."
+    },
+    {
+      "class": "RIGHTS_AUTHORITY",
+      "id": "SPEC286_CATALOG_RIGHTS_AUTHORITY",
+      "next_action": "Identify and bind a live source-catalog-specific Rights Authority before enabling full-prompt import or use; retain metadata-only discovery and fail-closed retrieval meanwhile.",
+      "root_cause": "No verified Rights Authority binding for linked creator prompt licenses was found; other product rights services are not authorization for this catalog."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "1ecbe3ea0395a70186f158f0859a5432aed68795",
-    "expected_spec_digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41"
+    "expected_canonical_sha": "c32a13652a04999646f8dc28f0b827c008a4320d",
+    "expected_spec_digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0"
   },
   "continuation": {
-    "next_action": "Lane A should submit Windows Runner readiness and source-bound Golden Fixture A/B/C receipts through the canonical handoff when the external Runner repair is complete. Assess Linux separately; keep WP0.4 PARTIAL/BLOCKED until real render evidence, and keep generated code non-executable until the sandbox gate passes.",
+    "next_action": "Resume Runner baseline only after Lane A readiness and authorized Windows receipts; separately bind the canonical RetrievalBroker and catalog Rights Authority before live hybrid retrieval or full prompt use. Keep Linux readiness separate, WP0.4 PARTIAL/BLOCKED, and generated code non-executable.",
     "next_ready_workunit": "WP0.4_WINDOWS_GOLDEN_RENDER_BASELINE",
     "reactivation_predicate": "Runner Authority returns an authorized Windows executor with the required Remotion capability and artifact upload path; all A/B/C job artifacts are visible with exact project revisions and output digests.",
-    "resume_point": "PR #342 recipe library and PR #344 immutable source SHA guard are integrated at 1ecbe3ea0395a70186f158f0859a5432aed68795. WP0.4 remains PARTIAL/BLOCKED on Lane A Windows readiness and real A/B/C render receipts; Linux remains a separate readiness check.",
+    "resume_point": "Prompt Recipe retrieval is implemented as a deterministic fallback plus mock-only vector candidate fusion. Live Broker and source-catalog Rights Authority remain blocked. Manifest generation 20 reconciles continuation based on explicit current direction; authority/disposition remain unresolved pending registry owner binding. WP0.4 remains blocked on Lane A Windows receipts.",
     "waiting_predicate": "Resume render work when an authorized Windows Runner capability/readiness receipt with a verified Remotion runtime pack is available. Do not claim baseline complete until A/B/C each have a durable worker job and output/QA evidence."
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "MEDIUM",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "6cfbd47d954cdb2ce85dec2be2676a4864145e6a162f33972a1b340d2c1a10f3",
+        "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
       {
-        "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+        "digest": "312b94abf77aeb8b530bbcec960a90bcc8716ee2d176072261445485bc6c9979",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
       {
-        "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+        "digest": "0fc2e0d106e796a8c16e5fad67987f905b6ada0c7260c4bbf78fee465fadcf33",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/retrieval-authority-audit-2026-10-08.md"
       },
       {
-        "digest": "754a42b0bde218c03ff6e25d5fb10fc89db281b4b9d02bb9eb8a43e40018e965",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+        "digest": "62d90e594ef7589fdf5faa7ecbeb0488c170da3aa43059a962c5a6640f4282a6",
+        "kind": "IMPLEMENTATION_SOURCE",
+        "path": "apps/web/server/services/promptRecipeLibrary.ts"
       },
       {
-        "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+        "digest": "c41e99ad7da1181d366432010c0f8c3577ab63141cc806d70218a17e5e7ac428",
+        "kind": "TEST_SOURCE",
+        "path": "apps/web/server/services/__tests__/promptRecipeLibrary.test.ts"
       },
       {
-        "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
-      },
-      {
-        "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
-      },
-      {
-        "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
-      },
-      {
-        "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
-      },
-      {
-        "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+        "digest": "fd0d6449ca18e02e10f30ea39531cd9fbbc3c873edb472a3e7b0ec16170ace2e",
+        "kind": "IMPLEMENTATION_SOURCE",
+        "path": "apps/web/shared/videoIntelligence/promptRecipe.schema.json"
       }
     ],
-    "next_action": "PR #342 and PR #344 recipe code checkpoints are integrated and focused tests pass. WP0.4 remains PARTIAL/BLOCKED until Lane A provides Windows readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until sandbox gate evidence passes.",
-    "rationale": "The user explicitly directed SPEC-286 continuation. Runtime work is held at WP0.4 because no Windows execution receipt is available; canonical identity and prior successor-candidate claims remain unresolved in generated repository status.",
-    "residual_requirements": []
+    "next_action": "Continue only bounded Recipe Library work with deterministic fallback and mock seams. Reconcile this manifest after integration to the exact main SHA. Keep live Broker/Rights work blocked until their authorities are evidenced; keep generated code non-executable and WP0.4 PARTIAL/BLOCKED.",
+    "rationale": "The explicit current continuation request and integrated Prompt Recipe implementation establish justified non-runner work. SPEC-286 canonical owner binding and relationship claims remain unresolved, so authority and disposition remain unresolved; live Retrieval Broker and catalog Rights Authority dependencies remain blocked.",
+    "residual_requirements": [
+      "Resolve SPEC-286 canonical owner and relationship claims through registry-backed evidence.",
+      "Bind the canonical Retrieval Broker and approved recipe indexing contract before live hybrid retrieval.",
+      "Bind a source-catalog-specific Rights Authority before full-prompt import or use.",
+      "Keep WP0.4 PARTIAL/BLOCKED until real Windows Golden Render A/B/C receipts exist; assess Linux separately."
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -183,7 +180,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+        "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -223,7 +220,7 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
-        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "digest": "6d2da5d49cd67d648c06d86c0575b4b6cc6011d03446886af40664b35792fe58",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
@@ -241,13 +238,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 18,
+  "generation": 24,
   "identity": {
     "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-    "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+    "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-08T07:34:24.673162Z",
+      "last_evidence_at": "2026-10-08T07:59:06.106890Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -330,7 +327,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1ecbe3ea0395a70186f158f0859a5432aed68795",
+    "canonical_sha": "c32a13652a04999646f8dc28f0b827c008a4320d",
     "integrated": true,
     "integrated_at": "2026-10-08T07:39:39Z"
   },
@@ -338,67 +335,52 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-08T07:34:24.673162Z"
+    "updated_at": "2026-10-08T07:59:06.106890Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
-      "confidence": "UNRESOLVED",
-      "decision": "RECONCILIATION_REQUIRED",
+      "confidence": "MEDIUM",
+      "decision": "CONTINUE_REQUIRED",
       "evidence": [
         {
-          "digest": "6cfbd47d954cdb2ce85dec2be2676a4864145e6a162f33972a1b340d2c1a10f3",
+          "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
           "kind": "NORMATIVE_SPEC",
           "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
         },
         {
-          "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+          "digest": "312b94abf77aeb8b530bbcec960a90bcc8716ee2d176072261445485bc6c9979",
           "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
         },
         {
-          "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+          "digest": "0fc2e0d106e796a8c16e5fad67987f905b6ada0c7260c4bbf78fee465fadcf33",
           "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/retrieval-authority-audit-2026-10-08.md"
         },
         {
-          "digest": "754a42b0bde218c03ff6e25d5fb10fc89db281b4b9d02bb9eb8a43e40018e965",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+          "digest": "62d90e594ef7589fdf5faa7ecbeb0488c170da3aa43059a962c5a6640f4282a6",
+          "kind": "IMPLEMENTATION_SOURCE",
+          "path": "apps/web/server/services/promptRecipeLibrary.ts"
         },
         {
-          "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+          "digest": "c41e99ad7da1181d366432010c0f8c3577ab63141cc806d70218a17e5e7ac428",
+          "kind": "TEST_SOURCE",
+          "path": "apps/web/server/services/__tests__/promptRecipeLibrary.test.ts"
         },
         {
-          "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
-        },
-        {
-          "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
-        },
-        {
-          "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
-        },
-        {
-          "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
-        },
-        {
-          "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+          "digest": "fd0d6449ca18e02e10f30ea39531cd9fbbc3c873edb472a3e7b0ec16170ace2e",
+          "kind": "IMPLEMENTATION_SOURCE",
+          "path": "apps/web/shared/videoIntelligence/promptRecipe.schema.json"
         }
       ],
-      "next_action": "PR #342 and PR #344 recipe code checkpoints are integrated and focused tests pass. WP0.4 remains PARTIAL/BLOCKED until Lane A provides Windows readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until sandbox gate evidence passes.",
-      "rationale": "The user explicitly directed SPEC-286 continuation. Runtime work is held at WP0.4 because no Windows execution receipt is available; canonical identity and prior successor-candidate claims remain unresolved in generated repository status.",
-      "residual_requirements": []
+      "next_action": "Continue only bounded Recipe Library work with deterministic fallback and mock seams. Reconcile this manifest after integration to the exact main SHA. Keep live Broker/Rights work blocked until their authorities are evidenced; keep generated code non-executable and WP0.4 PARTIAL/BLOCKED.",
+      "rationale": "The explicit current continuation request and integrated Prompt Recipe implementation establish justified non-runner work. SPEC-286 canonical owner binding and relationship claims remain unresolved, so authority and disposition remain unresolved; live Retrieval Broker and catalog Rights Authority dependencies remain blocked.",
+      "residual_requirements": [
+        "Resolve SPEC-286 canonical owner and relationship claims through registry-backed evidence.",
+        "Bind the canonical Retrieval Broker and approved recipe indexing contract before live hybrid retrieval.",
+        "Bind a source-catalog-specific Rights Authority before full-prompt import or use.",
+        "Keep WP0.4 PARTIAL/BLOCKED until real Windows Golden Render A/B/C receipts exist; assess Linux separately."
+      ]
     }
   },
   "reconciliation": {
@@ -409,10 +391,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-08T07:34:24.673162Z",
+    "reconciled_at": "2026-10-08T07:59:06.106890Z",
     "sources": [
       {
-        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+        "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -452,7 +434,7 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
-        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "digest": "6d2da5d49cd67d648c06d86c0575b4b6cc6011d03446886af40664b35792fe58",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
@@ -474,7 +456,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-        "source_digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+        "source_digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
       }
     ],
@@ -505,14 +487,14 @@
         "excerpt": "status: ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION",
         "line": 7,
         "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-        "source_digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+        "source_digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "eac742bd77ed914c7358f0903d6c69c02a965d16fb34f6be41974e0a45b1de41",
+        "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -552,7 +534,7 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
       },
       {
-        "digest": "7b0181e103ccf6a529598488b6e2ff96749d666a00dfd68ce6319584cdc38cd0",
+        "digest": "6d2da5d49cd67d648c06d86c0575b4b6cc6011d03446886af40664b35792fe58",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
@@ -578,11 +560,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 746,
-    "unresolved": 746
+    "total": 756,
+    "unresolved": 756
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T07:40:06.817812Z",
+  "updated_at": "2026-10-08T08:07:18.473558Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
