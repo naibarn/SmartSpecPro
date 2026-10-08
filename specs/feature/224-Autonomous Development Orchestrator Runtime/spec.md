@@ -3,7 +3,7 @@
 
 **Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending
 **Spec ID:** 224  
-**Revision:** 21 — Workspace-first, user-controlled incremental Spec development
+**Revision:** 22 — Evidence-driven execution conformance overlay; preserves Revision 21 contracts
 **Date:** 2026-10-03
 **Target repository path:** `specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md`  
 **Primary owner:** SmartAIHub Development Orchestration / Autonomous Development Runtime  
@@ -17228,3 +17228,21 @@ The existing registered local Runner on the development server is the first supp
 - [ ] A successful candidate patch appears in the same registered workspace seen by other Chat sections and later user-operated build/run actions.
 - [ ] Local provider sandbox support, lease/fence, staged input, accepted patch, conflict preservation and restart recovery pass a development-server smoke test.
 - [ ] A Cloudflare runtime adapter may be added later against this same fingerprint/candidate/delta contract without changing workspace or job ownership.
+
+## Revision 22 — Evidence-Driven Execution Conformance
+
+This additive conformance layer makes evidence-driven autonomous execution independently auditable. It composes the existing DevelopmentRun, Runner, job/outbox, Skill, UAT, learning, and handoff authorities; it defines no new queue, registry, permission engine, runtime, or handoff format.
+
+1. Before an action is dispatched, the DevelopmentRun SHALL retain an inspectable action basis linking the applicable requirement, selected capability/Skill, runtime preconditions, current permission decision, and expected postcondition. Natural-language reasoning may explain the decision but SHALL NOT be the execution authority.
+2. An action result SHALL distinguish attempted, completed, and independently verified outcomes. A verifier SHALL consume the action basis and observed result, and SHALL record a receipt bound to the exact source revision, environment/runtime, and evidence references. The executor's own success response is not independent verification.
+3. A durable wait or handoff SHALL retain its canonical continuation predicate and the evidence cursor needed to recheck it after event delivery, worker, Runner, or harness interruption. Event wakeup is an optimization; canonical state reconciliation remains the recovery path.
+4. Automatic repair SHALL have explicit attempt and resource bounds, detect repeated/no-progress outcomes, and preserve failed evidence. Replanning or stopping SHALL follow the existing DevelopmentRun policy; repeating the same action without changed evidence is prohibited.
+5. Each implementation path SHALL defer to existing capability and Skill permission/precondition contracts (Spec 256), independent UAT and acceptance authority (Spec 271), learning/regression/rollback contracts (Spec 275), durable Runner-session recovery (Spec 278), and the canonical `worker_jobs` plus outbox control plane. Missing or unverified companion capability SHALL gate only the affected path and SHALL remain visible in the handoff.
+
+### Revision 22 Acceptance Criteria
+
+- [ ] A reviewer can trace a dispatched action from requirement through action basis, current permission decision, observed result, and independent verification receipt.
+- [ ] A replayed or recovered run rechecks continuation and permissions against canonical state and cannot treat a stale event, summary, or executor claim as proof.
+- [ ] A repair loop stops or replans at its configured bound and identifies no progress without erasing prior evidence.
+- [ ] Tests exercise successful, denied, stale-precondition, event-loss/recovery, independent-verifier failure, and bounded no-progress paths against the exact candidate revision.
+- [ ] Existing queue, registry, permission, handoff, Runner, UAT, and learning authorities remain the sole owners for their respective contracts.

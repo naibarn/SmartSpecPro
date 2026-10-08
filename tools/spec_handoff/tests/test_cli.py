@@ -37,12 +37,13 @@ class CliTests(unittest.TestCase):
             )
             spec = repo / "specs/feature/001-a"
             spec.mkdir(parents=True)
-            (spec / "spec.md").write_text("# A\n## Requirements\n- The system must retain evidence.\n", encoding="utf-8")
+            (spec / "spec.md").write_text("# A\n**Revision:** R2\n## Requirements\n- The system must retain evidence.\n", encoding="utf-8")
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
-                status = main(["--repo", str(repo), "reconcile", "--spec-dir", "specs/feature/001-a"])
+                status = main(["--repo", str(repo), "reconcile", "--spec-dir", "specs/feature/001-a", "--write"])
             self.assertEqual(status, 0)
             self.assertIn('"spec_id": "001"', output.getvalue())
+            self.assertIn('"revision": "2"', output.getvalue())
 
 
 if __name__ == "__main__":

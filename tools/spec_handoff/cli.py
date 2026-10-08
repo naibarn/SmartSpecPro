@@ -201,7 +201,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"valid": not errors, "completion_eligible": eligible, "validation_errors": errors, "completion_reasons": reasons}, indent=2))
         return 0 if not errors else 2
     if args.command == "reconcile":
-        result = reconcile_all(args.repo, write=args.write) if args.all else reconcile_one(args.spec_dir, args.repo, write=args.write)
+        if args.all:
+            result = reconcile_all(args.repo, write=args.write)
+        else:
+            discovered = inventory(args.repo)
+            spec_path = (args.spec_dir / "spec.md").relative_to(args.repo).as_posix()
+            record = next((row for row in discovered["records"] if row.get("spec_path") == spec_path), None)
+            result = reconcile_one(args.spec_dir, args.repo, write=args.write, inventory_record=record)
         if not args.all:
             result = {"identity": result["manifest"]["identity"], "generation": result["manifest"]["generation"], "disposition": result["manifest"]["disposition"], "lifecycle": result["manifest"]["lifecycle"], "continuation_assessment": result["manifest"]["continuation_assessment"], "requirements": len(result["ledger"]["requirements"]), "evidence_count": result["evidence_count"], "write": args.write}
         data = json_bytes(result)
