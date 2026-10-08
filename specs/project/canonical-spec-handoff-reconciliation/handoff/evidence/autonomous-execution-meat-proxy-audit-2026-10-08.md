@@ -70,7 +70,7 @@ Directly related supporting contracts discovered by dependency/code search inclu
 - At the audited SHA, dynamic inventory completed with 314 canonical Specs / 472 total records and no diagnostics. `validate --all` returned exit 2 because handoffs are missing for SPEC-305, SPEC-306, and SPEC-307. It reported no invalid manifests, no generated status drift, exact global-index equality, and a complete walk.
 - The canonical classification generator was refreshed with baseline SHA `b4a955bb1ca460b6ec8e3937c9669a01a232b853`; it wrote 472 evidence-bound records with zero unresolved classifications, and `classifications --check` passed. This does not resolve the three missing handoffs.
 - After reconciling the SPEC-06 status projection and current repository facts, `index --check` passed with no global or per-Spec status drift.
-- The targeted `tools/spec_handoff` unit suite passed all 82 tests after replacing stale hard-coded historical inventory counts with dynamic assertions and correcting the SPEC-06 continuation assertion.
+- The targeted `tools/spec_handoff` unit suite passed all 82 tests at candidate commit `d81c6213d88c25cd75391a6935f8904bfd6d6c65`; stale historical inventory assertions now derive from current inventory, and the SPEC-06 continuation assertion preserves the open gate.
 - This is partial migration verification, not the earlier full gate. The earlier PASS at `07e8ca3ec5f5cacbb81eb0feb15f043c0705a332` remains historical and does not apply to `b4a955bb1ca460b6ec8e3937c9669a01a232b853`.
 - No production runtime, migration, deployment, or provider execution was performed. Deployment for the target SPECs remains UNKNOWN.
 
