@@ -5,9 +5,9 @@
   "repository": "naibarn/SmartSpecPro",
   "canonicalSourceAtPreparation": {
     "ref": "origin/main",
-    "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
-    "integratedBy": "PR #375",
-    "warning": "This integrated SHA is not attested into the Windows workspace and is not an authorization binding. Rebuild the runtime binding after a fresh Runner snapshot and job-specific source attestation exist."
+    "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+    "integratedBy": "PR #375 and PR #377",
+    "warning": "The integrated source SHA is not attested into the Windows workspace and is not an authorization binding. Rebuild the runtime binding after a fresh Runner snapshot and job-specific source attestation exist."
   },
   "execution": {
     "tenantId": "tenant-ZCSKEM9s",

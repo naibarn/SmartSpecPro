@@ -2,11 +2,12 @@
 
 **State:** `CHECKPOINT_PROMOTED_PARTIAL`
 **Repository:** `naibarn/SmartSpecPro`
-**Integrated SHA:** `d8791f7a7bd71c47506d46fffabce5c2c820d3e6`
-**PR:** [#375](https://github.com/naibarn/SmartSpecPro/pull/375) merged normally
-**Task commit:** `2ecbe20b9d8967ef236a07c21f08c76f32e7b660`
-**Canonical workspace:** `/home/dev/projects/SmartSpecPro`, clean at the integrated SHA
-**Convergence receipt:** `workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01`
+**Settlement implementation SHA:** `d8791f7a7bd71c47506d46fffabce5c2c820d3e6`
+**Latest integrated SHA:** `42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181`
+**PRs:** [#375](https://github.com/naibarn/SmartSpecPro/pull/375) implementation, [#376](https://github.com/naibarn/SmartSpecPro/pull/376) program handoff, [#377](https://github.com/naibarn/SmartSpecPro/pull/377) transaction tests; all merged normally
+**Task commits:** `2ecbe20b9d8967ef236a07c21f08c76f32e7b660` (implementation), `130bf5e90f08b3682dedaf20b5fd3c91bf61a410` (transaction tests)
+**Canonical workspace:** `/home/dev/projects/SmartSpecPro`, clean at the latest integrated SHA
+**Latest convergence receipt:** `workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b`
 **Program:** `AUTONOMOUS_MINI_APP_FACTORY_PROGRAM`
 
 ## Implemented in this checkpoint
@@ -27,8 +28,9 @@ At that observation, no DevelopmentRun/job/attempt existed to authorize; economi
 
 ## Verification evidence
 
-- Focused Vitest: 8 files, 63 tests passed: `economicReceiptSettlement`, `spec224AuthorizationBinding`, `agentControlPlaneContracts`, `externalAgentRunnerDispatcher`, `spec224ProtectedExecutionStart`, `spec224AuthorizationRevocation`, `economicSettlementService`, and `spec224ApprovalContinuation`.
-- Focused QA/review: 11 targeted test surfaces passed (the 8 Vitest files above plus the three Rust launcher tests below); disposable migration and Linux installer checks are additional independent passes.
+- Focused Vitest after PR #377: 9 files, 68 tests passed: `economicReceiptSettlement`, `economicReceiptSettlementTransaction`, `spec224AuthorizationBinding`, `agentControlPlaneContracts`, `externalAgentRunnerDispatcher`, `spec224ProtectedExecutionStart`, `spec224AuthorizationRevocation`, `economicSettlementService`, and `spec224ApprovalContinuation`.
+- Focused QA/review: 12 targeted test surfaces passed (the 9 Vitest files above plus the three Rust launcher tests below); disposable migration and Linux installer checks are additional independent passes.
+- The five transaction orchestration tests use deterministic repository/ledger mocks. They validate service decisions and retry/idempotency wiring, not PostgreSQL transaction atomicity or live settlement.
 - Windows launcher tests compiled and passed on Linux: `windows_powershell_shims_preserve_arguments_without_a_shell_command_string`, `native_windows_executable_does_not_use_a_shell`, and `cmd_shims_fail_closed_for_shell_metacharacters_in_path_or_arguments`. These do not exercise the Windows host.
 - Linux Runner installer lifecycle test passed. It does not establish a registered or online Linux Runner.
 - Fresh Linux CLI status at `2026-10-08T17:20:17.216Z`: Runner `0.2.13`, state `ready`, `toolCount=11`, `readyToolCount=0`; Codex is installed but auth/health/availability are `unknown`, trust is `discovered`, and the reason is `probe_required`. No probe or job was run. Linux readiness remains a separate workunit from Windows authority and deployment.
@@ -54,4 +56,4 @@ At that observation, no DevelopmentRun/job/attempt existed to authorize; economi
 
 ## Integration obligations
 
-PR #375 is integrated and reachable from `origin/main`. The canonical user workspace was resolved, converged, and verified at the integrated SHA. Temporary dependency symlinks created for focused tests were removed. This handoff and `program.json` now record the integrated SHA and receipt. Do not mark live dispatch, settlement, or deployment `PASS` without corresponding real receipts.
+PR #375 implementation and PR #377 transaction tests are integrated and reachable from `origin/main` at `42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181`. The canonical user workspace was resolved, converged, and verified at that SHA. Temporary dependency symlinks created for focused tests were removed. This handoff and `program.json` record the integrated SHA and latest convergence receipt. Do not mark live dispatch, settlement, or deployment `PASS` without corresponding real receipts.
