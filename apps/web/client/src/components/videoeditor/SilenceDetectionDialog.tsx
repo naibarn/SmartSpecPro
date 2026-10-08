@@ -329,8 +329,8 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   onClose,
 }) => {
   // Slider state
-  const [threshold, setThreshold] = useState(-30);
-  const [minDuration, setMinDuration] = useState(0.3);
+  const [threshold, setThreshold] = useState(-40);
+  const [minDuration, setMinDuration] = useState(0.5);
   const [softeningBuffer, setSofteningBuffer] = useState(0.2);
 
   // Track selection
@@ -2000,7 +2000,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                     <input
                       type="range"
                       min="-60"
-                      max="-10"
+                      max="-20"
                       step="1"
                       value={threshold}
                       onChange={(e) => setThreshold(Number(e.target.value))}
@@ -2008,7 +2008,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                       className="slider"
                       data-testid="threshold-slider"
                     />
-                    <span className="slider-endpoint">-10</span>
+                    <span className="slider-endpoint">-20</span>
                   </div>
                 </div>
 

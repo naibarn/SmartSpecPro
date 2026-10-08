@@ -717,11 +717,11 @@ export function applyBufferToRegions(
 
 /**
  * Convert a dB value to a percentage for display purposes.
- * Maps the range [-60dB, -10dB] to [0%, 100%].
+ * Maps the range [-60dB, -20dB] to [0%, 100%].
  * Values outside this range are NOT clamped.
  */
 export function dbToPercent(db: number): number {
-  return ((db + 60) / 50) * 100;
+  return ((db + 60) / 40) * 100;
 }
 
 // ========================================
