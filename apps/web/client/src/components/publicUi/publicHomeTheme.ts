@@ -6,6 +6,13 @@ export const publicHomeTheme = defineTheme({
   name: "smartaihub-public-home",
   extends: neutralTheme,
   tokens: {
-    "--public-layout-wide": "82.5rem",
+    "--public-layout-wide": "88rem",
+    "--color-accent": "#006874",
+    "--color-accent-muted": "#e5f5f6",
+    "--color-on-accent": "#ffffff",
+    "--color-text-accent": "#006874",
+    "--color-icon-accent": "#006874",
+    "--color-background-muted": "#f2f8f8",
+    "--color-text-secondary": "#52666b",
   },
 });

@@ -177,7 +177,7 @@ export function PublicHomeExperience({
           padding={8}
           style={{ marginInline: "auto" }}
         >
-          <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="center">
+          <Grid columns={{ minWidth: 320, max: 2 }} gap={8} align="start">
             <VStack gap={4} as="header">
               <Text type="label" color="accent">
                 {copy.eyebrow}

@@ -79,7 +79,7 @@ describe("Seo", () => {
       .not.toContain("StaleMetadata");
   });
 
-  it("removes only the no-JS prerender metadata after the client route loads", () => {
+  it("removes no-JS prerender content and metadata after the client route loads", () => {
     document.head.insertAdjacentHTML(
       "beforeend",
       '<link rel="canonical" href="https://smartaihub.app/" data-seo-prerender="true"><meta property="og:url" content="https://smartaihub.app/" data-seo-prerender="true"><meta name="description" content="snapshot" data-seo-prerender="true">',
@@ -87,6 +87,10 @@ describe("Seo", () => {
     document.head.insertAdjacentHTML(
       "beforeend",
       '<link rel="canonical" href="https://smartaihub.app/features"><meta name="description" content="Features page">',
+    );
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<main id="smartaihub-prerender" data-seo-prerender="true"><article>Snapshot content</article></main>',
     );
 
     removePrerenderedSeoHeadMetadata();
@@ -96,6 +100,7 @@ describe("Seo", () => {
       .toBe("https://smartaihub.app/features");
     expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content"))
       .toBe("Features page");
+    expect(document.querySelector("#smartaihub-prerender")).toBeNull();
   });
 
   it("reconciles static root and prerendered metadata to the active route", async () => {

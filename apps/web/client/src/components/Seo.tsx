@@ -53,6 +53,10 @@ export function removePrerenderedSeoHeadMetadata(): void {
       'link[rel="canonical"][data-seo-prerender="true"], meta[property="og:url"][data-seo-prerender="true"], meta[name="description"][data-seo-prerender="true"]',
     )
     .forEach((element) => element.remove());
+
+  document
+    .querySelector('main#smartaihub-prerender[data-seo-prerender="true"]')
+    ?.remove();
 }
 
 function keepOneHeadValue(selector: string, attribute: string, value: string): void {
