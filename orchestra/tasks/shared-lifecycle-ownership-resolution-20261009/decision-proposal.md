@@ -1,24 +1,22 @@
-# Shared Lifecycle Eligibility — Owner Decision Proposal
+# Shared Lifecycle Eligibility — Accepted Architecture and Implementation Gate
 
-**Status:** CONDITIONALLY ACCEPTED BY PROJECT OWNER — required canonical/runtime owner confirmations pending
-**Repository baseline:** `origin/main` / `34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab`
+**Status:** ARCHITECTURE ACCEPTED BY PROJECT OWNER / REPOSITORY MAINTAINER; runtime implementation remains blocked pending production caller identification and a collision-free authorized WorkUnit
+**Repository baseline:** `origin/main` / `89ef3697976cade1d6811ee9e4ec0f822e1d0e7a` (verified 2026-10-09)
 **Date:** 2026-10-09 (Asia/Bangkok)
 **Scope:** Architecture and bounded implementation handoff only. No runtime, Spec, handoff, generated-view, schema, migration, grant, or dispatch changes are authorized by this record.
 
-## Decision requested
+## Recorded owner decision
 
-The project owner accepted Decisions A–D as the design direction, conditional on confirmation by the responsible canonical and runtime owners. This is not a canonical owner approval, implementation authorization, runtime grant, economic authorization, or dispatch permission. The required owner confirmations remain pending.
+On 2026-10-09, the project owner/repository maintainer confirmed the following technical ownership assignments and accepted Decisions A–D plus the DevelopmentRun-only Phase 1 boundary, subject to existing security and change-control policies. The same authorized maintainer holds all three roles; repository governance inspection found no mandatory independent-review rule. This records the architecture and accountable roles. It does not authorize production deployment, migration, grants, economic provisioning, Runner dispatch, or modification of another owner's work.
 
-| Concern | Proposed owner/boundary | Current evidence | Approval status |
-|---|---|---|---|
-| Spec continuation recommendation | Canonical Spec Handoff manifests and their generated views | `specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration/spec.md`; `tools/spec_handoff/index.py` | Reporting role verified; approval of the explicit no-dispatch boundary requested |
-| DevelopmentRun lifecycle | SPEC-224 Development Orchestration Runtime | `specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md` names DevelopmentRun as its lifecycle aggregate and correlates it with `worker_jobs` | Domain responsibility verified; approval of shared eligibility contract and enforcement integration pending |
-| Non-DevelopmentRun WorkUnit identity/lifecycle | Each existing domain owner through an explicitly registered adapter | No universal identity mapping or complete adapter owner registry verified | **Unresolved; owner approval required per domain** |
-| Durable dispatch and execution | SPEC-186 `worker_jobs` + transactional outbox, with current authorization, leases, fencing, approvals, and economic controls | `specs/feature/186-unified-job-control-plane-adapters/spec.md`; SPEC-278 confirms `worker_jobs` remains execution authority | Boundary verified; approval required before any admission-path integration |
-| SPEC-269 task/delegation state | SPEC-269 domain consumes its state through its approved owner adapter | Canonical SPEC-269 exists, but manifest authority is not proof of shared dispatch authority | Adapter ownership and interface approval pending |
-| SPEC-275 reliability evidence | SPEC-275 domain consumes its evidence through its approved owner adapter | Canonical SPEC-275 exists; manifest records unresolved authority for production evidence bindings | Evidence owner and interface approval pending |
+| Role | Accountable owner | Authorized responsibility | Decision | Evidence / approval reference | Outstanding blocker |
+|---|---|---|---|---|---|
+| SPEC-224 DevelopmentRun lifecycle | `@naibarn` | DevelopmentRun lifecycle paths under SPEC-224; actual admission integration path must be confirmed before implementation | ACCEPT | Project Owner / Repository Maintainer Decision in this conversation, 2026-10-09; SPEC-224 spec | Identify and verify the actual production admission caller; record exact file ownership and a collision-free implementation WorkUnit |
+| Canonical Spec Handoff / Global Views | `@naibarn` | Canonical handoff writer and generated reporting views | ACCEPT | Same owner decision; `specs/project/canonical-spec-handoff-reconciliation/04-global-views-and-migration/spec.md` | No Phase 1 reporting change is needed; any future reporting change must remain recommendation-only |
+| SPEC-186 worker_jobs / Outbox admission | `@naibarn` | Existing worker_jobs/outbox admission boundary and its tenant, approval, economic, lease, fencing, and idempotency controls | ACCEPT | Same owner decision; SPEC-186 spec | Must confirm the real DevelopmentRun caller and preserve all gates; no production dispatch is authorized |
+| Non-DevelopmentRun domain adapters | Each respective domain owner | Existing domain-owned durable identities only | DEFERRED | Owner decision explicitly excludes universal adapters | Separate owner approval and collision-free WorkUnit for each adapter |
 
-Canonical owner roles are identifiable from source, but no named owner acceptance or approval receipt was found in the inspected canonical records. The current task cannot substitute for those approvals.
+The repository owner confirmed the accountable roles directly. This is the owner approval evidence for the architecture and role assignments, not proof that runtime behavior is implemented or that a production caller exists.
 
 ## Proposed decisions
 
@@ -80,16 +78,15 @@ Required semantics:
 - Do not persist these results in a new ledger. Return/project them from the existing domain record or DevelopmentRun, with any durable event/job state remaining on its current owner.
 - Keep `reasonCodes` stable and machine-readable; free-text rationale may accompany but cannot replace them.
 
-## Phase 1 boundary and integration plan, gated by approvals
+## Phase 1 boundary and integration plan, gated by implementation admission
 
-1. Obtain written approval from the SPEC-224 runtime owner for the DevelopmentRun-only result semantics, reuse of its existing predicate registry/watcher, and exact owned admission call site.
-2. Obtain approval from the canonical handoff/global-view owner that continuation output remains reporting-only and confirm whether any reporting change is necessary. No generated-view changes are included in Phase 1 by default.
-3. Obtain SPEC-186/runtime-admission owner approval for the exact consumption point and confirm that all existing dispatch gates remain authoritative.
-4. Verify file ownership, active reservations, and a collision-free task workunit before implementation. If any owner or path remains unresolved, stop at this boundary.
-5. After those approvals, implement only a DevelopmentRun lifecycle/admission guard using the existing durable DevelopmentRun and `worker_jobs`/outbox path. Do not enable non-DevelopmentRun adapters, change canonical Spec Handoff, create new storage, or add migrations in Phase 1.
-6. Define and run focused tests for the approved DevelopmentRun path, including fail-closed predicates, evidence freshness, tenant authorization, idempotency/fencing, and the SPEC-038 blocked regression. SPEC-038 remains a negative case; do not reopen CMS implementation.
-7. After authorized implementation, run at least ten independent focused QA/review passes plus existing DevelopmentRun compatibility tests. Those reviews do not substitute for runtime, tenant, database/outbox, or exact-SHA verification.
-8. A later non-DevelopmentRun adapter requires a separate collision-free WorkUnit and explicit approval from that domain owner; no such adapter is enabled by this proposal.
+1. The project owner has accepted the DevelopmentRun-only result semantics, the recommendation/dispatch boundary, and the continued authority of worker_jobs/outbox and its existing gates.
+2. Verify the actual production DevelopmentRun admission caller before choosing an integration point. The previously identified `createAndBindNextPhase()` seam has no confirmed production caller.
+3. Record exact file ownership, active reservations, and a collision-free implementation WorkUnit before implementation. Do not modify Lane 1-owned paths or the preserved ecosystem-foundation worktree.
+4. Do not implement universal non-DevelopmentRun adapters or modify generated reporting views in Phase 1.
+5. After the above implementation admission conditions are met, implement only a DevelopmentRun lifecycle/admission guard using the existing durable DevelopmentRun and `worker_jobs`/outbox path. Do not create storage or migrations.
+6. Run the authorized focused DevelopmentRun tests, SPEC-038 negative regression, and at least ten independent focused QA/review passes. Tests of an unconnected service do not establish runtime enforcement.
+7. A later non-DevelopmentRun adapter requires a separate collision-free WorkUnit and explicit approval from that domain owner.
 
 ## Focused acceptance matrix for the authorized implementation
 
@@ -108,23 +105,24 @@ Required semantics:
 
 ## Current collision and preserved work
 
-Read-only inspection at this task start found `/home/dev/worktrees/SmartSpecPro-ecosystem-foundation` on `codex/smarthub-authority-recovery-uat-20261007`, 394 commits behind the recorded canonical tip, with 22 changed paths (including generated global views and SPEC-269/302 handoffs) plus an untracked SPEC-268 directory and task evidence. This proposal does not alter that worktree or any overlapping paths. There were no open PRs at inspection time. Recheck both the worktree and PR list before any later implementation decision.
+Read-only inspection found `/home/dev/worktrees/SmartSpecPro-ecosystem-foundation` on `codex/smarthub-authority-recovery-uat-20261007`, substantially behind canonical main with dirty and untracked changes including shared handoffs and SPEC-268/269/302. This proposal does not alter that worktree or any overlapping paths. Recheck the worktree and active path reservations before any later implementation decision.
 
-## Unresolved approvals and next action
+## Remaining implementation gate and next action
 
-- **SPEC-224/runtime owner:** confirm the DevelopmentRun-only result semantics and identify/accept the exact lifecycle/admission integration owner/path.
-- **Canonical handoff/global-view owner:** confirm the reporting-only boundary and generated-view ownership. No display change is needed for Phase 1 unless that owner identifies one.
-- **SPEC-186/runtime-admission owner:** confirm the specific admission call site and retained dispatch gates.
-- **Each non-DevelopmentRun domain owner:** identify the existing durable ID and approve its adapter contract; SPEC-269 and SPEC-275 require separate domain evidence/ownership approval.
+- **Production admission caller:** identify and verify the live DevelopmentRun caller; a service method and its unit tests alone are insufficient.
+- **Implementation WorkUnit and paths:** create/identify a collision-free, admitted WorkUnit and record exact authorized file paths before any runtime edit.
+- **Non-DevelopmentRun domain owners:** separate approval is required per future adapter; all such adapters are deferred.
 - **Collision owner:** identify and reconcile the dirty ecosystem-foundation worktree through its owner; no one else should stage, rebase, cherry-pick, or overwrite it.
 
-No exact next shared WorkUnit is declared eligible. The continuation queue contains recommendations, but owner and adapter verification is not yet established for any candidate. Resume implementation only after the approvals above and a fresh collision/ownership audit.
+No runtime implementation WorkUnit is currently declared eligible. The documentation-only PR #374 can proceed through normal repository policy. After merge, the next eligible shared runtime WorkUnit is **not yet established**; first action is a read-only trace from the DevelopmentRun production entrypoints to a verified admission caller, followed by WorkUnit admission and path reservation.
 
 ## Evidence and limitations
 
-- Canonical source inspected: `34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab`.
-- Project-owner conditional acceptance was received on 2026-10-09; it does not replace the three canonical/runtime owner confirmations above.
-- PR #374 currently has no comments, reviews, or requested reviewers; therefore no required owner confirmation is evidenced there.
+- Canonical source inspected for current caller search: `89ef3697976cade1d6811ee9e4ec0f822e1d0e7a`.
+- Project-owner/repository-maintainer decision and role assignments were received on 2026-10-09 and are recorded against PR #374.
+- Repository governance inspection found zero rulesets, no `main` branch protection, and no configured mandatory independent review. Only `@naibarn` is listed as a collaborator/admin; no guessed reviewer is requested.
 - `tools/spec_handoff next` returns generated continuation-queue rows; repository search found no runtime caller that turns those rows into dispatch.
 - `apps/web/server/services/developmentLifecyclePredicateRegistry.ts` fails closed for unavailable and duplicate predicate IDs; `developmentLifecycleDependencyWatcher.ts` uses the existing worker-job-backed DevelopmentRun persistence path.
-- No runtime tests were run: this artifact is an architecture proposal and the authorized owner approvals are not present. Passing documentation checks would not prove runtime behavior.
+- `apps/web/server/services/spec224PhaseController.ts`: `createAndBindNextPhase()` calls `createControlPlaneJob()` at line 217; `reconcileAndContinueNextPhase()` calls it at line 311. A search of the latest `origin/main` found no other caller outside these service definitions/self-call. This seam has no confirmed production caller, so no runtime enforcement claim is made.
+- `apps/web/server/services/jobControlPlaneGateway.ts` identifies `createControlPlaneJob()` as the producer-facing creation boundary. Existing admission controls remain authoritative.
+- This PR changes documentation only. Runtime tests were not run and would not establish production wiring. Implementation QA requirements remain pending until separately authorized runtime work.
