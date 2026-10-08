@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 746 unresolved of 746
-- Next action: Prompt Recipe Library source/spec/test checkpoint is recorded as PARTIAL. Integrate its isolated PR first. WP0.4 then waits on Lane A Windows Runner repair/readiness and real A/B/C render receipts; assess Linux separately, and keep generated code disabled until the sandbox security gate passes.
-- Manifest generation: 16
+- Next action: Lane A should submit Windows Runner readiness and source-bound Golden Fixture A/B/C receipts through the canonical handoff when the external Runner repair is complete. Assess Linux separately; keep WP0.4 PARTIAL/BLOCKED until real render evidence, and keep generated code non-executable until the sandbox gate passes.
+- Manifest generation: 17
 
 ## Source-declared status and relationship claims
 
