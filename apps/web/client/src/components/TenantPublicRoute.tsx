@@ -5,6 +5,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useTenantPage } from "@/hooks/useTenantPage";
 import { isSmartAIHubPublicSite } from "@/lib/publicSiteTenant";
 import TenantHomePage from "@/pages/TenantHomePage";
+import { RouteLoadingSkeleton } from "./RouteLoadingSkeleton";
 import { Seo } from "./Seo";
 import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
@@ -25,9 +26,11 @@ export function TenantPublicRoute({ pageKey, children }: TenantPublicRouteProps)
   });
   const { t } = useTranslation("publicSite");
 
-  if (tenantLoading) return null;
+  // The verified SmartAIHub domain can be identified from the hostname alone.
+  // Do not make public platform pages wait for the tenant API: a slow or
+  // blocked request otherwise leaves the route completely blank.
   if (isPlatformSite) return children;
-  if (pageLoading) return null;
+  if (tenantLoading || pageLoading) return <RouteLoadingSkeleton />;
   if (page) {
     const canonicalPath = location.split(/[?#]/, 1)[0] || "/";
     return (
