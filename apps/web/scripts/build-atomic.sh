@@ -159,7 +159,7 @@ cleanup_stale_staging
 # service headroom intact and fail before Vite transforms 13k modules.
 resource_preflight() {
   local user_cgroup="/sys/fs/cgroup/user.slice/user-$(id -u).slice"
-  local memory_current memory_high memory_max swap_current swap_max
+  local memory_current memory_effective memory_reclaimable memory_high memory_max swap_current swap_max
   local available_kb psi_avg10 memory_high_headroom memory_max_headroom swap_headroom
   local gib=$((1024 * 1024 * 1024))
   local minimum_memory_headroom=$((6 * gib))
@@ -189,19 +189,29 @@ resource_preflight() {
   memory_current="$(cat "${user_cgroup}/memory.current")"
   memory_high="$(cat "${user_cgroup}/memory.high")"
   memory_max="$(cat "${user_cgroup}/memory.max")"
+  # File pages on the inactive LRU and reclaimable slab can be evicted by the
+  # kernel under pressure. Do not treat them like pinned memory: canonical
+  # dependency setup warms a large file cache before this build-level gate.
+  # `inactive_file` excludes tmpfs/shmem, which must remain charged because
+  # reclaiming it would discard live temporary files.
+  memory_reclaimable="$(awk '$1 == "inactive_file" || $1 == "slab_reclaimable" { total += $2 } END { print total + 0 }' "${user_cgroup}/memory.stat" 2>/dev/null || echo 0)"
+  memory_effective=$((memory_current - memory_reclaimable))
+  if [ "${memory_effective}" -lt 0 ]; then
+    memory_effective=0
+  fi
   swap_current="$(cat "${user_cgroup}/memory.swap.current" 2>/dev/null || echo max)"
   swap_max="$(cat "${user_cgroup}/memory.swap.max" 2>/dev/null || echo max)"
-  echo "[build-atomic] Resource preflight: user_slice_memory_current=${memory_current}, high=${memory_high}, max=${memory_max}, swap_current=${swap_current}, swap_max=${swap_max}."
+  echo "[build-atomic] Resource preflight: user_slice_memory_current=${memory_current}, reclaimable=${memory_reclaimable}, effective=${memory_effective}, high=${memory_high}, max=${memory_max}, swap_current=${swap_current}, swap_max=${swap_max}."
 
   if [ "${memory_high}" != "max" ]; then
-    memory_high_headroom=$((memory_high - memory_current))
+    memory_high_headroom=$((memory_high - memory_effective))
     if [ "${memory_high_headroom}" -lt "${minimum_memory_headroom}" ]; then
       echo "[build-atomic] RESOURCE_BLOCKED: user slice has less than 6 GiB headroom below MemoryHigh; no build was started." >&2
       return 1
     fi
   fi
   if [ "${memory_max}" != "max" ]; then
-    memory_max_headroom=$((memory_max - memory_current))
+    memory_max_headroom=$((memory_max - memory_effective))
     if [ "${memory_max_headroom}" -lt "${minimum_memory_max_headroom}" ]; then
       echo "[build-atomic] RESOURCE_BLOCKED: user slice has less than 8 GiB headroom below MemoryMax; no build was started." >&2
       return 1
