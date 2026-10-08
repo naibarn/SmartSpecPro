@@ -23,17 +23,61 @@
     "status": "ACTIVE_CANONICAL",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "affected_requirements": [
+        "REQ-E932270F4AB3",
+        "REQ-A2B452456E81"
+      ],
+      "class": "DATA_AUTHORITY",
+      "id": "CMS_CLAIM_AUDIT_RECORDS",
+      "next_action": "Reassess only when CMS-owned claim-audit and correction records with their review outcomes and measurement period are available; do not fabricate sample results.",
+      "recoverable": true,
+      "root_cause": "Claim accuracy and post-publish correction metrics require manual audit/tracking records and a defined denominator/period; no CMS-owned auditable source is currently available in this lane."
+    },
+    {
+      "affected_requirements": [
+        "REQ-80910D9B529A",
+        "REQ-3012D5FE33CE"
+      ],
+      "class": "DATA_AUTHORITY",
+      "id": "CMS_PUBLISH_LIFECYCLE_TIMESTAMPS",
+      "next_action": "Reassess only when authoritative CMS publish-start and publish-completion timestamps exist for content records; do not infer or synthesize historical timestamps.",
+      "recoverable": true,
+      "root_cause": "Publish-latency requirements need CMS-owned publish-start and publish-completion timestamps; current evidence does not establish both events."
+    },
+    {
+      "affected_requirements": [
+        "REQ-08E195E1F593"
+      ],
+      "class": "DATA_AUTHORITY",
+      "id": "CMS_REFRESH_COMPLETION_HISTORY",
+      "next_action": "Reassess only when an authoritative CMS refresh-completion history can be read; do not treat scheduled timestamps as completion evidence.",
+      "recoverable": true,
+      "root_cause": "Refresh SLA requires actual refresh completion history; next_refresh_at is a scheduled timestamp and does not prove a completed refresh."
+    },
+    {
+      "affected_requirements": [
+        "REQ-30D898BD995D",
+        "REQ-EAD5940AFBF1"
+      ],
+      "class": "EXTERNAL_DEPENDENCY",
+      "id": "GOOGLE_RICH_RESULTS_VALIDATION_EVIDENCE",
+      "next_action": "Reassess when representative CMS output has a durable Google Rich Results Test result tied to the tested output; retain the requirements as OPEN until then.",
+      "recoverable": true,
+      "root_cause": "Existing structural JSON-LD tests do not establish representative CMS output passing Google Rich Results Test; no external validation evidence is recorded."
+    }
+  ],
   "concurrency": {
     "expected_canonical_sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741",
     "expected_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383"
   },
   "continuation": {
-    "next_action": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
+    "next_action": "Lane 2 CMS KPI workunit is closed for this checkpoint. Do not dispatch implementation while its recorded data-authority and external-evidence predicates remain unsatisfied. Re-evaluate only after durable qualifying evidence is present; do not add speculative migrations, fabricate records/timestamps, use workflow-cache metadata, or claim KPI completion.",
     "next_ready_workunit": "NONE_CURRENT_CMS_KPI_DATA_AUTHORITY_BLOCKED",
-    "reactivation_predicate": null,
-    "resume_point": "Resume from canonical SHA 1e002aac5b481ec0b2a285f7174a6afee17bf741, ledger generation 12, 8 PASS rows and 98 OPEN rows. Delivered structured-data counts/details and verified-age distribution; next code slice waits for CMS-owned data authority or external Rich Results evidence.",
-    "waiting_predicate": null
+    "reactivation_predicate": "Re-evaluate the affected requirement slice only when its blocker is cleared by durable evidence: CMS-owned claim-audit/correction records with period and outcomes; authoritative publish-start and completion timestamps; authoritative refresh-completion history; or a representative Google Rich Results Test result tied to CMS output. Refresh origin/main, verify evidence provenance, update the canonical handoff, and dispatch only the newly eligible slice.",
+    "resume_point": "Canonical SPEC-038 remains PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Product slices are integrated through the CMS structured-data dashboard and verified-age distribution; remaining eligibility is gated by the per-requirement blockers above. Cache hit-rate remains outside this lane because its workflow-cache authority is reserved/shared.",
+    "waiting_predicate": "No CMS KPI implementation is eligible while CMS-owned manual claim-audit/correction records, publish-start plus publish-completion timestamps, refresh-completion history, and representative Google Rich Results evidence are absent for their respective requirements. Current state must be rechecked against canonical sources before any dispatch."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -63,8 +107,8 @@
         "sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741"
       }
     ],
-    "next_action": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
-    "rationale": "Remaining CMS dashboard KPIs need data or authority not available in this app-local scope: claim accuracy and correction rate need manual audit records; publish latency needs CMS start/finish timestamps; refresh SLA needs completion history; workflow cache metadata is outside this lane; Google Rich Results remains external acceptance. No safe code change can close these honestly without new data authority.",
+    "next_action": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
+    "rationale": "CONTINUE_REQUIRED remains accurate for SPEC-038 overall because 98 requirements are OPEN. The Lane 2 CMS KPI workunit is closed and ineligible until specific CMS data authorities or external Rich Results evidence become available. Handoff records these blockers and reactivation predicates; lifecycle remains PARTIAL_INTEGRATED because no registered predicate adapter/watcher supports an automatic WAITING_DEPENDENCY transition.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -97,7 +141,7 @@
     "rationale": "Current server APIs, dashboard, staleness services and skill-upgrade tests remain present on canonical main. The focused verification also exposes unmet upgrade criteria, so this Spec remains current work.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 30,
+  "generation": 31,
   "identity": {
     "canonical_path": "specs/feature/038-Citation-Gated-Content-Quality/spec.md",
     "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
@@ -208,8 +252,8 @@
           "sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741"
         }
       ],
-      "next_action": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
-      "rationale": "Remaining CMS dashboard KPIs need data or authority not available in this app-local scope: claim accuracy and correction rate need manual audit records; publish latency needs CMS start/finish timestamps; refresh SLA needs completion history; workflow cache metadata is outside this lane; Google Rich Results remains external acceptance. No safe code change can close these honestly without new data authority.",
+      "next_action": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
+      "rationale": "CONTINUE_REQUIRED remains accurate for SPEC-038 overall because 98 requirements are OPEN. The Lane 2 CMS KPI workunit is closed and ineligible until specific CMS data authorities or external Rich Results evidence become available. Handoff records these blockers and reactivation predicates; lifecycle remains PARTIAL_INTEGRATED because no registered predicate adapter/watcher supports an automatic WAITING_DEPENDENCY transition.",
       "residual_requirements": []
     },
     "decision_basis": "Repository code and focused tests reviewed; canonical classification is supported by active routes/services plus reproducible failing acceptance tests.",
@@ -1538,7 +1582,7 @@
     "unresolved": 98
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T16:18:56.182069Z",
+  "updated_at": "2026-10-08T16:36:10.877577Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
