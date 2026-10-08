@@ -64,7 +64,8 @@ async function createAttempt() {
       authorizationGrantRef: `grant-${taskId}`,
       approvalRef: `approval-${taskId}`,
       budgetReservationRef: `reservation-${taskId}`,
-      spendCeilingMicros: 100_000,
+      budgetCapMinorUnits: 100_000,
+      currency: "USD",
       workspaceRef: `workspace-${taskId}`,
       deadline: new Date(Date.now() + 60_000).toISOString(),
     },
@@ -197,6 +198,15 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
       journalLines: journalLines(budget, 300, true),
       journalDescription: "Spec 224 test release",
     };
+    await expect(releaseEconomicHold(db, {
+      ...releaseInput,
+      idempotencyKey: "release-wrong-amount-01",
+      journalLines: journalLines(budget, 299, true),
+    })).rejects.toMatchObject({ code: "RELEASE_AMOUNT_INVALID" });
+    const [stillHeld] = await db.select().from(economicSchema.economicHolds).where(
+      eq(economicSchema.economicHolds.id, reserved.id),
+    );
+    expect(stillHeld).toMatchObject({ status: "held", releasedMinorUnits: 0 });
     expect((await releaseEconomicHold(db, releaseInput)).status).toBe("released");
     await expect(releaseEconomicHold(db, { ...releaseInput, idempotencyKey: "release-other-01" }))
       .rejects.toMatchObject({ code: "RELEASE_IDEMPOTENCY_CONFLICT" });

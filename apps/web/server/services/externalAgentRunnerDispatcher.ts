@@ -167,7 +167,8 @@ export function createExternalAgentTaskDispatcher(
           : {}),
         approvalRef: binding.approvalRef,
         budgetReservationRef: binding.budgetReservationRef,
-        spendCeilingMicros: binding.spendCeilingMicros,
+        budgetCapMinorUnits: binding.budgetCapMinorUnits,
+        currency: binding.currency,
       },
     });
 
@@ -291,7 +292,8 @@ export function createExternalAgentTaskDispatcher(
           idempotencyKey: command.idempotencyKey,
           approvalRef: binding.approvalRef,
           budgetReservationRef: binding.budgetReservationRef,
-          spendCeilingMicros: binding.spendCeilingMicros,
+        budgetCapMinorUnits: binding.budgetCapMinorUnits,
+        currency: binding.currency,
           commandTemplate: {
             commandId: command.commandId,
             commandType: command.commandType,

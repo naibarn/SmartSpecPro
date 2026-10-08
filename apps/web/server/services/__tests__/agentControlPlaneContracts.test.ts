@@ -59,7 +59,8 @@ describe("Feature 200 Agent control-plane contracts", () => {
         authorizationGrantRef: "grant:1",
         approvalRef: "approval:1",
         budgetReservationRef: "budget:1",
-        spendCeilingMicros: 100_000,
+        budgetCapMinorUnits: 100_000,
+        currency: "USD",
         workspaceRef: "workspace-1",
         deadline: "2099-01-01T00:00:00.000Z",
       },
@@ -70,7 +71,7 @@ describe("Feature 200 Agent control-plane contracts", () => {
     expect(() =>
       validateAgentTaskManifest({
         ...bound,
-        policyBinding: { ...bound.policyBinding, spendCeilingMicros: 0 },
+        policyBinding: { ...bound.policyBinding, budgetCapMinorUnits: 0 },
       })
     ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });

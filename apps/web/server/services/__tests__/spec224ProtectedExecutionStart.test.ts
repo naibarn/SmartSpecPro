@@ -442,7 +442,8 @@ describe("Spec 224 protected execution-start identity", () => {
         authorizationGrantRef: "grant-a",
         approvalRef: "approval-a",
         budgetReservationRef: "budget-a",
-        spendCeilingMicros: 5000,
+        budgetCapMinorUnits: 5000,
+        currency: "USD",
         workspaceRef: "workspace-a",
         deadline: "2099-01-01T00:00:00.000Z",
       },
@@ -467,7 +468,8 @@ describe("Spec 224 protected execution-start identity", () => {
         requestedCapabilities: ["code.edit"],
         approvalRef: "approval-a",
         budgetReservationRef: "budget-a",
-        spendCeilingMicros: 5000,
+        budgetCapMinorUnits: 5000,
+        currency: "USD",
       },
     };
 

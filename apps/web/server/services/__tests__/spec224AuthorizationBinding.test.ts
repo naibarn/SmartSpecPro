@@ -76,6 +76,8 @@ const baseInput = (): Spec224AuthorizationInput => ({
       provider: "codex",
       workspaceId: "workspace-a",
       authorizationGrantRef: "runner-auth:sha256:grant-a",
+      budgetCapMinorUnits: 500,
+      currency: "USD",
     },
   },
   budget: {
@@ -100,7 +102,8 @@ describe("Spec 224 owner authorization binding", () => {
       authorizationGrantRef: "grant-a",
       approvalRef: "approval-a",
       budgetReservationRef: "hold-a",
-      spendCeilingMicros: 500,
+      budgetCapMinorUnits: 500,
+      currency: "USD",
       workspaceRef: "workspace-a",
       deadline: "2026-09-23T11:00:00.000Z",
     };
@@ -148,7 +151,8 @@ describe("Spec 224 owner authorization binding", () => {
       authorizationGrantRef: "grant-a",
       approvalRef: "approval-a",
       budgetReservationRef: "hold-a",
-      spendCeilingMicros: 500,
+      budgetCapMinorUnits: 500,
+      currency: "USD",
       workspaceRef: "workspace-a",
       deadline: "2026-09-23T11:00:00.000Z",
     };
@@ -169,7 +173,7 @@ describe("Spec 224 owner authorization binding", () => {
     expect(
       isSameSpec224PolicyBinding(binding, {
         ...binding,
-        spendCeilingMicros: 501,
+        budgetCapMinorUnits: 501,
       })
     ).toBe(false);
   });
@@ -186,9 +190,22 @@ describe("Spec 224 owner authorization binding", () => {
       authorizationGrantRef: "runner-auth:sha256:grant-a",
       approvalRef: "approval-a",
       budgetReservationRef: "hold-a",
-      spendCeilingMicros: 500,
+      budgetCapMinorUnits: 500,
+      currency: "USD",
       workspaceRef: "workspace-a",
       deadline: "2026-09-23T11:00:00.000Z",
+    });
+  });
+
+  it.each([
+    ["approval amount mismatch", { budgetCapMinorUnits: 501, currency: "USD" }],
+    ["approval currency mismatch", { budgetCapMinorUnits: 500, currency: "EUR" }],
+  ])("blocks dispatch for %s", (_label, approvedBudget) => {
+    const input = baseInput();
+    input.approval!.payload = { ...input.approval!.payload, ...approvedBudget };
+    expect(evaluateSpec224Authorization(input)).toMatchObject({
+      status: "BUDGET_REQUIRED",
+      reasons: ["APPROVAL_BUDGET_BINDING_MISMATCH"],
     });
   });
 

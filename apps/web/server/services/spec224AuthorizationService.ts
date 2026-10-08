@@ -64,7 +64,8 @@ type LoadedRun = {
     approvalRef?: string;
     budgetReservationRef?: string;
     deadline?: string;
-    spendCeilingMicros?: number;
+    budgetCapMinorUnits?: number;
+    currency?: string;
     status?: string;
   };
 };
@@ -92,7 +93,9 @@ function parseBinding(value: unknown): Spec224PolicyBinding | null {
     typeof raw.authorizationGrantRef !== "string" ||
     typeof raw.approvalRef !== "string" ||
     typeof raw.budgetReservationRef !== "string" ||
-    typeof raw.spendCeilingMicros !== "number" ||
+    !Number.isSafeInteger(raw.budgetCapMinorUnits) ||
+    typeof raw.currency !== "string" ||
+    !/^[A-Z]{3}$/.test(raw.currency) ||
     typeof raw.workspaceRef !== "string" ||
     typeof raw.deadline !== "string"
   )
@@ -189,7 +192,8 @@ async function createApproval(
   runner: Spec224AuthorizationRunner,
   provider: "codex" | "claude_code",
   deadline: string,
-  spendCeilingMicros: number
+  budgetCapMinorUnits: number,
+  currency: string
 ): Promise<Spec224ApprovalEvidence> {
   const runtime = await getAppRuntimeConfig();
   const response = await fetch(
@@ -227,7 +231,8 @@ async function createApproval(
             tool =>
               tool.toolId === provider || tool.adapterId === `${provider}.v1`
           )?.authorizationEvidenceRef,
-          spendCeilingMicros,
+          budgetCapMinorUnits,
+          currency: currency.trim().toUpperCase(),
           deadline,
         },
       }),
@@ -320,10 +325,11 @@ async function loadRun(
           : undefined,
       deadline:
         typeof pending.deadline === "string" ? pending.deadline : undefined,
-      spendCeilingMicros:
-        typeof pending.spendCeilingMicros === "number"
-          ? pending.spendCeilingMicros
+      budgetCapMinorUnits:
+        typeof pending.budgetCapMinorUnits === "number"
+          ? pending.budgetCapMinorUnits
           : undefined,
+      currency: typeof pending.currency === "string" ? pending.currency : undefined,
       status: typeof pending.status === "string" ? pending.status : undefined,
     },
   };
@@ -613,8 +619,14 @@ export function createSpec224AuthorizationService() {
       runnerId: string;
       provider: "codex" | "claude_code";
       deadline: string;
-      spendCeilingMicros: number;
+      budgetCapMinorUnits: number;
+      currency: string;
     }): Promise<Spec224ApprovalEvidence> {
+      if (
+        !Number.isSafeInteger(input.budgetCapMinorUnits) ||
+        input.budgetCapMinorUnits <= 0 ||
+        !/^[A-Za-z]{3}$/.test(input.currency)
+      ) throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_INVALID");
       const loaded = await loadRun(input.context, input.runId);
       const runner = mapRunner(
         await defaultRunnerGateway.getNode(
@@ -637,7 +649,8 @@ export function createSpec224AuthorizationService() {
         runner,
         input.provider,
         input.deadline,
-        input.spendCeilingMicros
+        input.budgetCapMinorUnits,
+        input.currency
       );
       await persistAuthorizationProjection(
         input.context,
@@ -647,7 +660,8 @@ export function createSpec224AuthorizationService() {
           runnerId: input.runnerId,
           approvalRef: created.approvalRef,
           deadline: input.deadline,
-          spendCeilingMicros: input.spendCeilingMicros,
+          budgetCapMinorUnits: input.budgetCapMinorUnits,
+          currency: input.currency.trim().toUpperCase(),
         },
         `approval:${created.approvalRef}`
       );
@@ -683,6 +697,12 @@ export function createSpec224AuthorizationService() {
       });
       if (check.status !== "BUDGET_REQUIRED")
         throw new Spec224AuthorizationError(check.reasons[0] ?? check.status);
+      if (
+        !approval ||
+        approval.payload.budgetCapMinorUnits !== input.amountMinorUnits ||
+        typeof approval.payload.currency !== "string" ||
+        approval.payload.currency.trim().toUpperCase() !== input.currency.trim().toUpperCase()
+      ) throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_MISMATCH");
       const hold = await reserveEconomicHold(
         db,
         reserveInput(
@@ -701,7 +721,8 @@ export function createSpec224AuthorizationService() {
           runnerId: input.runnerId,
           approvalRef: input.approvalRef,
           budgetReservationRef: hold.id,
-          spendCeilingMicros: input.amountMinorUnits,
+          budgetCapMinorUnits: input.amountMinorUnits,
+          currency: input.currency.trim().toUpperCase(),
           deadline: approvalDeadline,
         },
         `budget:${hold.id}`

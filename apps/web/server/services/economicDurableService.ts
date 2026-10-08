@@ -27,6 +27,7 @@ export class EconomicDurableError extends Error {
     | "INTENT_CORRELATION_INVALID"
     | "HOLD_NOT_FOUND"
     | "HOLD_RELEASE_NOT_ALLOWED"
+    | "RELEASE_AMOUNT_INVALID"
     | "CAPTURE_NOT_ALLOWED"
     | "CAPTURE_IDEMPOTENCY_CONFLICT"
     | "CAPTURE_RECEIPT_REQUIRED"
@@ -311,6 +312,12 @@ export async function releaseEconomicHoldInTransaction(
     .limit(1);
   if (!budget) throw new EconomicDurableError("BUDGET_NOT_FOUND");
   const remaining = hold.amountMinorUnits - hold.capturedMinorUnits - hold.releasedMinorUnits;
+  const releaseJournal = assertBalancedJournalLines(input.journalLines);
+  if (
+    releaseJournal.currency !== hold.currency ||
+    releaseJournal.totalMinorUnits !== remaining ||
+    input.journalLines.some(line => line.tenantId !== input.tenantId)
+  ) throw new EconomicDurableError("RELEASE_AMOUNT_INVALID");
   await query
     .update(economicHolds)
     .set({

@@ -150,7 +150,8 @@ async function createPendingReceiptFixture(
     authorizationGrantRef: `grant-${runId}`,
     approvalRef: `approval-${runId}`,
     budgetReservationRef: `budget-${runId}`,
-    spendCeilingMicros: 1000,
+    budgetCapMinorUnits: 1000,
+    currency: "USD",
     workspaceRef: run.workspaceId,
     deadline: expiresAt.toISOString(),
   };

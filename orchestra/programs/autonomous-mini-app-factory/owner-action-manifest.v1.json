@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "smartaihub.factory.owner-action-manifest.v1",
+  "status": "WAITING_FOR_FRESH_RUN_AND_OWNER_AUTHORITY",
+  "createdAt": "2026-10-09T00:12:37+07:00",
+  "repository": "naibarn/SmartSpecPro",
+  "canonicalSourceAtPreparation": {
+    "ref": "origin/main",
+    "sha": "34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab",
+    "warning": "This SHA is not yet attested into the Windows workspace and is not an authorization binding. Rebuild the manifest after the implementation checkpoint is integrated."
+  },
+  "execution": {
+    "tenantId": "tenant-ZCSKEM9s",
+    "developmentRunId": null,
+    "workerJobId": null,
+    "attemptId": null,
+    "protectedOperation": "external-agent dispatch via trusted Windows Runner",
+    "provider": "codex",
+    "requestedCapability": "tool.execute.codex",
+    "state": "NOT_CREATED_NO_DISPATCH"
+  },
+  "runnerEvidence": {
+    "runnerId": "local-runner",
+    "ownerUserId": 1,
+    "identityEvidenceAsOf": "2026-10-08T16:17:17Z",
+    "trustStateAtObservation": "trusted",
+    "statusAtObservation": "online",
+    "sessionId": "68bd6529-052a-455c-84ae-4a7c472ea2fb",
+    "capabilitySnapshotId": null,
+    "capabilitySnapshotRevision": "snapshot:local-runner:2026-10-08T15:58:21.967Z",
+    "snapshotObservedAt": "2026-10-08T15:58:21.967Z",
+    "snapshotExpiredAt": "2026-10-08T16:03:21.967Z",
+    "freshness": "STALE",
+    "codexVersionAtObservation": "codex-cli 0.161.0",
+    "codexAuthAtObservation": "auth_required",
+    "codexPolicyDecisionAtObservation": "pending",
+    "requiredOwnerOrOperatorAction": "Refresh Runner registration/session and execute the real Codex probe; provide a fresh capability snapshot proving authenticated Codex readiness."
+  },
+  "workspaceBinding": {
+    "workspaceId": "ws-codextest-36c7be692aaa",
+    "displayName": "codextest",
+    "platform": "windows-x86_64-msvc",
+    "dirty": false,
+    "projectId": null,
+    "repositoryId": null,
+    "taskId": null,
+    "gitHead": null,
+    "gitBranch": null,
+    "sourceAttestationId": null,
+    "state": "NO_JOB_SPECIFIC_SOURCE_BINDING",
+    "requiredOwnerOrOperatorAction": "Bind the created job to this authorized workspace only after verifying repository, branch, exact integrated source SHA, package/source digest, and attestation."
+  },
+  "pRecoveryGrant": {
+    "issuance": "NOT_REQUESTED_OR_ISSUED",
+    "issuer": "existing authenticated tenant-owner approval route",
+    "ownerIdentityRule": "Derive owner identity from authenticated server context at request time; never accept an owner ID from this manifest or client input.",
+    "runtimeScope": "node-control-plane",
+    "environmentScope": "isolated-non-production",
+    "workpackageId": "WP-RECOVERY-04",
+    "requiredBindings": [
+      "tenantId",
+      "authenticated ownerId",
+      "DevelopmentRun ID and fencing version",
+      "worker job ID, attempt ID, attempt number, and fencing version",
+      "fresh runner ID, session ID, capability snapshot ID and revision",
+      "exact integrated source commit, source tree, source manifest and artifact digests",
+      "attestation ID, decision epoch, and revision",
+      "workspace ID and protected operation"
+    ],
+    "proposedOperations": [
+      "read_source",
+      "run_focused_tests",
+      "protected_dispatch"
+    ],
+    "proposedForbiddenOperations": [
+      "production",
+      "paid_provider",
+      "cloudflare_migration",
+      "shared_worktree"
+    ],
+    "expiry": "Set by the authenticated owner workflow to no later than 15 minutes or the fresh capability snapshot expiry, whichever occurs first.",
+    "state": "CANNOT_ISSUE_UNTIL_RUN_JOB_ATTEMPT_AND_FRESH_ATTESTATION_EXIST"
+  },
+  "economicAuthorization": {
+    "proposedBudgetCapMinorUnits": null,
+    "currency": null,
+    "ownerMustAuthorize": [
+      "positive cap in currency minor units",
+      "approved non-production funding source and budget ID",
+      "tenant-scoped reserve/debit and release/credit ledger account IDs",
+      "policy version and accounting classification"
+    ],
+    "currentObservedCountsAsOf": "2026-10-08T16:17:17Z",
+    "economicBudgets": 0,
+    "ledgerAccounts": 0,
+    "holds": 0,
+    "workerJobGrants": 0,
+    "workerJobGrantNote": "Worker job grants are not the authority used by this trusted Runner path.",
+    "state": "NO_BUDGET_OR_LEDGER_AUTHORITY; NO_RECORDS_CREATED"
+  },
+  "accountingPolicy": {
+    "providerMetered": "Capture only verified actual amount supported by provider usage provenance, usage digest, approved pricing policy, and balanced journal lines; release unused cap.",
+    "approvedSubscription": "Require an explicit entitlement/accounting policy and usage reference; capture zero for this job and release the hold.",
+    "verifiedZeroCharge": "Require an explicit zero-charge policy and verification reference; release the hold.",
+    "unknownFailedOrUntrusted": "Create reconciliation evidence and leave the hold unchanged; never infer charges from token counts.",
+    "productionVerifier": "NOT_REGISTERED",
+    "receiptSettlementService": "Implemented in this checkpoint with deterministic validation tests; not wired to production until an authorized verifier/account source is configured."
+  },
+  "requiredReceiptEvidence": [
+    "WSS-authenticated persisted RUNNER_EXECUTION_COMPLETED event",
+    "tenant/job/attempt/hold binding",
+    "runner/session/sequence and source/package digest binding",
+    "verified accounting classification and usage provenance where applicable",
+    "idempotent settlement event and balanced actual-only capture/release journals",
+    "artifact collection digest and durable job completion state"
+  ],
+  "ownerAction": "After a real run/job/attempt exists and fresh Windows Codex readiness is recorded, the authenticated tenant owner must issue the exact P-RECOVERY grant and separately approve a positive non-production budget cap, funding source, ledger accounts, and accounting policy. No approval, grant, hold, ledger account, dispatch, or charge was created by this manifest."
+}
