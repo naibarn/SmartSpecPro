@@ -7,7 +7,7 @@ const elements = Object.fromEntries(
     "rescan-button", "workspace-list", "default-workspace", "tool-list", "tool-count",
     "add-workspace-button", "auto-start", "global-notice", "quit-button",
     "app-version", "app-build-date", "first-launch-date", "access-token-expiry", "reauth-deadline",
-    "credential-detail",
+    "credential-detail", "export-debug-button", "open-debug-folder-button", "debug-file-path",
   ].map(id => [id, document.getElementById(id)])
 );
 
@@ -318,6 +318,35 @@ elements["refresh-button"].addEventListener("click", async () => {
   await scanTools();
 });
 elements["rescan-button"].addEventListener("click", scanTools);
+elements["export-debug-button"].addEventListener("click", async () => {
+  const button = elements["export-debug-button"];
+  button.disabled = true;
+  elements["debug-file-path"].textContent = "กำลังรวบรวม diagnostics ในเครื่อง…";
+  try {
+    const verificationResults = [...verifiedTools.entries()].map(([toolId, report]) => ({
+      toolId,
+      state: report.taskCheck?.state
+        ?? (report.tool?.trust_state === "degraded" ? "failed" : report.tool?.trust_state === "unsupported" ? "unsupported" : null),
+      reasonCode: report.taskCheck?.reasonCode ?? report.tool?.reason_codes?.[0] ?? null,
+    }));
+    const result = await invoke("export_runner_debug_report", { verificationResults });
+    elements["debug-file-path"].textContent = `บันทึกไฟล์แล้ว: ${result.path}`;
+    elements["open-debug-folder-button"].hidden = false;
+    setNotice(elements["runtime-notice"], "สร้างไฟล์ Debug แล้ว ตรวจสอบ PATH/ตำแหน่ง CLI และ error code ได้ โดยไม่มี token หรือคำตอบจากเครื่องมือ");
+  } catch (error) {
+    elements["debug-file-path"].textContent = "";
+    setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    button.disabled = false;
+  }
+});
+elements["open-debug-folder-button"].addEventListener("click", async () => {
+  try {
+    await invoke("open_runner_debug_folder");
+  } catch (error) {
+    setNotice(elements["runtime-notice"], safeError(error));
+  }
+});
 elements["start-button"].addEventListener("click", async () => {
   try {
     await invoke("start_runner");
