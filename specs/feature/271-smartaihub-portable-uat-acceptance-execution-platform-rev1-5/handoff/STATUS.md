@@ -2,11 +2,11 @@
 # 271 — Spec 271 — SmartAIHub Portable UAT Acceptance & Execution Platform
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 287 unresolved of 287
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
 
 ## Source-declared status and relationship claims
 
