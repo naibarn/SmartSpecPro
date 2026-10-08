@@ -497,7 +497,13 @@ mod tests {
         command.current_dir(temp.path());
 
         let output = command.output().unwrap();
-        assert!(output.status.success());
+        assert!(
+            output.status.success(),
+            "cmd shim exited {:?}; stdout={:?}; stderr={:?}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert_eq!(
             String::from_utf8_lossy(&output.stdout).trim(),
             "exec --json hello-world"

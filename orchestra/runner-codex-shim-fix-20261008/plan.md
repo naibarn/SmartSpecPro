@@ -9,10 +9,11 @@
 - Separate unresolved evidence: `runner.lastErrorCode=RUNNER_OPERATION_FAILED` is generic in this report and has no operation detail to correlate with the Codex probe.
 - Confidence: high for Codex probe launch failure because the reported selected path and exact code match source behavior. Real Windows verification remains required.
 - Windows verification uncovered a separate test-only baseline compile error: Linux-only `build_local_session_inventories` and `MAX_SAFE_JS_INTEGER` were imported unconditionally by the shared diagnostics test module (`E0432`). The production calls and test are Linux-gated; their imports now use the same gate so Windows can execute the platform suite.
+- Second Windows run compiled the suite and passed the shim discovery test, then reported four existing Windows portability failures: `cmd.exe` shim execution (now includes stdout/stderr in assertion), two session-registry directory fsync failures (gated to Unix, matching checkpoint storage), and a verbatim-path comparison in a Spec 224 test (expected path now canonicalized).
 
 ## Scope and completion predicate
 
-Change Windows CLI discovery so native executables and supported Windows shims take precedence over extensionless aliases, preserve Unix discovery behavior, prove a directory containing both `codex` and `codex.cmd` selects `codex.cmd`, and make the existing Runner test module compile on Windows by gating Linux-only imports. Keep Runner protocol and auth behavior unchanged.
+Change Windows CLI discovery so native executables and supported Windows shims take precedence over extensionless aliases, preserve Unix discovery behavior, prove a directory containing both `codex` and `codex.cmd` selects `codex.cmd`, and get the existing Windows Runner test suite past platform-specific baseline failures. Keep Runner protocol and auth behavior unchanged.
 
 ## Work unit
 

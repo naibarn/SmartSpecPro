@@ -724,7 +724,7 @@ mod tests {
 
         let found = find_executable_for_platform(&[temp.path().to_path_buf()], "codex", true);
 
-        assert_eq!(found.as_deref(), Some(command_shim.as_path()));
+        assert_eq!(found, Some(std::fs::canonicalize(command_shim).unwrap()));
     }
 
     #[test]
