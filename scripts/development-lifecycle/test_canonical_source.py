@@ -294,6 +294,27 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(result["status"], "BUILD_PASSED")
         self.assertEqual(result["build_target"], "fixture-policy-target")
 
+    def test_central_build_classifies_sigkill_as_resource_blocked(self) -> None:
+        from canonical_source import build_canonical
+
+        killed_commands = [
+            ([sys.executable, "-c", "import os, signal; os.kill(os.getpid(), signal.SIGKILL)"], "SIGKILL"),
+            ([sys.executable, "-c", "raise SystemExit(137)"], None),
+        ]
+        for command_to_kill, expected_signal in killed_commands:
+            with self.subTest(command=command_to_kill[-1]):
+                result = build_canonical(
+                    self.shared,
+                    command=command_to_kill,
+                    build_target="fixture",
+                    policy_path=self.policy,
+                )
+
+                self.assertEqual(result["status"], "RESOURCE_BLOCKED")
+                self.assertEqual(result["exit_code"], 137)
+                self.assertEqual(result["termination_signal"], expected_signal)
+                self.assertEqual(result["primary_workspace_sync"]["status"], "SKIPPED_RESOURCE_BLOCKED")
+
     def test_central_build_result_binds_output_artifact_digest_to_source_sha(self) -> None:
         from canonical_source import build_canonical
 

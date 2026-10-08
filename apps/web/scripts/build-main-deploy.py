@@ -267,12 +267,19 @@ def main() -> int:
             if required_revision:
                 command.extend(["--required-integrated-revision", required_revision])
             result = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=False)
-            if result.returncode not in (0, 75):
-                raise DeployError(f"Canonical build failed with exit code {result.returncode}")
             try:
                 build = json.loads(result.stdout.strip().splitlines()[-1])
             except (IndexError, json.JSONDecodeError) as exc:
                 raise DeployError("Canonical builder did not return a result record") from exc
+
+            if build.get("status") == "RESOURCE_BLOCKED":
+                raise DeployError(
+                    "Canonical build was resource-blocked "
+                    f"(exit {build.get('exit_code')}); nothing was published. "
+                    "Wait for memory pressure to clear before retrying."
+                )
+            if result.returncode not in (0, 75):
+                raise DeployError(f"Canonical build failed with exit code {result.returncode}")
 
             if result.returncode == 75 or build.get("status") == "STALE_CANONICAL_ADVANCED":
                 if attempt < MAX_CANONICAL_BUILD_ATTEMPTS:

@@ -12,6 +12,7 @@ import fcntl
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -390,7 +391,7 @@ def build_canonical(
             flush=True,
         )
         try:
-            exit_code = run_with_lease(
+            command_exit_code = run_with_lease(
                 Path(str(lease["lease_file"])),
                 str(lease["lease_id"]),
                 int(lease["fencing_generation"]),
@@ -399,12 +400,26 @@ def build_canonical(
             )
         except OSError as exc:
             print(f"[canonical-build] command could not start: {exc}", file=sys.stderr)
-            exit_code = 127
+            command_exit_code = 127
+        termination_signal = None
+        if command_exit_code < 0:
+            signal_number = -command_exit_code
+            try:
+                termination_signal = signal.Signals(signal_number).name
+            except ValueError:
+                termination_signal = f"SIG{signal_number}"
+            exit_code = 128 + signal_number
+        else:
+            exit_code = command_exit_code
         completed_at = time.time()
         artifact_root = Path(str(lease["isolated_workspace"])) / "apps/web/dist"
         artifact_manifest = _artifact_manifest(artifact_root) if exit_code == 0 else None
         latest_tip = remote_canonical_tip(repo, policy)
-        if latest_tip != lease["source_revision"]:
+        resource_blocked = exit_code == 137 or termination_signal == "SIGKILL"
+        if resource_blocked:
+            status = "RESOURCE_BLOCKED"
+            primary_workspace_sync = {"status": "SKIPPED_RESOURCE_BLOCKED", "head": git(repo, "rev-parse", "HEAD")}
+        elif latest_tip != lease["source_revision"]:
             status = "STALE_CANONICAL_ADVANCED"
             primary_workspace_sync = {"status": "SKIPPED_CANONICAL_ADVANCED", "head": git(repo, "rev-parse", "HEAD")}
         elif exit_code == 0:
@@ -430,6 +445,7 @@ def build_canonical(
             "command_executable": Path(command[0]).name,
             "command_sha256": command_digest,
             "exit_code": exit_code,
+            "termination_signal": termination_signal,
             "started_at": started_at,
             "completed_at": completed_at,
             "artifact": artifact_manifest,
