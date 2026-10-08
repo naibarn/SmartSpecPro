@@ -116,7 +116,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "7d3791488afaa6b7381c670302ce895782c5cc8b",
+    "expected_canonical_sha": "06dc31939a0298207054c6411f8fe7ff2619d118",
     "expected_spec_digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6"
   },
   "continuation": {
@@ -363,7 +363,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
     "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
@@ -395,9 +395,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "7d3791488afaa6b7381c670302ce895782c5cc8b",
+    "canonical_sha": "06dc31939a0298207054c6411f8fe7ff2619d118",
     "integrated": true,
-    "integrated_at": "2026-10-08T08:03:16.867Z"
+    "integrated_at": "2026-10-08T08:04:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -836,7 +836,7 @@
     "unresolved": 434
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T08:05:19.750913Z",
+  "updated_at": "2026-10-08T08:53:12.235187Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
