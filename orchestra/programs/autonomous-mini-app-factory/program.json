@@ -59,7 +59,7 @@
   },
   "currentWorkunit": {
     "id": "LANE1_TRUSTED_RUNNER_BINDING_AND_NONPROD_DEPLOYMENT",
-    "state": "IMPLEMENTED_LOCAL_CHECKPOINT_PENDING_PR_EXTERNAL_AUTHORITY_WAIT",
+    "state": "IMPLEMENTED_PR_OPEN_EXTERNAL_AUTHORITY_WAIT",
     "objective": "Bind Factory execution to the existing authenticated DevelopmentRun/Runner control plane and deploy Research Notes through a registered non-production target.",
     "implementation": [
       "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
@@ -72,9 +72,9 @@
     ],
     "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
     "evidence": "Rebased implementation commit 4e7d7d751fe988aa19273f2f8d3080a964357476 is based on origin/main 443859de75d2ccd297dbfa416a790d584cae3113. Focused Vitest: 7 files, 93 tests passed; git diff --check passed. Production composition wires the canonical pipeline to deferred existing DevelopmentRun/external_agent_task; immutable stage input and validated Runner receipt settlement/auto-next are implemented. No real dispatch or runtime acceptance is claimed.",
-    "integration": "PENDING_NORMAL_PR",
+    "integration": "PR #318 OPEN; normal merge pending",
     "integratedSha": null,
-    "nextAction": "Push the rebased branch normally and open/merge a PR. Then verify the integrated SHA and re-run scoped checks. Execute live only when a trusted Runner and authentic session, capability, grant, approval, budget and workspace authorities are present; deployment waits for an approved registered non-production target."
+    "nextAction": "Complete normal PR #318 merge, refresh origin/main, record integrated SHA and re-run focused checks. Then attempt real Runner stage only with actual registered/trusted authority. Deployment/UAT remain waiting on approved non-production target."
   },
   "checkpoints": [
     {
@@ -556,7 +556,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T02:21:20+00:00",
+  "updatedAt": "2026-10-08T02:22:00+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -625,10 +625,10 @@
     ],
     "intendedRemoteBranch": "codex/factory-runner-stage-20261008",
     "pendingPullRequest": {
-      "number": null,
-      "url": null,
-      "state": "PENDING_CREATE",
-      "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
+      "number": 318,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/318",
+      "state": "OPEN",
+      "sourceSha": "562b610adb4fa574be318f75abd8f8a4159f60f2",
       "integratedSha": null
     },
     "testEvidence": [
@@ -818,7 +818,7 @@
         "outcome": "PASS: 7 test files, 93 tests; git diff --check passed. Runner authorization/receipt, deployment, runtime and UAT remain pending."
       }
     ],
-    "githubIntegration": "READY_NORMAL_PR",
+    "githubIntegration": "PR_OPEN_NORMAL_MERGE_PENDING",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
     "canonicalAtCheckpoint": "443859de75d2ccd297dbfa416a790d584cae3113",
     "canonicalWorkspace": {
