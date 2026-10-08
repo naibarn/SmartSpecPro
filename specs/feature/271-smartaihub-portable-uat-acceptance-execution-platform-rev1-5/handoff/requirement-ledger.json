@@ -1,5 +1,5 @@
 {
-  "generation": 1,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -515,13 +515,13 @@
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L81",
       "blocker": {
-        "detail": "No production registry adapter, UAT-run integration, immutable receipt persistence, or portable UAT E2E evidence is present in this checkpoint.",
-        "kind": "RUNTIME_ADAPTER_AND_DURABILITY_PENDING",
-        "owner": "SPEC-271 UAT/verification owner with existing oracle registry and artifact-storage owners"
+        "detail": "WP2A produces a deterministic source-bound VALIDATED_UNPERSISTED receipt. There is no durable receipt store, restart read-back, live UAT run binding or persisted non-production sample.",
+        "kind": "IMMUTABLE_RECEIPT_PERSISTENCE_AND_UAT_E2E_PENDING",
+        "owner": "SPEC-271 UAT/verification owner with existing artifact/job, tenant/project and retention policy owners"
       },
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "098640900adb798d33d2b8b60e8a24e1268f43c8",
+      "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -529,10 +529,22 @@
           "pr": "https://github.com/naibarn/SmartSpecPro/pull/329",
           "scope": "Produces a deterministic receipt digest bound to requirement, source, tenant/project, oracle, and evidence references.",
           "source_sha": "098640900adb798d33d2b8b60e8a24e1268f43c8"
+        },
+        {
+          "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "WP2A source-bound receipt contract, scoped authority ports, actual artifact-byte hashing, deterministic digest/replay and existing-attestation verification port. Receipt remains VALIDATED_UNPERSISTED.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Implement the next receipt-storage work package by adapting the existing evidence/artifact authority, then verify persistence and replay against a live UAT run.",
+      "next_action": "Complete WP2B only after existing owners approve the persistence and scope adapter; then persist one non-production receipt and verify byte integrity, exact identity and replay after process restart.",
       "requirement_digest": "1d5df0ef527675fed62a5328119adfe3df97884758fc25cc9cc9d3bbb6730a03",
       "requirement_id": "REQ-962CDCE30AEF",
       "requirement_text": "8. Produce an immutable evidence bundle for every important UAT run.",
@@ -557,9 +569,28 @@
           "result": "PASS",
           "source_sha": "098640900adb798d33d2b8b60e8a24e1268f43c8",
           "test": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        },
+        {
+          "cases": [
+            "correct receipt construction",
+            "exact source SHA binding and mismatch rejection",
+            "tampered artifact bytes rejected",
+            "missing/stale evidence rejected",
+            "duplicate/conflicting replay rejection",
+            "cross-tenant/project denial",
+            "independent oracle provenance required",
+            "persistence explicitly not claimed",
+            "attestation gate when configured",
+            "SPEC-224 digest helper compatibility"
+          ],
+          "failed": 0,
+          "passed": 23,
+          "result": "PASS",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+          "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
         }
       ],
-      "verification_method": "Targeted SPEC-271 independent acceptance Vitest plus scoped TypeScript check against exact integrated SHA."
+      "verification_method": "Focused WP2A receipt and WP1 independent-acceptance Vitest plus scoped TypeScript check at exact integrated SHA; durable persistence/restart and live UAT are separate gates."
     },
     {
       "applicability": "UNASSESSED",
@@ -1420,26 +1451,63 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L896"
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L896",
-      "blocker": null,
+      "blocker": {
+        "detail": "Existing worker_artifacts is job/tenant scoped but does not bind project, UAT run/attempt and immutable receipt retention; SPEC-038 content_artifacts is mutable and has another owner. No durable receipt adapter or restart read-back was implemented.",
+        "kind": "WP2B_STORAGE_AUTHORITY_AND_DURABILITY_PENDING",
+        "owner": "SPEC-271 UAT/verification owner with existing worker/artifact-storage and tenant/project authorization owners"
+      },
       "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "WP2A source-bound receipt contract, scoped authority ports, actual artifact-byte hashing, deterministic digest/replay and existing-attestation verification port. Receipt remains VALIDATED_UNPERSISTED.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Agree a narrow adapter over existing artifact/job and tenant policy authorities that resolves bytes and persists receipts bound to tenant, project, run, attempt and retention; then implement WP2B read-back and restart recovery.",
       "requirement_digest": "2d098e9834fb428fd11891f054f6fd9e19b1a5aeb988972e78139f687bdad87c",
       "requirement_id": "REQ-378D26AF8464",
       "requirement_text": "Critical evidence bundles MUST include content hashes for all evidence artifacts and a signed/attested manifest when supported. The manifest must bind evidence to `uat_run_id`, tenant, scenario version, source revision, environment fingerprint, and timestamps. Evidence retention and deletion follow tenant/data-class policy rather than an unlimited default.",
       "source_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "cases": [
+            "correct receipt construction",
+            "exact source SHA binding and mismatch rejection",
+            "tampered artifact bytes rejected",
+            "missing/stale evidence rejected",
+            "duplicate/conflicting replay rejection",
+            "cross-tenant/project denial",
+            "independent oracle provenance required",
+            "persistence explicitly not claimed",
+            "attestation gate when configured",
+            "SPEC-224 digest helper compatibility"
+          ],
+          "failed": 0,
+          "passed": 23,
+          "result": "PASS",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+          "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        }
+      ],
+      "verification_method": "Focused WP2A receipt and WP1 independent-acceptance Vitest plus scoped TypeScript check at exact integrated SHA; durable persistence/restart and live UAT are separate gates."
     },
     {
       "applicability": "UNASSESSED",
@@ -1772,26 +1840,63 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L1187"
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L1187",
-      "blocker": null,
+      "blocker": {
+        "detail": "The contract requires an authorization authority and rejects scope mismatch, but no production adapter to existing tenant/project policy was introduced or exercised.",
+        "kind": "TENANT_PROJECT_AUTHORITY_ADAPTER_PENDING",
+        "owner": "Existing tenant/project authorization owner with SPEC-271 UAT/verification owner"
+      },
       "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "WP2A source-bound receipt contract, scoped authority ports, actual artifact-byte hashing, deterministic digest/replay and existing-attestation verification port. Receipt remains VALIDATED_UNPERSISTED.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Connect authorizeScope and scoped artifact resolution to existing tenant/project policy, then verify cross-tenant and cross-project denial through that adapter.",
       "requirement_digest": "cae638e1d761dbad5750f393360f3ba5559e315a76865901752a6ad6a004b669",
       "requirement_id": "REQ-F5F18EFA857C",
       "requirement_text": "All UAT data MUST be tenant-scoped.",
       "source_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "cases": [
+            "correct receipt construction",
+            "exact source SHA binding and mismatch rejection",
+            "tampered artifact bytes rejected",
+            "missing/stale evidence rejected",
+            "duplicate/conflicting replay rejection",
+            "cross-tenant/project denial",
+            "independent oracle provenance required",
+            "persistence explicitly not claimed",
+            "attestation gate when configured",
+            "SPEC-224 digest helper compatibility"
+          ],
+          "failed": 0,
+          "passed": 23,
+          "result": "PASS",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+          "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        }
+      ],
+      "verification_method": "Focused WP2A receipt and WP1 independent-acceptance Vitest plus scoped TypeScript check at exact integrated SHA; durable persistence/restart and live UAT are separate gates."
     },
     {
       "applicability": "UNASSESSED",
@@ -2080,26 +2185,63 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L1381"
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L1381",
-      "blocker": null,
+      "blocker": {
+        "detail": "Receipt contract accepts and checks UAT run/attempt/source identity, but no production adapter currently binds these values to a canonical SPEC-224 run and corresponding persisted artifacts.",
+        "kind": "SPEC224_RUN_IDENTITY_ADAPTER_PENDING",
+        "owner": "SPEC-224 development-run/job-control owner with SPEC-271 UAT/verification owner"
+      },
       "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "path": "apps/web/server/services/spec271PortableEvidenceReceipt.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "WP2A source-bound receipt contract, scoped authority ports, actual artifact-byte hashing, deterministic digest/replay and existing-attestation verification port. Receipt remains VALIDATED_UNPERSISTED.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/332",
+          "scope": "Focused WP2A contract tests; no durable persistence, restart recovery or live UAT claim.",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871"
+        }
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Have the SPEC-224 owner expose the canonical run/attempt/source tuple to SPEC-271, then verify mismatch rejection against an actual non-production UAT run.",
       "requirement_digest": "315664ec77e91cd91122db562c79e158f619bc339cad7c4977c2ad60ae85f4e1",
       "requirement_id": "REQ-A2E47461A85A",
       "requirement_text": "The harness result MUST identify the exact source revision it produced. UAT MUST reject or restart if the tested revision differs from the candidate revision submitted to Final Verify (TOCTOU protection).",
       "source_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "cases": [
+            "correct receipt construction",
+            "exact source SHA binding and mismatch rejection",
+            "tampered artifact bytes rejected",
+            "missing/stale evidence rejected",
+            "duplicate/conflicting replay rejection",
+            "cross-tenant/project denial",
+            "independent oracle provenance required",
+            "persistence explicitly not claimed",
+            "attestation gate when configured",
+            "SPEC-224 digest helper compatibility"
+          ],
+          "failed": 0,
+          "passed": 23,
+          "result": "PASS",
+          "source_sha": "2683115b5508fdffa17d48e851c526e1194a8871",
+          "test": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        }
+      ],
+      "verification_method": "Focused WP2A receipt and WP1 independent-acceptance Vitest plus scoped TypeScript check at exact integrated SHA; durable persistence/restart and live UAT are separate gates."
     },
     {
       "applicability": "UNASSESSED",
