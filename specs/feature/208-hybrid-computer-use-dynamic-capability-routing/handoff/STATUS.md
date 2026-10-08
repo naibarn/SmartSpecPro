@@ -2,11 +2,11 @@
 # 208 — Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 342 unresolved of 342
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Requirements: 0 pass / 357 unresolved of 357
+- Next action: Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.
+- Manifest generation: 18
 
 ## Source-declared status and relationship claims
 

@@ -14,8 +14,8 @@
         "referencing_spec_id": "208",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4524",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4563",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "successor_spec_id": "208"
       },
       {
@@ -26,8 +26,8 @@
         "referencing_spec_id": "208",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4525",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4564",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "successor_spec_id": "208"
       },
       {
@@ -38,8 +38,8 @@
         "referencing_spec_id": "208",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4526",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4565",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "successor_spec_id": "208"
       },
       {
@@ -50,8 +50,8 @@
         "referencing_spec_id": "208",
         "relation_text": "predecessor",
         "requirement_ids": [],
-        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L271",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L310",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "successor_spec_id": null
       },
       {
@@ -133,7 +133,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -210,7 +210,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8"
+    "expected_spec_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994"
   },
   "continuation": {
     "next_action": null,
@@ -224,7 +224,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "digest": "a0c8c9e098cb432fc232c85535b3a432a749b67f249a2274562cea99b3782d1a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -294,112 +294,12 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-06-conformance-rollout.md"
       },
       {
-        "excerpt": "engineRef: \"computer-use:spec-208\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 12,
-        "path": "apps/web/server/services/computerUseCertificationContracts.ts"
-      },
-      {
-        "excerpt": "if (input.engineRef !== \"computer-use:spec-208\" || input.secondEngineIntroduced) throw new ComputerUseCertificationError(\"SECOND_ENGINE_FORBIDDEN\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 85,
-        "path": "apps/web/server/services/computerUseCertificationContracts.ts"
-      },
-      {
-        "excerpt": "engineRef: \"computer-use:spec-208\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 99,
-        "path": "apps/web/server/services/computerUseCertificationContracts.ts"
-      },
-      {
-        "excerpt": "if (qualification.secondEngineIntroduced || qualification.engineRef !== \"computer-use:spec-208\") {",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 112,
-        "path": "apps/web/server/services/computerUseCertificationContracts.ts"
-      },
-      {
-        "excerpt": "* Canonical Spec 208 semantic boundary. It intentionally stops before the",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 56,
-        "path": "apps/web/server/services/computerUseSemanticRuntime.ts"
-      },
-      {
-        "excerpt": "* Spec 208 independent verifier evaluates the post-action evidence. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6377,
-        "path": "apps/web/server/services/jobControlPlane.ts"
-      },
-      {
-        "excerpt": "* job may become terminal only after the independent Spec 208 verifier passes.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 290,
-        "path": "apps/web/server/services/runnerJobCommandContracts.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 208 bounded browser candidate builder\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/__tests__/computerUseCandidateBuilder.test.ts"
-      },
-      {
-        "excerpt": "engineRef: \"computer-use:spec-208\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 13,
-        "path": "apps/web/server/services/__tests__/computerUseCertificationContracts.test.ts"
-      },
-      {
-        "excerpt": "it(\"accepts only the existing Spec 208 engine and canonical fallback order\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 28,
-        "path": "apps/web/server/services/__tests__/computerUseCertificationContracts.test.ts"
-      },
-      {
-        "excerpt": "expect(buildComputerUseQualification(baseQualification)).toMatchObject({ engineRef: \"computer-use:spec-208\" });",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 29,
-        "path": "apps/web/server/services/__tests__/computerUseCertificationContracts.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 208 provider-neutral DecisionProvider\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 62,
-        "path": "apps/web/server/services/__tests__/computerUseDecisionProvider.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 208 independent Computer Use verifier\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 63,
-        "path": "apps/web/server/services/__tests__/computerUseIndependentVerifier.test.ts"
-      },
-      {
-        "excerpt": "workflowName: \"P213 Spec 208\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 32,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticRuntime.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 208 semantic runtime\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 37,
-        "path": "apps/web/server/services/__tests__/computerUseSemanticRuntime.test.ts"
+        "digest": "39b966890e104b416c90314ad2a00efcc517f0b26a31b6a0f8b918217a21072a",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-browser-integration-audit-2026-10-08.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -421,7 +321,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -494,18 +394,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-    "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+    "digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.203893Z",
+      "last_evidence_at": "2026-10-08T01:55:44.846195Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "5",
+    "revision": "6",
     "slug": "208-hybrid-computer-use-dynamic-capability-routing",
     "spec_id": "208",
     "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing"
@@ -518,16 +418,102 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
+    "canonical_ref": "refs/heads/main",
     "canonical_sha": null,
     "integrated": false,
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.203893Z"
+    "updated_at": "2026-10-08T01:55:44.846195Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "a0c8c9e098cb432fc232c85535b3a432a749b67f249a2274562cea99b3782d1a",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
+        },
+        {
+          "digest": "e2967d6ee86cbe7341eaf24e59c96ad0855e8f44b18926cb4f2dcc55cc95d821",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-plan.md"
+        },
+        {
+          "digest": "b630b84ff509e4f8b0da29134d58bf99a1d24feff2f465653e92679b1598b8fb",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
+        },
+        {
+          "digest": "183d7e5eda3aace0609a84302d53a0800d7b16cc9ec13fe6b9ae2c68761547d3",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation/completion.md"
+        },
+        {
+          "digest": "49c362c99cdadf5d3de594c96a8fa3388ae2053ef3934c444bc45af472a30350",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "591a90c98389337dffcac070dfd6c2146a9647af6a1f1402e5d5f9e1265044a7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/release-gate.md"
+        },
+        {
+          "digest": "27c607acb258b860e09c10fefa3f819434635ebcc8308b1a61ad4e14786ad852",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "6ab77611948cfa4fecf79535d1b4d49c1a56db921ef4ab7c9da3c182e805c8e4",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/index.md"
+        },
+        {
+          "digest": "a0b1eaa14a313aa5f1726851c6b7f4b13e43bed9525cbc4a037e7cc31f65ce2e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-01-capability-route-graph.md"
+        },
+        {
+          "digest": "f6f66d1059366257d2dc3f078edf59bb52805a1eefff2d3f37e243b63aa48a61",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-02-webmcp-semantic-browser.md"
+        },
+        {
+          "digest": "bb7318a154a950e37da8f127719c973ca413fcbab8513dc3d45b3dcfe26317a3",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-03-local-browser-runner.md"
+        },
+        {
+          "digest": "77a7403d0eea64080f87d5b70f1f9ca35fea9184a9663254c53d581dda1c5cf7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-04-policy-economics-fallback.md"
+        },
+        {
+          "digest": "d68bdd5afc3b9106cb4701a9048044da02187c9c4563cc11f693f29a13965031",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-05-operator-ui-projection.md"
+        },
+        {
+          "digest": "4b35cc3d583a1df1f4abd2bbcefdbadc9a66cc0f4e3933458637f6204f258f53",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-06-conformance-rollout.md"
+        },
+        {
+          "digest": "39b966890e104b416c90314ad2a00efcc517f0b26a31b6a0f8b918217a21072a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-browser-integration-audit-2026-10-08.md"
+        }
+      ],
+      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -537,10 +523,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.203893Z",
+    "reconciled_at": "2026-10-08T01:55:44.846195Z",
     "sources": [
       {
-        "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -648,7 +634,7 @@
         "excerpt": "* Spec 208 independent verifier evaluates the post-action evidence. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 6377,
+        "line": 6376,
         "path": "apps/web/server/services/jobControlPlane.ts"
       },
       {
@@ -722,7 +708,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "value": "Architecture Freeze Candidate / Ready for Implementation"
       },
       {
@@ -733,11 +719,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 10,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "value": "Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use."
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -786,7 +777,7 @@
         "excerpt": "* Spec 208 independent verifier evaluates the post-action evidence. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 6377,
+        "line": 6376,
         "path": "apps/web/server/services/jobControlPlane.ts"
       },
       {
@@ -865,7 +856,7 @@
         "excerpt": "**Status:** Architecture Freeze Candidate / Ready for Implementation",
         "line": 3,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "value": "Architecture Freeze Candidate / Ready for Implementation"
       },
       {
@@ -875,14 +866,14 @@
         "excerpt": "**Implementation status:** Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use.",
         "line": 10,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source_digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "value": "Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use."
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "digest": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -963,11 +954,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 342,
-    "unresolved": 342
+    "total": 357,
+    "unresolved": 357
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.203893Z",
+  "updated_at": "2026-10-08T01:56:14.995564Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

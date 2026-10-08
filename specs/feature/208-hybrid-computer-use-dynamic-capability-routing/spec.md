@@ -2,8 +2,8 @@
 
 **Status:** Architecture Freeze Candidate / Ready for Implementation  
 **Spec ID:** 208  
-**Revision:** 5 — Native Computer-Use Model/Agent Adapter boundary; provider-protocol normalization; model-turn continuation; action-batch safety; Web-to-Local production architecture; Browser Companion + Runner bridge; three browser execution targets; local/cloud browser session ownership; Library asset transfer; background continuation; live monitoring/remote assist; cross-device control; interactive OS user-session broker; Revision 2 safeguards retained + 13-pass Web-to-Local completeness audit + fresh 207–210 repository convergence audit  
-**Date:** 2026-09-19  
+**Revision:** 6 — Adds an optional Moli lightweight browser-engine provider contract, evidence-backed compatibility boundaries, capability routing and fallback rules, security/session isolation, benchmark acceptance gates, and phased rollout; no runtime integration is claimed
+**Date:** 2026-10-08
 **Suggested repository path:** `specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md`  
 **Primary systems:** SmartAIHub Web, Universal AI Assistant, Feature 196 Goal Orchestrator, Feature 195 Unified Async Job Control Plane, Feature 197 Runner Adaptive Execution Fabric, Capability Registry/Resolver, Approval Service, Spec 207 Economic Control Plane, Spec 209 AI Workflow Studio, Spec 210 Orca Runtime Adapter under Spec 200/206, SmartAIHub Runner, SmartAIHub Worker App, Library/Asset Gateway  
 **Primary execution targets:** Local Existing Browser, Local Managed Browser, Cloud Browser, Windows, macOS, Linux, future remote/cloud interactive runtimes  
@@ -55,6 +55,45 @@ Agent and the governed Spec 208 interaction loop. It adds normative contracts fo
 The central rule is:
 
 > **A Computer-Use Model or Agent may propose an interaction through a certified adapter; only Spec 208 validation plus the Feature 197 Runner/Cloud execution boundary may perform it.**
+
+## Revision 6 Additions — Optional Lightweight Browser Engine
+
+Revision 6 defines an optional, default-disabled Moli provider for eligible DOM-first browser work. It extends this Spec's existing capability-routing and browser-provider model; it does not create a new numbered Spec, planner, capability registry, queue, permission service, audit store, or browser-session authority. The companion audit and acceptance plan is [`moli-browser-integration-audit-2026-10-08.md`](moli-browser-integration-audit-2026-10-08.md).
+
+The proposal is limited to a separately provisioned Moli runtime reached through a certified CDP-compatible adapter. Routing order is:
+
+```text
+Authorized internal API / HTTP capability, when sufficient
+  -> Moli, for allowlisted DOM-first extraction and automation
+  -> Chromium / Playwright, for visual QA, compatibility, and unsupported applications
+  -> existing Computer Use / Jev / Runner route, when its capability and policy apply
+```
+
+Normative constraints:
+
+- Moli SHALL remain optional and disabled until implementation, security review, and the SmartAIHub benchmark gates in the companion audit pass. Capability discovery SHALL report the actual engine/version and supported protocols and operations; an upstream feature list is not runtime proof.
+- Feature 195 `worker_jobs` plus its outbox SHALL remain the durable execution, retry, cancellation, lease/fencing, and settlement authority. Feature 197 Runner / approved Cloudflare runtime SHALL own the execution boundary. This provider SHALL NOT introduce a second queue, scheduler, permission authority, or finality ledger.
+- The existing shared authorization, tenant/session grant, approval, and capability resolver MUST authorize every attempt before dispatch. Provider availability, fallback, or protocol compatibility MUST NOT widen authorization. Policy denial, tenant mismatch, stale/revoked grant, or disallowed origin is terminal for that route and MUST NOT trigger fallback.
+- Every session SHALL be isolated by tenant, job attempt, browser profile, and session identity with separate ephemeral storage by default. Cookies, local/session storage, IndexedDB, OPFS, credentials, and open pages MUST NOT be copied to another engine. Switching engines during a stateful task MUST stop for an explicit reauthorization and fresh session unless a separately tested and user-approved migration contract proves state equivalence.
+- Egress SHALL use the existing destination policy and enforce HTTPS where applicable, redirect revalidation, DNS/IP checks at connection time, and rejection of loopback, private, link-local, metadata, and otherwise prohibited destinations. CDP endpoints MUST be loopback/private to the isolated runtime, authenticated or protected by the runtime boundary, and never exposed as an unauthenticated public service. Secrets, cookies, authorization headers, page content, and sensitive screenshots MUST be redacted from logs/evidence.
+- Capability matching SHALL distinguish DOM access, script execution, form submission, storage, downloads/uploads, geometry, screenshot, WebMCP, and protocol features. No capability may be inferred from the engine name alone. Unknown/incompatible capabilities fail closed or use an explicitly allowlisted alternative before the session starts.
+- Only idempotent, policy-authorized actions with no ambiguous side effect may be retried. A timeout or disconnect after a non-idempotent submit MUST reconcile through an independent observation or return `OUTCOME_UNKNOWN`; it MUST NOT replay automatically. Circuit breakers are scoped to provider version/region and must not disable other providers.
+- Cancellation SHALL signal the canonical job and terminate the isolated browser process/context, remove ephemeral profile material, revoke session credentials, and record cleanup outcome. Receipts SHALL bind job/attempt, tenant, session, provider/version, capability snapshot, policy/authorization references, action/evidence hashes, termination state, and timestamps without persisting raw secrets.
+- The initial route SHALL support extraction and bounded DOM actions only. Visual QA, pixel comparison, high-fidelity canvas/WebGL/media, coordinate-first actions, and unsupported CDP/WebDriver/BiDi commands SHALL remain on the existing compatible engine. A Moli screenshot is not a substitute for Chromium visual parity evidence.
+- Metrics SHALL include provider/version, eligible/selected/fallback counts, capability mismatch, task outcome, timeout/crash, queue and execution latency, CPU, peak RSS, concurrency, cancellation/cleanup, and cost per successful task. Labels and traces MUST avoid tenant secrets and sensitive URLs.
+
+The upstream Moli README currently documents an independent Rust browser kernel using V8, Servo/Stylo, Taffy/Parley and software rendering; CDP, WebDriver Classic and BiDi endpoints; profile-scoped cookies/storage including IndexedDB and OPFS; and on-demand layout/screenshots. Its own documentation also states it is not pixel-identical to Chrome and does not provide high-fidelity Canvas/WebGL/media playback. These are upstream capability statements, not SmartAIHub compatibility or performance evidence. WebMCP support SHALL be considered unverified until an explicit protocol-level conformance test passes; a playground/tool listing alone does not establish interoperable support.
+
+### Proposed rollout and acceptance gate
+
+1. Inventory protocol, platform, dependency-license, and threat-model facts for the pinned release; add no runtime dependency yet.
+2. Implement a default-off adapter behind existing job/Runner authorization and destination controls; add focused conformance/security tests and cleanup receipts.
+3. Run the 80-case paired SmartAIHub corpus and concurrency steps 1, 5, 10, 25, 50, and 100, stopping each step before the admitted memory/CPU budget is exhausted. Record skipped capacity points as resource-limited, never as failures or permission to retry into OOM.
+4. Canary only allowlisted, non-sensitive, DOM-first jobs. Expand only after one full observation window meets every Go gate; otherwise disable the flag and route new sessions to the prior compatible engine.
+
+Go requires all of the following on the same pinned build and corpus: no cross-tenant/session or secret-leak findings; zero unapproved destination access; no unresolved non-idempotent outcomes; at least 98% DOM extraction field accuracy; at least 95% correct bounded form completion on applicable cases; task completion no more than 3 percentage points below Chromium on the eligible subset; at least 30% lower median and P95 peak RSS per successful task at concurrency 10 or higher where both engines are admitted; no more than 1% crash/timeout rate; and 100% cancellation/ephemeral-profile cleanup within the configured deadline. Any failed gate is No-Go. Rollback disables new Moli selections, drains/cancels according to the canonical job contract, preserves completed receipts, and starts new sessions on the prior compatible route. Existing stateful sessions are never transparently migrated.
+
+The benchmark corpus, case mix, resource admission, report schema, and implementation phases are specified in the companion audit. Upstream-published benchmarks are explicitly excluded from these acceptance results.
 
 # 1. Executive Summary
 
