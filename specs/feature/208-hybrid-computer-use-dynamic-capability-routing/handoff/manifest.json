@@ -96,7 +96,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "4b9228c3c03aee9ce990db11e0219ce9f55997dd",
+    "expected_canonical_sha": "95dada85ce966aeee745499a982aae84f39503dc",
     "expected_spec_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155"
   },
   "continuation": {
@@ -291,7 +291,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 23,
+  "generation": 24,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
@@ -308,7 +308,9 @@
     "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "82da2e8a81193a9b2eaaf974c843489313dd659c"
+    ],
     "mapping": [],
     "source_paths": [
       "apps/web/server/services/computerUseCapabilityRouting.ts",
@@ -325,9 +327,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4b9228c3c03aee9ce990db11e0219ce9f55997dd",
+    "canonical_sha": "95dada85ce966aeee745499a982aae84f39503dc",
     "integrated": true,
-    "integrated_at": "2026-10-08T01:57:17Z"
+    "integrated_at": "2026-10-08T02:29:10Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -673,7 +675,7 @@
     "unresolved": 357
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T02:27:48.631598Z",
+  "updated_at": "2026-10-08T02:30:36.985864Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
