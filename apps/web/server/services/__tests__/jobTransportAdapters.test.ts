@@ -50,6 +50,14 @@ describe("job transport adapters", () => {
     })).toBe(false);
   });
 
+  it("routes Factory stages through the configured PostgreSQL-pull worker only", () => {
+    const postgres = new PostgresPullJobTransportAdapter();
+    const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    const input = { jobType: "mini_app_factory.stage", executionClass: "long", contractVersion: "mini-app-factory-stage-v1" };
+    expect(postgres.supports(input)).toBe(true);
+    expect(cloudflare.supports(input)).toBe(false);
+  });
+
   it("publishes a PostgreSQL-pull reference without touching a broker", async () => {
     const adapter = new PostgresPullJobTransportAdapter();
     const reference = await adapter.publish({

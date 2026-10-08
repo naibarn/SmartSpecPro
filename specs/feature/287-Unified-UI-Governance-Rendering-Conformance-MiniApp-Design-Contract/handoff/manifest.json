@@ -5,44 +5,101 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [],
-    "confidence": "UNRESOLVED",
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "226",
+        "referenced_spec_id": "226",
+        "referencing_spec_id": "287",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R1.5"
+        ],
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+        "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+        "successor_spec_id": "287"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "240",
+        "referenced_spec_id": "240",
+        "referencing_spec_id": "287",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R1.5"
+        ],
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+        "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+        "successor_spec_id": "287"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "270",
+        "referenced_spec_id": "270",
+        "referencing_spec_id": "287",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R1.5"
+        ],
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+        "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+        "successor_spec_id": "287"
+      },
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "279",
+        "referenced_spec_id": "279",
+        "referencing_spec_id": "287",
+        "relation_text": "replaces",
+        "requirement_ids": [
+          "R1.5"
+        ],
+        "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+        "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+        "successor_spec_id": "287"
+      }
+    ],
+    "confidence": "MEDIUM",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+        "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "ACTIVE_SUPPORTING",
     "successors": []
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
-    "expected_spec_digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5"
+    "expected_canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
+    "expected_spec_digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Reconcile upstream handoffs and prepare P1 safe UI contract plan.",
     "next_ready_workunit": null,
     "reactivation_predicate": null,
     "resume_point": null,
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+        "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "next_action": "Reconcile the canonical owner/requirement handoffs for SPEC-240/270/226/279/220/207 and Feature 195, preserve the unresolved SPEC-256 duplicate, then define P1 work against the current integrated SHA.",
+    "rationale": "R1.5 closes the document ownership gap, but the unified intelligent UI runtime remains unverified and the next implementation phase depends on reconciliation of related canonical owner handoffs.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -60,29 +117,29 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "MEDIUM",
     "evidence": [
       {
-        "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
+        "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "The user explicitly designated SPEC-287 as the starting UI governance authority; R1.5 defines its supporting role in rendering conformance while leaving generated surface/runtime ownership with SPEC-240 and implementation status unresolved.",
+    "value": "ACTIVE_SUPPORTING"
   },
-  "generation": 8,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-    "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
+    "digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-07T04:14:02.701895Z",
+      "last_evidence_at": "2026-10-08T00:57:07.965228Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T11:34:46+07:00",
       "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
     },
-    "revision": "1.4",
+    "revision": "1.5",
     "slug": "287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
     "spec_id": "287",
     "title": "SPEC-287 — Unified UI Governance, Rendering Conformance & Mini App Design Contract"
@@ -96,15 +153,115 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:21:12Z"
+    "integrated_at": "2026-10-08T00:59:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-07T04:14:02.701895Z"
+    "updated_at": "2026-10-08T00:57:07.965228Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "226",
+          "referenced_spec_id": "226",
+          "referencing_spec_id": "287",
+          "relation_text": "replaces",
+          "requirement_ids": [
+            "R1.5"
+          ],
+          "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+          "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+          "successor_spec_id": "287"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "240",
+          "referenced_spec_id": "240",
+          "referencing_spec_id": "287",
+          "relation_text": "replaces",
+          "requirement_ids": [
+            "R1.5"
+          ],
+          "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+          "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+          "successor_spec_id": "287"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "270",
+          "referenced_spec_id": "270",
+          "referencing_spec_id": "287",
+          "relation_text": "replaces",
+          "requirement_ids": [
+            "R1.5"
+          ],
+          "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+          "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+          "successor_spec_id": "287"
+        },
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "279",
+          "referenced_spec_id": "279",
+          "referencing_spec_id": "287",
+          "relation_text": "replaces",
+          "requirement_ids": [
+            "R1.5"
+          ],
+          "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2071",
+          "source_digest": "17c3365ba5ca515081397b9c5bdfb017c63360bb0768f12e4e62e4c48c9b3960",
+          "successor_spec_id": "287"
+        }
+      ],
+      "confidence": "MEDIUM",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_SUPPORTING",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
+        }
+      ],
+      "next_action": "Reconcile the canonical owner/requirement handoffs for SPEC-240/270/226/279/220/207 and Feature 195, preserve the unresolved SPEC-256 duplicate, then define P1 work against the current integrated SHA.",
+      "rationale": "R1.5 closes the document ownership gap, but the unified intelligent UI runtime remains unverified and the next implementation phase depends on reconciliation of related canonical owner handoffs.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "MEDIUM",
+      "evidence": [
+        {
+          "digest": "38f1c04d101654ed888c3f5c7899504398ea7ec2184dddb3a296cac4b34836ae",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md"
+        }
+      ],
+      "rationale": "The user explicitly designated SPEC-287 as the starting UI governance authority; R1.5 defines its supporting role in rendering conformance while leaving generated surface/runtime ownership with SPEC-240 and implementation status unresolved.",
+      "value": "ACTIVE_SUPPORTING"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +271,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-07T04:14:02.701895Z",
+    "reconciled_at": "2026-10-08T00:57:07.965228Z",
     "sources": [
       {
-        "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
+        "digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
       },
@@ -129,7 +286,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-        "source_digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
+        "source_digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
         "value": "PROPOSED / ADDITIVE"
       }
     ],
@@ -160,14 +317,14 @@
         "excerpt": "**Status:** PROPOSED / ADDITIVE",
         "line": 3,
         "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-        "source_digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
+        "source_digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
         "value": "PROPOSED / ADDITIVE"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "022a2f13ad9108ecf32280d0af6b0dd53717a4331441f2deaacfb5ca434a52e5",
+        "digest": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
       }
@@ -183,11 +340,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 192,
-    "unresolved": 192
+    "total": 205,
+    "unresolved": 205
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:22:34.376468Z",
+  "updated_at": "2026-10-08T00:59:33.255504Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

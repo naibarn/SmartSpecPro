@@ -3642,10 +3642,10 @@
       "spec_id": "286"
     },
     {
-      "authority": "UNRESOLVED",
+      "authority": "ACTIVE_SUPPORTING",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Reconcile the canonical owner/requirement handoffs for SPEC-240/270/226/279/220/207 and Feature 195, preserve the unresolved SPEC-256 duplicate, then define P1 work against the current integrated SHA.",
       "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
@@ -4869,6 +4869,15 @@
       "rationale": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "spec_id": "269"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+      "priority": "P1",
+      "rationale": "Reconcile the canonical owner/requirement handoffs for SPEC-240/270/226/279/220/207 and Feature 195, preserve the unresolved SPEC-256 duplicate, then define P1 work against the current integrated SHA.",
+      "record_key": "canonical:specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
+      "spec_id": "287"
     },
     {
       "confidence": "HIGH",
