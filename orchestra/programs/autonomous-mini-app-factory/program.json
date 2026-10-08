@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+    "sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "5d99ab048a8ba719a145893a360c404aba585d92",
-      "canonical_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
-      "canonical_user_workspace_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+      "integrated_sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
+      "canonical_sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
+      "canonical_user_workspace_sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:2c99cd12-eda1-4a17-8c9c-472746f684e9",
-      "verified_at": "2026-10-08T01:00:25.349+00:00"
+      "receipt_id": "workspace-convergence:a185200a-48e3-4d92-ac79-9df390d37221",
+      "verified_at": "2026-10-08T01:05:19.389+00:00"
     },
-    "observedAt": "2026-10-08T01:00:33+00:00",
+    "observedAt": "2026-10-08T01:05:19+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
-      "canonical_user_workspace_sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+      "integrated_sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
+      "canonical_user_workspace_sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-08T01:00:33.006+00:00",
-      "receipt_id": "workspace-convergence:2c99cd12-eda1-4a17-8c9c-472746f684e9"
+      "verified_at": "2026-10-08T01:05:19.389+00:00",
+      "receipt_id": "workspace-convergence:a185200a-48e3-4d92-ac79-9df390d37221"
     }
   },
   "inventory": {
@@ -71,7 +71,7 @@
     ],
     "sourceSha": "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
     "evidence": "PASS on exact source ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8: 3 focused Vitest files/13 tests and multi-process disposable PostgreSQL 17 runtime. Producer exited after idempotent SPEC enqueue; fresh worker executed SPEC and auto-enqueued TEST; another worker hit synthetic retry; recovery process made it due and published outbox; fresh worker completed TEST on attempt 2; verifier process confirmed durable DevelopmentRun, Factory state, and consumed dispatch. Synthetic cost-free stage handler only.",
-    "integration": "PENDING_PR",
+    "integration": "PR #293 OPEN",
     "nextAction": "Integrate this process-boundary evidence. Continue wiring trusted real stage handlers into production worker startup, and keep M4 non-production target/runtime registration as its separate wait."
   },
   "checkpoints": [
@@ -490,9 +490,9 @@
     "nextEligibleWorkunit": "TRUSTED_FACTORY_STAGE_HANDLER_RUNTIME_COMPOSITION; REGISTERED_NONPROD_DEPLOYMENT_TARGET; AI_PROVIDER_CONFIGURATION_REMAINS_EXTERNAL",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
-      "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "PR #290 merged normally; canonical workspace verified at current SHA 3dc725d after concurrent integration.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/290",
+      "state": "IDLE_PR_OPEN",
+      "lastScenario": "PR #293 created and reconciled with latest main; normal merge pending.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/293",
       "integratedSha": "5d99ab048a8ba719a145893a360c404aba585d92"
     },
     "waitingWorkunits": [
@@ -523,7 +523,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T01:01:00+00:00",
+  "updatedAt": "2026-10-08T01:05:30+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -580,14 +580,15 @@
       "af27ee588839816a23f05e56c223e155284abccc",
       "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
       "402b089f0a198b773350ce7b66a246f7d16dbe23",
-      "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8"
+      "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
+      "65a4d47ee98ee12b0dbe5dee820a9d6734637984"
     ],
     "intendedRemoteBranch": "codex/factory-stage-worker-cross-process-20261008",
     "pendingPullRequest": {
-      "number": null,
-      "url": "PENDING_CREATE",
-      "state": "PENDING",
-      "sourceSha": "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
+      "number": 293,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/293",
+      "state": "OPEN",
+      "sourceSha": "605899eb9f65906f086b74712b0d281b24833b79",
       "integratedSha": null
     },
     "testEvidence": [
@@ -754,13 +755,13 @@
     ],
     "githubIntegration": "IDLE_AFTER_PR_286_MERGE",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+    "canonicalAtCheckpoint": "e6e18f58f69522447437c6ea780d25d2f1738fab",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "3dc725d9fe66328d87aeb4a469caac0747b28b06",
+      "sha": "e6e18f58f69522447437c6ea780d25d2f1738fab",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:2c99cd12-eda1-4a17-8c9c-472746f684e9"
+      "receiptId": "workspace-convergence:a185200a-48e3-4d92-ac79-9df390d37221"
     },
     "previousPullRequests": [
       {
@@ -788,6 +789,6 @@
         "integratedSha": "5d99ab048a8ba719a145893a360c404aba585d92"
       }
     ],
-    "taskOutcome": "PARTIAL_CHECKPOINT_PENDING_PR"
+    "taskOutcome": "PARTIAL_CHECKPOINT_OPEN_PR"
   }
 }
