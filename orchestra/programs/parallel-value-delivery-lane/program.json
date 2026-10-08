@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "program_id": "PARALLEL_VALUE_DELIVERY_LANE",
+  "lane": 2,
+  "updated_at": "2026-10-08T02:07:04Z",
+  "canonical": {
+    "ref": "origin/main",
+    "sha": "6e22b67afa4ee7dff2b3ae5ef308221f5ec27266",
+    "workspace": "/home/dev/projects/SmartSpecPro",
+    "workspace_state": "CANONICAL_CONVERGENCE_VERIFIED",
+    "convergence_receipt": "workspace-convergence:0893ce40-2e06-49e2-a33e-3b8b40b7ebd6"
+  },
+  "scorecard": {
+    "specs_moved_to_implemented_verified": 1,
+    "specs_partially_advanced": 1,
+    "product_vertical_slices_completed": 1,
+    "working_capabilities_delivered": 1,
+    "focused_tests_passed": 268
+  },
+  "completed_workunits": [
+    {
+      "workunit": "Feature 014 funnel export download",
+      "spec": "specs/feature/014-Core-Funnel-Dashboard",
+      "state_before": "DISCOVERING",
+      "state_after": "PARTIAL_INTEGRATED",
+      "open_requirements_before": 1,
+      "open_requirements_after": 1,
+      "product_outcome": "Admin Funnel export downloads the server-generated CSV/JSON file with the server filename and reports authorization/export failures in the dashboard.",
+      "product_capability": true,
+      "collision_with_factory_lane": false,
+      "verified_code_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
+      "pull_requests": ["https://github.com/naibarn/SmartSpecPro/pull/305", "https://github.com/naibarn/SmartSpecPro/pull/306"],
+      "tests_passed": 48,
+      "remaining": "One query-performance index requirement; migration ownership is reserved/unclear, so it remains open."
+    },
+    {
+      "workunit": "Security Hardening external image verification",
+      "spec": "specs/security/20260211",
+      "state_before": "VALIDATION_PENDING",
+      "state_after": "VERIFIED",
+      "open_requirements_before": 3,
+      "open_requirements_after": 0,
+      "product_outcome": "Verified the existing external HTTPS image path through tenant-owned library storage and the Markdown editor; unsafe URL protections remain covered. Added deterministic acceptance tests without changing runtime security behavior.",
+      "product_capability": false,
+      "collision_with_factory_lane": false,
+      "verified_code_sha": "3099b819dad92fa45a0643aad3b6bc1cb53b9eb2",
+      "pull_requests": ["https://github.com/naibarn/SmartSpecPro/pull/307", "https://github.com/naibarn/SmartSpecPro/pull/311", "https://github.com/naibarn/SmartSpecPro/pull/313"],
+      "tests_passed": 220,
+      "test_breakdown": {
+        "web_regression_tests": 134,
+        "library_url_tests": 3,
+        "spec_handoff_tool_tests": 83
+      },
+      "handoff_evidence": "specs/security/20260211/handoff/evidence/lane2-external-image-security-verification-20261008.json"
+    }
+  ],
+  "excluded_candidates": [
+    {
+      "spec": "specs/feature/038-Citation-Gated-Content-Quality",
+      "reason": "103 open requirements and broad historical reconciliation; explicitly not resumed."
+    },
+    {
+      "spec": "specs/feature/300-celery-jwt-refactor",
+      "reason": "Its normative scope includes retired Agency task code, which repository policy prohibits modifying."
+    },
+    {
+      "spec": "specs/feature/161-vertical-drama-async-skill-jobs",
+      "reason": "Changes would overlap Factory-reserved worker/outbox execution authority."
+    },
+    {
+      "spec": "specs/feature/014-Core-Funnel-Dashboard",
+      "reason": "Remaining requirement needs an index migration whose ownership is reserved/unclear."
+    },
+    {
+      "specs": [
+        "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
+        "specs/feature/303-smartaihub-ecosystem-asset-registry-ownership-transfer-distribution-discover",
+        "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment"
+      ],
+      "reason": "Shared SmartAIHub identity, asset, routing, and deployment authorities are Factory-owned/reserved."
+    },
+    {
+      "spec": "specs/feature/134-character-portrait-candidate-batch",
+      "reason": "The candidate-batch product flow already exists; the uncovered soften/retry behavior is explicitly disabled to prevent automatic policy resubmits and requires a separate safety design decision."
+    },
+    {
+      "spec": "specs/feature/143-video-studio-layer-timeline-editor",
+      "reason": "The high-value timeline and one-click launchers are present and covered by focused tests; no small runtime gap was found in this pass."
+    },
+    {
+      "spec": "specs/feature/018-SlideShowAndCanvasEdit",
+      "reason": "The presentation/canvas capability is already broadly implemented; this draft remains large and no narrow runtime defect was identified in the inspected mobile/editor slice."
+    }
+  ],
+  "active_workunit": null,
+  "next_eligible_workunit": null,
+  "resume_predicate": "Re-evaluate canonical inventory and active path ownership after a new collision-free product gap appears or a reserved owner releases its paths.",
+  "guardrails": {
+    "feature_296_reopened": false,
+    "spec_038_resumed": false,
+    "factory_reserved_paths_modified": false,
+    "force_push_used": false
+  }
+}
