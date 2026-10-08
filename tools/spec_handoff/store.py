@@ -167,6 +167,20 @@ def update_requirement_ledger(spec_dir: Path, *, expected_manifest_generation: i
                               expected_ledger_generation: int, expected_spec_digest: str,
                               expected_canonical_sha: str | None, requirement_id: str,
                               changes: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    return update_requirement_ledger_batch(
+        spec_dir,
+        expected_manifest_generation=expected_manifest_generation,
+        expected_ledger_generation=expected_ledger_generation,
+        expected_spec_digest=expected_spec_digest,
+        expected_canonical_sha=expected_canonical_sha,
+        changes_by_requirement={requirement_id: changes},
+    )
+
+
+def update_requirement_ledger_batch(spec_dir: Path, *, expected_manifest_generation: int,
+                                    expected_ledger_generation: int, expected_spec_digest: str,
+                                    expected_canonical_sha: str | None,
+                                    changes_by_requirement: dict[str, dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
     target = handoff_dir(spec_dir)
     with _file_lock(target / ".write.lock"):
         manifest = read_manifest(spec_dir)
@@ -184,14 +198,16 @@ def update_requirement_ledger(spec_dir: Path, *, expected_manifest_generation: i
         if manifest.get("integration", {}).get("canonical_sha") != expected_canonical_sha:
             raise StaleWriteError("canonical SHA changed")
         updated_ledger = json.loads(json.dumps(ledger))
-        requirement = next((row for row in updated_ledger["requirements"] if row.get("requirement_id") == requirement_id), None)
-        if requirement is None:
-            raise KeyError(f"unknown requirement_id: {requirement_id}")
         allowed = {"applicability", "current_relevance", "successor_mapping", "implementation_status", "implementation_evidence", "verification_method", "verification_evidence", "evidence_sha", "evidence_freshness", "blocker", "next_action", "final_state", "applicability_rationale"}
-        unknown = set(changes) - allowed
-        if unknown:
-            raise ValueError("requirement fields are derived or not writable: " + ", ".join(sorted(unknown)))
-        requirement.update(changes)
+        requirements = {row.get("requirement_id"): row for row in updated_ledger["requirements"]}
+        unknown_ids = set(changes_by_requirement) - set(requirements)
+        if unknown_ids:
+            raise KeyError("unknown requirement_id: " + ", ".join(sorted(unknown_ids)))
+        for requirement_id, changes in changes_by_requirement.items():
+            unknown = set(changes) - allowed
+            if unknown:
+                raise ValueError("requirement fields are derived or not writable: " + ", ".join(sorted(unknown)))
+            requirements[requirement_id].update(changes)
         updated_ledger["generation"] = expected_ledger_generation + 1
         errors = validate_ledger(updated_ledger, canonical_sha=expected_canonical_sha)
         if errors:
@@ -205,7 +221,8 @@ def update_requirement_ledger(spec_dir: Path, *, expected_manifest_generation: i
             saved_requirements = {row.get("requirement_id"): row for row in saved_requirements if isinstance(row, dict)}
         if not isinstance(saved_requirements, dict):
             saved_requirements = {}
-        saved_requirements[requirement_id] = json.loads(json.dumps(requirement))
+        for requirement_id in changes_by_requirement:
+            saved_requirements[requirement_id] = json.loads(json.dumps(requirements[requirement_id]))
         manual_decisions["requirements"] = saved_requirements
         summary = {"total": len(updated_ledger["requirements"]), "applicable": 0, "pass": 0, "fail": 0, "unresolved": 0, "blocked_true_external": 0, "not_applicable": 0}
         for row in updated_ledger["requirements"]:
@@ -220,7 +237,7 @@ def update_requirement_ledger(spec_dir: Path, *, expected_manifest_generation: i
         _atomic_write(target / "manifest.json", json_bytes(updated_manifest))
         _atomic_write(ledger_path, json_bytes(updated_ledger))
         _atomic_write(target / "STATUS.md", render_status(updated_manifest, updated_ledger).encode("utf-8"))
-        event = {"event_type": "CURRENT_TRANSITION", "observed_at": updated_manifest["updated_at"], "provenance": "OBSERVED", "requirement_id": requirement_id, "changes": sorted(changes), "manifest_generation": updated_manifest["generation"], "ledger_generation": updated_ledger["generation"]}
+        event = {"event_type": "CURRENT_TRANSITION", "observed_at": updated_manifest["updated_at"], "provenance": "OBSERVED", "requirement_ids": sorted(changes_by_requirement), "changes_by_requirement": changes_by_requirement, "manifest_generation": updated_manifest["generation"], "ledger_generation": updated_ledger["generation"]}
         with (target / "history.jsonl").open("ab") as stream:
             stream.write((json.dumps(event, sort_keys=True) + "\n").encode("utf-8"))
             stream.flush()
