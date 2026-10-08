@@ -582,7 +582,7 @@
   },
   "executionCheckpoint": {
     "taskWorktree": "/home/dev/worktrees/factory-lane1-20261008",
-    "sourceBranch": "codex/factory-lane1-20261008",
+    "sourceBranch": "codex/factory-runner-stage-20261008",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -621,7 +621,7 @@
       "ada93bda6fca71a4ce059f63f982bafa1291e88a",
       "ff7898c0b7d18d71ba6887fec2196be5f654f9ef"
     ],
-    "intendedRemoteBranch": "codex/factory-lane1-20261008",
+    "intendedRemoteBranch": "codex/factory-runner-stage-20261008",
     "pendingPullRequest": {
       "number": null,
       "url": null,
