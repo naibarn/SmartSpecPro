@@ -31,10 +31,12 @@ export const contentQualityRouter = router({
     const active = rows.find((r: { status: string }) => r.status === "active")?.count ?? 0;
     const stale = rows.find((r: { status: string }) => r.status === "stale")?.count ?? 0;
 
-    // Avg citation coverage from qualityScore JSONB
+    // Quality metrics from qualityScore JSONB
     const [coverageRow] = await db
       .select({
         avg_coverage: sql<number>`COALESCE(AVG((${contentArtifacts.qualityScore}->>'citation_coverage')::float), 0)`,
+        structured_data_valid_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.qualityScore}->>'structured_data_valid' = 'true')::int`,
+        structured_data_invalid_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.qualityScore}->>'structured_data_valid' = 'false')::int`,
       })
       .from(contentArtifacts)
       .where(eq(contentArtifacts.tenantId, tenantId));
@@ -45,6 +47,8 @@ export const contentQualityRouter = router({
       stale,
       archived: rows.find((r: { status: string }) => r.status === "archived")?.count ?? 0,
       avg_citation_coverage: Math.round((coverageRow?.avg_coverage ?? 0) * 100) / 100,
+      structured_data_valid_count: coverageRow?.structured_data_valid_count ?? 0,
+      structured_data_invalid_count: coverageRow?.structured_data_invalid_count ?? 0,
     };
   }),
 

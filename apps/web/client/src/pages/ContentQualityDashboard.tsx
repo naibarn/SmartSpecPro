@@ -47,6 +47,8 @@ export default function ContentQualityDashboard() {
         <DashboardKpiCard icon={FileCheck} label="Active" value={stats?.active ?? 0} valueClassName="text-green-600" />
         <DashboardKpiCard icon={AlertTriangle} label="Stale" value={stats?.stale ?? 0} valueClassName="text-amber-600" />
         <DashboardKpiCard icon={BarChart3} label="Avg Coverage" value={stats ? `${Math.round(stats.avg_citation_coverage * 100)}%` : "—"} />
+        <DashboardKpiCard icon={FileCheck} label="Structured Data Valid" value={stats?.structured_data_valid_count ?? 0} valueClassName="text-green-600" />
+        <DashboardKpiCard icon={AlertTriangle} label="Structured Data Invalid" value={stats?.structured_data_invalid_count ?? 0} valueClassName="text-amber-600" />
       </div>
 
       {/* Per-Skill Breakdown */}
