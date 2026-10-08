@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+    "sha": "26cec5a96d243479d947717325e6e0901905b22d",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
-      "canonical_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
-      "canonical_user_workspace_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+      "integrated_sha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "canonical_sha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "canonical_user_workspace_sha": "26cec5a96d243479d947717325e6e0901905b22d",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:a426cfe4-7e38-41e5-94d3-42729ea8854e",
-      "verified_at": "2026-10-07T23:58:35.739+00:00"
+      "receipt_id": "workspace-convergence:b0e5706f-ed6c-4a2a-a019-349eb19f814f",
+      "verified_at": "2026-10-08T00:18:03.578+00:00"
     },
-    "observedAt": "2026-10-08T00:14:15+00:00",
+    "observedAt": "2026-10-08T00:18:03+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
-      "canonical_user_workspace_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+      "integrated_sha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "canonical_user_workspace_sha": "26cec5a96d243479d947717325e6e0901905b22d",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T23:58:42.316+00:00",
-      "receipt_id": "workspace-convergence:a426cfe4-7e38-41e5-94d3-42729ea8854e"
+      "verified_at": "2026-10-08T00:18:03.578+00:00",
+      "receipt_id": "workspace-convergence:b0e5706f-ed6c-4a2a-a019-349eb19f814f"
     }
   },
   "inventory": {
@@ -61,7 +61,7 @@
   },
   "currentWorkunit": {
     "id": "MINI_APP_FULL_RUNTIME_BROWSER_UAT",
-    "state": "FAST_GATE_PASSED_PENDING_PR",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Run the full web application composition against an isolated Mini App PostgreSQL baseline and complete authenticated Research Notes browser acceptance on desktop, tablet, and mobile.",
     "implementation": [
       "apps/web/server/routers/appIdentity.ts",
@@ -71,8 +71,10 @@
     ],
     "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
     "evidence": "PASS: pnpm --filter @smartspec/web run test:mini-app-full-runtime. Normal apps/web/server/_core/index.ts process bound to 127.0.0.1; /healthz and /readyz returned 200; Research Notes UI shell and authenticated project/note API passed. Playwright 8/8 passed: desktop/tablet/mobile CRUD, search, archive, pending background status, project switching, loading, error, unauthenticated redirect, and revoked membership. This is an isolated Mini App-schema runtime harness, not deployment or full non-Mini-App schema coverage.",
-    "integration": "PENDING_PR",
-    "nextAction": "Open/merge the safe checkpoint, converge canonical workspace, then continue package validation context and background retry/failure/recovery/ownership coverage."
+    "integration": "MERGED_PR_280",
+    "nextAction": "Continue PACKAGE_VALIDATION_CONTEXT_AND_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP; preserve runtime/browser evidence as harness-only, not deployment.",
+    "integratedSha": "26cec5a96d243479d947717325e6e0901905b22d",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/280"
   },
   "checkpoints": [
     {
@@ -266,6 +268,14 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
       "evidence": "Full server composition booted in isolated disposable PostgreSQL 17 Mini App schema. /healthz=200, /readyz=200, UI shell=200, authenticated resolver/project/note API passed, unauthenticated API returned 401. Playwright 8/8 passed across desktop/tablet/mobile, including search by content, create/edit/archive, project switching, loading/error, unauthenticated redirect, revoked membership, and pending background action. No deployment/provider-cost claim; full application schema and same-runtime worker settlement remain separate obligations."
+    },
+    {
+      "id": "RESEARCH_NOTES_FULL_RUNTIME_AND_BROWSER_UAT",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
+      "sha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/280",
+      "evidence": "PR #280 merged normally. Isolated PostgreSQL 17 Mini App schema with normal server composition: /healthz, /readyz, Research Notes UI and authenticated API passed; unauthenticated API returned 401. Playwright 8/8 passed across desktop/tablet/mobile. This is not deployment or full application schema evidence."
     }
   ],
   "completedWorkunits": [
@@ -427,9 +437,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "PR #279 merged normally and canonical workspace convergence verified; PR #280 checkpoint prepared.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/279",
-      "integratedSha": "dddcc2890e0fe8b79e20213208408322e1b0328c"
+      "lastScenario": "PR #280 merged normally; canonical workspace converged and verified.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/280",
+      "integratedSha": "26cec5a96d243479d947717325e6e0901905b22d"
     },
     "waitingWorkunits": [
       {
@@ -459,12 +469,12 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:14:15+00:00",
+  "updatedAt": "2026-10-08T00:18:10+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PARTIAL_WORKER_EXECUTION_IDEMPOTENCY_SETTLEMENT_PASS_RETRY_FAILURE_RECOVERY_OWNERSHIP_PENDING; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
-    "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_FULL_SERVER_AND_MINIAPP_SCHEMA_RUNTIME_PASS; DEPLOYMENT_DESCRIPTOR_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
+    "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PARTIAL_PACKAGE_BUILT; VALIDATION_NEEDS_CONTEXT_V5_RUNTIME_PLACEMENT_AND_V6_MIGRATION_ROLLBACK_EVIDENCE",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_FULL_SERVER_MINIAPP_SCHEMA_RUNTIME_AND_BROWSER_PASS; DEPLOYMENT_DESCRIPTOR_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
     "M5_RESEARCH_NOTES_UAT_PASS": "PARTIAL_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_API_PASS; SAME_RUNTIME_WORKER_COMPLETION_AND_PACKAGE_REVISION_EVIDENCE_PENDING",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
@@ -507,15 +517,17 @@
       "928de50657f8fbe245ae5c9b9ed8975d3d036c6d",
       "c37c8c3d94673821da9248a76eddc1923b6e1d47",
       "7095848218ca39076413e2afa12f6b18eecad999",
-      "3efdedd6e"
+      "3efdedd6e",
+      "fa09dfa865610f64fce3e91494d7e88dc1838d91"
     ],
     "intendedRemoteBranch": "codex/research-notes-worker-binding",
     "pendingPullRequest": {
       "number": 280,
-      "url": "PENDING_CREATE",
-      "state": "PENDING",
-      "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
-      "integratedSha": null
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/280",
+      "state": "MERGED",
+      "sourceSha": "fa09dfa865610f64fce3e91494d7e88dc1838d91",
+      "integratedSha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "mergedAt": "2026-10-08T00:17:06Z"
     },
     "testEvidence": [
       {
@@ -632,6 +644,11 @@
         "revision": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
         "command": "pnpm --filter @smartspec/web run test:mini-app-full-runtime",
         "outcome": "PASS: full server composition on loopback with isolated disposable PostgreSQL 17 Mini App schema; health/readiness/UI/authenticated API and Playwright 8/8 desktop/tablet/mobile acceptance. This is runtime harness evidence, not deployment."
+      },
+      {
+        "revision": "3efdedd6e29eb2d70549f3898aae5538098aca3c (integrated as 26cec5a96d243479d947717325e6e0901905b22d)",
+        "command": "gh pr view 280 --json state,mergedAt,mergeCommit,url; workspace_authority.py verify --integrated-sha 26cec5a96d243479d947717325e6e0901905b22d",
+        "outcome": "PASS: PR #280 MERGED normally at 26cec5a96d243479d947717325e6e0901905b22d; canonical user workspace /home/dev/projects/SmartSpecPro clean and exact-SHA verified; workspace-convergence:b0e5706f-ed6c-4a2a-a019-349eb19f814f"
       }
     ],
     "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",
