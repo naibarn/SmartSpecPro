@@ -28,6 +28,7 @@ export type MiniAppFactoryStageWorkerRuntime = {
     completedScope: string[];
     artifacts: string[];
     canonicalRevision: string;
+    attempt: number;
   }) => Promise<MiniAppFactoryStageOutput>;
 };
 
@@ -170,7 +171,10 @@ export function createMiniAppFactoryStageJobExecutor(
       service: runtime.service,
       run,
       maxStages: 1,
-      executeStage: runtime.executeStage,
+      executeStage: (stageId, stageContext) => runtime.executeStage(stageId, {
+        ...stageContext,
+        attempt: context.attempt,
+      }),
       beforeCheckpoint: async stageId => {
         if (stageId !== input.stageId) throw new Error("FACTORY_STAGE_JOB_BINDING_MISMATCH");
         await reporter.assertActive(lease);
