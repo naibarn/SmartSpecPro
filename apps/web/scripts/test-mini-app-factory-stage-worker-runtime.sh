@@ -35,5 +35,11 @@ export MINI_APP_FACTORY_SOURCE_SHA="$(git -C "$APP_DIR/../.." rev-parse HEAD)"
 
 cd "$APP_DIR"
 pnpm exec drizzle-kit migrate --config=drizzle.mini-app-baseline.config.ts
-pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts
+pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts start
+# The producer process exits. Fresh worker processes discover each job from PostgreSQL/outbox.
+pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts worker
+pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts worker
+pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts recover
+pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts worker
+pnpm exec tsx scripts/mini-app-factory-stage-worker-runtime.ts verify
 echo "MINI_APP_FACTORY_STAGE_WORKER_RUNTIME_PASS"
