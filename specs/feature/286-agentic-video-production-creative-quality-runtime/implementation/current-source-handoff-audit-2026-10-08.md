@@ -6,10 +6,15 @@
 |---|---|
 | Configured source | `origin/main`; workspace and remote-tracking ref both resolve to `236d5022d687b08a0a87d1b6afd67db754fc501d` at audit start. Worktree was clean. |
 | Canonical spec identity | `specs/feature/286-agentic-video-production-creative-quality-runtime/` is indexed as a canonical path, but `specs/_status/spec-index.json` reports `authority=UNRESOLVED`, `confidence=LOW`, `canonical_sha=null`; `specs/_config/spec-id-registry.json` has no SPEC-286 owner binding. Do not hand-edit generated status or infer ownership solely from the folder name. |
-| Latest generated handoff | `handoff/STATUS.md`: `DORMANT_UNRESOLVED`, lifecycle `DISCOVERING`, `RECONCILIATION_REQUIRED`, 0/684 requirements passed, generation 2. It is generated from manifest and ledger and is not implementation evidence. |
+| Handoff at audit start | `handoff/STATUS.md`: `DORMANT_UNRESOLVED`, lifecycle `DISCOVERING`, `RECONCILIATION_REQUIRED`, 0/684 requirements passed, generation 2. It is generated from manifest and ledger and is not implementation evidence. |
+| Latest canonical handoff | After reconciling the additive amendment and recording integration through the shared writer: `handoff/STATUS.md` is `DORMANT_UNRESOLVED`, lifecycle `VALIDATION_PENDING`, continuation `RECONCILIATION_REQUIRED`, 0/719 requirements passed. The generated manifest/STATUS generation is the authoritative live value. This is still not an implementation-completion claim. |
 | Existing source reconciliation | G0.1 is based on `4f4e35fadd388a8950cf801cb45c64de46c645c9` (2026-10-05); its implementation-owner conclusions were refreshed against the audit SHA below. |
 | PR history | GitHub PR search for `SPEC-286` found only unrelated legacy spec-upload PRs; recent video-related PR inventory had no dedicated SPEC-286 implementation PR. PR #286 is a Mini App test PR and is unrelated. |
 | Runtime evidence | No authenticated Windows Runner execution receipt or job/artifact receipt was available in this task context. This means execution is unverified here; it does not prove that no Windows runner is registered in a live control plane. |
+
+## Integration update
+
+PR #337 (`Fix Runner identity grouping and add local debug export`) merged at `743b73440fbb52e088cbeaa246844d5953a0927e` during this task. PR #338 (this SPEC-286 documentation checkpoint) then merged as `eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2`, now the verified `origin/main` SHA. These runner-source updates improve inspectability but do not themselves establish an authorized Windows render, so WP0.4 remains blocked. The baseline profile table below is intentionally pinned to the pre-change audit SHA; the next capture must use the current canonical SHA and runtime.
 
 ## Related source / handoff matrix
 
@@ -36,7 +41,7 @@
 | B — Motion Infographic, 20s, 16:9 | **NOT RUN** | **NOT RUN** | **UNKNOWN** | **UNKNOWN** |
 | C — Logo / 3D Motion, 10s, 1:1 | **NOT RUN** | **NOT RUN** | **UNKNOWN** | **UNKNOWN** |
 
-No model/provider cost comparison is claimed. “Awesome Opus 5.5 Videos” is treated as a product inspiration/source, not as authorization to bind SmartAIHub to a provider. Compare providers only through normalized project inputs, identical fixtures, measured price basis, and the same quality rubric after WP0.4.
+No model/provider cost comparison is claimed. The [Awesome Opus 5.5 Videos gallery](https://github.com/yihui-dev/awesome-opus5-5-videos) is a source-linked collection of code-authored animation examples and creator prompts; use only as optional, rights-aware inspiration for abstract style descriptors. It is not an execution backend or permission to bundle creator prompts/media. Compare providers only through normalized project inputs, identical fixtures, measured price basis, and the same quality rubric after WP0.4.
 
 ## Next bounded work packages
 
@@ -54,4 +59,4 @@ No model/provider cost comparison is claimed. “Awesome Opus 5.5 Videos” is t
 - Linux readiness and render evidence are separately **NOT VERIFIED**.
 - No production deployment, feature-flag enablement, database migration, or provider-paid generation was performed.
 - Generated code was not compiled or executed; the security gate remains **NOT PASSED**.
-- The 684 unresolved status count is generated handoff state, not a measured count of missing implementation. Resolve canonical Spec identity and requirement mapping through `tools.spec_handoff`; do not hand-edit `STATUS.md`, `_status`, or ledgers.
+- The unresolved requirement count is generated handoff state, not a measured count of missing implementation. Resolve canonical Spec identity and requirement mapping through `tools.spec_handoff`; do not hand-edit `STATUS.md`, `_status`, or ledgers.
