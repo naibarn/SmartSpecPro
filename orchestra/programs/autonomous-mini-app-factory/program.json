@@ -5,27 +5,27 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "443859de75d2ccd297dbfa416a790d584cae3113",
+    "sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
-      "canonical_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
-      "canonical_user_workspace_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
+      "integrated_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+      "canonical_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+      "canonical_user_workspace_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:35462e36-c2f9-4ce4-aa53-3e7541d66690",
-      "verified_at": "2026-10-08T02:21:14.793+00:00"
+      "receipt_id": "workspace-convergence:ad2d5215-9ef4-4a74-82fc-1ed295df47b2",
+      "verified_at": "2026-10-08T02:24:16.362+00:00"
     },
-    "observedAt": "2026-10-08T02:21:20+00:00",
+    "observedAt": "2026-10-08T02:24:16+00:00",
     "latestVerify": {
-      "status": "CANONICAL_VERIFIED",
-      "canonical_user_workspace_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
+      "status": "CANONICAL_CONVERGENCE_VERIFIED",
+      "canonical_user_workspace_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
       "dirty": false,
-      "reason": "workspace_authority.py resolve verified the registered canonical user workspace at this SHA."
+      "reason": "workspace_authority.py converge and verify succeeded for PR #318 integrated SHA."
     },
-    "latestIntegratedProgramChange": "origin/main is 443859de75d2ccd297dbfa416a790d584cae3113. Registered canonical user workspace /home/dev/projects/SmartSpecPro was verified clean at this SHA. Factory adapter checkpoint is separate and pending PR."
+    "latestIntegratedProgramChange": "PR #318 merged normally as 0f218918f8c1c48915718020dfc522fcbf7f8cc1. Canonical user workspace converged and verified clean at the same SHA; factory handoff records follow-up external authority waits."
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -59,7 +59,7 @@
   },
   "currentWorkunit": {
     "id": "LANE1_TRUSTED_RUNNER_BINDING_AND_NONPROD_DEPLOYMENT",
-    "state": "IMPLEMENTED_PR_OPEN_EXTERNAL_AUTHORITY_WAIT",
+    "state": "PARTIAL_INTEGRATED_EXTERNAL_AUTHORITY_WAIT",
     "objective": "Bind Factory execution to the existing authenticated DevelopmentRun/Runner control plane and deploy Research Notes through a registered non-production target.",
     "implementation": [
       "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
@@ -71,10 +71,10 @@
       "apps/web/server/jobs/postgresNodeJobWorker.ts"
     ],
     "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
-    "evidence": "Rebased implementation commit 4e7d7d751fe988aa19273f2f8d3080a964357476 is based on origin/main 443859de75d2ccd297dbfa416a790d584cae3113. Focused Vitest: 7 files, 93 tests passed; git diff --check passed. Production composition wires the canonical pipeline to deferred existing DevelopmentRun/external_agent_task; immutable stage input and validated Runner receipt settlement/auto-next are implemented. No real dispatch or runtime acceptance is claimed.",
-    "integration": "PR #318 OPEN; normal merge pending",
-    "integratedSha": null,
-    "nextAction": "Complete normal PR #318 merge, refresh origin/main, record integrated SHA and re-run focused checks. Then attempt real Runner stage only with actual registered/trusted authority. Deployment/UAT remain waiting on approved non-production target."
+    "evidence": "PR #318 squash-merged normally at 0f218918f8c1c48915718020dfc522fcbf7f8cc1 (implementation source 4e7d7d751fe988aa19273f2f8d3080a964357476). Exact integrated SHA verification: 7 focused Vitest files, 93 tests passed; git diff --check passed. workspace_authority.py converge and verify both passed for /home/dev/projects/SmartSpecPro at 0f218918f8c1c48915718020dfc522fcbf7f8cc1. No real Runner ID or stage dispatch/receipt exists; no target deployment/UAT claimed.",
+    "integration": "PR #318 MERGED_NORMALLY",
+    "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+    "nextAction": "Reactivate real Factory stage when an authorized trusted Runner ID is registered with fresh session/capability snapshot and same-job grant, approval, budget reservation and workspace binding. Deployment/reactivation requires an approved registered non-production target with runtime identity, isolated DB, deploy authority, artifact and receipt. Then perform cross-process real resume and Project Wiki deploy/UAT."
   },
   "checkpoints": [
     {
@@ -338,10 +338,13 @@
     },
     {
       "id": "FACTORY_TRUSTED_RUNNER_STAGE_ADAPTER_AND_RECEIPT_SETTLEMENT",
-      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "state": "PARTIAL_INTEGRATED",
       "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
-      "evidence": "Production Factory composition uses existing deferred DevelopmentRun/external_agent_task and validated Runner receipt settlement. 7 focused Vitest files/93 tests passed on the candidate based on 443859de75d2ccd297dbfa416a790d584cae3113; no live Runner dispatch claim.",
-      "nextAction": "Normal PR integration; then live execute only with real Runner authority and valid authorization."
+      "evidence": "Exact integrated SHA 0f218918f8c1c48915718020dfc522fcbf7f8cc1: 7 focused test files/93 tests pass; canonical user workspace converged and verified. Real Runner dispatch/receipt and deployment remain blocked by missing authority.",
+      "nextAction": "Normal PR integration; then live execute only with real Runner authority and valid authorization.",
+      "sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+      "integration": "SQUASH_MERGED_NORMALLY",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/318"
     }
   ],
   "completedWorkunits": [
@@ -556,7 +559,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T02:22:00+00:00",
+  "updatedAt": "2026-10-08T02:24:16+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -621,15 +624,20 @@
       "ada93bda6fca71a4ce059f63f982bafa1291e88a",
       "4e7d7d751fe988aa19273f2f8d3080a964357476",
       "dfc835869dd1eb464155d39576fae49829d0c072",
-      "7df68896db7f151c4718866d3d1894d43a9db9ee"
+      "7df68896db7f151c4718866d3d1894d43a9db9ee",
+      "4e7d7d751fe988aa19273f2f8d3080a964357476",
+      "dfc835869dd1eb464155d39576fae49829d0c072",
+      "7df68896db7f151c4718866d3d1894d43a9db9ee",
+      "562b610adb4fa574be318f75abd8f8a4159f60f2",
+      "98291cc166767f6b5ed330e58b791290e2d2081c"
     ],
     "intendedRemoteBranch": "codex/factory-runner-stage-20261008",
     "pendingPullRequest": {
       "number": 318,
       "url": "https://github.com/naibarn/SmartSpecPro/pull/318",
-      "state": "OPEN",
-      "sourceSha": "562b610adb4fa574be318f75abd8f8a4159f60f2",
-      "integratedSha": null
+      "state": "MERGED",
+      "sourceSha": "98291cc166767f6b5ed330e58b791290e2d2081c",
+      "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1"
     },
     "testEvidence": [
       {
@@ -816,17 +824,23 @@
         "revision": "4e7d7d751fe988aa19273f2f8d3080a964357476 based on origin/main 443859de75d2ccd297dbfa416a790d584cae3113",
         "command": "pnpm --dir apps/web exec vitest run server/services/miniAppFactoryPipeline.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts server/services/miniAppFactoryRunnerSettlement.test.ts server/services/miniAppFactoryStageWorker.test.ts server/services/__tests__/jobControlPlane.test.ts server/services/externalAgentTaskExecutor.test.ts server/services/__tests__/externalAgentRunnerDispatcher.test.ts server/services/__tests__/jobReconciler.test.ts",
         "outcome": "PASS: 7 test files, 93 tests; git diff --check passed. Runner authorization/receipt, deployment, runtime and UAT remain pending."
+      },
+      {
+        "revision": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+        "command": "pnpm --dir apps/web exec vitest run server/services/miniAppFactoryPipeline.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts server/services/miniAppFactoryRunnerSettlement.test.ts server/services/miniAppFactoryStageWorker.test.ts server/services/__tests__/jobControlPlane.test.ts server/services/externalAgentTaskExecutor.test.ts server/services/__tests__/externalAgentRunnerDispatcher.test.ts server/services/__tests__/jobReconciler.test.ts",
+        "outcome": "PASS: 7 files, 93 tests on exact PR #318 integrated SHA. Canonical workspace converge+verify passed. No live runtime evidence."
       }
     ],
-    "githubIntegration": "PR_OPEN_NORMAL_MERGE_PENDING",
+    "githubIntegration": "MERGED_NORMALLY",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "443859de75d2ccd297dbfa416a790d584cae3113",
+    "canonicalAtCheckpoint": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
-      "clean": false,
-      "verifyState": "DIRTY_UNRELATED_SPEC_208_WORK_PRESERVED",
-      "receiptId": null
+      "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
+      "sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+      "dirty": false,
+      "convergenceReceipt": "workspace-convergence:ad2d5215-9ef4-4a74-82fc-1ed295df47b2",
+      "verifiedAt": "2026-10-08T02:24:16.362+00:00"
     },
     "previousPullRequests": [
       {
@@ -892,6 +906,14 @@
         "integration": "MERGED_NORMALLY",
         "sourceSha": "ada93bda6fca71a4ce059f63f982bafa1291e88a",
         "integratedSha": "5c5a0a23822bc447cc4aeef753d49d018d463979"
+      },
+      {
+        "number": 318,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/318",
+        "state": "MERGED",
+        "integration": "SQUASH_MERGED_NORMALLY",
+        "sourceSha": "98291cc166767f6b5ed330e58b791290e2d2081c",
+        "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1"
       }
     ],
     "taskOutcome": "CHECKPOINT_PROMOTED_PARTIAL"
