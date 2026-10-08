@@ -24,6 +24,13 @@ type DevelopmentRunService = ReturnType<typeof createDevelopmentRunService>;
 export type MiniAppFactoryStageWorkerRuntime = {
   pipeline: MiniAppFactoryPipeline;
   service: DevelopmentRunService;
+  createRunnerStage?: (input: {
+    pipeline: MiniAppFactoryPipeline;
+    stage: NonNullable<MiniAppFactoryPipeline["stages"][number]>;
+    run: MiniAppFactoryStageScope;
+  }) => Promise<{ runId: string; jobId: string; created: boolean; state: "PENDING_AUTHORIZATION" }>;
+  /** Test-only opt-in; production composition must use createRunnerStage. */
+  allowSyntheticExecution?: boolean;
   executeStage: (stageId: string, context: {
     completedScope: string[];
     artifacts: string[];
@@ -94,11 +101,12 @@ export async function enqueueNextMiniAppFactoryStage(input: {
   run: MiniAppFactoryStageScope;
   createJob?: typeof createControlPlaneJob;
   executorRegistry?: JobExecutorRegistry;
+  createRunnerStage?: MiniAppFactoryStageWorkerRuntime["createRunnerStage"];
 }): Promise<{
   stageId: string | null;
   jobId: string | null;
   created: boolean;
-  state: "ENQUEUED" | "WAITING_DEPENDENCY" | "IMPLEMENTATION_SCOPE_COMPLETE";
+  state: "ENQUEUED" | "WAITING_AUTHORIZATION" | "WAITING_DEPENDENCY" | "IMPLEMENTATION_SCOPE_COMPLETE";
 }> {
   const current = await input.service.get(input.run);
   const unit = current.run.workUnit;
@@ -108,6 +116,11 @@ export async function enqueueNextMiniAppFactoryStage(input: {
   const ready = selectReadyMiniAppFactoryStages(input.pipeline, unit);
   if (ready.length === 0) return { stageId: null, jobId: null, created: false, state: "WAITING_DEPENDENCY" };
   const stageId = ready[0]!;
+  if (input.createRunnerStage) {
+    const stage = input.pipeline.stages.find(candidate => candidate.id === stageId)!;
+    const child = await input.createRunnerStage({ pipeline: input.pipeline, stage, run: input.run });
+    return { stageId, jobId: child.jobId, created: child.created, state: "WAITING_AUTHORIZATION" };
+  }
   const createJob = input.createJob ?? createControlPlaneJob;
   const job = await createJob({
     context: {
@@ -145,6 +158,7 @@ export function createMiniAppFactoryStageJobExecutor(
         pipeline: runtime.pipeline,
         service: runtime.service,
         run,
+        ...(runtime.createRunnerStage ? { createRunnerStage: runtime.createRunnerStage } : {}),
         createJob: job => createControlPlaneJob({ ...job, controlPlane }),
       });
       return next.jobId;
@@ -165,6 +179,17 @@ export function createMiniAppFactoryStageJobExecutor(
     const ready = selectReadyMiniAppFactoryStages(runtime.pipeline, unit);
     if (ready[0] !== input.stageId) throw new Error("FACTORY_STAGE_JOB_NOT_NEXT_ELIGIBLE");
     await reporter.assertActive(lease);
+    if (runtime.createRunnerStage) {
+      const stage = runtime.pipeline.stages.find(candidate => candidate.id === input.stageId)!;
+      const child = await runtime.createRunnerStage({ pipeline: runtime.pipeline, stage, run });
+      return { output: { stageId: input.stageId, state: "WAITING_AUTHORIZATION", childRunId: child.runId, jobId: child.jobId } };
+    }
+    if (!runtime.allowSyntheticExecution) {
+      const error = new Error("FACTORY_TRUSTED_RUNNER_ADAPTER_NOT_CONFIGURED") as Error & { class: "retryable"; diagnosticCode: string };
+      error.class = "retryable";
+      error.diagnosticCode = "FACTORY_TRUSTED_RUNNER_ADAPTER_NOT_CONFIGURED";
+      throw error;
+    }
     await reporter.progress(lease, { progress: 10, stage: input.stageId, message: "Factory stage execution started" });
     const result = await executeMiniAppFactoryStages({
       pipeline: runtime.pipeline,

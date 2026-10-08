@@ -2134,7 +2134,9 @@ export function createJobControlPlane(
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
         if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId) return false;
-        if (job.status === "queued") return true;
+        if (job.status === "queued") {
+          return Boolean(await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`));
+        }
         if (job.status !== "pending" || job.jobType !== "external_agent_task") return false;
         const jobInput = job.inputJson as Record<string, any>;
         const progress = job.progressJson as Record<string, any>;
@@ -2143,7 +2145,7 @@ export function createJobControlPlane(
         const auth = progress.spec224Authorization;
         const binding = auth?.binding;
         if (!manifest || auth?.status !== "READY_FOR_LIVE" || !binding ||
-          JSON.stringify(manifest.policyBinding) !== JSON.stringify(binding) ||
+          !isDeepStrictEqual(manifest.policyBinding, binding) ||
           !specRun || specRun.workerJobId !== job.id || specRun.tenantId !== job.tenantId ||
           Number(specRun.actorId) !== job.requestedByUserId ||
           [binding.runnerId, binding.runnerSessionId, binding.capabilitySnapshotId, binding.capabilitySnapshotRevision,

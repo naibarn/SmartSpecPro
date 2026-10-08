@@ -174,6 +174,22 @@ async function loadNodeExecutorModules(): Promise<void> {
   // worker process. It still fails closed per-job when Runner policy bindings
   // or the authenticated gateway are absent.
   configureExternalAgentTaskDispatcher(externalAgentTaskDispatcher);
+  try {
+    const [factoryWorker, factoryRuntime] = await Promise.all([
+      import("../services/miniAppFactoryStageWorker"),
+      import("../services/miniAppFactoryRuntime"),
+    ]);
+    factoryWorker.configureMiniAppFactoryStageWorkerRuntime(
+      factoryRuntime.createMiniAppFactoryStageWorkerRuntime(),
+    );
+    console.info("[Feature186] Mini App Factory trusted Runner adapter ready");
+  } catch (error) {
+    // Keep unrelated canonical jobs available if the optional program pipeline
+    // file is absent from a deployment package. Factory jobs remain fail-closed.
+    console.warn("[Feature186] Mini App Factory Runner adapter unavailable", {
+      code: error instanceof Error ? error.message : "FACTORY_RUNTIME_UNAVAILABLE",
+    });
+  }
   // These modules register the business handlers on the shared server-owned
   // registry. Their legacy BullMQ workers are not initialized in this process.
   console.info("[Feature186] node worker loading executor modules", { stage: "webhook_dispatch" });
