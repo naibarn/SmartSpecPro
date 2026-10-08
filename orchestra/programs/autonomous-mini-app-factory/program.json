@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
+    "sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
-      "canonical_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
-      "canonical_user_workspace_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
+      "integrated_sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
+      "canonical_sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
+      "canonical_user_workspace_sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:9a246847-62e0-416e-ac68-c122f08a247f",
-      "verified_at": "2026-10-08T00:40:29.139+00:00"
+      "receipt_id": "workspace-convergence:88c6560b-7294-43b9-b44d-b1713ac91984",
+      "verified_at": "2026-10-08T00:47:13.640+00:00"
     },
-    "observedAt": "2026-10-08T00:46:00+00:00",
+    "observedAt": "2026-10-08T00:47:14+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
-      "canonical_user_workspace_sha": "9a3464b0e5463d18e430b3ebe5933dc3135eec6a",
+      "integrated_sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
+      "canonical_user_workspace_sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-08T00:40:29.139+00:00",
-      "receipt_id": "workspace-convergence:9a246847-62e0-416e-ac68-c122f08a247f"
+      "verified_at": "2026-10-08T00:47:13.640+00:00",
+      "receipt_id": "workspace-convergence:88c6560b-7294-43b9-b44d-b1713ac91984"
     }
   },
   "inventory": {
@@ -61,7 +61,7 @@
   },
   "currentWorkunit": {
     "id": "RESEARCH_NOTES_AUTHENTICATED_ACTION_WORKER_FULL_RUNTIME_UAT",
-    "state": "FAST_GATE_PASSED_PENDING_PR",
+    "state": "PARTIAL_INTEGRATED",
     "objective": "Prove an authenticated Research Notes summary action in the normal loopback application runtime reaches the canonical PostgreSQL worker/outbox path and settles back through the authenticated API.",
     "implementation": [
       "apps/web/scripts/test-mini-app-full-runtime.sh",
@@ -69,8 +69,9 @@
     ],
     "sourceSha": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
     "evidence": "PASS: SKIP_BROWSER_UAT=1 pnpm --filter @smartspec/web run test:mini-app-full-runtime. Authenticated tRPC requestSummary created the job; separate worker runtime on the same disposable PostgreSQL 17 database confirmed idempotent admission, worker execution and settlement; authenticated summaryJob read succeeded and archive completed. Normal server loopback healthz=200, readyz=200, Research Notes UI=200, authenticated API PASS, unauthenticated API=401. Browser suite intentionally skipped in this placement run; prior PR #280 browser evidence is 8/8 desktop/tablet/mobile. No deployment claim.",
-    "integration": "PENDING_PR",
-    "nextAction": "Integrate this evidence and continue Factory stage worker/outbox binding; keep deployment target unselected until a safe non-production target is registered."
+    "integration": "PR #286 MERGED_NORMALLY",
+    "nextAction": "Continue FACTORY_STAGE_WORKER_JOBS_BINDING from current origin/main; keep non-production deployment target as a separate external wait.",
+    "integratedSha": "eb59058d9273f839c41c94f86c13ff5396503a9d"
   },
   "checkpoints": [
     {
@@ -299,10 +300,12 @@
     },
     {
       "id": "RESEARCH_NOTES_AUTHENTICATED_ACTION_WORKER_FULL_RUNTIME_UAT",
-      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "state": "PARTIAL_INTEGRATED",
       "sourceSha": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
       "evidence": "Authenticated requestSummary tRPC action on the normal loopback app runtime created the job; the separate PostgreSQL worker runtime on the same disposable PostgreSQL 17 DB processed and settled that exact job; authenticated summaryJob readback and archive passed. healthz/readyz/UI/authenticated API passed; browser suite skipped for this run and remains separately evidenced by PR #280 8/8. No deployment.",
-      "integration": "PENDING_PR"
+      "integration": "SQUASH_MERGED_NORMALLY",
+      "sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/286"
     }
   ],
   "completedWorkunits": [
@@ -464,9 +467,9 @@
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "PR #280 merged normally; canonical workspace converged and verified.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/280",
-      "integratedSha": "26cec5a96d243479d947717325e6e0901905b22d"
+      "lastScenario": "PR #286 merged normally; canonical user workspace converged and verified.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/286",
+      "integratedSha": "eb59058d9273f839c41c94f86c13ff5396503a9d"
     },
     "waitingWorkunits": [
       {
@@ -496,7 +499,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:46:00+00:00",
+  "updatedAt": "2026-10-08T00:47:14+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -555,11 +558,11 @@
     ],
     "intendedRemoteBranch": "codex/miniapp-full-worker-uat",
     "pendingPullRequest": {
-      "number": null,
-      "url": "PENDING_CREATE",
-      "state": "PENDING",
-      "sourceSha": "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
-      "integratedSha": null
+      "number": 286,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/286",
+      "state": "MERGED",
+      "sourceSha": "95d926066f22afe27e0b45c407ee46e4db665e3d",
+      "integratedSha": "eb59058d9273f839c41c94f86c13ff5396503a9d"
     },
     "testEvidence": [
       {
@@ -708,15 +711,15 @@
         "outcome": "PASS: authenticated tRPC Research Notes requestSummary job was consumed by a separate worker runtime against the same disposable PostgreSQL 17 DB; success settlement and authenticated summaryJob readback passed; note archived; /healthz=200 /readyz=200 UI=200 authenticated API PASS unauthenticated API=401 on loopback. Browser UAT was skipped for this placement run; PR #280 browser UAT remains separate 8/8 evidence. Not deployment."
       }
     ],
-    "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",
+    "githubIntegration": "IDLE_AFTER_PR_286_MERGE",
     "deploymentState": "PREPARED_NOT_DEPLOYED",
-    "canonicalAtCheckpoint": "b65aa8551d483d12b18da3982abcbc685d808603",
+    "canonicalAtCheckpoint": "eb59058d9273f839c41c94f86c13ff5396503a9d",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
-      "sha": "b65aa8551d483d12b18da3982abcbc685d808603",
+      "sha": "eb59058d9273f839c41c94f86c13ff5396503a9d",
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
-      "receiptId": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929"
+      "receiptId": "workspace-convergence:88c6560b-7294-43b9-b44d-b1713ac91984"
     },
     "previousPullRequests": [
       {
@@ -726,8 +729,16 @@
         "integration": "SQUASH_MERGED_NORMALLY",
         "sourceSha": "c37c8c3d94673821da9248a76eddc1923b6e1d47",
         "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
+      },
+      {
+        "number": 286,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/286",
+        "state": "MERGED",
+        "integration": "SQUASH_MERGED_NORMALLY",
+        "sourceSha": "95d926066f22afe27e0b45c407ee46e4db665e3d",
+        "integratedSha": "eb59058d9273f839c41c94f86c13ff5396503a9d"
       }
     ],
-    "taskOutcome": "PARTIAL_INTEGRATED_PENDING_PR"
+    "taskOutcome": "CHECKPOINT_PROMOTED_PARTIAL"
   }
 }
