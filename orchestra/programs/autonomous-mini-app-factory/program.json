@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+    "sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
-      "canonical_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
-      "canonical_user_workspace_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+      "integrated_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+      "canonical_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+      "canonical_user_workspace_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:2a263231-2fd7-4be1-93cc-1b196a5d5e11",
-      "verified_at": "2026-10-07T23:44:11.958+00:00"
+      "receipt_id": "workspace-convergence:a426cfe4-7e38-41e5-94d3-42729ea8854e",
+      "verified_at": "2026-10-07T23:58:35.739+00:00"
     },
-    "observedAt": "2026-10-08T06:55:00+07:00",
+    "observedAt": "2026-10-08T00:14:15+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
-      "canonical_user_workspace_sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
+      "integrated_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+      "canonical_user_workspace_sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-07T23:44:11.958+00:00",
-      "receipt_id": "workspace-convergence:2a263231-2fd7-4be1-93cc-1b196a5d5e11"
+      "verified_at": "2026-10-07T23:58:42.316+00:00",
+      "receipt_id": "workspace-convergence:a426cfe4-7e38-41e5-94d3-42729ea8854e"
     }
   },
   "inventory": {
@@ -60,18 +60,19 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "MINI_APP_FACTORY_CROSS_PROCESS_RESUME",
+    "id": "MINI_APP_FULL_RUNTIME_BROWSER_UAT",
     "state": "FAST_GATE_PASSED_PENDING_PR",
-    "objective": "Prove the existing Factory work unit survives process termination and automatically continues its next eligible stage from durable PostgreSQL worker_jobs state.",
+    "objective": "Run the full web application composition against an isolated Mini App PostgreSQL baseline and complete authenticated Research Notes browser acceptance on desktop, tablet, and mobile.",
     "implementation": [
-      "apps/web/scripts/mini-app-factory-cross-process-resume.ts",
-      "apps/web/scripts/test-mini-app-factory-cross-process-resume.sh",
-      "apps/web/package.json"
+      "apps/web/server/routers/appIdentity.ts",
+      "apps/web/client/src/pages/ResearchNotesPage.tsx",
+      "apps/web/scripts/test-mini-app-full-runtime.sh",
+      "apps/web/tests/e2e/research-notes-browser.spec.ts"
     ],
-    "sourceSha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
-    "evidence": "PASS: pnpm --filter @smartspec/web run test:mini-app-factory-cross-process-resume; disposable PostgreSQL 17 Mini App baseline; process A persisted SPEC/SCAFFOLD/IMPLEMENT and artifacts then exited; process B restored run at revision 3, selected TEST automatically, and completed the persisted work unit. Fresh baseline contains worker_jobs/outbox and omits retired workflow/Agency/workpack/sandbox tables.",
-    "integration": "PARTIAL_PENDING_PR",
-    "nextAction": "Integrate this safe proof, then continue approved worker execution binding and non-production runtime composition."
+    "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
+    "evidence": "PASS: pnpm --filter @smartspec/web run test:mini-app-full-runtime. Normal apps/web/server/_core/index.ts process bound to 127.0.0.1; /healthz and /readyz returned 200; Research Notes UI shell and authenticated project/note API passed. Playwright 8/8 passed: desktop/tablet/mobile CRUD, search, archive, pending background status, project switching, loading, error, unauthenticated redirect, and revoked membership. This is an isolated Mini App-schema runtime harness, not deployment or full non-Mini-App schema coverage.",
+    "integration": "PENDING_PR",
+    "nextAction": "Open/merge the safe checkpoint, converge canonical workspace, then continue package validation context and background retry/failure/recovery/ownership coverage."
   },
   "checkpoints": [
     {
@@ -243,6 +244,28 @@
       "sha": "c6bae03618ed3ae12e90f411206126fcd25eae66",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/277",
       "evidence": "Removed jobControlPlane static import of workflowStudioSettlement; new isolation regression passed 1/1. No data/schema deletion. Existing jobControlPlane test has two reproduced baseline ReferenceErrors for buildRunnerCancellationCommand on both base and patched revisions."
+    },
+    {
+      "id": "MINI_APP_FACTORY_CROSS_PROCESS_RESUME",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "edcbcd497005a19cb804f051c49cbc15eaececcb",
+      "sha": "dd1e789b9d48ab0dd7703e6d3ca484dfafa1e520",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/278",
+      "evidence": "PR #278 merged normally. Process A persisted SPEC/SCAFFOLD/IMPLEMENT and artifacts to PostgreSQL DevelopmentRun state then exited; process B restored revision 3, automatically selected TEST, and completed the work unit. Program ID/Mini App ID/full program-state binding remains pending."
+    },
+    {
+      "id": "RESEARCH_NOTES_WORKER_RUNTIME_AND_RETIRED_WORKFLOW_ISOLATION",
+      "state": "PARTIAL_INTEGRATED",
+      "sourceSha": "7095848218ca39076413e2afa12f6b18eecad999",
+      "sha": "dddcc2890e0fe8b79e20213208408322e1b0328c",
+      "pr": "https://github.com/naibarn/SmartSpecPro/pull/279",
+      "evidence": "62 focused Vitest tests passed; disposable PostgreSQL 17 proved Research Notes service enqueue, duplicate admission idempotency, PostgreSQL-pull outbox publication, production runPostgresNodeJobWorkerOnce invocation, synthetic cost-free executor success, settlement persistence, and duplicate poll suppression. Mini App worker schema baseline passed. Retired Workflow Studio runtime/UI registration removed from active composition. Retry/failure/recovery/ownership and Factory-stage worker binding remain pending."
+    },
+    {
+      "id": "RESEARCH_NOTES_FULL_RUNTIME_AND_BROWSER_UAT",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
+      "evidence": "Full server composition booted in isolated disposable PostgreSQL 17 Mini App schema. /healthz=200, /readyz=200, UI shell=200, authenticated resolver/project/note API passed, unauthenticated API returned 401. Playwright 8/8 passed across desktop/tablet/mobile, including search by content, create/edit/archive, project switching, loading/error, unauthenticated redirect, revoked membership, and pending background action. No deployment/provider-cost claim; full application schema and same-runtime worker settlement remain separate obligations."
     }
   ],
   "completedWorkunits": [
@@ -395,29 +418,29 @@
   },
   "autonomy": {
     "durableProgramState": "PARTIAL_DEVELOPMENTRUN_WORKER_JOBS_PROJECTION; program ID/Mini App ID/deployment/retry state projection remains pending.",
-    "autoNextWorkSelection": "PARTIAL_SELECTOR_AND_EXECUTOR_WITH_RESUME_SEAM_TEST; approved stage worker binding remains next",
+    "autoNextWorkSelection": "PARTIAL_SELECTOR_AND_EXECUTOR_WITH_CROSS_PROCESS_RESUME; Research Notes worker/outbox and full runtime browser path proven; Factory stage worker binding pending",
     "autoResume": "PARTIAL_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_RESUME; Factory program/Mini App identity binding and complete program-level state remain pending.",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "APPROVED_WORKER_EXECUTION_BINDING_AND_FULL_APP_COMPOSITION; do not activate workflowStudio or workflowWorkerRuntime while building the Mini App path.",
+    "nextEligibleWorkunit": "PACKAGE_VALIDATION_CONTEXT_AND_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP; then Factory durable program ID/Mini App ID binding.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
-      "lastScenario": "PR #275 handoff merged normally; canonical workspace convergence verified.",
-      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/275",
-      "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
+      "lastScenario": "PR #279 merged normally and canonical workspace convergence verified; PR #280 checkpoint prepared.",
+      "lastPr": "https://github.com/naibarn/SmartSpecPro/pull/279",
+      "integratedSha": "dddcc2890e0fe8b79e20213208408322e1b0328c"
     },
     "waitingWorkunits": [
       {
         "id": "RESEARCH_NOTES_UI_FULL_APP_RUNTIME_AND_UAT",
-        "state": "WAITING_RUNTIME_BOOTSTRAP",
-        "predicate": "The disposable PostgreSQL 15 pgvector authenticated loopback API now passes. Full app/UI UAT still requires an isolated full application composition that does not activate the retired workflow runtime; the existing focused listener exposes only Research Notes API endpoints."
+        "state": "PARTIAL_PASS_DEPLOYMENT_PENDING",
+        "predicate": "Normal server composition and authenticated browser UAT passed against a disposable PostgreSQL 17 Mini App schema. Deployment artifact/runtime ID and full application-schema runtime remain pending."
       },
       {
         "id": "RESEARCH_NOTES_BACKGROUND_EXECUTION",
-        "state": "WAITING_SAFE_CONTROL_PLANE_PATH_REVIEW",
-        "predicate": "Exercise worker_jobs/outbox execution only through an allowed path that does not activate the retired workflow runtime; do not run a provider with cost without the existing provider-cost gate."
+        "state": "PARTIAL_PASS_RETRY_FAILURE_RECOVERY_OWNERSHIP_PENDING",
+        "predicate": "Basic worker_jobs/outbox publish, worker execution, idempotent admission and success settlement passed in a disposable PostgreSQL 17 harness with a synthetic cost-free executor. Add retry, terminal failure, recovery and ownership assertions; do not invoke a paid provider without existing cost authorization."
       },
       {
         "id": "FACTORY_STAGE_EXECUTOR_APPROVED_WORKER_BINDING",
@@ -436,33 +459,33 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T07:05:00+07:00",
+  "updatedAt": "2026-10-08T00:14:15+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
-    "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_IMPLEMENTED_TESTED_RUNTIME_PENDING",
+    "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PARTIAL_WORKER_EXECUTION_IDEMPOTENCY_SETTLEMENT_PASS_RETRY_FAILURE_RECOVERY_OWNERSHIP_PENDING; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PASS_PACKAGE_BUILT_VALIDATION_NEEDS_CONTEXT",
-    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "AUTHENTICATED_LOOPBACK_API_PG15_PGVECTOR_PASS_FULL_APP_DEPLOY_NOT_RUN",
-    "M5_RESEARCH_NOTES_UAT_PASS": "NOT_RUN",
+    "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_FULL_SERVER_AND_MINIAPP_SCHEMA_RUNTIME_PASS; DEPLOYMENT_DESCRIPTOR_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
+    "M5_RESEARCH_NOTES_UAT_PASS": "PARTIAL_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_API_PASS; SAME_RUNTIME_WORKER_COMPLETION_AND_PACKAGE_REVISION_EVIDENCE_PENDING",
     "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
-    "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_AND_RESUME_SEAM_TESTED_WORKER_BINDING_PENDING",
-    "M7_FACTORY_AUTO_RESUME_PASS": "PARTIAL_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_RESUME; program-level identity/state binding pending",
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_RESUME_TESTED; FACTORY_STAGE_WORKER_BINDING_PENDING",
+    "M7_FACTORY_AUTO_RESUME_PASS": "PARTIAL_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_RESUME; program ID/Mini App ID/full program state binding pending",
     "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_SPEC_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_RUNTIME_PENDING"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
     "targetId": "miniapp-factory-fresh-schema-loopback",
-    "reason": "Authenticated Research Notes loopback API passes over disposable PostgreSQL 15 with pgvector; this is focused API runtime evidence only. Full app deployment, browser UAT, provider summary, and background worker execution have not been performed.",
+    "reason": "Normal full server composition and authenticated Research Notes browser acceptance passed on a loopback process using an isolated disposable PostgreSQL 17 Mini App schema. This is not a deployment artifact/runtime ID and does not include the full application schema. Same-runtime background worker completion, package validation context, and real AI provider remain pending.",
     "productionTouched": false
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "DEPENDENCY_READY_SELECTOR_EXECUTOR_AND_RESUME_SEAM_TESTED_WORKER_BINDING_PENDING",
+    "state": "DEPENDENCY_READY_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_RESUME_TESTED; RESEARCH_NOTES_WORKER_AND_FULL_APP_COMPOSITION_PROVEN; FACTORY_STAGE_WORKER_BINDING_PENDING",
     "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/research-notes-smoke-guardrails-closeout-20261008",
-    "sourceBranch": "codex/research-notes-smoke-guardrails-closeout-20261008",
+    "taskWorktree": "/home/dev/worktrees/research-notes-worker-binding-20261008",
+    "sourceBranch": "codex/research-notes-worker-binding",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -482,16 +505,17 @@
       "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
       "d8bf17af0974a85feac7e10287371f1096d7ff35",
       "928de50657f8fbe245ae5c9b9ed8975d3d036c6d",
-      "c37c8c3d94673821da9248a76eddc1923b6e1d47"
+      "c37c8c3d94673821da9248a76eddc1923b6e1d47",
+      "7095848218ca39076413e2afa12f6b18eecad999",
+      "3efdedd6e"
     ],
-    "intendedRemoteBranch": "codex/research-notes-smoke-guardrails-closeout-20261008",
+    "intendedRemoteBranch": "codex/research-notes-worker-binding",
     "pendingPullRequest": {
-      "number": 275,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/275",
-      "state": "MERGED",
-      "integration": "SQUASH_MERGED_NORMALLY",
-      "sourceSha": "c37c8c3d94673821da9248a76eddc1923b6e1d47",
-      "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
+      "number": 280,
+      "url": "PENDING_CREATE",
+      "state": "PENDING",
+      "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
+      "integratedSha": null
     },
     "testEvidence": [
       {
@@ -583,6 +607,31 @@
         "revision": "d8bf17af0974a85feac7e10287371f1096d7ff35 based on canonical d4c7794bbc690557e79183102de0bfdf2eac8e7a",
         "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/researchNotesSmokeRunner.test.ts",
         "outcome": "PASS: 1 file, 2 tests; production target/credential refusal and provider-cost gate verified before external requests."
+      },
+      {
+        "revision": "7095848218ca39076413e2afa12f6b18eecad999",
+        "command": "pnpm --filter @smartspec/web exec vitest run client/src/hooks/__tests__/useMenuItems.test.ts client/src/pages/__tests__/WorkflowStudioPage.wiring.test.ts client/src/pages/__tests__/Dashboard.test.tsx client/src/i18n/__tests__/namespaces.test.ts server/jobs/__tests__/feature186JobTypes.test.ts server/services/__tests__/jobTransportAdapters.test.ts server/services/__tests__/researchNotesSummaryExecutor.test.ts server/services/__tests__/jobControlPlane.retiredWorkflowIsolation.test.ts",
+        "outcome": "PASS: 7 files, 62 tests"
+      },
+      {
+        "revision": "7095848218ca39076413e2afa12f6b18eecad999",
+        "command": "pnpm --filter @smartspec/web run test:research-notes-background-worker-runtime",
+        "outcome": "PASS: disposable PostgreSQL 17, outbox publication, production worker function execution, synthetic cost-free executor, success settlement, idempotency and duplicate poll suppression"
+      },
+      {
+        "revision": "7095848218ca39076413e2afa12f6b18eecad999",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-runtime-baseline",
+        "outcome": "PASS: fresh PostgreSQL 17 Mini App baseline migration and SQL contract checks"
+      },
+      {
+        "revision": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/routers/appIdentity.test.ts client/src/pages/__tests__/ResearchNotesPage.test.tsx",
+        "outcome": "PASS: 2 files, 9 tests"
+      },
+      {
+        "revision": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-full-runtime",
+        "outcome": "PASS: full server composition on loopback with isolated disposable PostgreSQL 17 Mini App schema; health/readiness/UI/authenticated API and Playwright 8/8 desktop/tablet/mobile acceptance. This is runtime harness evidence, not deployment."
       }
     ],
     "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",
@@ -594,6 +643,16 @@
       "clean": true,
       "verifyState": "CANONICAL_CONVERGENCE_VERIFIED",
       "receiptId": "workspace-convergence:6538e17f-431e-4478-b3f8-47abd4c88929"
-    }
+    },
+    "previousPullRequests": [
+      {
+        "number": 275,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/275",
+        "state": "MERGED",
+        "integration": "SQUASH_MERGED_NORMALLY",
+        "sourceSha": "c37c8c3d94673821da9248a76eddc1923b6e1d47",
+        "integratedSha": "b65aa8551d483d12b18da3982abcbc685d808603"
+      }
+    ]
   }
 }
