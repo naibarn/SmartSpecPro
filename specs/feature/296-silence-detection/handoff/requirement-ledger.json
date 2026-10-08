@@ -1,314 +1,408 @@
 {
-  "generation": 4,
+  "generation": 18,
   "reconciliation_version": 3,
   "requirements": [
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L420"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L420",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/Toolbar.tsx",
+        "apps/web/client/src/components/videoeditor/VideoEditorPhase3.tsx",
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "fb312e16dca8c85e182f7e1a265ec590370b922854e6df5cbb723f158b365f74",
       "requirement_id": "REQ-387B94ADE60C",
       "requirement_text": "- [ ] Full-screen dialog opens from video editor toolbar",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionPanelTrigger.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L421"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L421",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx",
+        "apps/web/client/src/types/videoEditor.ts"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "becbcf0ae1d273a1d661eb15557c4f54d8428d63fb9501bc8e8099f946e12013",
       "requirement_id": "REQ-4EA48394967D",
       "requirement_text": "- [ ] Volume Threshold slider works (-60dB to -20dB) with dB + % display",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L422"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L422",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "b185beec6b55d7b5106b8c0b278c4c0b3cd70f13f53cb943d38fe65843daa735",
       "requirement_id": "REQ-784323FD142E",
       "requirement_text": "- [ ] Minimum Duration slider works (0.1s to 5.0s)",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L423"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L423",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx",
+        "python-backend/app/tasks/media_job_worker.py"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "c12558c5751ff1420c3d830dd3b8ab4995160895e5e58b004c976babda1a6519",
       "requirement_id": "REQ-A39C4F63F640",
       "requirement_text": "- [ ] Softening Buffer slider works (0.0s to 2.0s)",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx",
+        "python-backend/tests/test_dead_air_cut.py",
+        "python-backend/tests/test_dead_air_cut_integration.py"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L424"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L424",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx",
+        "apps/web/client/src/services/mediaJobClient.ts",
+        "python-backend/app/tasks/media_job_worker.py"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "1fe9085f5388f22f5ea4767de05a7ed8601f50e470fbb55b06b2b82fdafdc201",
       "requirement_id": "REQ-88BC27B78A09",
       "requirement_text": "- [ ] \"Analyze\" detects silent regions via existing `dead_air_detect` backend",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx",
+        "python-backend/tests/test_dead_air_detect.py"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L425"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L425",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceWaveformOverlay.tsx",
+        "apps/web/client/src/components/videoeditor/SilenceTimeline.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "0147b9381e410c2c6b925b39ff15f849a7db167bff941ba188607e838c0c028d",
       "requirement_id": "REQ-5B05954B5F7F",
       "requirement_text": "- [ ] Waveform displays with silent regions highlighted as red overlays",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceTimeline.test.ts"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L426"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L426",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx",
+        "apps/web/client/src/components/videoeditor/PreviewPlayer.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "5dd5846d408cc9477831379cb518687db60fa7e2ecdb6275892409a3c35324c9",
       "requirement_id": "REQ-CCCED77DF260",
       "requirement_text": "- [ ] Video preview plays inside dialog with sync to waveform playhead",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L427"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L427",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceWaveformOverlay.tsx",
+        "apps/web/client/src/components/videoeditor/SilenceTimeline.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "3340a78584c42c8a1c77b93a78fdcd322199fd46e3e883823c1992d8e0ebb872",
       "requirement_id": "REQ-6A24C7CA080E",
       "requirement_text": "- [ ] Click on waveform seeks playback position",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceTimeline.test.ts",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L428"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L428",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceWaveformOverlay.tsx",
+        "apps/web/client/src/components/videoeditor/SilenceRegionList.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "fa02282c34492069bc80c4e2b91ae743389386f90004040738d0de6f22234563",
       "requirement_id": "REQ-9CD8C6F2FFCD",
       "requirement_text": "- [ ] Click on region overlay toggles selection",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceRegionList.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L429"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L429",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/silenceExportUtils.ts",
+        "apps/web/client/src/components/videoeditor/VideoEditorPhase3.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "c47f3395005f11cce8eba08ee60e94afb24ba2192c3b16ab922d3d5545587940",
       "requirement_id": "REQ-090B3F720494",
       "requirement_text": "- [ ] \"Export to Timeline\" splits clips and removes silence (non-destructive)",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/silenceExportToTimeline.test.ts"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L430"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L430",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/VideoEditorPhase3.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "c4a7f75685e7599faedce17bb737227f08548e0204083924044d8520cae7a871",
       "requirement_id": "REQ-0AE3CCA10FCF",
       "requirement_text": "- [ ] Operation is undoable (single undo step)",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/silenceExportToTimeline.test.ts"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L431"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L431",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "python-backend/app/tasks/media_job_worker.py"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "145d9352fde924166bf4ed6aa7ec25c548eb7a2583b7c08706efed456e7117b1",
       "requirement_id": "REQ-58F2B3A3A923",
       "requirement_text": "- [ ] `handle_dead_air_cut` backend handler implemented for server-side export",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "python-backend/tests/test_dead_air_cut.py",
+        "python-backend/tests/test_dead_air_cut_integration.py"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L432"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L432",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "python-backend/app/tasks/media_job_worker.py",
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "a7be14bd004015b521a10e0805785b5a1c4f7eeaf8436c0c02e3837d8d7ff092",
       "requirement_id": "REQ-9B1889D6C16F",
       "requirement_text": "- [ ] Softening buffer prevents harsh audio jumps at cut points",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "python-backend/tests/test_dead_air_cut.py",
+        "python-backend/tests/test_dead_air_cut_integration.py",
+        "apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/296-silence-detection/spec.md#L433"
       ],
       "authority_source": "specs/feature/296-silence-detection/spec.md#L433",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/client/src/components/videoeditor/SilenceDetectionPanel.tsx",
+        "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "No further implementation action; retain this requirement in regression coverage.",
       "requirement_digest": "ea5f88eba2ef2e3adbeb80f713c02a22d41a06a3379201fe673ed9ef87b9deb6",
       "requirement_id": "REQ-0BDF401456BC",
       "requirement_text": "- [ ] Existing sidebar panel remains functional (shared logic)",
       "source_spec_digest": "87f5f0149581bc3bff3a8b0ee877c6b7ae2b7cee7a23ac1c5539104d3371db54",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionPanelTrigger.test.tsx",
+        "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx"
+      ],
+      "verification_method": "Focused UI and/or real FFmpeg tests on canonical SHA 7c9d53f49970668b1026630f7b11c18a6b502a5d; exact commands and results are in specs/feature/296-silence-detection/handoff/evidence/20261008-implemented-verified.json."
     }
   ],
   "schema_version": 1,
