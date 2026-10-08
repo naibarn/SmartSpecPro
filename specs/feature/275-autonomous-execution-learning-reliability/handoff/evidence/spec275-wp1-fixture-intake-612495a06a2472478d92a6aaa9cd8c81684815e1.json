@@ -1,0 +1,37 @@
+{
+  "evidence_type": "SPEC275_WP1_FIXTURE_INTAKE",
+  "scope": "FIXTURE_ONLY",
+  "canonical_ref": "refs/heads/main",
+  "integrated_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+  "integrated_tree_sha": "b606d357e4c4a3e20a81a367b6fada8b1e729dc1",
+  "source_commit_sha": "6b77cff0e2f6e4e3b2fec0df612c73a174db3dca",
+  "source_tree_sha": "b606d357e4c4a3e20a81a367b6fada8b1e729dc1",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/356",
+  "files": [
+    "apps/web/server/services/spec275FixtureEvidenceIntake.ts",
+    "apps/web/server/services/__tests__/spec275FixtureEvidenceIntake.test.ts"
+  ],
+  "verification": {
+    "focused_vitest": {
+      "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/spec275FixtureEvidenceIntake.test.ts",
+      "result": "PASSED",
+      "tests_passed": 10,
+      "tests_failed": 0,
+      "source_tree_sha": "b606d357e4c4a3e20a81a367b6fada8b1e729dc1"
+    },
+    "scoped_typescript": {
+      "command": "tsc --noEmit --pretty false --skipLibCheck --strict --target ES2022 --module commonjs --moduleResolution node --types node,vitest/globals server/services/spec275FixtureEvidenceIntake.ts server/services/__tests__/spec275FixtureEvidenceIntake.test.ts",
+      "result": "PASSED",
+      "source_tree_sha": "b606d357e4c4a3e20a81a367b6fada8b1e729dc1"
+    },
+    "diff_check": "PASSED"
+  },
+  "nonproduction_runtime_acceptance": "NOT_RUN",
+  "deployment": "UNKNOWN",
+  "limits": [
+    "Synthetic fixture normalization only; no production run/event or failure-evidence authority is wired.",
+    "No durable learning, promotion, rollback, job mutation, persistence, or production ingestion is implemented.",
+    "OBJECT_PERSISTED_REVALIDATED is preserved as an object status and is not acceptance.",
+    "SPEC-271 WP2A portable receipt creation still requires independent ACCEPTED outcome; failed/blocked production evidence needs an owner-approved existing-authority path."
+  ]
+}
