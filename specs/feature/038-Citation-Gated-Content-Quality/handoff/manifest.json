@@ -25,19 +25,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
+    "expected_canonical_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
     "expected_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383"
   },
   "continuation": {
-    "next_action": "Implement the identified Spec 038 skill-upgrade gaps as a separate feature WorkUnit after this migration.",
-    "next_ready_workunit": {
-      "blocked_by": "No external blocker; this is feature implementation, outside repository-wide migration.",
-      "id": "SPEC-038-SKILL-UPGRADE-GAPS",
-      "scope": "Implement missing article-writer/reviewer frontmatter and CMS JSON sections in a separate approved feature WorkUnit.",
-      "status": "READY_AFTER_RECONCILIATION"
-    },
+    "next_action": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
+    "next_ready_workunit": "SPEC-038-REMAINING-REQUIREMENT-RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": "Start with focused-verification-2a0dfd7.json and the three open requirement IDs in continuation_assessment.residual_requirements.",
+    "resume_point": "Start from ledger generation 6 and integrated SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70; the three skill-upgrade residuals are closed by focused-skill-upgrade-f12bf6e.json.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -50,15 +45,15 @@
       },
       "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L514",
       "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L632",
-      "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875"
+      "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875",
+      {
+        "path": "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json",
+        "sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70"
+      }
     ],
-    "next_action": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
-    "rationale": "Focused canonical-source tests fail 39 of 117 assertions, including 15 reviewer frontmatter failures, 13 missing reviewer CMS sections, and 7 missing article-writer CMS sections; the normative 23/23 success criterion is not met.",
-    "residual_requirements": [
-      "REQ-82D72A4A21B6",
-      "REQ-AFBE9F138116",
-      "REQ-706E5F6CC7D5"
-    ]
+    "next_action": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
+    "rationale": "The reviewer skill upgrade, article-writer skill upgrade, and 23/23 CMS output acceptance now pass at the integrated main SHA. The wider Spec remains partial: 103 requirement rows are still OPEN and need evidence-based reconciliation.",
+    "residual_requirements": []
   },
   "dependencies": {
     "predicates": [],
@@ -90,7 +85,7 @@
     "rationale": "Current server APIs, dashboard, staleness services and skill-upgrade tests remain present on canonical main. The focused verification also exposes unmet upgrade criteria, so this Spec remains current work.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 15,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/038-Citation-Gated-Content-Quality/spec.md",
     "digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
@@ -123,9 +118,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
+    "canonical_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
     "integrated": true,
-    "integrated_at": "2026-10-06T01:07:05Z"
+    "integrated_at": "2026-10-08T00:55:12Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -139,7 +134,8 @@
       "apps/web/server/services/contentStalenessChecker.ts#L1",
       "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
       "apps/web/server/services/reviewerSkillsUpgrade.test.ts",
-      "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+      "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+      "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
     ],
     "updated_at": "2026-10-06T00:42:59.576942Z"
   },
@@ -173,15 +169,15 @@
         },
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L514",
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L632",
-        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875"
+        "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875",
+        {
+          "path": "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json",
+          "sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70"
+        }
       ],
-      "next_action": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
-      "rationale": "Focused canonical-source tests fail 39 of 117 assertions, including 15 reviewer frontmatter failures, 13 missing reviewer CMS sections, and 7 missing article-writer CMS sections; the normative 23/23 success criterion is not met.",
-      "residual_requirements": [
-        "REQ-82D72A4A21B6",
-        "REQ-AFBE9F138116",
-        "REQ-706E5F6CC7D5"
-      ]
+      "next_action": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
+      "rationale": "The reviewer skill upgrade, article-writer skill upgrade, and 23/23 CMS output acceptance now pass at the integrated main SHA. The wider Spec remains partial: 103 requirement rows are still OPEN and need evidence-based reconciliation.",
+      "residual_requirements": []
     },
     "decision_basis": "Repository code and focused tests reviewed; canonical classification is supported by active routes/services plus reproducible failing acceptance tests.",
     "decision_source_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
@@ -213,7 +209,8 @@
         "apps/web/server/services/contentStalenessChecker.ts#L1",
         "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts",
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
       ],
       "updated_at": "2026-10-06T00:42:59.576942Z"
     },
@@ -234,30 +231,28 @@
           "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875"
         ],
         "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L875",
-        "blocker": {
-          "classification": "BASELINE_FAILURE",
-          "description": "The normative 23/23 success criterion is not met; the focused suite has 39 failing assertions."
-        },
+        "blocker": null,
         "current_relevance": "CONFIRMED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-        "final_state": "FAIL",
+        "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+        "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/skills/",
           "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
           "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Implement the missing skill metadata/output sections in a separate feature WorkUnit, then rerun the focused suite.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "No further action for REQ-706E5F6CC7D5; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
         "requirement_digest": "24da66744dcf709a6077a50e994d68786666aa9db1c69cd24ec345ef9f3a9f65",
         "requirement_id": "REQ-706E5F6CC7D5",
         "requirement_text": "| Skills with CMS output support | 23/23 (100%) | Schema validation test |",
         "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
         ],
-        "verification_method": "Run focused Spec 038 package Vitest suite against the exact main SHA."
+        "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
       },
       "REQ-82D72A4A21B6": {
         "applicability": "APPLICABLE",
@@ -266,30 +261,28 @@
           "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L514"
         ],
         "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L514",
-        "blocker": {
-          "classification": "BASELINE_FAILURE",
-          "description": "All 15 reviewer frontmatter assertions fail; reviewer CMS section assertions fail for 13 skills."
-        },
+        "blocker": null,
         "current_relevance": "CONFIRMED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-        "final_state": "FAIL",
+        "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+        "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/skills/",
           "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
           "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Implement the missing skill metadata/output sections in a separate feature WorkUnit, then rerun the focused suite.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "No further action for REQ-82D72A4A21B6; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
         "requirement_digest": "a9ac06642ed632056b0fd7ceb083bab75cf90742c19d580dfa0f0090e07490ae",
         "requirement_id": "REQ-82D72A4A21B6",
         "requirement_text": "**Goal**: อัพเกรด reviewer ทั้ง 15 ตัวให้รองรับ ProductReviewCMS.v1",
         "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
         ],
-        "verification_method": "Run focused Spec 038 package Vitest suite against the exact main SHA."
+        "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
       },
       "REQ-AFBE9F138116": {
         "applicability": "APPLICABLE",
@@ -298,30 +291,28 @@
           "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L632"
         ],
         "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L632",
-        "blocker": {
-          "classification": "BASELINE_FAILURE",
-          "description": "Article writer tests fail for missing CMS sections in 7 skills and policy metadata in 3."
-        },
+        "blocker": null,
         "current_relevance": "CONFIRMED",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-        "final_state": "FAIL",
+        "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+        "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/skills/",
           "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
           "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Implement the missing skill metadata/output sections in a separate feature WorkUnit, then rerun the focused suite.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "No further action for REQ-AFBE9F138116; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
         "requirement_digest": "cb43c802693192efc752861e0ab372934e3d202b80b9eb689a0d43cd402b1766",
         "requirement_id": "REQ-AFBE9F138116",
         "requirement_text": "**Goal**: อัพเกรด article writers 8 ตัวให้รองรับ ArticleCMS.v1",
         "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+          "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
         ],
-        "verification_method": "Run focused Spec 038 package Vitest suite against the exact main SHA."
+        "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
       }
     }
   },
@@ -1301,29 +1292,28 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 3,
     "blocked_true_external": 0,
-    "fail": 3,
+    "fail": 0,
     "not_applicable": 0,
-    "pass": 0,
+    "pass": 3,
     "total": 106,
     "unresolved": 103
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:14.889285Z",
+  "updated_at": "2026-10-08T00:57:27.017048Z",
   "verification": {
-    "baseline_issues": [
-      "39 focused Spec 038 test failures in canonical source; 78 assertions passed."
-    ],
+    "baseline_issues": [],
     "evidence": [
-      "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json"
+      "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
+      "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "package"
     ],
-    "sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
-    "status": "FAIL",
+    "sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+    "status": "PASS",
     "task_regressions": []
   }
 }

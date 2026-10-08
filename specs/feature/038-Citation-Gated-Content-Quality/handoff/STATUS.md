@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 103 unresolved of 106
-- Next action: Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.
-- Manifest generation: 15
+- Requirements: 3 pass / 103 unresolved of 106
+- Next action: Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.
+- Manifest generation: 19
 
 ## Source-declared status and relationship claims
 

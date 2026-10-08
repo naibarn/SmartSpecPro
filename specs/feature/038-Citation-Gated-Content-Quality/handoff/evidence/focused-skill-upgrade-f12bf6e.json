@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "profile": "package",
+  "source_ref": "refs/heads/main",
+  "source_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+  "implementation_commit_sha": "2a9a463f4f1c6c994f6935da0670362ae13ea728",
+  "command": "TMPDIR=/home/dev/.codex/worktrees/parallel-value-lane-20261008/apps/web/.tmp-runtime JWT_SECRET=[REDACTED_TEST_VALUE] /home/dev/projects/SmartSpecPro/node_modules/.bin/vitest run --root /home/dev/.codex/worktrees/parallel-value-lane-20261008/apps/web --config /home/dev/projects/SmartSpecPro/apps/web/vite.config.ts server/routers/contentQuality.test.ts server/routers/skills.zodValidation.test.ts server/services/skillFrontmatter.test.ts server/services/reviewerSkillsUpgrade.test.ts server/services/__tests__/productReviewSequentialStoryboardSkill.test.ts server/services/articleWriterSkillsUpgrade.test.ts",
+  "scope": "SPEC-038 CMS skill output and adjacent focused content quality tests in apps/web (6 files)",
+  "started_at": "2026-10-08T00:56:11Z",
+  "completed_at": "2026-10-08T00:56:11.254Z",
+  "exit_code": 0,
+  "signal": null,
+  "result": "PASS",
+  "passed": 117,
+  "failed": 0,
+  "skipped": 0,
+  "test_files": [
+    "server/routers/contentQuality.test.ts",
+    "server/routers/skills.zodValidation.test.ts",
+    "server/services/skillFrontmatter.test.ts",
+    "server/services/reviewerSkillsUpgrade.test.ts",
+    "server/services/__tests__/productReviewSequentialStoryboardSkill.test.ts",
+    "server/services/articleWriterSkillsUpgrade.test.ts"
+  ],
+  "resource_observation": {
+    "collected": false,
+    "reason": "Focused package test completed in under one second; no memory-heavy profile was run and no resource block was observed."
+  },
+  "worktree": "/home/dev/.codex/worktrees/parallel-value-lane-20261008"
+}

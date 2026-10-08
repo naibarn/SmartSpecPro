@@ -35,10 +35,9 @@
     "record_kind.HISTORICAL_SPEC": 2,
     "record_kind.PLANNING_ARTIFACT": 112,
     "record_kind.PROJECT_REQUIREMENTS": 17,
-    "verification.FAIL": 1,
     "verification.NOT_RUN": 1,
     "verification.PARTIAL": 5,
-    "verification.PASS": 1,
+    "verification.PASS": 2,
     "verification.UNKNOWN": 464
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
@@ -14829,7 +14828,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "2a0dfd7a9b3339fc57010093b2bc9d59d1306630",
+      "canonical_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -14871,7 +14870,6 @@
         "requirement REQ-9758CAEA8902 is OPEN",
         "requirement REQ-2B0CEFB964B6 is OPEN",
         "requirement REQ-82664B7A464F is OPEN",
-        "requirement REQ-82D72A4A21B6 is FAIL",
         "requirement REQ-C17EC9C16F3C is OPEN",
         "requirement REQ-F00FA36DC6B2 is OPEN",
         "requirement REQ-22685775D803 is OPEN",
@@ -14894,7 +14892,6 @@
         "requirement REQ-503E941908A3 is OPEN",
         "requirement REQ-0518C5A4CE92 is OPEN",
         "requirement REQ-57CA55F3D642 is OPEN",
-        "requirement REQ-AFBE9F138116 is FAIL",
         "requirement REQ-90B20ACA3BDC is OPEN",
         "requirement REQ-22548CB2722F is OPEN",
         "requirement REQ-728D8EB9AEE5 is OPEN",
@@ -14933,14 +14930,12 @@
         "requirement REQ-B71AF72845D1 is OPEN",
         "requirement REQ-08E195E1F593 is OPEN",
         "requirement REQ-CF7A649A051B is OPEN",
-        "requirement REQ-706E5F6CC7D5 is FAIL",
         "requirement REQ-04D9AE8459BB is OPEN",
         "requirement REQ-30D898BD995D is OPEN",
         "requirement REQ-73CE98F75FEF is OPEN",
         "requirement REQ-D5EC883ED4B6 is OPEN",
         "requirement REQ-767C058082A6 is OPEN",
-        "requirement REQ-3012D5FE33CE is OPEN",
-        "required verification evidence is missing"
+        "requirement REQ-3012D5FE33CE is OPEN"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -15112,7 +15107,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
+      "next_action": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "primary_blocker": null,
       "problem": null,
@@ -15606,7 +15601,7 @@
       },
       "requirements": {
         "open": 103,
-        "pass": 0,
+        "pass": 3,
         "total": 106
       },
       "revision": null,
@@ -15751,7 +15746,7 @@
       "successors": [],
       "title": "Spec 038: Citation-Gated Content Quality & Multi-Model Publishing Intelligence",
       "true_blockers": 0,
-      "verification": "FAIL"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",
