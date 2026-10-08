@@ -144,7 +144,7 @@ jobs:
             tar -C "apps/runner-app/target/${{ matrix.target }}/release" -czf "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz" "${{ matrix.binary }}"
           fi
           printf '{"artifact":"smartaihub-runner-%s-%s","target":"%s","profile":"%s","sourceRef":"%s","sourceCommit":"%s","version":"%s","contractVersion":"sah-runner-v1"}\n' "${{ matrix.name }}" "$RUNNER_VERSION" "${{ matrix.target }}" "$RUNNER_PROFILE" "$RUNNER_REF" "${{ steps.source.outputs.commit }}" "$RUNNER_VERSION" > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json"
-          shasum -a 256 dist/* > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.SHA256SUMS"
+          (cd dist && shasum -a 256 smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION} smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz) > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.SHA256SUMS"
 
       - name: Package Runner (Windows)
         if: runner.os == 'Windows'
