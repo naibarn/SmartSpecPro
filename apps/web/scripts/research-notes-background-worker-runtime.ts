@@ -57,6 +57,21 @@ try {
   const publication = await publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter());
   if (publication.state !== "published") throw new Error(`RESEARCH_NOTES_SUMMARY_PUBLICATION_${publication.state}`);
 
+  if (fullRuntimeRequest) {
+    const [fullRuntimeOutbox] = await db.select().from(workerJobOutbox)
+      .where(eq(workerJobOutbox.workerJobId, fullRuntimeRequest.jobId)).limit(1);
+    if (!fullRuntimeOutbox) throw new Error("FULL_APP_SUMMARY_ACTION_OUTBOX_MISSING");
+    if (!fullRuntimeOutbox.publishedAt) {
+      const fullRuntimePublication = await publishJobOutboxRow(
+        fullRuntimeOutbox.id,
+        new PostgresPullJobTransportAdapter(),
+      );
+      if (fullRuntimePublication.state !== "published") {
+        throw new Error(`FULL_APP_SUMMARY_ACTION_PUBLICATION_${fullRuntimePublication.state}`);
+      }
+    }
+  }
+
   const executorRegistry = createJobExecutorRegistry([{
     jobType: "research_notes.summarize",
     executionClass: "long",
