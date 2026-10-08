@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 756 unresolved of 756
 - Next action: Continue only bounded Recipe Library work with deterministic fallback and mock seams. Reconcile this manifest after integration to the exact main SHA. Keep live Broker/Rights work blocked until their authorities are evidenced; keep generated code non-executable and WP0.4 PARTIAL/BLOCKED.
-- Manifest generation: 26
+- Manifest generation: 28
 
 ## Source-declared status and relationship claims
 
