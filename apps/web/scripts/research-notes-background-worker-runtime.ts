@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
 
 import { closeDb, db, getDb } from "../server/db";
 import { workerJobEvents, workerJobOutbox, workerJobSettlements, workerJobs } from "../drizzle/schema";
@@ -25,6 +26,19 @@ const principalId = `user:${userId}`;
 try {
   getDb();
   const scope = { tenantId, principalId, appId };
+  const fullRuntimeRequestFile = process.env.FULL_APP_SUMMARY_REQUEST_FILE;
+  const fullRuntimeRequest = fullRuntimeRequestFile
+    ? JSON.parse(await readFile(fullRuntimeRequestFile, "utf8")) as { jobId: string; noteId: string }
+    : undefined;
+  if (fullRuntimeRequest && (typeof fullRuntimeRequest.jobId !== "string" || typeof fullRuntimeRequest.noteId !== "string")) {
+    throw new Error("FULL_APP_SUMMARY_REQUEST_INVALID");
+  }
+  if (fullRuntimeRequest) {
+    const duplicate = await requestResearchNoteSummary({ ...scope, userId, projectId, noteId: fullRuntimeRequest.noteId });
+    if (duplicate.jobId !== fullRuntimeRequest.jobId || duplicate.created) {
+      throw new Error("FULL_APP_SUMMARY_ACTION_JOB_NOT_FOUND_OR_NOT_IDEMPOTENT");
+    }
+  }
   const note = await createResearchNote({
     ...scope,
     projectId,
@@ -62,6 +76,24 @@ try {
   if (!execution.some(item => item.jobId === requested.jobId && item.state === "succeeded")) {
     throw new Error("RESEARCH_NOTES_SUMMARY_WORKER_EXECUTION_FAILED");
   }
+  if (fullRuntimeRequest && !execution.some(item => item.jobId === fullRuntimeRequest.jobId && item.state === "succeeded")) {
+    throw new Error("FULL_APP_SUMMARY_ACTION_WORKER_EXECUTION_FAILED");
+  }
+
+  if (fullRuntimeRequest) {
+    const [fullRuntimeJob] = await db.select().from(workerJobs)
+      .where(eq(workerJobs.id, fullRuntimeRequest.jobId)).limit(1);
+    const [fullRuntimeSettlement] = await db.select().from(workerJobSettlements)
+      .where(and(eq(workerJobSettlements.workerJobId, fullRuntimeRequest.jobId), eq(workerJobSettlements.settlementType, "result")))
+      .limit(1);
+    const fullRuntimeSummary = await getResearchNoteSummaryJob({
+      ...scope, projectId, noteId: fullRuntimeRequest.noteId, jobId: fullRuntimeRequest.jobId,
+    });
+    if (fullRuntimeJob?.status !== "succeeded" || !fullRuntimeSettlement || fullRuntimeSummary?.status !== "succeeded") {
+      throw new Error("FULL_APP_SUMMARY_ACTION_SETTLEMENT_MISSING");
+    }
+    console.log("FULL_APP_BACKGROUND_ACTION_SETTLEMENT_PASS");
+  }
 
   const [job] = await db.select().from(workerJobs).where(eq(workerJobs.id, requested.jobId)).limit(1);
   const [settlement] = await db.select().from(workerJobSettlements)
@@ -78,7 +110,7 @@ try {
     initialDispatchCount: 10,
     executorRegistry,
   });
-  if (duplicateExecution.some(item => item.jobId === requested.jobId)) {
+  if (duplicateExecution.some(item => item.jobId === requested.jobId || item.jobId === fullRuntimeRequest?.jobId)) {
     throw new Error("RESEARCH_NOTES_SUMMARY_REDISPATCHED_AFTER_SETTLEMENT");
   }
 
