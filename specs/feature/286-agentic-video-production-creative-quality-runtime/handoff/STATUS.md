@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 719 unresolved of 719
 - Next action: Resolve canonical SPEC-286 identity and relationship claims through evidence and the shared writer. WP0.4 remains next: obtain existing Windows Runner Authority readiness and capture fixtures A/B/C; assess Linux separately.
-- Manifest generation: 12
+- Manifest generation: 13
 
 ## Source-declared status and relationship claims
 
