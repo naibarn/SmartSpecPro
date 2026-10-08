@@ -8641,6 +8641,32 @@ migration, or enabling a new feature flag. New behavior remains disabled behind
 the existing feature-flag authority until its applicable security, runner,
 render, and acceptance evidence passes.
 
+### 165.5 External code-animation references
+
+An optional source-linked public gallery such as
+[`yihui-dev/awesome-opus5-5-videos`](https://github.com/yihui-dev/awesome-opus5-5-videos)
+MAY inform human inspiration and abstract style descriptors for motion discovery.
+The gallery documents code-authored animation examples across HTML, Canvas, SVG,
+and Three.js and links creator-owned videos/prompts. It is reference material,
+not a SmartAIHub runtime, template registry, provider contract, or execution
+authority.
+
+SmartAIHub MUST NOT automatically mirror or bundle creator videos, prompts,
+assets, or source code into tenant projects or marketplace templates. A user may
+provide a reference URL for style analysis; the system SHALL translate it into
+abstract, attributable style/capability descriptors and search the existing
+Motion Template Registry. Any retained media, verbatim prompt, or derivative
+template requires applicable rights/permission evidence and the existing
+approval path. A repository license MUST NOT be treated as a license for
+third-party creator content linked by that repository.
+
+External HTML/Canvas/SVG/Three.js code MUST NOT be executed or assumed compatible
+with Remotion. Any new component authored from a reference SHALL be compiled and
+rendered only through the approved Generated Motion Sandbox and existing
+Remotion executor after the security gate passes. Reference galleries and model
+names SHALL remain replaceable data sources; SmartAIHub-owned prompts, candidate
+contracts, runner routing, and quality evidence SHALL remain provider-independent.
+
 **Amendment status:** additive acceptance criteria only; WP0.4 execution and
 runtime certification remain pending until source-bound Runner Authority
 receipts and golden render artifacts exist.

@@ -5,49 +5,12 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "133",
-        "referenced_spec_id": "133",
-        "referencing_spec_id": "286",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L127",
-        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
-        "successor_spec_id": "286"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "133",
-        "referenced_spec_id": "133",
-        "referencing_spec_id": "286",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L2667",
-        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
-        "successor_spec_id": "286"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "256",
-        "referenced_spec_id": "256",
-        "referencing_spec_id": "286",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L2672",
-        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
-        "successor_spec_id": "286"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -57,9 +20,24 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
       },
       {
+        "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+      },
+      {
+        "digest": "e962b474a0cc032fa6fd00fc7ccd2fcd7e47dcf905772e233380969800203a15",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+      },
+      {
         "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
       },
       {
         "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
@@ -86,24 +64,49 @@
     "status": "UNRESOLVED",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "AUTHORITY",
+      "id": "SPEC286_IDENTITY_RECONCILIATION",
+      "next_action": "Resolve the canonical Spec identity and relationship claims through evidence and the canonical Spec handoff workflow; do not infer authority from numeric folder names.",
+      "root_cause": "The generated repository index still reports low-confidence unresolved authority and the config registry has no SPEC-286 owner binding."
+    },
+    {
+      "class": "RUNNER_AUTHORIZATION",
+      "id": "WP0_4_WINDOWS_RUNNER",
+      "next_action": "Use the existing Runner Authority to bind a rights-cleared project revision and execute fixtures A/B/C through the current Remotion path; record job/runtime/output/QA/contact-sheet/time/cost evidence.",
+      "root_cause": "No authenticated Windows Runner readiness/assignment and output artifact receipt was available in this task context."
+    },
+    {
+      "class": "RUNNER_READINESS",
+      "id": "WP0_4_LINUX_RUNNER",
+      "next_action": "Assess Linux runner capability and authorization separately; capture the same fixture evidence if ready, otherwise record the exact runtime blocker.",
+      "root_cause": "Linux host presence does not establish an authorized, supported Linux Remotion executor."
+    },
+    {
+      "class": "SECURITY_GATE",
+      "id": "GENERATED_MOTION_SANDBOX",
+      "next_action": "Keep generated motion code execution disabled. Design and pass the isolated sandbox security gate only after WP0.4 baseline evidence.",
+      "root_cause": "No generated-motion code execution sandbox implementation or passing security evidence was found in the scoped source audit."
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": null,
-    "expected_spec_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72"
+    "expected_canonical_sha": "eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2",
+    "expected_spec_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
-    "reactivation_predicate": null,
-    "resume_point": null,
-    "waiting_predicate": null
+    "next_action": "WP0.4 is the next work package. Obtain existing Windows Runner Authority readiness and execute Golden Fixtures A/B/C. Reconcile canonical SPEC-286 identity in parallel; keep Linux separate and generated code disabled until the security gate passes.",
+    "next_ready_workunit": "WP0.4_WINDOWS_GOLDEN_RENDER_BASELINE",
+    "reactivation_predicate": "Runner Authority returns an authorized Windows executor with the required Remotion capability and artifact upload path; all A/B/C job artifacts are visible with exact project revisions and output digests.",
+    "resume_point": "SPEC-286 additive amendment and WP0.4 baseline report are integrated at PR #338 merge SHA eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2. Runtime baseline is not run. Begin with Windows Runner Authority readiness; assess Linux separately.",
+    "waiting_predicate": "Resume render work when an authorized Windows Runner capability/readiness receipt with a verified Remotion runtime pack is available. Do not claim baseline complete until A/B/C each have a durable worker job and output/QA evidence."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "digest": "6cfbd47d954cdb2ce85dec2be2676a4864145e6a162f33972a1b340d2c1a10f3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -113,9 +116,24 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
       },
       {
+        "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+      },
+      {
+        "digest": "754a42b0bde218c03ff6e25d5fb10fc89db281b4b9d02bb9eb8a43e40018e965",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+      },
+      {
         "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
       },
       {
         "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
@@ -138,8 +156,8 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "next_action": "Resolve canonical SPEC-286 identity and relationship claims through evidence and the shared writer. WP0.4 remains next: obtain existing Windows Runner Authority readiness and capture fixtures A/B/C; assess Linux separately.",
+    "rationale": "The user explicitly directed SPEC-286 continuation. Runtime work is held at WP0.4 because no Windows execution receipt is available; canonical identity and prior successor-candidate claims remain unresolved in generated repository status.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -160,7 +178,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -170,9 +188,24 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
       },
       {
+        "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+      },
+      {
+        "digest": "e962b474a0cc032fa6fd00fc7ccd2fcd7e47dcf905772e233380969800203a15",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+      },
+      {
         "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
       },
       {
         "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
@@ -198,13 +231,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-    "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+    "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.966922Z",
+      "last_evidence_at": "2026-10-08T07:06:27.246372Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -215,23 +248,103 @@
     "title": "SmartAIHub Agentic Video Production & Creative Quality Runtime"
   },
   "implementation": {
-    "checkpoint_shas": [],
-    "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "checkpoint_shas": [
+      "1840029cf88f76d177069a194508667248965574"
+    ],
+    "mapping": [
+      {
+        "coverage": "PARTIAL; documentation/spec checkpoint only. No runtime feature implementation or golden render execution.",
+        "scope": "R1.7 motion-enhancement acceptance delta, current source/handoff audit, and WP0.4 baseline specification",
+        "source_paths": [
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
+        ],
+        "source_sha": "1840029cf88f76d177069a194508667248965574"
+      }
+    ],
+    "source_paths": [
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md",
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "eb39ccf86a0e7adfa5a908b635711ce3cae0e9c2",
+    "integrated": true,
+    "integrated_at": "2026-10-08T07:01:26Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.966922Z"
+    "updated_at": "2026-10-08T07:06:27.246372Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "6cfbd47d954cdb2ce85dec2be2676a4864145e6a162f33972a1b340d2c1a10f3",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
+        },
+        {
+          "digest": "bd957f83f420598b302b15396c61bb8e5f2b28da831b6e5b138e845cd713f69c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
+        },
+        {
+          "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+        },
+        {
+          "digest": "754a42b0bde218c03ff6e25d5fb10fc89db281b4b9d02bb9eb8a43e40018e965",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+        },
+        {
+          "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+        },
+        {
+          "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
+        },
+        {
+          "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/next-task-packet.md"
+        },
+        {
+          "digest": "d5acf9c26da19d2cf8a6ca7dca9d7bcb5b641807f07ced27d92078dc9af54fdf",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/physical-mapping-g0.md"
+        },
+        {
+          "digest": "eb06f7609f2cffc8a6e96df006117f39e3b7beb2e477f0c7d37886591861828f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/source-inventory.md"
+        },
+        {
+          "digest": "31183ade544f8248774b787485645bebc30d388b6d314ea576afed27c2491d96",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/work-packages-slo.md"
+        }
+      ],
+      "next_action": "Resolve canonical SPEC-286 identity and relationship claims through evidence and the shared writer. WP0.4 remains next: obtain existing Windows Runner Authority readiness and capture fixtures A/B/C; assess Linux separately.",
+      "rationale": "The user explicitly directed SPEC-286 continuation. Runtime work is held at WP0.4 because no Windows execution receipt is available; canonical identity and prior successor-candidate claims remain unresolved in generated repository status.",
+      "residual_requirements": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -241,10 +354,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.966922Z",
+    "reconciled_at": "2026-10-08T07:06:27.246372Z",
     "sources": [
       {
-        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -254,9 +367,24 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
       },
       {
+        "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+      },
+      {
+        "digest": "e962b474a0cc032fa6fd00fc7ccd2fcd7e47dcf905772e233380969800203a15",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+      },
+      {
         "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
       },
       {
         "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
@@ -286,11 +414,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 7,
         "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "source_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
         "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -300,7 +433,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -312,14 +445,14 @@
         "excerpt": "status: ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION",
         "line": 7,
         "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "source_digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
         "value": "ARCHITECTURE_FROZEN_CANDIDATE_CONTRACT_NORMALIZED_PENDING_G0_PHYSICAL_RECONCILIATION"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
+        "digest": "91a7fa39b3a81f5a0f71a6d4fe217cc17b0d062522077ae3b8bd660e9d488058",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
@@ -329,9 +462,24 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/action-route-mapping.md"
       },
       {
+        "digest": "28cf53ba3dc176800ed5edae8dca98cb58774c320ae6d4d0379a8950d70b39bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/architecture-dependency-2026-10-08.md"
+      },
+      {
+        "digest": "e962b474a0cc032fa6fd00fc7ccd2fcd7e47dcf905772e233380969800203a15",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/current-source-handoff-audit-2026-10-08.md"
+      },
+      {
         "digest": "47a73dc7e6ce752440606279694eac39859a94c33fcfcc0c6a9b871ef0464029",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/g0-source-reconciliation.md"
+      },
+      {
+        "digest": "eee0d179e772ac99f71164b4a5305ddcbc4561dea4197e787573c51053472d7c",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/golden-render-baseline-2026-10-08.md"
       },
       {
         "digest": "aff8287b4bf38f557b18419dfcea422a2df783bc6fb41e6a7297d1579c2bd47b",
@@ -357,7 +505,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -365,18 +513,23 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 684,
-    "unresolved": 684
+    "total": 719,
+    "unresolved": 719
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.966922Z",
+  "updated_at": "2026-10-08T07:06:31.739707Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
+    "evidence": [
+      "specs/feature/286-agentic-video-production-creative-quality-runtime/audit/qa-rounds-2026-10-08.md — eleven bounded source/document review rounds; these are not render or runtime QA",
+      "The SPEC-286 source digest changed again for amendment 165.5 after the PR #338 verification snapshot; post-integration scoped validation remains pending. WP0.4 render evidence remains NOT RUN."
+    ],
+    "freshness": "STALE",
+    "required_profiles": [
+      "quick"
+    ],
     "sha": null,
-    "status": "UNKNOWN",
+    "status": "NOT_RUN",
     "task_regressions": []
   }
 }
