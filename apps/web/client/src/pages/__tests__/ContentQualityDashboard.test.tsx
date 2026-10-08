@@ -42,7 +42,17 @@ describe("ContentQualityDashboard structured data KPIs", () => {
         avg_citation_coverage: 0.8,
         structured_data_valid_count: 2,
         structured_data_invalid_count: 1,
+        median_fact_age_days: 12.4,
+        fact_age_counts: {
+          days_0_7: 4,
+          days_8_30: 3,
+          days_31_90: 2,
+          over_90_days: 1,
+          unverified: 2,
+        },
       },
+      isLoading: false,
+      isError: false,
       refetch: vi.fn(),
     });
     useBySkill.mockReturnValue({ data: [] });
@@ -58,6 +68,68 @@ describe("ContentQualityDashboard structured data KPIs", () => {
 
     expect(validLabel.parentElement?.parentElement?.textContent).toContain("2");
     expect(invalidLabel.parentElement?.parentElement?.textContent).toContain("1");
+  });
+
+  it("shows median verified fact age and colored age-band counts", () => {
+    render(<ContentQualityDashboard />);
+
+    expect(screen.getByText("Median Fact Age")).toBeInTheDocument();
+    expect(screen.getByText("12 days")).toBeInTheDocument();
+    expect(screen.getByText("Verified Fact Age Distribution")).toBeInTheDocument();
+    expect(screen.getByText("0–7 days")).toBeInTheDocument();
+    expect(screen.getByText("Over 90 days")).toBeInTheDocument();
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+    expect(screen.getByText("4")).toBeInTheDocument();
+  });
+
+  it("shows no median age and zero counts when no facts have been verified", () => {
+    useOverview.mockReturnValue({
+      data: {
+        total_artifacts: 0,
+        active: 0,
+        stale: 0,
+        archived: 0,
+        avg_citation_coverage: 0,
+        structured_data_valid_count: 0,
+        structured_data_invalid_count: 0,
+        median_fact_age_days: null,
+        fact_age_counts: {
+          days_0_7: 0,
+          days_8_30: 0,
+          days_31_90: 0,
+          over_90_days: 0,
+          unverified: 0,
+        },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<ContentQualityDashboard />);
+
+    expect(screen.getByText("Median Fact Age").parentElement?.parentElement?.textContent).toContain("—");
+    expect(screen.getByText("Unverified").parentElement?.parentElement?.textContent).toContain("0");
+  });
+
+  it("shows the fact-age distribution loading state", () => {
+    useOverview.mockReturnValue({ data: undefined, isLoading: true, isError: false, refetch: vi.fn() });
+
+    render(<ContentQualityDashboard />);
+
+    expect(screen.getByText("Loading verified fact age distribution…")).toBeInTheDocument();
+    expect(screen.getByText("Median Fact Age").parentElement?.parentElement?.textContent).toContain("—");
+  });
+
+  it("shows a fact-age query error and retries the overview", () => {
+    const refetch = vi.fn();
+    useOverview.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch });
+
+    render(<ContentQualityDashboard />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not load verified fact age distribution");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledOnce();
   });
 
   it("shows actionable validation failures for affected CMS artifacts", () => {
