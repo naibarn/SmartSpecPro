@@ -23593,9 +23593,19 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
+      "next_action": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "affected_requirements": [
+          "REQ-E932270F4AB3",
+          "REQ-A2B452456E81"
+        ],
+        "class": "DATA_AUTHORITY",
+        "id": "CMS_CLAIM_AUDIT_RECORDS",
+        "next_action": "Reassess only when CMS-owned claim-audit and correction records with their review outcomes and measurement period are available; do not fabricate sample results.",
+        "recoverable": true,
+        "root_cause": "Claim accuracy and post-publish correction metrics require manual audit/tracking records and a defined denominator/period; no CMS-owned auditable source is currently available in this lane."
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "record_kind": "CANONICAL_SPEC",

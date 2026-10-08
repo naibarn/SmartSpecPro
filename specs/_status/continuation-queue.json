@@ -105,7 +105,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 11,
-      "next_action": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
+      "next_action": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
@@ -4865,15 +4865,6 @@
       "spec_id": "014"
     },
     {
-      "confidence": "LOW",
-      "decision": "CONTINUE_REQUIRED",
-      "path": "specs/feature/038-Citation-Gated-Content-Quality",
-      "priority": "P1",
-      "rationale": "No additional safe CMS dashboard code slice is data-ready. Reassess when the app has CMS-owned sampling/correction records, publish-start and publish-completion timestamps, refresh completion history, or representative external Rich Results evidence. Do not add speculative migrations or use workflow-cache metadata for the CMS KPI.",
-      "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
-      "spec_id": "038"
-    },
-    {
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
@@ -4935,6 +4926,15 @@
       "rationale": "Review the Spec 161 requirement ledger against implementation and run scoped acceptance evidence before claiming implementation completion.",
       "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
       "spec_id": "161"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/038-Citation-Gated-Content-Quality",
+      "priority": "P3",
+      "rationale": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
+      "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
+      "spec_id": "038"
     },
     {
       "confidence": "MEDIUM",
