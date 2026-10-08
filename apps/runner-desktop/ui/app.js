@@ -36,6 +36,21 @@ const readableReason = {
   task_probe_unsupported: "พบโปรแกรมแล้ว แต่ยังไม่มีวิธีส่งงานและอ่านคำตอบจริงที่รองรับ",
 };
 
+function refreshFailureMessage(code) {
+  const messages = {
+    RUNNER_CONNECT_REQUEST_FAILED: "ติดต่อ SmartAIHub ไม่สำเร็จ ตรวจอินเทอร์เน็ต, DNS หรือ TLS แล้วลองใหม่",
+    RUNNER_CONNECT_RESPONSE_READ_FAILED: "เชื่อมต่อ SmartAIHub ได้ แต่รับคำตอบไม่ครบ ลองรีเฟรชสถานะอีกครั้ง",
+    RUNNER_CONNECT_RESPONSE_INVALID: "คำตอบจาก SmartAIHub ไม่อยู่ในรูปแบบที่ Runner รองรับ",
+    RUNNER_DEVICE_PROOF_KEY_PAIR_MISMATCH: "ข้อมูลยืนยันอุปกรณ์ในเครื่องไม่ตรงกัน กรุณาเชื่อมต่อผ่านเบราว์เซอร์ใหม่",
+    RUNNER_CREDENTIAL_REFRESH_FAILED: "ต่ออายุ token ไม่สำเร็จโดยไม่ทราบสาเหตุ กรุณาลองเชื่อมต่อผ่านเบราว์เซอร์ใหม่",
+  };
+  if (messages[code]) return `${messages[code]} (${code})`;
+  if (/^RUNNER_CONNECT_REQUEST_REJECTED_[0-9]{3}$/.test(code ?? "")) {
+    return `SmartAIHub ปฏิเสธการต่ออายุ (${code}) ระบบจะลองใหม่ หรือเชื่อมต่อผ่านเบราว์เซอร์ได้`;
+  }
+  return `ต่ออายุ token ไม่สำเร็จ (${code || "RUNNER_CREDENTIAL_REFRESH_FAILED"}) ระบบจะลองใหม่ หรือเชื่อมต่อผ่านเบราว์เซอร์ได้`;
+}
+
 function setNotice(target, message = "") {
   target.textContent = message;
 }
@@ -77,8 +92,10 @@ async function refreshStatus() {
     elements["access-token-expiry"].textContent = formatDate(status.accessTokenExpiresAtMs);
     elements["reauth-deadline"].textContent = formatDate(status.reauthRequiredByMs);
     elements["credential-detail"].textContent = status.credentialState === "reauth_required"
-      ? "การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง"
-      : "Access token ต่ออายุอัตโนมัติเมื่อใกล้หมดอายุ ไม่ต้องเชื่อมต่อผ่านเบราว์เซอร์ทุกครั้งที่เปิดแอป";
+      ? `การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง${status.credentialErrorCode ? ` (${status.credentialErrorCode})` : ""}`
+      : status.credentialState === "retrying"
+        ? `การต่ออายุอัตโนมัติล้มเหลว ระบบจะลองใหม่ในภายหลัง (${status.credentialErrorCode ?? "RUNNER_CREDENTIAL_REFRESH_FAILED"})`
+        : "Access token ต่ออายุอัตโนมัติเมื่อใกล้หมดอายุ ไม่ต้องเชื่อมต่อผ่านเบราว์เซอร์ทุกครั้งที่เปิดแอป";
     elements["connection-state"].textContent = status.connected ? "เชื่อมต่อแล้ว" : "ยังไม่เชื่อมต่อ";
     elements["connection-state"].className = `state-pill${status.connected ? " good" : " warn"}`;
     elements["connection-detail"].textContent = status.connected
@@ -98,12 +115,18 @@ async function refreshStatus() {
     } else if (status.credentialState === "renewed") {
       setNotice(elements["connection-notice"], "ต่ออายุ token ให้อัตโนมัติแล้ว");
       elements["connect-button"].textContent = "เปลี่ยนบัญชี / เชื่อมต่อใหม่";
-    } else if (status.credentialState === "retrying") {
-      setNotice(elements["connection-notice"], "กำลังลองต่ออายุ token อัตโนมัติ ตรวจสอบอินเทอร์เน็ตของเครื่องนี้");
-      elements["connection-state"].textContent = "กำลังต่ออายุอัตโนมัติ";
+    } else if (status.credentialState === "renewing") {
+      setNotice(elements["connection-notice"], "กำลังส่งคำขอต่ออายุ token ไปยัง SmartAIHub");
+      elements["connection-state"].textContent = "กำลังต่ออายุ token";
       elements["connection-state"].className = "state-pill warn";
       elements["connect-button"].textContent = "กำลังต่ออายุ token…";
       elements["connect-button"].disabled = true;
+    } else if (status.credentialState === "retrying") {
+      setNotice(elements["connection-notice"], refreshFailureMessage(status.credentialErrorCode));
+      elements["connection-state"].textContent = "ต่ออายุไม่สำเร็จ — จะลองใหม่";
+      elements["connection-state"].className = "state-pill warn";
+      elements["connect-button"].textContent = "เชื่อมต่อผ่านเบราว์เซอร์";
+      elements["connect-button"].disabled = status.running;
     } else {
       elements["connect-button"].textContent = status.connected ? "เปลี่ยนบัญชี / เชื่อมต่อใหม่" : "เชื่อมต่อผ่านเบราว์เซอร์";
     }
