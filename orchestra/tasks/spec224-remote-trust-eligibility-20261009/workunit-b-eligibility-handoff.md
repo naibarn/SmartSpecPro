@@ -15,6 +15,8 @@
 ## Verification
 
 - Focused Vitest: `16 passed` (`apps/web/server/services/__tests__/developmentRunEligibility.test.ts`).
+- Post-integration rerun on canonical SHA `06fe2ef5e2a57723ab5fbf9c88b460adbaf8f0dc`: `16 passed` at `2026-10-08T23:22:08Z`.
+- SPEC-224 handoff validation: `valid=true`, no validation errors; global index check: no drift, both run on canonical SHA `06fe2ef5e2a57723ab5fbf9c88b460adbaf8f0dc`.
 - Test run used the existing canonical dependency tree via a temporary symlink; the symlink was removed after execution. No dependency install was performed.
 - No full build/typecheck was run.
 
