@@ -22,3 +22,5 @@
 {"changes": ["continuation_assessment.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 22, "observed_at": "2026-10-08T08:04:23.920148Z", "provenance": "OBSERVED"}
 {"changes": ["continuation_assessment.evidence", "integration.canonical_sha"], "event_type": "CURRENT_TRANSITION", "generation": 23, "observed_at": "2026-10-08T08:06:49.991160Z", "provenance": "OBSERVED"}
 {"changes": ["continuation_assessment.evidence", "integration.canonical_sha"], "event_type": "CURRENT_TRANSITION", "generation": 24, "observed_at": "2026-10-08T08:07:18.473558Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "continuation.resume_point", "implementation", "integration.canonical_sha", "integration.integrated", "integration.integrated_at", "verification"], "event_type": "CURRENT_TRANSITION", "generation": 25, "observed_at": "2026-10-08T08:09:12.758540Z", "provenance": "OBSERVED"}
+{"changes": ["continuation_assessment.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 26, "observed_at": "2026-10-08T08:09:32.975992Z", "provenance": "OBSERVED"}
