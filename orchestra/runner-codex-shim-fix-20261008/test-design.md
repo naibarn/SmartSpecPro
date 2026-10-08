@@ -1,0 +1,6 @@
+# Test design: Windows Codex npm shim selection
+
+| Requirement | Observable behavior | Test level/location | RED evidence | GREEN evidence | Residual boundary |
+|---|---|---|---|---|---|
+| When extensionless npm alias and `codex.cmd` coexist, Windows discovery selects a launchable wrapper first. | Candidate path is the canonical `codex.cmd` path. | Unit: `discovery::tests::windows_discovery_prefers_launchable_npm_shim_over_extensionless_alias`; `cargo test --manifest-path apps/runner-app/Cargo.toml windows_discovery_prefers_launchable_npm_shim_over_extensionless_alias` | Existing Windows alias ordering placed extensionless path first; updated ordering assertion failed against prior code. | Focused test and complete Runner crate suite pass. | Linux-hosted unit seam proves candidate ordering, not actual Windows `CreateProcess`; hosted Windows workflow provides that platform evidence. |
+| Native `.exe` and supported Windows shim names remain available; Unix discovery ordering stays unchanged. | Windows name list prioritizes `.exe`, `.cmd`, `.ps1`, `.bat`, extensionless; Unix list remains extensionless then `.exe`. | Unit: `discovery::tests::windows_cli_discovery_includes_common_command_and_powershell_shims`. | The previous list had extensionless first. | Focused discovery tests pass. | Does not prove each external CLI's own authentication/task behavior. |
