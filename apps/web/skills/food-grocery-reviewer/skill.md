@@ -20,9 +20,10 @@ strict_provider_pin: false
 execution_policy:
   requires_web_search: true
   requires_citations: true
-  requires_thinking: true
+  requires_structured_output: true
   thinking_level_hint: "medium"
   output_format: "cms_review"
+  requires_thinking: true
 content_quality:
   citation_required_for: ["critical", "major"]
   min_citation_coverage: 0.7
@@ -247,3 +248,11 @@ When `response_mode` is `"markdown"` (default), output as before — no change t
 
 ...
 ```
+
+## CMS JSON Output Mode
+
+When `response_mode` is `cms_json`, return exactly one valid JSON object conforming to `ProductReviewCMS.v1`. Do not wrap it in Markdown fences. Keep the existing readable Markdown behavior for other response modes.
+
+Include the ArticleCMS fields `locale`, `title`, `slug`, `summary`, `seo`, `claims`, `citations`, `last_verified_at`, `refresh_policy`, and `disclosures`. Put review content in `review` with `title`, `summary`, `verdict`, at least two `pros` and two `cons`, `who_should_buy`, `who_should_avoid`, `scoring`, and `body_markdown`. Include `product` with brand, model, category, market, and price details when supplied, plus `structured_data_jsonld`. Each material claim must identify its importance and evidence; do not invent citations or product facts.
+
+Use these default scoring dimensions unless the user supplies a suitable rubric: รสชาติ, คุณค่าอาหาร, ส่วนผสม, ความคุ้มค่า, บรรจุภัณฑ์. Score each dimension and the overall result from 0 to 10, explain each score, and disclose affiliate, sponsorship, or provided-for-review relationships accurately.

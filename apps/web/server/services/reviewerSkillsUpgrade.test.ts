@@ -23,6 +23,23 @@ const REVIEWER_SKILLS = [
   "real-estate-reviewer",
 ];
 
+const DEFAULT_RUBRIC =
+  "คุณภาพ, การใช้งาน, ความคุ้มค่า, ความทนทาน, ความพึงพอใจรวม";
+const REVIEWER_RUBRICS: Record<string, string> = {
+  "electronics-reviewer":
+    "ประสิทธิภาพ, คุณภาพจอ/เสียง, แบตเตอรี่, ความคุ้มค่า, การออกแบบ",
+  "beauty-skincare-reviewer":
+    "ส่วนผสม, ประสิทธิผล, เนื้อสัมผัส, ความคุ้มค่า, ความอ่อนโยน",
+  "food-grocery-reviewer":
+    "รสชาติ, คุณค่าอาหาร, ส่วนผสม, ความคุ้มค่า, บรรจุภัณฑ์",
+  "fashion-clothing-reviewer":
+    "วัสดุ, ตัดเย็บ, ความพอดี, ความคุ้มค่า, ความทนทาน",
+  "home-appliance-reviewer":
+    "ประสิทธิภาพ, การประหยัดไฟ, ความเงียบ, ความคุ้มค่า, ความทนทาน",
+  "real-estate-reviewer":
+    "ทำเล, คุณภาพก่อสร้าง, สิ่งอำนวยความสะดวก, ความคุ้มค่า, ศักยภาพลงทุน",
+};
+
 describe("Reviewer skills Spec 038 upgrade", () => {
   for (const skill of REVIEWER_SKILLS) {
     describe(skill, () => {
@@ -77,6 +94,7 @@ describe("Reviewer skills Spec 038 upgrade", () => {
         );
         expect(content).toContain("CMS JSON Output Mode");
         expect(content).toContain("ProductReviewCMS.v1");
+        expect(content).toContain(REVIEWER_RUBRICS[skill] ?? DEFAULT_RUBRIC);
       });
     });
   }

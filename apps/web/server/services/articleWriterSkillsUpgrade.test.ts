@@ -16,6 +16,60 @@ const ARTICLE_WRITERS = [
   "parenting-article-writer",
 ];
 
+const WRITER_POLICY: Record<
+  string,
+  { webSearch: boolean; citations: boolean; coverage: number; thinking: string }
+> = {
+  "general-article-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.6,
+    thinking: "medium",
+  },
+  "business-article-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.8,
+    thinking: "high",
+  },
+  "education-article-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.8,
+    thinking: "high",
+  },
+  "lifestyle-article-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.5,
+    thinking: "low",
+  },
+  "marketing-article-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.6,
+    thinking: "medium",
+  },
+  "documentary-script-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.9,
+    thinking: "high",
+  },
+  "creative-story-writer": {
+    webSearch: false,
+    citations: false,
+    coverage: 0,
+    thinking: "medium",
+  },
+  "parenting-article-writer": {
+    webSearch: true,
+    citations: true,
+    coverage: 0.9,
+    thinking: "high",
+  },
+};
+
 describe("Article writer skills Spec 038 upgrade", () => {
   for (const skill of ARTICLE_WRITERS) {
     describe(skill, () => {
@@ -29,27 +83,35 @@ describe("Article writer skills Spec 038 upgrade", () => {
 
         const ep = result.metadata.execution_policy;
         expect(ep).toBeDefined();
+        expect(ep!.requires_web_search).toBe(WRITER_POLICY[skill].webSearch);
+        expect(ep!.requires_citations).toBe(WRITER_POLICY[skill].citations);
         expect(ep!.requires_structured_output).toBe(true);
         expect(ep!.output_format).toBe("cms_article");
-        expect(ep!.thinking_level_hint).toBeTruthy();
+        expect(ep!.thinking_level_hint).toBe(WRITER_POLICY[skill].thinking);
 
         const cq = result.metadata.content_quality;
         expect(cq).toBeDefined();
-        expect(typeof cq!.min_citation_coverage).toBe("number");
+        expect(cq!.min_citation_coverage).toBe(WRITER_POLICY[skill].coverage);
 
         expect(result.warnings).toBeUndefined();
       });
 
       it("has valid input schema with response_mode field", () => {
         const schemaPath = path.join(
-          SKILLS_DIR, skill, "schemas", "input.schema.json"
+          SKILLS_DIR,
+          skill,
+          "schemas",
+          "input.schema.json"
         );
-        if (!fs.existsSync(schemaPath)) return; // skip if no schema
         const schema = JSON.parse(fs.readFileSync(schemaPath, "utf-8"));
         expect(schema.properties.response_mode).toBeDefined();
         expect(schema.properties.response_mode.enum).toContain("cms_json");
         // Default is "markdown" for most, "standard_article" for parenting (backward compat)
-        expect(["markdown", "standard_article"]).toContain(schema.properties.response_mode.default);
+        expect(["markdown", "standard_article"]).toContain(
+          schema.properties.response_mode.default
+        );
+        expect(schema.properties.seo_keywords).toBeDefined();
+        expect(schema.properties.target_audience).toBeDefined();
       });
 
       it("skill.md contains CMS JSON output section", () => {

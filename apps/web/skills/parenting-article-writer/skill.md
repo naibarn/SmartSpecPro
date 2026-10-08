@@ -8,9 +8,10 @@ enabledByDefault: true
 execution_policy:
   requires_web_search: true
   requires_citations: true
-  requires_thinking: true
+  requires_structured_output: true
   thinking_level_hint: "high"
   output_format: "cms_article"
+  requires_thinking: true
 content_quality:
   citation_required_for: ["critical", "major"]
   min_citation_coverage: 0.9
@@ -131,3 +132,11 @@ When `response_mode` is `"markdown"` (default), output as before — no change t
 Keep paragraphs short. Prefer bullet points and numbered lists. Be empathetic and non-judgmental.
 
 When `output_format: plain_text`, convert bullets and markdown-heavy formatting into simple readable lines so the final article is suitable for text-to-speech narration.
+
+## CMS JSON Output Mode
+
+When `response_mode` is `cms_json`, return exactly one valid JSON object conforming to `ArticleCMS.v1`. Do not wrap it in Markdown fences. Keep the existing Markdown behavior for other response modes.
+
+Include `locale`, `title`, `slug`, `summary`, `seo` (`meta_title`, `meta_description`, and `keywords`), `body_markdown`, `claims`, `citations`, `last_verified_at`, `refresh_policy`, and `disclosures` (`ai_assisted`, `affiliate`, and `sponsored`). Include tables and media only when useful and identify media source, license, and alt text where applicable. Do not invent facts, sources, or verification dates.
+
+For `parenting-article-writer`, meet the configured citation coverage of 0.9; every critical and major claim needs traceable evidence. Use retrieved sources for factual claims and report only citations actually used. Set disclosure fields truthfully and keep the article in the requested language.

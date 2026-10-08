@@ -9,6 +9,17 @@ bundle_topology: single-agent
 triggerPatterns:
   - Creative Story Writer
   - Creative Story Writer
+execution_policy:
+  requires_web_search: false
+  requires_citations: false
+  requires_structured_output: true
+  thinking_level_hint: "medium"
+  output_format: "cms_article"
+content_quality:
+  citation_required_for: ["critical", "major"]
+  min_citation_coverage: 0.0
+  disclosure_required: false
+  refresh_cadence_days: 30
 ---
 # Creative Story Writer
 ## When To Use
@@ -52,3 +63,11 @@ Use this skill when the task should run through the native OpenAI Agents Python 
 - Verification command completed successfully.
 - Outputs are written to declared paths only.
 - No secrets were persisted.
+
+## CMS JSON Output Mode
+
+When `response_mode` is `cms_json`, return exactly one valid JSON object conforming to `ArticleCMS.v1`. Do not wrap it in Markdown fences. Keep the existing Markdown behavior for other response modes.
+
+Include `locale`, `title`, `slug`, `summary`, `seo` (`meta_title`, `meta_description`, and `keywords`), `body_markdown`, `claims`, `citations`, `last_verified_at`, `refresh_policy`, and `disclosures` (`ai_assisted`, `affiliate`, and `sponsored`). Include tables and media only when useful and identify media source, license, and alt text where applicable. Do not invent facts, sources, or verification dates.
+
+For `creative-story-writer`, meet the configured citation coverage of 0.0; every critical and major claim needs traceable evidence. This is fiction: set claims and citations to empty arrays, and do not imply web research. Set disclosure fields truthfully and keep the article in the requested language.
