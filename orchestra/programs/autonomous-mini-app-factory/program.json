@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+    "sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
-      "canonical_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
-      "canonical_user_workspace_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "integrated_sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
+      "canonical_sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
+      "canonical_user_workspace_sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
-      "verified_at": "2026-10-08T18:14:11.894Z"
+      "receipt_id": "workspace-convergence:843f35d7-4eb0-4158-9e23-a76599544eb2",
+      "verified_at": "2026-10-08T18:15:48.825Z"
     },
-    "observedAt": "2026-10-08T18:14:11.894Z",
+    "observedAt": "2026-10-08T18:15:48.825Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "canonical_user_workspace_sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
       "dirty": false,
-      "reason": "PR #381 merged normally; canonical workspace convergence and verify passed."
+      "reason": "PR #382 merged normally; canonical workspace convergence and verify passed."
     },
     "latestIntegratedProgramChange": "PR #380 merged verifier-outside-transaction settlement hardening and PostgreSQL-backed concurrency/rollback/replay evidence. Live Windows dispatch, owner authorization, and live economic settlement remain unverified.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
-      "verifiedAt": "2026-10-08T18:14:11.894Z"
+      "convergenceReceipt": "workspace-convergence:843f35d7-4eb0-4158-9e23-a76599544eb2",
+      "verifiedAt": "2026-10-08T18:15:48.825Z"
     }
   },
   "inventory": {
@@ -98,8 +98,27 @@
         "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
         "state": "WAITING_REGISTERED_NONPROD_TARGET_AND_OWNER_AUTHORITY",
         "nextAction": "Owner authorizes target identity, isolated DB, credentials and migration/deployment window; then deploy and run smoke/UAT."
+      },
+      {
+        "id": "LANE1_REMOTE_TRUST_VERIFIER_AUTHORITY_DISCOVERY",
+        "state": "READY_READ_ONLY_AUTHORITY_DISCOVERY",
+        "nextAction": "Identify an already-authorized remote evidence verifier, trusted issuer/configuration, source, and accountable owner; preserve deny-only admission if none exists."
       }
-    ]
+    ],
+    "ownershipResolution": {
+      "decision": "COORDINATED_CHANGE",
+      "sourceSha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
+      "record": "orchestra/tasks/shared-lifecycle-ownership-resolution-20261009/ownership-resolution-handoff.md",
+      "reservationOwner": "LANE1_SPEC224_PROTECTED_RUNNER_ADMISSION",
+      "reservedPaths": [
+        "apps/web/server/services/spec224RuntimeAdmission.ts",
+        "apps/web/server/services/__tests__/spec224RuntimeAdmission.test.ts"
+      ],
+      "releasedPaths": [],
+      "currentEdits": "NO_DIRTY_OR_BRANCH_DELTA_FOUND_ON_RESERVED_PATHS; LOGICAL_RESERVATION_REMAINS_WITH_LANE1",
+      "remoteTrustAdmission": "DENY_ONLY; verified production remote trust verifier/provenance authority is absent",
+      "nextWorkunit": "LANE1_REMOTE_TRUST_VERIFIER_AUTHORITY_DISCOVERY"
+    }
   },
   "checkpoints": [
     {
@@ -649,7 +668,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T18:14:11.894Z",
+  "updatedAt": "2026-10-08T18:15:48.825Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -958,17 +977,22 @@
         "revision": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
         "command": "workspace_authority.py converge and verify --integrated-sha dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
         "outcome": "PASS: workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994; canonical user workspace clean and verified at dfe21a86d7b0a5e232851c3faf5f04317835fa6e."
+      },
+      {
+        "revision": "cf4fccc2b9744451f68a66f632049073ce0bb981",
+        "command": "read-only worktree ownership scan for spec224RuntimeAdmission.ts and spec224RuntimeAdmission.test.ts; workspace_authority inspect",
+        "outcome": "PASS: no registered worktree had dirty changes or branch delta for the two reserved paths; no active sessions reported. This does not release the Lane 1 logical reservation."
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+    "canonicalAtCheckpoint": "cf4fccc2b9744451f68a66f632049073ce0bb981",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
       "dirty": false,
-      "verifiedAt": "2026-10-08T18:14:11.894Z"
+      "verifiedAt": "2026-10-08T18:15:48.825Z"
     },
     "previousPullRequests": [
       {
@@ -1096,10 +1120,10 @@
     },
     "canonicalWorkspaceConvergence": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "sha": "dfe21a86d7b0a5e232851c3faf5f04317835fa6e",
+      "sha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receiptId": "workspace-convergence:3b461ba8-57ea-48cb-98ed-6a394d0aa994",
-      "verifiedAt": "2026-10-08T18:14:11.894Z"
+      "receiptId": "workspace-convergence:843f35d7-4eb0-4158-9e23-a76599544eb2",
+      "verifiedAt": "2026-10-08T18:15:48.825Z"
     }
   },
   "authorityResolution": {
@@ -1346,6 +1370,19 @@
         ]
       },
       "scope": "Local Linux discovery only; not registered Linux Runner acceptance or Windows evidence."
+    },
+    "spec224RuntimeAdmissionOwnership": {
+      "decision": "COORDINATED_CHANGE",
+      "sourceSha": "cf4fccc2b9744451f68a66f632049073ce0bb981",
+      "reservationOwner": "LANE1_SPEC224_PROTECTED_RUNNER_ADMISSION",
+      "reservedPaths": [
+        "apps/web/server/services/spec224RuntimeAdmission.ts",
+        "apps/web/server/services/__tests__/spec224RuntimeAdmission.test.ts"
+      ],
+      "releasedPaths": [],
+      "handoff": "orchestra/tasks/shared-lifecycle-ownership-resolution-20261009/ownership-resolution-handoff.md",
+      "remoteTrust": "DENIED_REMOTE_TRUST_REQUIRED: production evidence verifier/provenance authority not implemented or configured",
+      "nextWorkunit": "LANE1_REMOTE_TRUST_VERIFIER_AUTHORITY_DISCOVERY"
     }
   }
 }
