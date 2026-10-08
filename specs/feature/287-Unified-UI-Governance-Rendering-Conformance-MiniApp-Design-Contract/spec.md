@@ -1,10 +1,11 @@
 # SPEC-287 — Unified UI Governance, Rendering Conformance & Mini App Design Contract
 
 **Status:** PROPOSED / ADDITIVE  
-**Revision:** R1.4 — additive shared App and Project context primitives
+**Revision:** R1.5 — intelligent surface architecture and canonical ownership alignment
+**Revision precedence:** R1.5 is normative over earlier R1.x statements that defer function/action invocation to an unnamed future Spec. Other R1.x requirements remain in force unless explicitly amended here.
 **Scope:** SmartAIHub Web UI + Mini Apps + externally deployable Mini Apps  
 **Relationship:** Extends existing UI architecture without replacing implemented providers.  
-**Key constraint:** Mini App functional invocation/capability protocol is **DEFERRED** to the separate canonical function-invocation specification currently being drafted. This spec MUST consume that future contract and MUST NOT invent a competing protocol.
+**Key constraint:** Generated interactive surface contracts are owned by Spec 240. User/client action mapping is owned by Spec 226; authorization and data scope by Spec 220; economic authorization by Spec 207; durable execution by Feature 195 (`worker_jobs` and outbox). Spec 279 applies to agent-originated command ingress and delegation. This spec governs design and rendered conformance and MUST NOT define a competing surface, action, authorization, billing, or execution protocol.
 
 ---
 
@@ -127,9 +128,9 @@ Mini App generation must not bypass UI governance.
 
 Design contracts/tokens/tests required for UI correctness travel with externally deployed Mini Apps.
 
-### G8 — Remain compatible with the forthcoming canonical Mini App function invocation standard
+### G8 — Consume existing canonical action and execution contracts
 
-This spec defines UI representation, interaction presentation, state visualization, and conformance only. Functional invocation semantics are imported from the future canonical spec.
+This spec defines UI representation, interaction presentation, state visualization, and conformance only. Functional invocation and execution semantics are consumed from the existing owners in §16.
 
 ---
 
@@ -142,7 +143,7 @@ This specification does NOT:
 - replace AI-native generation;
 - require every UI to look identical;
 - force one visual theme on all tenants or Mini Apps;
-- define the canonical Mini App function/tool/action invocation protocol;
+- define generated surface schemas, action bindings, client-action semantics, authorization, billing, or durable execution;
 - create a new MCP/WebMCP/A2A/function-call protocol;
 - redesign all existing pages in one operation;
 - allow UI UX Pro Max to become a fourth generator;
@@ -1183,13 +1184,11 @@ A Mini App must retain sufficient contract provenance to explain its visual beha
 
 ---
 
-## 16. Deferred Integration with Canonical Function Invocation Spec
+## 16. Intelligent Surface and Action Integration Boundaries
 
-A separate specification is being drafted to define the **standard way Mini Apps and other surfaces invoke functions/capabilities/actions**.
+Generated surface and action semantics are consumed from the existing owners listed below. SPEC-287 governs visual design and rendered conformance only.
 
-This spec MUST wait for and consume that canonical contract.
-
-### 16.1 Hard boundary
+### 16.1 Canonical ownership
 
 This spec MUST NOT independently define:
 
@@ -1200,6 +1199,25 @@ This spec MUST NOT independently define:
 - remote/background invocation protocol;
 - MCP/WebMCP/A2A mapping rules owned by the canonical spec;
 - retry/idempotency semantics owned by the canonical spec.
+
+The former assumption that a separate Mini App function-invocation specification was still being drafted is stale. Integrations MUST use the current owners below; the referenced specs' current revisions and implementation state are tracked in the dated alignment evidence under this Spec's `handoff/evidence/` directory.
+
+| Concern | Canonical owner | SPEC-287 responsibility |
+|---|---|---|
+| Generated surface envelope, declarative component schema, safe component registry/compiler, streaming revisions, and action-binding request contract | Spec 240 | Apply the Design Contract and rendering/conformance gates to the surface; do not fork its protocol. |
+| Presentation mode/layout selection, fit, and safe presentation fallback | Spec 299 | Apply design/rendering conformance to the selected surface; do not add a competing presentation router. Its mapping and runtime implementation remain subject to its canonical handoff/evidence. |
+| Provider-neutral design-time generation, Astryx/Stitch adapters, design artifact lifecycle | Spec 270 | Consume its approved design artifact/provider interfaces; do not turn a design provider into runtime authority. |
+| Assistant intent and conversation orchestration | Spec 269; capability discovery through Spec 256 | Define visual/presentation conformance only; do not add a second intent router or assistant runtime. |
+| User/client command and task-control mapping | Spec 226; Spec 277 for task-control experience | Render the existing action/task state with governed components; do not create another command bus. |
+| Agent-originated command ingress and delegation | Spec 279 | Use only for its agent-to-orchestrator ingress/delegation profile; it is not the generic Mini App UI action protocol. |
+| Tenant, principal, project/resource authorization and policy | Spec 220 | Require server-side reauthorization at action execution and data access; UI state is never authority. |
+| Credit/budget quote, reservation, metering and settlement | Spec 207 | Require the existing economic gate where applicable; do not add a UI-owned ledger. |
+| Durable long-running execution, retries, leases, fencing, events and outbox | Feature 195 (`worker_jobs` + outbox) | Require canonical jobs for applicable long-running work; do not create a second queue or finality store. |
+| Portable application/backend contract and deployment boundary | Spec 288; portable application standard Spec 261 | Require versioned host/app compatibility and portable contracts; do not deploy generated code with Core credentials. |
+| Mini App knowledge/RAG portability | Spec 281; retrieval authority Spec 229 and memory/context authority Spec 268 | Consume scoped retrieval/context interfaces; do not introduce a new memory or vector authority. |
+| Mini App productization and lifecycle | Spec 209 product/lifecycle portions, subject to the retired-workflow boundary in repository policy | Reuse app identity, publication and marketplace contracts only; never revive the retired `/workflows` engine. |
+
+If any owner or revision cannot be verified from canonical source and handoff evidence, retain the relationship as unresolved and stop before introducing a new protocol. A path prefix, document date, or self-declared PASS count is not authority evidence.
 
 ### 16.2 What this spec owns
 
@@ -1216,9 +1234,34 @@ This spec MAY define UI-side presentation semantics such as:
 - accessibility;
 - design conformance.
 
-### 16.3 Adapter requirement
+### 16.3 Presentation decision and rendering sequence
 
-When the canonical invocation spec becomes stable, implement a thin adapter:
+The experience may choose text, structured data, a transient interactive surface, or a persistent Mini App. That choice changes presentation only; it MUST NOT change execution authority, permissions, billing, or data ownership.
+
+```text
+User intent / authorized task context
+  -> existing assistant and capability routing (Spec 269; Spec 256 only after authority reconciliation)
+  -> existing presentation mode/fit/fallback selection (Spec 299)
+  -> text | structured result | transient surface | persistent Mini App
+  -> Spec 240 surface proposal, schema validation, allowlisted component resolution
+  -> incremental, revision-fenced surface update
+  -> SPEC-287 Design Contract and renderer conformance
+  -> trusted host action dispatch (Spec 226; agent-originated delegation may use Spec 279)
+  -> server-side authorization/policy (Spec 220)
+  -> budget and metering (Spec 207), and trusted human approval where policy requires
+  -> canonical durable worker job/outbox when long-running (Feature 195)
+  -> authoritative result, audit receipt, and a newly authorized surface revision
+```
+
+The LLM or external provider MAY propose a presentation kind and data values. The authenticated server MUST bind tenant, principal, project/resource scope, schema version, component registry version, and action references. Generated UI data and events are untrusted input. Generated code MUST NOT execute with direct backend credentials or direct database/network authority. Every action MUST be validated and authorized server-side at invocation and again at the authoritative mutation boundary where required.
+
+Streaming MUST validate each complete patch before visible commit and bind it to the surface ID, sequence, base/next revision, schema version, and digest. Duplicate or out-of-order patches are deduplicated/replayed or trigger a full snapshot; patches that alter a privileged action fail closed. Reconnect, resume, device switch, or promotion to a persistent Mini App reloads canonical state and reauthorizes every binding. If rich rendering fails or is unsupported, preserve the original result and offer a safe text/structured fallback; never convert a failed render into successful action completion.
+
+Responsive web, mobile, tablet, and desktop projections MUST preserve semantic meaning and action policy while adapting layout and input modality. Agent/headless consumers use the same typed capability/action contracts without opening a UI; the renderer is an optional projection, not a prerequisite for execution.
+
+### 16.4 Adapter requirement
+
+Implement only thin compatibility adapters where required by the host/runtime boundary:
 
 ```text
 Mini App UI
@@ -1227,15 +1270,15 @@ Mini App UI
 UI Action Binding Adapter
    |
    v
-Canonical Function Invocation Contract
+Spec 226 user/client action mapping or Spec 279 agent-originated command ingress
    |
    v
-Capability / Function / Tool / Workflow
+Spec 220 policy -> Spec 207 economic gate (when applicable) -> Feature 195 worker_jobs/outbox (when durable)
 ```
 
-The UI MUST NOT embed provider-specific invocation logic when the canonical contract can represent it.
+The UI MUST NOT embed provider-specific invocation logic, credentials, authorization decisions, or direct backend access. The UI MUST NOT call the retired `/workflows` engine.
 
-### 16.4 Offline/remote/headless compatibility
+### 16.5 Offline/remote/headless compatibility
 
 The Design Contract is independent from whether a function executes:
 
@@ -1246,7 +1289,7 @@ The Design Contract is independent from whether a function executes:
 - in background;
 - through another authorized harness.
 
-The future canonical invocation spec owns those execution semantics.
+The canonical owner for each execution path in §16.1 owns those semantics.
 
 ---
 
@@ -1648,10 +1691,8 @@ Unexpected infrastructure-version changes can invalidate visual baselines and sh
 - portable contract/package;
 - conformance harness.
 
-### M7 — Canonical function invocation adapter
-**BLOCKED until the separate canonical function-invocation spec reaches a consumable contract.**
-
-Implement only adapter/bindings; do not duplicate that protocol.
+### M7 — Existing action/command adapters
+Consume the existing Spec 226 user/client action mapping and Spec 279 agent-ingress boundary. Keep each adapter thin and defer authorization, economic decisions, and durable execution to their canonical owners.
 
 ### M8 — Enforcement
 - new UI work cannot bypass authority/contract/conformance;
@@ -1675,6 +1716,10 @@ Implement only adapter/bindings; do not duplicate that protocol.
 - [ ] Visual baseline ownership/approval is explicit and cannot be silently self-approved by the repair agent.
 - [ ] Shared component API/behavior compatibility is checked during migration.
 - [ ] UI UX Pro Max, if present, is design-intelligence only.
+- [ ] Presentation choice can resolve to text, structured result, an allowed transient surface, or an explicitly promoted Mini App without changing execution authority.
+- [ ] Generated surface schemas and components are validated against a pinned allowlist/version; generated code cannot execute with backend credentials or direct backend access.
+- [ ] Incremental updates are schema-validated, ordered and revision-fenced; invalid/unsupported surfaces preserve the original result through a safe fallback.
+- [ ] Authorized headless agents can invoke the same capability/action contracts without opening the renderer.
 
 ### Color
 - [ ] Semantic color taxonomy exists.
@@ -1727,7 +1772,11 @@ Implement only adapter/bindings; do not duplicate that protocol.
 - [ ] Mini App lifecycle transitions preserve design provenance.
 - [ ] Optional design-intelligence/provider outage has a defined degraded mode.
 - [ ] Function invocation is not redefined here.
-- [ ] Adapter waits for the separate canonical invocation spec.
+- [ ] User/client actions use Spec 226 and are reauthorized by Spec 220.
+- [ ] Agent-originated command ingress uses Spec 279 only within its declared profile.
+- [ ] Applicable billing and durable execution use Specs 207 and Feature 195.
+- [ ] Human approval is rendered in trusted host chrome and bound to current server-resolved action, target, effect and cost.
+- [ ] Transient-to-persistent promotion is explicit, versioned, portable and rollbackable; it does not auto-deploy generated code.
 
 ### Completion semantics
 - [ ] Source change alone cannot produce UI VERIFIED.
@@ -1772,7 +1821,7 @@ At minimum:
 27. Mini App contract generation;
 28. Mini App tenant inheritance;
 29. external Mini App token materialization;
-30. canonical invocation adapter remains absent/disabled until upstream contract exists;
+30. user/client and agent-originated adapters resolve to their existing canonical owners;
 31. Design Contract released-version immutability;
 32. schema compatibility and migration;
 33. inheritance cycle rejection and effective-contract provenance;
@@ -1824,6 +1873,19 @@ At minimum:
 79. conformance infrastructure version-change detection;
 80. documentation/non-UI change browser-gate skip with recorded impact proof.
 
+R1.5 adds these required intelligent-surface cases:
+
+81. presentation selection covers text, structured output, transient UI and persistent Mini App, with policy-constrained fallback;
+82. malformed, oversized, deeply nested, unknown-version and unknown-component schemas fail closed;
+83. duplicate, missing, stale and out-of-order stream patches are deduplicated, replayed or replaced by an authorized full snapshot;
+84. generated UI cannot supply tenant/principal scope, privileged component definitions, backend credentials or arbitrary network access;
+85. forged, cross-tenant, stale, revoked, replayed and double-submitted actions are denied at server execution;
+86. high-risk action approval uses trusted host UI and server-resolved target/effect/cost, with expired approval producing no effect;
+87. billable durable action produces canonical quote/reservation/settlement and worker_job/outbox receipts without duplicate charge/effect on retry;
+88. an authorized headless agent invokes the same typed capability without creating or requiring a UI session;
+89. explicit transient-to-Mini-App promotion verifies provenance, package/version compatibility, host isolation, rollback and external deployment boundary;
+90. local/provider/protocol absence, renderer error, reconnect and unsupported mobile capability preserve readable results and never imply execution success.
+
 ---
 
 ## 28. Failure / Rollback Strategy
@@ -1850,11 +1912,11 @@ This spec is additive and should integrate through existing extension seams wher
 
 ### Spec 240
 
-Treat existing Agent-Generated UI responsibilities as upstream/related. This spec supplies governance, authority, conformance, and migration requirements. If Spec 240 needs an amendment, use the smallest compatibility amendment rather than rewriting implemented behavior.
+Spec 240 owns generated interactive surfaces and their safe runtime contract. This spec supplies design governance and rendering conformance. Its current source is proposed and implementation is unverified in canonical handoff; do not treat its architecture as implementation evidence or duplicate it here.
 
 ### Spec 270
 
-Astryx/Stitch-related implementation remains an execution provider. Do not redesign implemented Spec 270 internals unless a verified integration gap requires it.
+Spec 270 owns provider-neutral design-time generation and its design artifact lifecycle. It is separate from runtime surface/action execution. Its current source is proposed and implementation is unverified in canonical handoff; do not assume provider or runtime acceptance.
 
 ### Spec 271
 
@@ -1864,9 +1926,9 @@ Reuse UAT/browser/computer-use capabilities where available for conformance and 
 
 Use existing capability discovery/registration seams. Do not hard-code a third-party skill into core routing.
 
-### Future canonical Mini App function-invocation spec
+### Specs 226 and 279 — action and command boundaries
 
-This is a **hard deferred dependency** for action binding. Its contract wins if overlap is discovered. This spec must adapt.
+Spec 226 owns user/client command and task-control mapping; Spec 279 owns agent-to-orchestrator command ingress and delegation. Neither makes the UI itself an authorization grant. Spec 220 reauthorizes protected actions, Spec 207 owns economic controls, and Feature 195 owns applicable durable execution. The dated R1.5 evidence records current revisions and unresolved implementation status.
 
 ---
 
@@ -1883,7 +1945,7 @@ Before modifying UI:
 7. never report color/style success from source diff alone;
 8. render and inspect required browser evidence;
 9. diagnose failed propagation before repeated edits;
-10. keep Mini App function invocation behind the future canonical adapter boundary.
+10. keep Mini App actions behind the existing canonical action/command and server authorization boundaries in §16.
 
 For legacy migration:
 
@@ -1932,7 +1994,7 @@ R1.2 performed another independent twelve-pass review of the already gap-closed 
 9. **Performance pass** — added layout stability, CSS/token payload, theme-switch and recalculation budgets.
 10. **Privacy/evidence pass** — added deterministic sanitized fixtures, screenshot redaction and tenant-isolation requirements.
 11. **Test/acceptance pass** — expanded required tests from 50 to 65 and linked new gaps to explicit acceptance criteria.
-12. **Architecture-boundary pass** — revalidated single UI authority, additive integration with implemented providers, and continued deferral of function invocation semantics to the separate canonical spec.
+12. **Architecture-boundary pass** — revalidated single UI authority and additive provider integration; R1.5 supersedes its historical future-Spec invocation assumption.
 
 R1.2 intentionally does not invent the pending Mini App function-invocation standard and does not require destructive rewrites of implemented Spec 240/270 providers.
 
@@ -1954,7 +2016,7 @@ R1.3 performed a further implementation/operations-focused review of R1.2:
 9. **PR integration pass** — made UI impact detection and evidence attachment concrete for development/Final Verify.
 10. **Evidence-integrity pass** — added evidence schema versioning and immutable artifact/source linkage.
 11. **Infrastructure-health pass** — added browser/OS/font/harness version observability to prevent invalid baseline churn.
-12. **Boundary/regression pass** — reconfirmed additive integration, Mini App portability, single UI authority, and no duplication of the pending canonical function-invocation protocol.
+12. **Boundary/regression pass** — reconfirmed additive integration, Mini App portability, and single UI authority; R1.5 supersedes its historical future-Spec invocation assumption.
 
 Required tests now total **80**. These additions close implementation and operational failure modes without expanding SPEC-287 into the separate function-invocation domain.
 
@@ -1971,7 +2033,7 @@ This specification is implemented only when:
 - Mini Apps automatically receive the same Design Contract and conformance model;
 - external Mini Apps retain portable visual semantics;
 - UI UX Pro Max can contribute intelligence without becoming a competing generator;
-- functional invocation remains delegated to the separate canonical standard;
+- functional invocation remains delegated to the existing canonical owners listed in §16;
 - semantic tokens have a single governed source of truth and legacy exceptions are measurable debt;
 - embedded Mini Apps negotiate Design Contract compatibility instead of partially merging incompatible schemas;
 - runtime theming remains compatible with CSP/security policy and visual evidence respects tenant/privacy boundaries;
@@ -2005,3 +2067,9 @@ This turns UI generation from provider-dependent styling into a governed, portab
 ## R1.4 Additive shared App and Project context primitives — 2026-10-07
 
 Shared UI contracts MAY provide `ProjectContextChip`, `ProjectPicker`, `ProjectAmbiguityPrompt`, `NoProjectState`, `CreateProjectFlow`, `ChatSurface`, `ChatSkinProfile`, `AppShell`, and `AppHome`. They consume project resolution from SPEC-302, memory policy from SPEC-268, shared conversation runtime from SPEC-269, and stable app identity from SPEC-304; UI components MUST NOT create a competing identity, memory, or conversation authority. Project context is visible and accessible without obscuring the primary task. Picker choices include recommended authorized candidates, recent/active projects, authorized search, `No Project`, and `Create New Project` where allowed. Ambiguous context MUST be presented before a durable shared write. App Home may compose Continue, Saved, Recent, My Apps, My Assets, Purchased, Subscribed/Hosted, Recommended, Official, Trending, and Discover. `Official` is a certification badge, not an ownership claim. Existing dashboards/routes are migrated only with their owning Spec and explicit compatibility evidence. Project picker and ambiguity states MUST work at mobile widths, support keyboard-only operation, expose accessible names/roles/status to assistive technology, preserve focus on open/close, announce resolver/loading/error state, and provide a non-color-only distinction between active, pending, and no-project states.
+
+## R1.5 Intelligent UI architecture alignment — 2026-10-08
+
+R1.5 replaces the stale future-invocation dependency with the verified cross-Spec ownership map in §16. It aligns generated interactive UI with Spec 240, design-time provider behavior with Spec 270, user/client action mapping with Spec 226, agent delegation with Spec 279, and canonical policy/economic/execution authority with Specs 220/207 and Feature 195. It adds no second component registry, action bus, permission engine, billing ledger, memory store, task queue, or workflow runtime.
+
+The product-level architecture and evidence-backed impact matrix, ten-pass gap audit, P0–P7 roadmap, test/acceptance matrix, and current implementation limitations are recorded in `handoff/evidence/intelligent-ui-architecture-alignment-2026-10-08.md`. That artifact is a document/repository audit; it does not certify production implementation, deployment, or acceptance.
