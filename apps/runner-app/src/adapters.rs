@@ -1,5 +1,5 @@
 use crate::discovery::{ToolCandidate, ToolKind, TrustState};
-use crate::process::ProcessSpec;
+use crate::process::{command_for_cli, ProcessSpec};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::io::Read as _;
@@ -567,7 +567,7 @@ fn run_version_probe(
         .executable_path
         .as_ref()
         .ok_or_else(|| "RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING".to_string())?;
-    let mut command = command_for_cli(program, &["--version".into()]);
+    let mut command = command_for_cli(program, &["--version".into()])?;
     command
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
@@ -763,7 +763,16 @@ pub fn run_task_smoke_test(
         _ => unreachable!("unsupported adapters are rejected above"),
     };
 
-    let mut command = command_for_cli(program, &args);
+    let mut command = match command_for_cli(program, &args) {
+        Ok(command) => command,
+        Err(_) => {
+            return (
+                "failed",
+                None,
+                Some("task_probe_arguments_unsupported".into()),
+            )
+        }
+    };
     command
         .current_dir(&workspace)
         .stdin(Stdio::null())
@@ -949,32 +958,6 @@ fn hide_console_window(_command: &mut Command) {
         use std::os::windows::process::CommandExt;
         _command.creation_flags(0x0800_0000);
     }
-}
-
-fn command_for_cli(program: &Path, args: &[String]) -> Command {
-    #[cfg(windows)]
-    if program
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
-    {
-        let mut command = Command::new("cmd.exe");
-        let mut invocation = format!("\"{}\"", program.display());
-        for arg in args {
-            invocation.push(' ');
-            invocation.push('"');
-            invocation.push_str(arg);
-            invocation.push('"');
-        }
-        command
-            .args(["/d", "/s", "/c"])
-            .arg(format!("\"{invocation}\""));
-        return command;
-    }
-
-    let mut command = Command::new(program);
-    command.args(args);
-    command
 }
 
 struct BrowserProbeProcess {

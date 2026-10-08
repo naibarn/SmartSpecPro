@@ -100,7 +100,7 @@ pub struct BrowserExecutableResolution {
 /// Scans the host PATH without executing anything. A discovered executable is still only
 /// metadata until the adapter-specific bounded probe succeeds.
 pub fn scan_environment(profile: RunnerProfile) -> Vec<ToolCandidate> {
-    let entries = std::env::var_os("PATH")
+    let mut entries = std::env::var_os("PATH")
         .map(|path| {
             std::env::split_paths(&path)
                 .take(LOCAL_SCAN_LIMIT)
@@ -110,8 +110,56 @@ pub fn scan_environment(profile: RunnerProfile) -> Vec<ToolCandidate> {
     if profile == RunnerProfile::SharedContainer {
         return scan_path_entries(profile, &entries);
     }
+    if cfg!(windows) {
+        entries = include_windows_user_tool_roots(
+            &entries,
+            windows_user_tool_roots(
+                std::env::var_os("APPDATA").as_deref(),
+                std::env::var_os("USERPROFILE").as_deref(),
+            ),
+        );
+    }
     let resolution = resolve_browser_executable_from_environment(&entries);
     scan_path_entries_with_resolution(profile, &entries, Some(&resolution))
+}
+
+fn windows_user_tool_roots(
+    appdata: Option<&std::ffi::OsStr>,
+    user_profile: Option<&std::ffi::OsStr>,
+) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Some(appdata) = appdata {
+        roots.push(PathBuf::from(appdata).join("npm"));
+    } else if let Some(user_profile) = user_profile {
+        roots.push(
+            PathBuf::from(user_profile)
+                .join("AppData")
+                .join("Roaming")
+                .join("npm"),
+        );
+    }
+    if let Some(user_profile) = user_profile {
+        roots.push(PathBuf::from(user_profile).join(".local").join("bin"));
+    }
+    roots
+}
+
+fn include_windows_user_tool_roots(
+    path_entries: &[PathBuf],
+    user_roots: Vec<PathBuf>,
+) -> Vec<PathBuf> {
+    let reserved = user_roots.len().min(LOCAL_SCAN_LIMIT);
+    let mut entries = path_entries
+        .iter()
+        .take(LOCAL_SCAN_LIMIT.saturating_sub(reserved))
+        .cloned()
+        .collect::<Vec<_>>();
+    entries.extend(
+        user_roots
+            .into_iter()
+            .take(LOCAL_SCAN_LIMIT - entries.len()),
+    );
+    entries
 }
 
 pub fn scan_path_entries(profile: RunnerProfile, path_entries: &[PathBuf]) -> Vec<ToolCandidate> {
@@ -488,6 +536,10 @@ fn find_first_tool_executable(path_entries: &[PathBuf], tool_id: &str) -> Option
 }
 
 fn executable_names(directory: &Path, name: &str) -> Vec<PathBuf> {
+    executable_names_for_platform(directory, name, cfg!(windows))
+}
+
+fn executable_names_for_platform(directory: &Path, name: &str, windows: bool) -> Vec<PathBuf> {
     if name == "browser" {
         return [
             "browser",
@@ -508,7 +560,10 @@ fn executable_names(directory: &Path, name: &str) -> Vec<PathBuf> {
         .collect();
     }
     let mut candidates = vec![directory.join(name), directory.join(format!("{name}.exe"))];
-    if cfg!(windows) {
+    if windows {
+        // Prefer PowerShell shims: unlike batch files they can receive the
+        // argument vector directly instead of through a command string.
+        candidates.push(directory.join(format!("{name}.ps1")));
         candidates.push(directory.join(format!("{name}.cmd")));
         candidates.push(directory.join(format!("{name}.bat")));
     }
@@ -623,6 +678,65 @@ mod tests {
         assert!(!serde_json::to_string(codex)
             .unwrap()
             .contains(executable.to_str().unwrap()));
+    }
+
+    #[test]
+    fn windows_cli_discovery_includes_common_command_and_powershell_shims() {
+        let directory = Path::new("C:\\Users\\runner\\AppData\\Roaming\\npm");
+        let names = executable_names_for_platform(directory, "codex", true);
+
+        assert_eq!(
+            names,
+            [
+                directory.join("codex"),
+                directory.join("codex.exe"),
+                directory.join("codex.ps1"),
+                directory.join("codex.cmd"),
+                directory.join("codex.bat"),
+            ]
+        );
+        assert_eq!(
+            executable_names_for_platform(directory, "codex", false),
+            [directory.join("codex"), directory.join("codex.exe")]
+        );
+    }
+
+    #[test]
+    fn windows_user_cli_roots_cover_default_user_install_locations() {
+        let appdata = std::ffi::OsStr::new("C:\\Users\\runner\\AppData\\Roaming");
+        let profile = std::ffi::OsStr::new("C:\\Users\\runner");
+        assert_eq!(
+            windows_user_tool_roots(Some(appdata), Some(profile)),
+            [
+                PathBuf::from(appdata).join("npm"),
+                PathBuf::from(profile).join(".local").join("bin"),
+            ]
+        );
+        assert_eq!(
+            windows_user_tool_roots(None, Some(profile)),
+            [
+                PathBuf::from(profile)
+                    .join("AppData")
+                    .join("Roaming")
+                    .join("npm"),
+                PathBuf::from(profile).join(".local").join("bin")
+            ]
+        );
+    }
+
+    #[test]
+    fn windows_user_cli_roots_remain_scannable_when_path_is_at_limit() {
+        let path_entries = (0..LOCAL_SCAN_LIMIT)
+            .map(|index| PathBuf::from(format!("C:\\tools\\{index}")))
+            .collect::<Vec<_>>();
+        let user_roots = vec![
+            PathBuf::from("C:\\Users\\runner\\AppData\\Roaming\\npm"),
+            PathBuf::from("C:\\Users\\runner\\.local\\bin"),
+        ];
+        let merged = include_windows_user_tool_roots(&path_entries, user_roots.clone());
+
+        assert_eq!(merged.len(), LOCAL_SCAN_LIMIT);
+        assert_eq!(&merged[merged.len() - 2..], user_roots);
     }
 
     #[test]
