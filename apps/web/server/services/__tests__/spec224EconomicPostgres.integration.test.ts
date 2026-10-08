@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, sql as drizzleSql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { provisionSpec224EconomicTestBudget } from "./helpers/spec224EconomicTestProvisioning";
 
@@ -472,5 +472,210 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
       eq(economicSchema.economicBudgets.id, budget.budgetId),
     );
     expect(after.capturedMinorUnits).toBe(600);
+  });
+
+  it("settles an authenticated persisted receipt without holding the hold lock during verification", async () => {
+    const budget = await provisionSpec224EconomicTestBudget(db, {
+      tenantId,
+      scopeId: `${scopeId}-receipt-settlement`,
+      limitMinorUnits: 500,
+    });
+    const job = await createAttempt();
+    const intent = await makeIntent(job, 200, "reserve-receipt-settlement");
+    const hold = await reserveEconomicHold(db, {
+      intent,
+      budgetId: budget.budgetId,
+      idempotencyKey: "hold-receipt-settlement",
+      journalLines: journalLines(budget, 200),
+      journalDescription: "Spec 224 receipt settlement reserve",
+    });
+    const receiptEventId = randomUUID();
+    const receiptPayload = {
+      eventId: receiptEventId,
+      commandId: `command-${receiptEventId}`,
+      runnerId: "runner-spec224-economic-test",
+      runnerSessionId: `session-${scopeId}`,
+      sequence: 1,
+      exitCode: 0,
+    };
+    await db.update(economicSchema.workerJobs)
+      .set({ status: "succeeded", finishedAt: new Date() })
+      .where(eq(economicSchema.workerJobs.id, job.jobId));
+    await db.insert(economicSchema.workerJobEvents).values({
+      workerJobId: job.jobId,
+      attemptId: job.attemptId,
+      eventType: "RUNNER_EXECUTION_COMPLETED",
+      eventIdempotencyKey: `receipt-settlement:${receiptEventId}`,
+      sequence: 1,
+      payloadJson: receiptPayload,
+    });
+
+    const { settleRunnerEconomicReceipt } = await import("../economicReceiptSettlement");
+    const settlementInput = {
+      tenantId,
+      jobId: job.jobId,
+      attemptId: job.attemptId,
+      holdId: hold.id,
+      receiptEventId,
+    };
+    const accountingEvidence = (accountId = budget.sourceAccountId) => ({
+          kind: "provider_metered" as const,
+          policyVersion: "spec224-postgres-v1",
+          providerUsageRef: `usage:${receiptEventId}`,
+          usageDigest: "b".repeat(64),
+          pricingPolicyRef: "pricing:spec224-postgres-v1",
+          verificationRef: `verified:${receiptEventId}`,
+          amountMinorUnits: 75,
+          currency: "USD",
+          captureJournalLines: journalLines(budget, 75, true).map((line, index) =>
+            index === 0 ? { ...line, accountId } : line,
+          ),
+          releaseJournalLines: journalLines(budget, 125, true),
+        });
+
+    // Force the capture path to fail after it has started writing journal state.
+    // PostgreSQL must roll back the journal, event, and hold mutation together.
+    await expect(settleRunnerEconomicReceipt(db, settlementInput, {
+      verify: async () => accountingEvidence("missing-account"),
+    })).rejects.toBeDefined();
+    const [afterFailedCapture] = await db.select().from(economicSchema.economicHolds).where(
+      eq(economicSchema.economicHolds.id, hold.id),
+    );
+    expect(afterFailedCapture).toMatchObject({ status: "held", capturedMinorUnits: 0, releasedMinorUnits: 0 });
+    const [budgetAfterFailedCapture] = await db.select().from(economicSchema.economicBudgets).where(
+      eq(economicSchema.economicBudgets.id, budget.budgetId),
+    );
+    expect(budgetAfterFailedCapture).toMatchObject({ heldMinorUnits: 200, capturedMinorUnits: 0 });
+    const failedSettlementEvents = await db.select().from(economicSchema.economicEvents).where(
+      and(
+        eq(economicSchema.economicEvents.tenantId, tenantId),
+        eq(economicSchema.economicEvents.workerJobId, job.jobId),
+        eq(economicSchema.economicEvents.eventType, "runner_receipt_economically_settled"),
+        drizzleSql`${economicSchema.economicEvents.payloadJson}->>'holdId' = ${hold.id}`,
+      ),
+    );
+    expect(failedSettlementEvents).toHaveLength(0);
+
+    // Mutate the persisted receipt while verification is in flight. The
+    // settlement transaction must reject its changed digest without capture.
+    await expect(settleRunnerEconomicReceipt(db, settlementInput, {
+      verify: async () => {
+        await db.update(economicSchema.workerJobEvents)
+          .set({ payloadJson: { ...receiptPayload, sourceDigest: "mutated" } })
+          .where(eq(economicSchema.workerJobEvents.eventIdempotencyKey, `receipt-settlement:${receiptEventId}`));
+        return accountingEvidence();
+      },
+    })).rejects.toMatchObject({ code: "SETTLEMENT_RECEIPT_CONFLICT" });
+    await db.update(economicSchema.workerJobEvents)
+      .set({ payloadJson: receiptPayload })
+      .where(eq(economicSchema.workerJobEvents.eventIdempotencyKey, `receipt-settlement:${receiptEventId}`));
+    const [afterReceiptMutation] = await db.select().from(economicSchema.economicHolds).where(
+      eq(economicSchema.economicHolds.id, hold.id),
+    );
+    expect(afterReceiptMutation).toMatchObject({ status: "held", capturedMinorUnits: 0, releasedMinorUnits: 0 });
+
+    const timedOut = await settleRunnerEconomicReceipt(
+      db,
+      { ...settlementInput, verifierTimeoutMs: 5 },
+      { verify: async () => new Promise<never>(() => {}) },
+    );
+    expect(timedOut.status).toBe("reconciliation_required");
+    expect(timedOut.capturedMinorUnits).toBe(0);
+    const [afterVerifierTimeout] = await db.select().from(economicSchema.economicHolds).where(
+      eq(economicSchema.economicHolds.id, hold.id),
+    );
+    expect(afterVerifierTimeout).toMatchObject({ status: "held", capturedMinorUnits: 0, releasedMinorUnits: 0 });
+
+    let verifierArrivals = 0;
+    let releaseVerifierBarrier!: () => void;
+    let allVerifiersReady!: () => void;
+    const verifierBarrier = new Promise<void>(resolve => { releaseVerifierBarrier = resolve; });
+    const allVerifiersEntered = new Promise<void>(resolve => { allVerifiersReady = resolve; });
+    const verifier = {
+      verify: async () => {
+        const [appBackend] = await db.execute(drizzleSql`SELECT pg_backend_pid() AS pid`);
+        // The raw postgres client is a second pool/connection. NOWAIT fails if
+        // the application holds the economic hold row throughout verification.
+        await sql.begin(async transaction => {
+          const [verifierBackend] = await transaction`SELECT pg_backend_pid() AS pid`;
+          expect(Number(verifierBackend.pid)).not.toBe(Number((appBackend as any).pid));
+          await transaction`SELECT id FROM economic_holds WHERE id = ${hold.id} FOR UPDATE NOWAIT`;
+        });
+        verifierArrivals += 1;
+        if (verifierArrivals === 2) allVerifiersReady();
+        await verifierBarrier;
+        return accountingEvidence();
+      },
+    };
+
+    const concurrentSettlements = Promise.all([
+      settleRunnerEconomicReceipt(db, settlementInput, verifier),
+      settleRunnerEconomicReceipt(db, settlementInput, verifier),
+    ]);
+    await allVerifiersEntered;
+    // While both verifier calls are paused at the controlled barrier, a fresh
+    // PostgreSQL connection must acquire the same hold row lock immediately.
+    await sql.begin(async transaction => {
+      await transaction`SELECT id FROM economic_holds WHERE id = ${hold.id} FOR UPDATE NOWAIT`;
+    });
+    const [duringVerification] = await db.select().from(economicSchema.economicHolds).where(
+      eq(economicSchema.economicHolds.id, hold.id),
+    );
+    expect(duringVerification).toMatchObject({ status: "held", capturedMinorUnits: 0, releasedMinorUnits: 0 });
+    releaseVerifierBarrier();
+    const results = await concurrentSettlements;
+    const first = results.find(result => !result.replayed)!;
+    const replay = results.find(result => result.replayed)!;
+    expect(results.filter(result => !result.replayed)).toHaveLength(1);
+    expect(results.filter(result => result.replayed)).toHaveLength(1);
+    expect(first).toMatchObject({ status: "settled", capturedMinorUnits: 75 });
+    expect(replay).toMatchObject({ status: "settled", capturedMinorUnits: 75, eventId: first.eventId });
+
+    const [settledHold] = await db.select().from(economicSchema.economicHolds).where(
+      eq(economicSchema.economicHolds.id, hold.id),
+    );
+    expect(settledHold).toMatchObject({ status: "released", capturedMinorUnits: 75, releasedMinorUnits: 125 });
+    const [after] = await db.select().from(economicSchema.economicBudgets).where(
+      eq(economicSchema.economicBudgets.id, budget.budgetId),
+    );
+    expect(after.heldMinorUnits).toBe(0);
+    expect(after.capturedMinorUnits).toBe(75);
+    const settlementEvents = await db.select().from(economicSchema.economicEvents).where(
+      eq(economicSchema.economicEvents.idempotencyKey, `runner-settlement:${first.receiptDigest}`),
+    );
+    expect(settlementEvents).toHaveLength(1);
+    const [resolvedReconciliation] = await db.select().from(economicSchema.economicReconciliations).where(
+      eq(economicSchema.economicReconciliations.id, timedOut.reconciliationId!),
+    );
+    expect(resolvedReconciliation.status).toBe("resolved");
+    const captureEntries = await db.select().from(economicSchema.economicJournalEntries).where(
+      eq(economicSchema.economicJournalEntries.idempotencyKey, `settle:runner-capture:${first.receiptDigest}`),
+    );
+    expect(captureEntries).toHaveLength(1);
+    const releaseEntries = await db.select().from(economicSchema.economicJournalEntries).where(
+      eq(economicSchema.economicJournalEntries.idempotencyKey, `release:runner-release:${first.receiptDigest}`),
+    );
+    expect(releaseEntries).toHaveLength(1);
+
+    // A second authenticated completion receipt for the same authorized hold
+    // and attempt cannot capture the same hold again.
+    const distinctReceiptEventId = randomUUID();
+    await db.insert(economicSchema.workerJobEvents).values({
+      workerJobId: job.jobId,
+      attemptId: job.attemptId,
+      eventType: "RUNNER_EXECUTION_COMPLETED",
+      eventIdempotencyKey: `receipt-settlement:${distinctReceiptEventId}`,
+      sequence: 2,
+      payloadJson: { ...receiptPayload, eventId: distinctReceiptEventId, sequence: 2 },
+    });
+    await expect(settleRunnerEconomicReceipt(
+      db,
+      { ...settlementInput, receiptEventId: distinctReceiptEventId },
+      { verify: async () => accountingEvidence() },
+    )).rejects.toMatchObject({ code: "SETTLEMENT_DUPLICATE_RECEIPT" });
+    const captureEntriesAfterDistinctReceipt = await db.select().from(economicSchema.economicJournalEntries).where(
+      eq(economicSchema.economicJournalEntries.idempotencyKey, `settle:runner-capture:${first.receiptDigest}`),
+    );
+    expect(captureEntriesAfterDistinctReceipt).toHaveLength(1);
   });
 });

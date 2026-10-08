@@ -101,6 +101,34 @@ describe("receipt-backed Runner economic settlement planning", () => {
     );
   });
 
+  it("caps a second capture to the current remaining hold and releases only its remainder", () => {
+    const partiallyUsedHold = {
+      ...hold,
+      capturedMinorUnits: 100,
+      releasedMinorUnits: 100,
+    };
+    const evidence = metered({
+      amountMinorUnits: 250,
+      captureJournalLines: journal(250, true),
+      releaseJournalLines: journal(50, true),
+    });
+
+    expect(planRunnerEconomicSettlement(partiallyUsedHold, evidence)).toEqual({
+      capturedMinorUnits: 250,
+      releasedMinorUnits: 50,
+    });
+    expect(() => planRunnerEconomicSettlement(
+      partiallyUsedHold,
+      metered({
+        amountMinorUnits: 301,
+        captureJournalLines: journal(301, true),
+        releaseJournalLines: [],
+      })
+    )).toThrowError(
+      new EconomicReceiptSettlementError("SETTLEMENT_EVIDENCE_INVALID")
+    );
+  });
+
   it("rejects a currency mismatch", () => {
     expect(() =>
       planRunnerEconomicSettlement(hold, metered({ currency: "EUR" }))

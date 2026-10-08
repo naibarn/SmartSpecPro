@@ -18,6 +18,8 @@ import {
 
 const SETTLEMENT_ACTOR = "system:economic-receipt-settlement";
 const COMPLETED_RECEIPT_EVENT = "RUNNER_EXECUTION_COMPLETED";
+const DEFAULT_VERIFIER_TIMEOUT_MS = 15_000;
+const MAX_VERIFIER_TIMEOUT_MS = 60_000;
 
 export type VerifiedRunnerAccountingEvidence =
   | {
@@ -73,7 +75,8 @@ export type RunnerEconomicReceiptVerifier = {
    * policy. Runner output and token counts alone are not billing evidence.
    */
   verify(
-    receipt: PersistedRunnerReceipt
+    receipt: PersistedRunnerReceipt,
+    options?: { signal: AbortSignal }
   ): Promise<VerifiedRunnerAccountingEvidence>;
 };
 
@@ -83,6 +86,7 @@ export type SettleRunnerEconomicReceiptInput = {
   attemptId: string;
   holdId: string;
   receiptEventId: string;
+  verifierTimeoutMs?: number;
 };
 
 export type RunnerEconomicSettlementResult = {
@@ -101,6 +105,7 @@ export class EconomicReceiptSettlementError extends Error {
     | "SETTLEMENT_INPUT_INVALID"
     | "SETTLEMENT_HOLD_NOT_FOUND"
     | "SETTLEMENT_HOLD_BINDING_MISMATCH"
+    | "SETTLEMENT_HOLD_STATE_INVALID"
     | "SETTLEMENT_RECEIPT_NOT_FOUND"
     | "SETTLEMENT_RECEIPT_BINDING_INVALID"
     | "SETTLEMENT_RECEIPT_CONFLICT"
@@ -224,8 +229,21 @@ async function loadPersistedReceipt(
 
 export function validateVerifiedEvidence(
   evidence: VerifiedRunnerAccountingEvidence,
-  hold: { tenantId: string; currency: string; amountMinorUnits: number }
+  hold: {
+    tenantId: string;
+    currency: string;
+    amountMinorUnits: number;
+    capturedMinorUnits?: number;
+    releasedMinorUnits?: number;
+  }
 ): void {
+  const remainingHoldAmount =
+    hold.amountMinorUnits -
+    (hold.capturedMinorUnits ?? 0) -
+    (hold.releasedMinorUnits ?? 0);
+  if (!Number.isSafeInteger(remainingHoldAmount) || remainingHoldAmount < 0) {
+    throw new EconomicReceiptSettlementError("SETTLEMENT_EVIDENCE_INVALID");
+  }
   if (evidence.kind === "provider_metered") {
     if (
       !isReference(evidence.providerUsageRef) ||
@@ -235,8 +253,8 @@ export function validateVerifiedEvidence(
       !isReference(evidence.policyVersion) ||
       !Number.isSafeInteger(evidence.amountMinorUnits) ||
       evidence.amountMinorUnits <= 0 ||
-      evidence.amountMinorUnits > hold.amountMinorUnits ||
-      evidence.currency.trim().toUpperCase() !== hold.currency
+      evidence.amountMinorUnits > remainingHoldAmount ||
+      evidence.currency.trim().toUpperCase() !== hold.currency.trim().toUpperCase()
     )
       throw new EconomicReceiptSettlementError("SETTLEMENT_EVIDENCE_INVALID");
     validateJournalLines(evidence.captureJournalLines, {
@@ -244,7 +262,7 @@ export function validateVerifiedEvidence(
       currency: hold.currency,
       amountMinorUnits: evidence.amountMinorUnits,
     });
-    const unusedAmount = hold.amountMinorUnits - evidence.amountMinorUnits;
+    const unusedAmount = remainingHoldAmount - evidence.amountMinorUnits;
     if (unusedAmount > 0) {
       validateJournalLines(evidence.releaseJournalLines, {
         tenantId: hold.tenantId,
@@ -266,7 +284,7 @@ export function validateVerifiedEvidence(
     validateJournalLines(evidence.releaseJournalLines, {
       tenantId: hold.tenantId,
       currency: hold.currency,
-      amountMinorUnits: hold.amountMinorUnits,
+      amountMinorUnits: remainingHoldAmount,
     });
   } else if (evidence.kind === "verified_zero_charge") {
     if (
@@ -278,7 +296,7 @@ export function validateVerifiedEvidence(
     validateJournalLines(evidence.releaseJournalLines, {
       tenantId: hold.tenantId,
       currency: hold.currency,
-      amountMinorUnits: hold.amountMinorUnits,
+      amountMinorUnits: remainingHoldAmount,
     });
   }
 }
@@ -328,10 +346,64 @@ export async function settleRunnerEconomicReceipt(
     !input.attemptId ||
     !input.holdId ||
     !input.receiptEventId ||
+    (input.verifierTimeoutMs !== undefined &&
+      (!Number.isSafeInteger(input.verifierTimeoutMs) ||
+        input.verifierTimeoutMs < 1 ||
+        input.verifierTimeoutMs > MAX_VERIFIER_TIMEOUT_MS)) ||
     !verifier ||
     typeof verifier.verify !== "function"
   )
     throw new EconomicReceiptSettlementError("SETTLEMENT_INPUT_INVALID");
+
+  // Policy/usage verifiers may call an external accounting service. Read and
+  // verify the append-only receipt before opening the settlement transaction
+  // so a slow verifier never holds the economic hold row lock.
+  const [preflightHold] = await database
+    .select()
+    .from(economicHolds)
+    .where(
+      and(
+        eq(economicHolds.tenantId, input.tenantId),
+        eq(economicHolds.id, input.holdId)
+      )
+    )
+    .limit(1);
+  if (!preflightHold)
+    throw new EconomicReceiptSettlementError("SETTLEMENT_HOLD_NOT_FOUND");
+  if (
+    preflightHold.workerJobId !== input.jobId ||
+    preflightHold.attemptId !== input.attemptId
+  ) {
+    throw new EconomicReceiptSettlementError(
+      "SETTLEMENT_HOLD_BINDING_MISMATCH"
+    );
+  }
+  const verifiedReceipt = await loadPersistedReceipt(database, input);
+  const verifiedReceiptDigest = digestReceipt(verifiedReceipt);
+  let evidence: VerifiedRunnerAccountingEvidence;
+  const verificationAbort = new AbortController();
+  let verifierTimeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const timeoutMs = input.verifierTimeoutMs ?? DEFAULT_VERIFIER_TIMEOUT_MS;
+    evidence = await Promise.race([
+      verifier.verify(verifiedReceipt, { signal: verificationAbort.signal }),
+      new Promise<VerifiedRunnerAccountingEvidence>((_resolve, reject) => {
+        verifierTimeout = setTimeout(() => {
+          verificationAbort.abort();
+          reject(new Error("ACCOUNTING_VERIFIER_TIMEOUT"));
+        }, timeoutMs);
+      }),
+    ]);
+  } catch {
+    evidence = {
+      kind: "unknown",
+      reasonCode: verificationAbort.signal.aborted
+        ? "ACCOUNTING_VERIFIER_TIMEOUT"
+        : "ACCOUNTING_VERIFIER_UNAVAILABLE",
+    };
+  } finally {
+    if (verifierTimeout) clearTimeout(verifierTimeout);
+  }
 
   return database.transaction(async tx => {
     const [hold] = await tx
@@ -358,6 +430,9 @@ export async function settleRunnerEconomicReceipt(
 
     const receipt = await loadPersistedReceipt(tx, input);
     const receiptDigest = digestReceipt(receipt);
+    if (receiptDigest !== verifiedReceiptDigest) {
+      throw new EconomicReceiptSettlementError("SETTLEMENT_RECEIPT_CONFLICT");
+    }
     const settlementKey = `runner-settlement:${receiptDigest}`;
     const [prior] = await tx
       .select()
@@ -365,7 +440,10 @@ export async function settleRunnerEconomicReceipt(
       .where(
         and(
           eq(economicEvents.tenantId, input.tenantId),
-          eq(economicEvents.idempotencyKey, settlementKey)
+          eq(economicEvents.workerJobId, input.jobId),
+          eq(economicEvents.attemptId, input.attemptId),
+          eq(economicEvents.eventType, "runner_receipt_economically_settled"),
+          sql`${economicEvents.payloadJson}->>'holdId' = ${input.holdId}`
         )
       )
       .limit(1);
@@ -392,15 +470,19 @@ export async function settleRunnerEconomicReceipt(
       };
     }
 
-    let evidence: VerifiedRunnerAccountingEvidence;
-    try {
-      evidence = await verifier.verify(receipt);
-    } catch {
-      evidence = {
-        kind: "unknown",
-        reasonCode: "ACCOUNTING_VERIFIER_UNAVAILABLE",
-      };
+    const remainingHoldAmount =
+      hold.amountMinorUnits - hold.capturedMinorUnits - hold.releasedMinorUnits;
+    if (
+      !["held", "partially_captured", "reconciliation_required"].includes(
+        hold.status
+      ) ||
+      remainingHoldAmount <= 0
+    ) {
+      throw new EconomicReceiptSettlementError(
+        "SETTLEMENT_HOLD_STATE_INVALID"
+      );
     }
+
     if (
       evidence.kind === "unverified" ||
       evidence.kind === "failed" ||
