@@ -22,8 +22,10 @@ Gaps found and repaired during review: alphabetical cost-class sorting could
 place `high` before `low`; it was replaced with an explicit low/medium/high
 order. Marketplace scope was hardened to require a governance approval
 reference, and unsafe/missing attribution now has an explicit rejection reason.
-The entire focused suite was rerun immediately after each repair. After the last
-repair, all 10 rounds were rerun: 14/14 tests passed in every round. The final
-run also completed `git diff --check` and shared handoff validation with
-`valid=true`, zero validation errors, and `completion_eligible=false`. No runtime
-claim is made.
+The entire focused suite was rerun immediately after each repair. A later source
+revision review found that a mutable branch name could be supplied instead of
+an immutable catalog commit SHA; runtime and JSON Schema now require a 40/64
+hex commit digest. After this final repair, all 10 rounds were rerun: 14/14
+tests passed in every round. The final run also completed `git diff --check`.
+The shared handoff remains `valid=true`, zero validation errors, and
+`completion_eligible=false`. No runtime claim is made.

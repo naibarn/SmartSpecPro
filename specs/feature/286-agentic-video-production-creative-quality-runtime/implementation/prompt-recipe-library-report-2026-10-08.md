@@ -46,6 +46,7 @@ ranking. Generated code has no path from the returned plan to execution.
 ## Execution and test evidence
 
 - Focused command: `JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 pnpm --filter @smartspec/web exec vitest run server/services/__tests__/promptRecipeLibrary.test.ts shared/videoIntelligence/__tests__/motionTemplates.select.test.ts`
+- The importer now rejects movable branch/tag names as `sourceRevision`; only immutable 40/64-hex Git commit SHAs pass schema and runtime validation.
 - A shared read-only `node_modules` link from the clean primary checkout was used by the isolated worktree; no dependencies were installed or modified.
 - This command exercises mocked rights approval and local metadata routing only. It is **not** Runner, runtime, render, visual-quality, production, or rights-authority PASS evidence.
 - `git diff --check` is part of the fast integration gate.

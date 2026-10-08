@@ -99,6 +99,9 @@ export async function importOpusVideoRecipes(input: unknown, options: {
   ownerUserId?: string;
 }): Promise<RecipeImportResult> {
   if (!Array.isArray(input)) throw new Error("Source catalog must be a JSON array");
+  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(options.sourceRevision)) {
+    throw new Error("Source catalog revision must be an immutable Git commit SHA");
+  }
   const accepted: PromptRecipe[] = [];
   const rejected: RecipeImportResult["rejected"] = [];
   const duplicates: string[] = [];
