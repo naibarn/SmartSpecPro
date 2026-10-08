@@ -61,13 +61,25 @@ try {
     const [fullRuntimeOutbox] = await db.select().from(workerJobOutbox)
       .where(eq(workerJobOutbox.workerJobId, fullRuntimeRequest.jobId)).limit(1);
     if (!fullRuntimeOutbox) throw new Error("FULL_APP_SUMMARY_ACTION_OUTBOX_MISSING");
+    let published = Boolean(fullRuntimeOutbox.publishedAt);
+    let publicationState = "already_published";
     if (!fullRuntimeOutbox.publishedAt) {
       const fullRuntimePublication = await publishJobOutboxRow(
         fullRuntimeOutbox.id,
         new PostgresPullJobTransportAdapter(),
       );
-      if (fullRuntimePublication.state !== "published") {
-        throw new Error(`FULL_APP_SUMMARY_ACTION_PUBLICATION_${fullRuntimePublication.state}`);
+      publicationState = fullRuntimePublication.state;
+      if (["quarantined"].includes(publicationState)) {
+        throw new Error(`FULL_APP_SUMMARY_ACTION_PUBLICATION_${publicationState}`);
+      }
+      for (let attempt = 0; attempt < 50 && !published; attempt += 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const [latestOutbox] = await db.select({ publishedAt: workerJobOutbox.publishedAt })
+          .from(workerJobOutbox).where(eq(workerJobOutbox.id, fullRuntimeOutbox.id)).limit(1);
+        published = Boolean(latestOutbox?.publishedAt);
+      }
+      if (!published) {
+        throw new Error(`FULL_APP_SUMMARY_ACTION_PUBLICATION_${publicationState}`);
       }
     }
   }
