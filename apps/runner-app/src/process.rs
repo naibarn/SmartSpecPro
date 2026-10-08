@@ -26,9 +26,11 @@ fn command_for_cli_on_platform(
                 if cmd_shim_input_is_unsafe(program, args) {
                     return Err("RUNNER_PROCESS_CMD_SHIM_UNSAFE_ARGUMENT".into());
                 }
+                let program = cmd_shim_compatible_path(program)
+                    .ok_or_else(|| "RUNNER_PROCESS_CMD_SHIM_UNSAFE_ARGUMENT".to_string())?;
                 let mut command =
                     Command::new(windows_system_executable(system_root, &["cmd.exe"])?);
-                let mut invocation = format!("\"{}\"", program.display());
+                let mut invocation = format!("\"{program}\"");
                 for arg in args {
                     invocation.push(' ');
                     invocation.push('"');
@@ -92,10 +94,24 @@ fn cmd_shim_input_is_unsafe(program: &Path, args: &[String]) -> bool {
         })
     }
 
-    program.to_str().is_none_or(contains_cmd_metacharacter)
+    cmd_shim_compatible_path(program)
+        .as_deref()
+        .is_none_or(contains_cmd_metacharacter)
         || args
             .iter()
             .any(|argument| contains_cmd_metacharacter(argument))
+}
+
+/// `std::fs::canonicalize` returns Win32 extended-length paths (`\\?\...`).
+/// Those are valid for CreateProcess but cmd.exe does not reliably resolve
+/// them as batch-file paths, so remove the prefix before constructing `/c`.
+fn cmd_shim_compatible_path(program: &Path) -> Option<String> {
+    let program = program.to_str()?;
+    if let Some(unc_path) = program.strip_prefix(r"\\?\UNC\") {
+        Some(format!(r"\\{unc_path}"))
+    } else {
+        Some(program.strip_prefix(r"\\?\").unwrap_or(program).to_owned())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -381,7 +397,7 @@ mod tests {
     fn windows_cmd_and_batch_shims_use_cmd_exe_for_dispatch() {
         for extension in ["cmd", "bat"] {
             let program = PathBuf::from(format!(
-                "C:\\Users\\runner\\AppData\\Roaming\\npm\\codex.{extension}"
+                r"\\?\C:\Users\runner\AppData\Roaming\npm\codex.{extension}"
             ));
             let args = vec!["exec".into(), "--json".into(), "hello".into()];
             let command =
@@ -499,8 +515,9 @@ mod tests {
     #[test]
     fn windows_cmd_shim_runs_with_the_requested_arguments() {
         let temp = tempfile::tempdir().unwrap();
-        let program = temp.path().join("codex.cmd");
-        std::fs::write(&program, "@echo off\r\necho %~1 %~2 %~3\r\n").unwrap();
+        let shim_file = temp.path().join("codex.cmd");
+        std::fs::write(&shim_file, "@echo off\r\necho %~1 %~2 %~3\r\n").unwrap();
+        let program = PathBuf::from(format!(r"\\?\{}", shim_file.display()));
         let args = vec!["exec".into(), "--json".into(), "hello-world".into()];
         let mut command = command_for_cli(&program, &args).unwrap();
         command.current_dir(temp.path());
