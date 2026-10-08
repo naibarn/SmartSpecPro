@@ -9,6 +9,7 @@ import {
   defaultDevelopmentRunPersistenceAdapter,
 } from "../server/services/spec224DevelopmentRunPersistence";
 import { bindWorkerJob, buildDevelopmentRun } from "../server/services/spec224DevelopmentRunContracts";
+import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "../server/services/miniAppFactoryDurableState";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL_REQUIRED");
@@ -67,6 +68,13 @@ try {
         contextPackHash: "b".repeat(64),
         workspaceId: "workspace:mini-app-factory-resume",
         workUnit,
+        metadata: {
+          [MINI_APP_FACTORY_STATE_KEY]: createMiniAppFactoryDurableState({
+            programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+            miniAppId: "app_research_notes",
+            sourceSha,
+          }),
+        },
       }), job.id);
       await service.initialize({
         run,
@@ -77,6 +85,7 @@ try {
         pipeline,
         service,
         run: scope,
+        factoryIdentity: { programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM", miniAppId: "app_research_notes" },
         maxStages: 3,
         executeStage: async stageId => ({ artifacts: [`factory-evidence:${stageId.toLowerCase()}`] }),
       });
@@ -91,8 +100,15 @@ try {
     const restored = await service.get(scope);
     const unit = restored.run.workUnit;
     if (!unit || restored.run.baseRevision !== canonicalRevision) throw new Error("DURABLE_RUN_IDENTITY_MISMATCH");
+    const durableFactoryState = parseMiniAppFactoryDurableState(restored.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+    if (durableFactoryState.programId !== "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM" || durableFactoryState.miniAppId !== "app_research_notes" || durableFactoryState.sourceSha !== sourceSha) {
+      throw new Error("DURABLE_FACTORY_IDENTITY_MISMATCH");
+    }
     if (unit.progress.completedScope.join(",") !== "SPEC,SCAFFOLD,IMPLEMENT") throw new Error("DURABLE_COMPLETED_SCOPE_MISMATCH");
     if (unit.artifacts.join(",") !== "factory-evidence:spec,factory-evidence:scaffold,factory-evidence:implement") throw new Error("DURABLE_ARTIFACTS_MISMATCH");
+    if (durableFactoryState.completedStages.join(",") !== "SPEC,SCAFFOLD,IMPLEMENT" || durableFactoryState.nextEligibleStages.join(",") !== "TEST") {
+      throw new Error("DURABLE_FACTORY_STAGE_STATE_MISMATCH");
+    }
     const result = await executeMiniAppFactoryStages({
       pipeline,
       service,
@@ -107,7 +123,11 @@ try {
     if (final.run.workUnit?.progress.completedScope.join(",") !== "SPEC,SCAFFOLD,IMPLEMENT,TEST") {
       throw new Error("CROSS_PROCESS_FINAL_STATE_MISMATCH");
     }
-    console.log(JSON.stringify({ process: "resume", runId, restoredRevision: restored.revision, continued: result.executedStages, finalState: result.state }));
+    const finalFactoryState = parseMiniAppFactoryDurableState(final.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+    if (finalFactoryState.completedStages.join(",") !== "SPEC,SCAFFOLD,IMPLEMENT,TEST" || finalFactoryState.nextEligibleStages.length !== 0) {
+      throw new Error("CROSS_PROCESS_FACTORY_STATE_NOT_COMPLETED");
+    }
+    console.log(JSON.stringify({ process: "resume", runId, restoredRevision: restored.revision, continued: result.executedStages, finalState: result.state, programId: finalFactoryState.programId, miniAppId: finalFactoryState.miniAppId }));
   } else {
     throw new Error("MODE_MUST_BE_START_OR_RESUME");
   }

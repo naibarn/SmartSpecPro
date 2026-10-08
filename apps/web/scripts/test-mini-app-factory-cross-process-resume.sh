@@ -8,7 +8,7 @@ fi
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PG_BIN="$(pg_config --bindir)"
-TEST_DIR="$(mktemp -d /tmp/miniapp-factory-resume.XXXXXX)"
+TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/miniapp-factory-resume.XXXXXX")"
 mkdir "$TEST_DIR/socket"
 PG_STARTED=0
 

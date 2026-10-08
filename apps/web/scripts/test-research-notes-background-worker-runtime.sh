@@ -8,7 +8,7 @@ fi
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PG_BIN="$(pg_config --bindir)"
-TEST_DIR="$(mktemp -d /tmp/research-notes-worker-runtime.XXXXXX)"
+TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/research-notes-worker-runtime.XXXXXX")"
 mkdir "$TEST_DIR/socket"
 PG_STARTED=0
 

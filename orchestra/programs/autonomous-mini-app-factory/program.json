@@ -5,28 +5,28 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "26cec5a96d243479d947717325e6e0901905b22d",
+    "sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "26cec5a96d243479d947717325e6e0901905b22d",
-      "canonical_sha": "26cec5a96d243479d947717325e6e0901905b22d",
-      "canonical_user_workspace_sha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "integrated_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
+      "canonical_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
+      "canonical_user_workspace_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:b0e5706f-ed6c-4a2a-a019-349eb19f814f",
-      "verified_at": "2026-10-08T00:18:03.578+00:00"
+      "receipt_id": "workspace-convergence:6e032654-c06b-42a9-8de9-95a2a67c2d75",
+      "verified_at": "2026-10-08T00:24:44.972+00:00"
     },
-    "observedAt": "2026-10-08T00:18:03+00:00",
+    "observedAt": "2026-10-08T00:24:44+00:00",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "26cec5a96d243479d947717325e6e0901905b22d",
-      "canonical_user_workspace_sha": "26cec5a96d243479d947717325e6e0901905b22d",
+      "integrated_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
+      "canonical_user_workspace_sha": "6d688f08c03239f906ae728c55cf5c3b9b57453d",
       "dirty": false,
       "reasons": [],
-      "verified_at": "2026-10-08T00:18:03.578+00:00",
-      "receipt_id": "workspace-convergence:b0e5706f-ed6c-4a2a-a019-349eb19f814f"
+      "verified_at": "2026-10-08T00:24:44.972+00:00",
+      "receipt_id": "workspace-convergence:6e032654-c06b-42a9-8de9-95a2a67c2d75"
     }
   },
   "inventory": {
@@ -60,16 +60,19 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "RESEARCH_NOTES_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP",
+    "id": "FACTORY_DURABLE_PROGRAM_ID_MINIAPP_STAGE_STATE_CROSS_PROCESS_RESUME",
     "state": "FAST_GATE_PASSED_PENDING_PR",
-    "objective": "Exercise canonical worker_jobs/outbox retry, terminal failure, recovery, idempotency, and tenant ownership in the disposable Research Notes runtime.",
+    "objective": "Persist Factory program/app identity and stage/artifact state in the existing DevelopmentRun checkpoint, then prove a fresh process resumes and selects the next stage.",
     "implementation": [
-      "apps/web/scripts/research-notes-background-worker-runtime.ts"
+      "apps/web/server/services/miniAppFactoryDurableState.ts",
+      "apps/web/server/services/miniAppFactoryRunExecutor.ts",
+      "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
+      "apps/web/scripts/mini-app-factory-cross-process-resume.ts"
     ],
-    "sourceSha": "7a5641d763ec6b2bda60417f95ecc835423d28b4",
-    "evidence": "PASS: pnpm --filter @smartspec/web run test:research-notes-background-worker-runtime on disposable PostgreSQL 17. Successful settlement and duplicate admission/poll remain covered. A transient synthetic failure reached retry_scheduled, wrong-tenant recovery was denied, authorized due retry republished outbox and succeeded on attempt 2; a separate permanent synthetic failure reached failed with a FAILED worker event. No provider invoked.",
+    "sourceSha": "cb59c6b13",
+    "evidence": "PASS on exact source commit cb59c6b13: PostgreSQL 17 two-process resume. Process A persisted SPEC/SCAFFOLD/IMPLEMENT with program ID, app_research_notes ID, source SHA, and artifacts then exited; fresh process B loaded and verified them, selected TEST automatically, and completed. Focused state/executor tests 6/6. Durable metadata has package/migration/deployment/retry/blocker fields; live retry/blocker-stage projection still needs wiring.",
     "integration": "PENDING_PR",
-    "nextAction": "Integrate this safe runtime proof and continue Factory durable program ID/Mini App ID/state binding; then seek digest-bound V5/V6 package evidence."
+    "nextAction": "Integrate the cross-process durable state checkpoint. Continue package V5/V6 evidence and deployment descriptor/runtime identity; wire Factory stage execution through the approved worker_jobs/outbox binding and prove Project Wiki traverses the same Factory stages."
   },
   "checkpoints": [
     {
@@ -277,6 +280,12 @@
       "state": "FAST_GATE_PASSED_PENDING_PR",
       "sourceSha": "7a5641d763ec6b2bda60417f95ecc835423d28b4",
       "evidence": "Disposable PostgreSQL 17 worker harness passed: success settlement, idempotent duplicate admission, duplicate poll ignored, transient retry scheduled, cross-tenant retry denied, outbox recovery published and succeeded on attempt 2, permanent failure terminalized with FAILED event. Synthetic cost-free executor only."
+    },
+    {
+      "id": "FACTORY_DURABLE_PROGRAM_ID_MINIAPP_STAGE_STATE_CROSS_PROCESS_RESUME",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "cb59c6b13",
+      "evidence": "DevelopmentRun metadata durably binds program ID, Mini App ID and source SHA; checkpoint advances completed/next stages and artifacts. PostgreSQL 17 process A/B test passes through automatic TEST selection/completion. Retry/blocker transitions are represented but their program-level lifecycle updates remain partial."
     }
   ],
   "completedWorkunits": [
@@ -428,13 +437,13 @@
     ]
   },
   "autonomy": {
-    "durableProgramState": "PARTIAL_DEVELOPMENTRUN_WORKER_JOBS_PROJECTION; program ID/Mini App ID/deployment/retry state projection remains pending.",
+    "durableProgramState": "PARTIAL_DEVELOPMENTRUN_METADATA_AND_WORKUNIT_CHECKPOINTS; program/app identity, source SHA, completed/waiting stages, artifacts, package digest, migration/deployment state, retry/blocker state, and next eligible stages have a typed persisted projection; retry/blocker transitions and external state synchronization remain pending.",
     "autoNextWorkSelection": "PARTIAL_SELECTOR_AND_EXECUTOR_WITH_CROSS_PROCESS_RESUME; Research Notes worker/outbox and full runtime browser path proven; Factory stage worker binding pending",
-    "autoResume": "PARTIAL_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_RESUME; Factory program/Mini App identity binding and complete program-level state remain pending.",
+    "autoResume": "PASS_POSTGRESQL_CROSS_PROCESS_FACTORY_PROGRAM_AND_MINI_APP_IDENTITY_RESUME; stage metadata/artifacts verified and next eligible TEST selected automatically.",
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "FACTORY_DURABLE_PROGRAM_ID_MINI_APP_BINDING; then same-runtime worker completion/package digest evidence and package validation V5/V6.",
+    "nextEligibleWorkunit": "PACKAGE_VALIDATION_V5_V6_AND_NONPROD_DEPLOYMENT_ID; then FACTORY_STAGE_WORKER_JOBS_BINDING_AND_PROJECT_WIKI_STAGE_CHAIN.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -470,18 +479,18 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:24:00+00:00",
+  "updatedAt": "2026-10-08T00:27:00+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PARTIAL_PACKAGE_BUILT; VALIDATION_NEEDS_CONTEXT_V5_RUNTIME_PLACEMENT_AND_V6_MIGRATION_ROLLBACK_EVIDENCE",
     "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_FULL_SERVER_MINIAPP_SCHEMA_RUNTIME_AND_BROWSER_PASS; DEPLOYMENT_DESCRIPTOR_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
     "M5_RESEARCH_NOTES_UAT_PASS": "PARTIAL_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_API_PASS; SAME_RUNTIME_WORKER_COMPLETION_AND_PACKAGE_REVISION_EVIDENCE_PENDING",
-    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_IMPLEMENTED_TESTED_PACKAGE_BUILT_RUNTIME_PENDING",
+    "M6_SECOND_MINI_APP_FACTORY_REUSE_PASS": "PARTIAL_PROJECT_WIKI_IMPLEMENTED_TESTED_PACKAGE_BUILT; FACTORY_STAGE_CHAIN_PROOF_PENDING",
     "MINI_APP_FACTORY_MVP": "NOT_PASS",
-    "M6_FACTORY_EXECUTABLE": "PARTIAL_DAG_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_RESUME_TESTED; FACTORY_STAGE_WORKER_BINDING_PENDING",
-    "M7_FACTORY_AUTO_RESUME_PASS": "PARTIAL_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_RESUME; program ID/Mini App ID/full program state binding pending",
-    "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_SPEC_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_RUNTIME_PENDING"
+    "M6_FACTORY_EXECUTABLE": "PARTIAL_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_AUTO_RESUME_PASS; FACTORY_STAGE_WORKER_BINDING_PENDING",
+    "M7_FACTORY_AUTO_RESUME_PASS": "PASS_CROSS_PROCESS_POSTGRES_DEVELOPMENTRUN_WITH_FACTORY_PROGRAM_ID_MINI_APP_ID_SOURCE_SHA_ARTIFACTS_AND_AUTOMATIC_NEXT_STAGE",
+    "M8_SECOND_MINI_APP_REUSE_PASS": "PARTIAL_PROJECT_WIKI_PACKAGE_REBUILT_TWICE; SAME_FACTORY_STAGE_EXECUTION_REQUIRED"
   },
   "deployment": {
     "state": "PREPARED_NOT_DEPLOYED",
@@ -491,12 +500,12 @@
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "DEPENDENCY_READY_SELECTOR_EXECUTOR_AND_CROSS_PROCESS_RESUME_TESTED; RESEARCH_NOTES_WORKER_AND_FULL_APP_COMPOSITION_PROVEN; FACTORY_STAGE_WORKER_BINDING_PENDING",
-    "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE_DEPLOYMENT_UAT_PENDING"
+    "state": "DEPENDENCY_READY_SELECTOR_EXECUTOR_AND_PROGRAM_ID_APP_ID_CROSS_PROCESS_RESUME_TESTED; FACTORY_STAGE_WORKER_BINDING_PENDING",
+    "secondMiniApp": "SPEC281_IMPLEMENTED_TESTED_PACKAGE_REBUILT_TWICE; FACTORY_STAGE_CHAIN_DEPLOYMENT_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/research-notes-worker-binding-20261008",
-    "sourceBranch": "codex/research-notes-worker-binding",
+    "taskWorktree": "/home/dev/worktrees/factory-durable-state-20261008",
+    "sourceBranch": "codex/factory-durable-state",
     "localCommits": [
       "88a7870c963941b71aca348ae860d0d1d97b8ae3",
       "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
@@ -519,16 +528,16 @@
       "c37c8c3d94673821da9248a76eddc1923b6e1d47",
       "7095848218ca39076413e2afa12f6b18eecad999",
       "3efdedd6e",
-      "fa09dfa865610f64fce3e91494d7e88dc1838d91"
+      "fa09dfa865610f64fce3e91494d7e88dc1838d91",
+      "cb59c6b13"
     ],
-    "intendedRemoteBranch": "codex/research-notes-worker-binding",
+    "intendedRemoteBranch": "codex/factory-durable-state",
     "pendingPullRequest": {
-      "number": 280,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/280",
-      "state": "MERGED",
-      "sourceSha": "fa09dfa865610f64fce3e91494d7e88dc1838d91",
-      "integratedSha": "26cec5a96d243479d947717325e6e0901905b22d",
-      "mergedAt": "2026-10-08T00:17:06Z"
+      "number": null,
+      "url": "PENDING_CREATE",
+      "state": "PENDING",
+      "sourceSha": "cb59c6b13",
+      "integratedSha": null
     },
     "testEvidence": [
       {
@@ -650,6 +659,16 @@
         "revision": "3efdedd6e29eb2d70549f3898aae5538098aca3c (integrated as 26cec5a96d243479d947717325e6e0901905b22d)",
         "command": "gh pr view 280 --json state,mergedAt,mergeCommit,url; workspace_authority.py verify --integrated-sha 26cec5a96d243479d947717325e6e0901905b22d",
         "outcome": "PASS: PR #280 MERGED normally at 26cec5a96d243479d947717325e6e0901905b22d; canonical user workspace /home/dev/projects/SmartSpecPro clean and exact-SHA verified; workspace-convergence:b0e5706f-ed6c-4a2a-a019-349eb19f814f"
+      },
+      {
+        "revision": "cb59c6b13",
+        "command": "pnpm --filter @smartspec/web run test:mini-app-factory-cross-process-resume",
+        "outcome": "PASS: PostgreSQL 17 process A persisted stages and Factory program/app identity; exited; fresh process B verified source SHA/artifacts, auto-selected TEST, and completed."
+      },
+      {
+        "revision": "cb59c6b13",
+        "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryDurableState.test.ts server/services/miniAppFactoryRunExecutor.test.ts",
+        "outcome": "PASS: 2 files, 6 tests."
       }
     ],
     "githubIntegration": "IDLE_AFTER_PR_275_MERGE; normal non-force path succeeded",

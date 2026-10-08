@@ -180,6 +180,8 @@ export type CanonicalCheckpointInput = {
   resumeFrom: string;
   wakeCondition?: string;
   artifacts?: string[];
+  /** Domain-owned durable projection stored with the DevelopmentRun checkpoint. */
+  runMetadata?: Record<string, unknown>;
 };
 
 export class DevelopmentLifecycleContractError extends Error {
@@ -366,6 +368,7 @@ export function completeDevelopmentWorkUnit(
     completedScope: string[];
     pendingValidation: CanonicalCheckpointInput["pendingValidation"];
     artifacts?: string[];
+    runMetadata?: Record<string, unknown>;
   },
   now = new Date().toISOString()
 ): DevelopmentWorkUnit {

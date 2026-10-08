@@ -601,7 +601,13 @@ export function createDevelopmentRunService(
           ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
         });
         if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
-        const nextRun: DevelopmentRun = { ...recorded.run, workUnit: nextWorkUnit };
+        const nextRun: DevelopmentRun = {
+          ...recorded.run,
+          workUnit: nextWorkUnit,
+          ...(input.checkpoint.runMetadata
+            ? { metadata: { ...recorded.run.metadata, ...structuredClone(input.checkpoint.runMetadata) } }
+            : {}),
+        };
         const next: DevelopmentRunStoreRecord = {
           run: nextRun,
           revision: record.revision + 1,
@@ -830,6 +836,7 @@ export function createDevelopmentRunService(
         completedScope: string[];
         pendingValidation: CanonicalCheckpointInput["pendingValidation"];
         artifacts?: string[];
+        runMetadata?: Record<string, unknown>;
       };
       occurredAt?: string;
     }): Promise<DevelopmentRunCommandResult> {
@@ -868,7 +875,13 @@ export function createDevelopmentRunService(
           ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
         });
         if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
-        const nextRun: DevelopmentRun = { ...recorded.run, workUnit };
+        const nextRun: DevelopmentRun = {
+          ...recorded.run,
+          workUnit,
+          ...(input.completion.runMetadata
+            ? { metadata: { ...recorded.run.metadata, ...structuredClone(input.completion.runMetadata) } }
+            : {}),
+        };
         const next: DevelopmentRunStoreRecord = {
           run: nextRun,
           revision: record.revision + 1,

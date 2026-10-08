@@ -2,9 +2,21 @@ import { createHash } from "node:crypto";
 import type { CanonicalCheckpointInput } from "./developmentLifecycleContracts";
 import type { MiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { selectReadyMiniAppFactoryStages } from "./miniAppFactoryPipeline";
+import {
+  advanceMiniAppFactoryDurableState,
+  createMiniAppFactoryDurableState,
+  MINI_APP_FACTORY_STATE_KEY,
+  parseMiniAppFactoryDurableState,
+} from "./miniAppFactoryDurableState";
 import type { createDevelopmentRunService } from "./spec224DevelopmentRunPersistence";
 
 type DevelopmentRunService = ReturnType<typeof createDevelopmentRunService>;
+
+function worktreeSha(revision: string): string {
+  const match = /^git:([a-f0-9]{40})$/i.exec(revision);
+  if (!match) throw new Error("FACTORY_SOURCE_SHA_REQUIRED");
+  return match[1]!.toLowerCase();
+}
 
 function assertArtifactRefs(artifacts: string[]): void {
   if (!Array.isArray(artifacts) || artifacts.some(value =>
@@ -34,6 +46,7 @@ export async function executeMiniAppFactoryStages(input: {
   pipeline: MiniAppFactoryPipeline;
   service: DevelopmentRunService;
   run: { runId: string; tenantId: string; actorId: number };
+  factoryIdentity?: { programId: string; miniAppId: string };
   executeStage: (stageId: string, context: {
     completedScope: string[];
     artifacts: string[];
@@ -49,6 +62,15 @@ export async function executeMiniAppFactoryStages(input: {
 
   const executedStages: string[] = [];
   let latest = await input.service.get(input.run);
+  const storedFactoryState = latest.run.metadata?.[MINI_APP_FACTORY_STATE_KEY];
+  let durableState = storedFactoryState
+    ? parseMiniAppFactoryDurableState(storedFactoryState)
+    : input.factoryIdentity
+      ? createMiniAppFactoryDurableState({
+          ...input.factoryIdentity,
+          sourceSha: worktreeSha(latest.run.baseRevision),
+        })
+      : undefined;
 
   while (executedStages.length < maxStages) {
     const workUnit = latest.run.workUnit;
@@ -77,6 +99,15 @@ export async function executeMiniAppFactoryStages(input: {
     const outputDigest = createHash("sha256").update(JSON.stringify({ stageId, output }), "utf8").digest("hex");
     const idempotencyKey = `miniapp-factory:${createHash("sha256").update(`${input.run.runId}:${stageId}:${outputDigest}`, "utf8").digest("hex")}`;
     const artifacts = [...new Set([...workUnit.artifacts, ...output.artifacts])];
+    const checkpointProjection = {
+      ...workUnit,
+      progress: { ...workUnit.progress, completedScope, remainingScope },
+      artifacts,
+    };
+    const nextEligibleStages = selectReadyMiniAppFactoryStages(input.pipeline, checkpointProjection);
+    const nextFactoryState = durableState
+      ? advanceMiniAppFactoryDurableState(durableState, { stageId, artifacts: output.artifacts, nextEligibleStages })
+      : undefined;
 
     if (remainingScope.length === 0) {
       await input.service.recordImplementationCompletion({
@@ -89,6 +120,7 @@ export async function executeMiniAppFactoryStages(input: {
           completedScope: [stageId],
           pendingValidation: [],
           artifacts,
+          ...(nextFactoryState ? { runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: nextFactoryState } } : {}),
         },
         ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
       });
@@ -106,6 +138,7 @@ export async function executeMiniAppFactoryStages(input: {
       handoffRef: `work:${workUnit.workId}`,
       resumeFrom: stageId,
       artifacts,
+      ...(nextFactoryState ? { runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: nextFactoryState } } : {}),
     };
     const persisted = await input.service.recordCanonicalCheckpoint({
       ...input.run,
@@ -116,6 +149,7 @@ export async function executeMiniAppFactoryStages(input: {
       ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
     });
     executedStages.push(stageId);
+    durableState = nextFactoryState;
     latest = { run: persisted.run, revision: persisted.revision, events: [] };
   }
 
