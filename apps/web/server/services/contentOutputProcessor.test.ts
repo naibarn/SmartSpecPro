@@ -68,6 +68,8 @@ describe("processContentOutput", () => {
     expect(result.quality.claims_with_evidence).toBe(2);
     expect(result.quality.citation_coverage).toBe(1);
     expect(result.quality.errors).toHaveLength(0);
+    expect(result.quality.structured_data_valid).toBe(true);
+    expect(result.quality.structured_data_errors).toHaveLength(0);
   });
 
   it("processes valid CMS review JSON", () => {
@@ -130,6 +132,27 @@ describe("processContentOutput", () => {
     });
     expect(result.quality.citation_coverage).toBe(1);
     expect(result.quality.quality_gate_passed).toBe(true);
+  });
+
+  it("does not pass the quality gate when supplied structured data is invalid", () => {
+    const article = {
+      ...validArticle,
+      structured_data_jsonld: "[]",
+    };
+    const result = processContentOutput({
+      llmOutput: JSON.stringify(article),
+      outputFormat: "cms_article",
+      skillSlug: "test",
+    });
+
+    expect(result.quality.structured_data_valid).toBe(false);
+    expect(result.quality.structured_data_errors).toContain(
+      "JSON-LD must contain at least one item"
+    );
+    expect(result.quality.errors).toContain(
+      "structured_data_jsonld: JSON-LD must contain at least one item"
+    );
+    expect(result.quality.quality_gate_passed).toBe(false);
   });
 
   it("generates SEO metadata when missing", () => {

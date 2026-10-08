@@ -20,6 +20,7 @@ import type { ExtractedCitation } from "./citationExtractor";
 import {
   generateProductReviewJsonLd,
   generateArticleJsonLd,
+  validateJsonLd,
 } from "./jsonLdGenerator";
 
 export interface ContentProcessingInput {
@@ -37,6 +38,8 @@ export interface QualityReport {
   claims_unverified: number;
   quality_gate_passed: boolean;
   seo_complete: boolean;
+  structured_data_valid: boolean | null;
+  structured_data_errors: string[];
   errors: string[];
   warnings: string[];
 }
@@ -63,6 +66,8 @@ export function processContentOutput(
         claims_unverified: 0,
         quality_gate_passed: true,
         seo_complete: false,
+        structured_data_valid: null,
+        structured_data_errors: [],
         errors: [],
         warnings: [],
       },
@@ -84,6 +89,8 @@ export function processContentOutput(
         claims_unverified: 0,
         quality_gate_passed: false,
         seo_complete: false,
+        structured_data_valid: null,
+        structured_data_errors: [],
         errors: ["Failed to parse LLM output as JSON"],
         warnings: [],
       },
@@ -114,8 +121,7 @@ export function processContentOutput(
     ? calculateCitationCoverage(parsed.claims as ClaimEntry[], requiredLevels)
     : 0;
   const minCoverage = input.contentQuality?.min_citation_coverage ?? 0.6;
-  const gatePass =
-    validation.valid && coverage >= minCoverage;
+  let structuredDataErrors: string[] = [];
 
   // Step 5: SEO metadata
   const seoComplete = ensureSeoMetadata(parsed);
@@ -132,8 +138,18 @@ export function processContentOutput(
       );
     }
   } catch {
-    // JSON-LD generation is non-critical — don't fail the pipeline
+    structuredDataErrors = ["Failed to generate JSON-LD structured data"];
   }
+
+  if (structuredDataErrors.length === 0) {
+    if (typeof parsed.structured_data_jsonld !== "string") {
+      structuredDataErrors = ["Missing JSON-LD structured data"];
+    } else {
+      structuredDataErrors = validateJsonLd(parsed.structured_data_jsonld).errors;
+    }
+  }
+  const structuredDataValid = structuredDataErrors.length === 0;
+  const gatePass = validation.valid && coverage >= minCoverage && structuredDataValid;
 
   return {
     content: parsed as unknown as ArticleCMSOutput | ProductReviewCMSOutput,
@@ -144,7 +160,12 @@ export function processContentOutput(
       claims_unverified: validation.claims_unverified,
       quality_gate_passed: gatePass,
       seo_complete: seoComplete,
-      errors: validation.errors,
+      structured_data_valid: structuredDataValid,
+      structured_data_errors: structuredDataErrors,
+      errors: [
+        ...validation.errors,
+        ...structuredDataErrors.map((error) => `structured_data_jsonld: ${error}`),
+      ],
       warnings: validation.warnings,
     },
     format: input.outputFormat,
