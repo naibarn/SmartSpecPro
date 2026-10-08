@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 357 unresolved of 357
 - Next action: Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.
-- Manifest generation: 19
+- Manifest generation: 22
 
 ## Source-declared status and relationship claims
 

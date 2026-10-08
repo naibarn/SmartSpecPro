@@ -147,11 +147,11 @@ Each pass checked the proposed contract against the repository evidence and upst
 
 ## 8. Open risks and required next work
 
-- No source-level Moli or Jev Browser Bridge license/SBOM/transitive dependency review was performed.
-- No protocol conformance test, security test, SmartAIHub benchmark, load test, app test, or browser UAT was run for Moli.
-- Moli's API behavior, release artifact provenance and lifecycle stability must be pinned and independently verified before implementation.
-- The existing Runner path's deployment authorization and network egress guarantees need a dedicated security review when the Moli adapter implementation is proposed.
+- The initial audit did not include a source-level license/SBOM/dependency review. The follow-up pin and scan are documented in [`moli-phase0-prototype-2026-10-08.md`](moli-phase0-prototype-2026-10-08.md); OSV reported unresolved advisories and per-component license review remains open.
+- Bounded local CDP and WebDriver Classic smoke checks have since run, but no complete protocol conformance/security suite, SmartAIHub benchmark, load test, app test, or browser UAT has run for Moli.
+- Moli v1.1.15 source and Linux x86_64 release artifacts are pinned by version, commit, and local SHA-256. Publisher signature/checksum verification and exact target dependency reachability remain unresolved.
+- The existing Runner path's deployment authorization and network egress guarantees still need a dedicated security review before dispatching Moli jobs.
 - Current canonical Spec 208 handoff has unresolved authority/relevance and 342 open requirements; this audit does not resolve the broader reconciliation backlog.
 - Implementation and production rollout remain unapproved by evidence until the specified phases pass. Moli is not enabled and no job was replayed.
 
-**Next action:** reconcile Spec 208's canonical handoff against Revision 6; then create the implementation WorkUnit for Phase 0 with an owner and source-pinned acceptance artifacts. Do not begin runtime implementation before the license/provenance and security boundary checks are recorded.
+**Next action:** integrate the CDP adapter in the paired Runner, bound each launch to an authorized `worker_jobs` attempt, prove egress policy and per-attempt profile cleanup, and resolve dependency/license findings. Moli remains disabled and Chromium remains the dispatched production engine.

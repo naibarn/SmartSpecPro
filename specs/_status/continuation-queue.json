@@ -254,21 +254,6 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
-      "declared_claim_count": 2,
-      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
-      "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 7,
-        "TEST": 8
-      },
-      "spec_id": "208"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
       "declared_claim_count": 13,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/215-workflow-compiler-runtime-execution-architecture",
@@ -2995,6 +2980,21 @@
         "TEST": 0
       },
       "spec_id": "206"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 2,
+      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
+      "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "208"
     },
     {
       "authority": "UNRESOLVED",
