@@ -47,6 +47,15 @@ export default function ResearchNotesPage() {
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredNotes = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return notes;
+    return notes.filter(note =>
+      `${note.title}\n${note.content}`.toLocaleLowerCase().includes(query)
+    );
+  }, [notes, searchQuery]);
 
   const projectOptions = useMemo(() => projects.map(project => ({
     value: project.projectId,
@@ -58,6 +67,7 @@ export default function ResearchNotesPage() {
   const createProject = trpc.researchNotes.createProject.useMutation({
     onSuccess: async (project: ResearchProject) => {
       setSelectedProjectId(project.projectId);
+      setSearchQuery("");
       setNewProjectTitle("");
       setShowProjectForm(false);
       await refreshProjects();
@@ -165,7 +175,7 @@ export default function ResearchNotesPage() {
               label="Project"
               value={projectId}
               options={projectOptions}
-              onChange={value => { setSelectedProjectId(value); setSelectedNoteId(""); setSummaryJobId(""); }}
+              onChange={value => { setSelectedProjectId(value); setSelectedNoteId(""); setSummaryJobId(""); setSearchQuery(""); }}
               hasSearch={projects.length > 5}
               width="100%"
             />
@@ -208,6 +218,12 @@ export default function ResearchNotesPage() {
                 <Text weight="semibold">Notes</Text>
                 <Button label="New" variant="ghost" onClick={startNewNote} />
               </HStack>
+              <TextInput
+                label="Search notes"
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search titles and note content"
+              />
               <Divider />
               {notesQuery.isLoading ? <Text type="supporting">Loading notes…</Text> : null}
               {!notesQuery.isLoading && notes.length === 0 ? (
@@ -219,7 +235,15 @@ export default function ResearchNotesPage() {
                   </VStack>
                 </Card>
               ) : null}
-              {notes.map(note => (
+              {!notesQuery.isLoading && notes.length > 0 && filteredNotes.length === 0 ? (
+                <Card padding={4}>
+                  <VStack gap={2}>
+                    <Text weight="semibold">No matching notes</Text>
+                    <Text type="supporting">Try another title or content search.</Text>
+                  </VStack>
+                </Card>
+              ) : null}
+              {filteredNotes.map(note => (
                 <Button
                   key={note.noteId}
                   label={note.title}

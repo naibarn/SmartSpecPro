@@ -88,6 +88,7 @@
     "db:push": "node --import tsx scripts/db-migrate-with-receipt.ts push",
     "test:research-notes-migration": "python3 scripts/test-research-notes-migration.py",
     "test:mini-app-runtime-baseline": "bash scripts/test-mini-app-runtime-baseline.sh",
+    "test:mini-app-full-runtime": "bash scripts/test-mini-app-full-runtime.sh",
     "backfill:unified-job-control-plane": "tsx scripts/backfill-unified-job-control-plane.ts",
     "verify:feature-186": "tsx scripts/verify-feature-186.ts",
     "verify:cloudflare-local-readiness": "tsx scripts/verify-cloudflare-local-readiness.ts",

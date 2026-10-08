@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAppIdentityRouter } from "./appIdentity";
+import * as appIdentityRepository from "../services/appIdentityRepository";
 
 function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
   const service = {
@@ -60,5 +61,26 @@ describe("appIdentity runtime router", () => {
       tenantId: "tenant-account",
       publicAppId: "public_research",
     });
+  });
+
+  it("binds the public App resolver in the default runtime router", async () => {
+    const resolver = vi.spyOn(appIdentityRepository, "resolveActiveAppByPublicId")
+      .mockResolvedValue({
+        appId: "app_research",
+        publicAppId: "public_research",
+        tenantId: "tenant-account",
+      });
+    const caller = createAppIdentityRouter().createCaller({
+      user: { id: 1, currentTenantId: "tenant-account" },
+      tenantId: "tenant-from-host",
+    } as any);
+
+    await expect(caller.resolvePublicApp({ publicAppId: "public_research" }))
+      .resolves.toMatchObject({ appId: "app_research", tenantId: "tenant-account" });
+    expect(resolver).toHaveBeenCalledWith({
+      tenantId: "tenant-account",
+      publicAppId: "public_research",
+    });
+    resolver.mockRestore();
   });
 });
