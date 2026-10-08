@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "spec_id": "296",
+  "lifecycle_result": "VERIFIED",
+  "canonical_ref": "refs/heads/main",
+  "canonical_sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+  "verified_at": "2026-10-08T01:31:17Z",
+  "product_outcome": "Video editor users can detect silence, review and select regions on a synchronized waveform/timeline, and ripple-cut selected regions non-destructively. FFmpeg exports report durations based on the buffer-adjusted media that is actually encoded.",
+  "implementation": [
+    {"pr": 295, "commit": "b4a955bb1ca460b6ec8e3937c9669a01a232b853", "change": "Correct dead-air output duration metadata for applied softening buffers and isolate worker progress in media integration tests."},
+    {"pr": 298, "commit": "eb257c2a1b43b9a382ed2cbd91c772547c84169c", "change": "Align threshold range and percent conversion and set the specified threshold and minimum-duration defaults."},
+    {"pr": 300, "commit": "7c9d53f49970668b1026630f7b11c18a6b502a5d", "change": "Add a real FFmpeg silence-detection test using generated tone/silence/tone audio."}
+  ],
+  "verification": [
+    {
+      "scope": "video editor silence detection UI and timeline",
+      "files": 8,
+      "tests_passed": 129,
+      "result": "PASS",
+      "sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "command": "pnpm --filter @smartspec/web exec vitest run client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx client/src/components/videoeditor/__tests__/SilenceDetectionPanelTrigger.test.tsx client/src/components/videoeditor/__tests__/SilenceTimeline.test.ts client/src/components/videoeditor/__tests__/silenceExportToTimeline.test.ts client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts client/src/components/videoeditor/__tests__/SilenceRegionList.test.tsx client/src/components/videoeditor/__tests__/skipSilenceLogic.test.ts client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"
+    },
+    {
+      "scope": "dead-air detection/cut unit and FFmpeg integration",
+      "files": 3,
+      "tests_passed": 31,
+      "result": "PASS",
+      "sha": "7c9d53f49970668b1026630f7b11c18a6b502a5d",
+      "command": "pytest tests/test_dead_air_detect.py tests/test_dead_air_cut.py tests/test_dead_air_cut_integration.py",
+      "runner_note": "The available Python venv lacks sentry_sdk/chromadb required by the app-wide conftest and app.tasks package initializer. The focused run disabled conftest, injected the app.tasks namespace to load only media_job_worker, and executed the actual target tests, including real FFmpeg media generation/cutting."
+    },
+    {
+      "scope": "fast integration gate",
+      "result": "PASS",
+      "details": ["changed Python files parsed successfully", "git diff --check passed", "no unresolved conflicts or secrets detected"]
+    }
+  ],
+  "requirement_evidence": [
+    {"requirement_id": "REQ-387B94ADE60C", "implementation": ["apps/web/client/src/components/videoeditor/Toolbar.tsx", "apps/web/client/src/components/videoeditor/VideoEditorPhase3.tsx", "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx", "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionPanelTrigger.test.tsx"]},
+    {"requirement_id": "REQ-4EA48394967D", "implementation": ["apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx", "apps/web/client/src/types/videoEditor.ts"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"]},
+    {"requirement_id": "REQ-784323FD142E", "implementation": ["apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"]},
+    {"requirement_id": "REQ-A39C4F63F640", "implementation": ["apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx", "python-backend/app/tasks/media_job_worker.py"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx", "python-backend/tests/test_dead_air_cut.py", "python-backend/tests/test_dead_air_cut_integration.py"]},
+    {"requirement_id": "REQ-88BC27B78A09", "implementation": ["apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx", "apps/web/client/src/services/mediaJobClient.ts", "python-backend/app/tasks/media_job_worker.py"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx", "python-backend/tests/test_dead_air_detect.py"]},
+    {"requirement_id": "REQ-5B05954B5F7F", "implementation": ["apps/web/client/src/components/videoeditor/SilenceWaveformOverlay.tsx", "apps/web/client/src/components/videoeditor/SilenceTimeline.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts", "apps/web/client/src/components/videoeditor/__tests__/SilenceTimeline.test.ts"]},
+    {"requirement_id": "REQ-CCCED77DF260", "implementation": ["apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx", "apps/web/client/src/components/videoeditor/PreviewPlayer.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx"]},
+    {"requirement_id": "REQ-6A24C7CA080E", "implementation": ["apps/web/client/src/components/videoeditor/SilenceWaveformOverlay.tsx", "apps/web/client/src/components/videoeditor/SilenceTimeline.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/SilenceTimeline.test.ts", "apps/web/client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts"]},
+    {"requirement_id": "REQ-9CD8C6F2FFCD", "implementation": ["apps/web/client/src/components/videoeditor/SilenceWaveformOverlay.tsx", "apps/web/client/src/components/videoeditor/SilenceRegionList.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/SilenceWaveformOverlay.test.ts", "apps/web/client/src/components/videoeditor/__tests__/SilenceRegionList.test.tsx"]},
+    {"requirement_id": "REQ-090B3F720494", "implementation": ["apps/web/client/src/components/videoeditor/silenceExportUtils.ts", "apps/web/client/src/components/videoeditor/VideoEditorPhase3.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/silenceExportToTimeline.test.ts"]},
+    {"requirement_id": "REQ-0AE3CCA10FCF", "implementation": ["apps/web/client/src/components/videoeditor/VideoEditorPhase3.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/silenceExportToTimeline.test.ts"]},
+    {"requirement_id": "REQ-58F2B3A3A923", "implementation": ["python-backend/app/tasks/media_job_worker.py"], "verification": ["python-backend/tests/test_dead_air_cut.py", "python-backend/tests/test_dead_air_cut_integration.py"]},
+    {"requirement_id": "REQ-9B1889D6C16F", "implementation": ["python-backend/app/tasks/media_job_worker.py", "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"], "verification": ["python-backend/tests/test_dead_air_cut.py", "python-backend/tests/test_dead_air_cut_integration.py", "apps/web/client/src/components/videoeditor/__tests__/settingsDetection.test.tsx"]},
+    {"requirement_id": "REQ-0BDF401456BC", "implementation": ["apps/web/client/src/components/videoeditor/SilenceDetectionPanel.tsx", "apps/web/client/src/components/videoeditor/SilenceDetectionDialog.tsx"], "verification": ["apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionPanelTrigger.test.tsx", "apps/web/client/src/components/videoeditor/__tests__/SilenceDetectionDialog.test.tsx"]}
+  ],
+  "deployment": {"performed": false, "status": "NOT_CLAIMED"},
+  "acceptance": {"manual_user_acceptance": "NOT_CLAIMED"}
+}
