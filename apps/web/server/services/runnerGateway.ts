@@ -100,6 +100,7 @@ function snapshotJsonWithoutMachineIdentity(
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const snapshot = { ...(value as Record<string, unknown>) };
   delete snapshot._machineFingerprintHash;
+  if (Object.keys(snapshot).length === 0) return null;
   return snapshot as RunnerCapabilitySnapshot;
 }
 
