@@ -118,7 +118,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3af48182a57667ac025084ac06ebfad9b78a629e",
+    "expected_canonical_sha": "606fa92796ded40479e63a0ab393f68f6f58b2b7",
     "expected_spec_digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0"
   },
   "continuation": {
@@ -258,7 +258,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 28,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
     "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
@@ -341,6 +341,14 @@
           "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/retrieval-authority-audit-2026-10-08.md"
         ],
         "source_sha": "5fd3cf75da8271ba57dcb277f4c93268ea77ac62"
+      },
+      {
+        "coverage": "PARTIAL; source evidence recorded and handoff reconciled. No runtime change was safe because the SPEC-229 Broker, catalog Rights Authority binding, and recipe discovery feature/route/revision gates are not available. Ten handoff QA rounds passed; no integration/runtime PASS.",
+        "scope": "SPEC-286 shared retrieval, rights, identity and Video Studio discovery dependency audit",
+        "source_paths": [
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/shared-dependency-audit-2026-10-08.md"
+        ],
+        "source_sha": "b30aa816138e05f2a5233acae1921ae682405d55"
       }
     ],
     "source_paths": [
@@ -361,9 +369,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3af48182a57667ac025084ac06ebfad9b78a629e",
+    "canonical_sha": "606fa92796ded40479e63a0ab393f68f6f58b2b7",
     "integrated": true,
-    "integrated_at": "2026-10-08T08:08:36Z"
+    "integrated_at": "2026-10-08T08:37:27Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -618,7 +626,7 @@
     "unresolved": 756
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T08:36:01.626016Z",
+  "updated_at": "2026-10-08T08:38:20.103154Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -631,7 +639,8 @@
       "Post-integration at canonical SHA 6658bd549ef4436a9b5a6b74933189da25d2065f: focused Vitest run passed 14/14 tests; HEAD and origin/main trees were identical. This remains mock/fixture code evidence, not Runner/runtime/render/visual-quality PASS.",
       "Post-PR #344 integration at canonical SHA 1ecbe3ea0395a70186f158f0859a5432aed68795: focused Vitest run passed 14/14 tests on a tree identical to origin/main; fixture/mock evidence only, not Runner/runtime/render/visual-quality PASS.",
       "Unit/mock evidence at source SHA 5fd3cf75da8271ba57dcb277f4c93268ea77ac62: focused Prompt Recipe Library Vitest suite passed 18/18 in 10 consecutive QA rounds; includes Thai/English intent, tenant isolation, rights revoke/expiry/staleness/outage, metadata-only discovery, verified-only compatibility, RRF ranking/fallback, and no-code-execution boundary. No live RetrievalBroker, source Rights Authority, Runner, render, or runtime evidence.",
-      "PR #346 merged to refs/heads/main as 3af48182a57667ac025084ac06ebfad9b78a629e at 2026-10-08T08:08:36Z; implementation commit 5fd3cf75da8271ba57dcb277f4c93268ea77ac62 is reachable from canonical main. Integration is distinct from verification, runtime, and acceptance."
+      "PR #346 merged to refs/heads/main as 3af48182a57667ac025084ac06ebfad9b78a629e at 2026-10-08T08:08:36Z; implementation commit 5fd3cf75da8271ba57dcb277f4c93268ea77ac62 is reachable from canonical main. Integration is distinct from verification, runtime, and acceptance.",
+      "PR #349 merged at canonical main SHA 606fa92796ded40479e63a0ab393f68f6f58b2b7. On the exact PR content SHA b30aa816138e05f2a5233acae1921ae682405d55, shared handoff validation passed 10/10 consecutive rounds with valid=true, zero validation errors, completion_eligible=false; this is documentation/handoff evidence only, not application integration or runtime evidence."
     ],
     "freshness": "FRESH",
     "required_profiles": [
