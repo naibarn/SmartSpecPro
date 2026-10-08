@@ -1,4 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.hoisted(() => {
+  process.env.CONTROL_PLANE_API_KEY = "test-control-plane-key-0001";
+});
+
+vi.mock("../db", () => ({
+  getDb: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("../services/funnelRollout", () => ({
+  isFunnelEnabled: vi.fn().mockResolvedValue(true),
+}));
+
 import { appRouter } from "../routers";
 import type { TrpcContext } from "../_core/context";
 

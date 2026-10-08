@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
@@ -22,6 +23,9 @@ vi.mock("@/lib/trpc", () => ({
       timeSeries: {
         useQuery: vi.fn(),
       },
+      export: {
+        useQuery: vi.fn(),
+      },
       invalidateCache: {
         useMutation: vi.fn(),
       },
@@ -35,6 +39,7 @@ import { trpc } from "@/lib/trpc";
 // Get typed mocks
 const mockSummaryQuery = vi.mocked(trpc.funnelAnalytics.summary.useQuery);
 const mockTimeSeriesQuery = vi.mocked(trpc.funnelAnalytics.timeSeries.useQuery);
+const mockExportQuery = vi.mocked(trpc.funnelAnalytics.export.useQuery);
 const mockInvalidateCacheMutation = vi.mocked(trpc.funnelAnalytics.invalidateCache.useMutation);
 
 // Helper to create properly typed query mock result
@@ -42,6 +47,7 @@ function createQueryMock<T>(data: T | undefined, isLoading: boolean, error?: Err
   return {
     data,
     isLoading,
+    isFetching: false,
     error,
     trpc: {} as any,
     refetch: vi.fn(),
@@ -83,6 +89,8 @@ function renderWithProviders(ui: React.ReactElement, { route = "/admin/funnel" }
 describe("AdminFunnelDashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockExportQuery.mockReturnValue(createQueryMock(undefined, false));
 
     // Default mutation mock setup
     mockInvalidateCacheMutation.mockReturnValue(createMutationMock());
@@ -248,6 +256,63 @@ describe("AdminFunnelDashboard", () => {
       const exportButton = screen.getByRole("button", { name: /export/i });
       expect(exportButton).toBeInTheDocument();
       // Export defaults to CSV - we'll test the interaction in integration tests
+    });
+
+    it("downloads the authenticated export response with its filename and MIME type", async () => {
+      const file = {
+        data: "bucket,eventName,total,uniqueUsers\n2026-10-01,signup_completed,4,3",
+        mimeType: "text/csv",
+        filename: "funnel-analytics-2026-10-01.csv",
+      };
+      const refetch = vi.fn().mockResolvedValue({ data: file, error: null });
+      mockExportQuery.mockReturnValue({
+        ...createQueryMock(file, false),
+        refetch,
+      } as any);
+      const createObjectUrl = vi
+        .spyOn(URL, "createObjectURL")
+        .mockReturnValue("blob:funnel-export");
+      const revokeObjectUrl = vi
+        .spyOn(URL, "revokeObjectURL")
+        .mockImplementation(() => {});
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+
+      renderWithProviders(<AdminFunnelDashboard />);
+      fireEvent.click(screen.getByRole("button", { name: /export data as csv/i }));
+
+      await waitFor(() => expect(click).toHaveBeenCalledOnce());
+      expect(refetch).toHaveBeenCalledOnce();
+      expect(createObjectUrl).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "text/csv" })
+      );
+      expect(click.mock.instances[0]).toMatchObject({
+        download: file.filename,
+        href: "blob:funnel-export",
+      });
+      await waitFor(() => expect(revokeObjectUrl).toHaveBeenCalledWith("blob:funnel-export"));
+      createObjectUrl.mockRestore();
+      revokeObjectUrl.mockRestore();
+      click.mockRestore();
+    });
+
+    it("shows an export authorization error without downloading a file", async () => {
+      const error = new Error("Forbidden");
+      const refetch = vi.fn().mockResolvedValue({ data: undefined, error });
+      mockExportQuery.mockReturnValue({
+        ...createQueryMock(undefined, false, error),
+        refetch,
+      } as any);
+      const createObjectUrl = vi.spyOn(URL, "createObjectURL");
+
+      renderWithProviders(<AdminFunnelDashboard />);
+      fireEvent.click(screen.getByRole("button", { name: /export data as csv/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Export failed: Forbidden");
+      expect(refetch).toHaveBeenCalledOnce();
+      expect(createObjectUrl).not.toHaveBeenCalled();
+      createObjectUrl.mockRestore();
     });
   });
 

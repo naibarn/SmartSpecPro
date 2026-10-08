@@ -48,9 +48,6 @@ export default function AdminFunnelDashboard() {
   // Export format
   const [exportFormat, setExportFormat] = useState<"csv" | "json">("csv");
 
-  // Export loading state
-  const [isExporting, setIsExporting] = useState(false);
-
   // Date range warning state
   const [dateRangeExceeded, setDateRangeExceeded] = useState(false);
 
@@ -110,6 +107,19 @@ export default function AdminFunnelDashboard() {
     }
   );
 
+  // Keep the export on the authenticated tRPC client so its transformer and
+  // session credentials match the dashboard queries.
+  const exportQuery = trpc.funnelAnalytics.export.useQuery(
+    {
+      from: new Date(dateFrom),
+      to: new Date(dateTo),
+      bucket,
+      stage: currentStage,
+      format: exportFormat,
+    },
+    { enabled: false, retry: false }
+  );
+
   // Cache invalidation mutation
   const invalidateCacheMutation =
     trpc.funnelAnalytics.invalidateCache.useMutation();
@@ -134,25 +144,23 @@ export default function AdminFunnelDashboard() {
 
   // Export handler with loading state
   const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      // Trigger export via tRPC export endpoint
-      window.open(
-        `/trpc/funnelAnalytics.export?input=${encodeURIComponent(
-          JSON.stringify({
-            from: dateFrom,
-            to: dateTo,
-            bucket,
-            stage: currentStage,
-            format: exportFormat,
-          })
-        )}`,
-        "_blank"
-      );
-    } finally {
-      // Set timeout to reset loading state (since we can't track window.open completion)
-      setTimeout(() => setIsExporting(false), 1000);
-    }
+    const result = await exportQuery.refetch();
+    if (result.error) return;
+
+    const file = result.data;
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(
+      new Blob([file.data], { type: file.mimeType })
+    );
+    const downloadLink = document.createElement("a");
+    downloadLink.href = objectUrl;
+    downloadLink.download = file.filename;
+    downloadLink.hidden = true;
+    document.body.append(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
   };
 
   return (
@@ -198,10 +206,10 @@ export default function AdminFunnelDashboard() {
             variant="outline"
             size="sm"
             onClick={handleExport}
-            disabled={isExporting}
+            disabled={exportQuery.isFetching}
             aria-label={`Export data as ${exportFormat.toUpperCase()}`}
           >
-            {isExporting ? (
+            {exportQuery.isFetching ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Download className="mr-2 h-4 w-4" />
@@ -210,6 +218,12 @@ export default function AdminFunnelDashboard() {
           </Button>
         </div>
       </div>
+
+      {exportQuery.error && (
+        <p className="text-sm text-destructive" role="alert">
+          Export failed: {exportQuery.error.message}
+        </p>
+      )}
 
       {/* Filters */}
       <DashboardCard title="Filters & Settings">
