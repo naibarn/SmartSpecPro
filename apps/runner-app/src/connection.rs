@@ -303,7 +303,7 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_start_pairing_response, StartPairingResponse};
+    use super::{safe_refresh_error_code, validate_start_pairing_response, StartPairingResponse};
 
     fn current_response() -> StartPairingResponse {
         StartPairingResponse {
@@ -353,6 +353,22 @@ mod tests {
     fn accepts_the_current_connect_contract() {
         assert!(validate_start_pairing_response(&current_response()).is_ok());
     }
+
+    #[test]
+    fn refresh_diagnostics_keep_safe_codes_and_hide_untrusted_error_text() {
+        assert_eq!(
+            safe_refresh_error_code("RUNNER_CONNECT_REQUEST_REJECTED_503"),
+            "RUNNER_CONNECT_REQUEST_REJECTED_503"
+        );
+        assert_eq!(
+            safe_refresh_error_code("network failed with bearer secret-value"),
+            "RUNNER_CREDENTIAL_REFRESH_FAILED"
+        );
+        assert_eq!(
+            safe_refresh_error_code("BEARER_TOKEN_VALUE"),
+            "RUNNER_CREDENTIAL_REFRESH_FAILED"
+        );
+    }
 }
 
 pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConnection>, String> {
@@ -393,6 +409,42 @@ pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConne
     }
     save_connection(&config.data_root, &connection)?;
     Ok(Some(connection))
+}
+
+pub fn safe_refresh_error_code(error: &str) -> String {
+    let code = error.trim();
+    const SAFE_CODES: &[&str] = &[
+        "RUNNER_CONNECT_REQUEST_FAILED",
+        "RUNNER_CONNECT_ENDPOINT_INVALID",
+        "RUNNER_CONNECT_REQUEST_BUILD_FAILED",
+        "RUNNER_CONNECT_RESPONSE_READ_FAILED",
+        "RUNNER_CONNECT_RESPONSE_INVALID",
+        "RUNNER_CONNECTION_STORE_READ_FAILED",
+        "RUNNER_CONNECTION_STORE_INVALID",
+        "RUNNER_CONNECTION_STORE_CREATE_FAILED",
+        "RUNNER_CONNECTION_STORE_WRITE_FAILED",
+        "RUNNER_CONNECTION_STORE_SERIALIZE_FAILED",
+        "RUNNER_CONTROL_ENDPOINT_INVALID",
+        "RUNNER_ACCESS_TOKEN_INVALID",
+        "RUNNER_ACCESS_TOKEN_MISSING_JTI",
+        "RUNNER_DEVICE_PROOF_CONFIGURATION_INCOMPLETE",
+        "RUNNER_DEVICE_PROOF_PUBLIC_KEY_INVALID",
+        "RUNNER_DEVICE_PROOF_HEADER_INVALID",
+        "RUNNER_DEVICE_PRIVATE_KEY_INVALID",
+        "RUNNER_DEVICE_PUBLIC_KEY_INVALID",
+        "RUNNER_DEVICE_KEY_PAIR_MISMATCH",
+        "RUNNER_REFRESH_CONTROL_TOKEN_MISSING",
+    ];
+    let is_http_rejection = code
+        .strip_prefix("RUNNER_CONNECT_REQUEST_REJECTED_")
+        .is_some_and(|status| {
+            status.len() == 3 && status.bytes().all(|byte| byte.is_ascii_digit())
+        });
+    if SAFE_CODES.contains(&code) || is_http_rejection {
+        code.to_owned()
+    } else {
+        "RUNNER_CREDENTIAL_REFRESH_FAILED".into()
+    }
 }
 
 pub fn token_tenant_id(token: &str) -> Option<String> {

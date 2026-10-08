@@ -3,7 +3,10 @@
 use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
     config::RunnerConfig,
-    connection::{connect_local_runner, load_connection, load_or_refresh, token_expiry_ms},
+    connection::{
+        connect_local_runner, load_connection, load_or_refresh, safe_refresh_error_code,
+        token_expiry_ms,
+    },
     diagnostics::{discover_local_tools, run_local_entrypoint_desktop, verify_local_tool},
     workspace_registry::{self, LocalWorkspaceDetails},
 };
@@ -46,6 +49,7 @@ struct RunnerState {
     last_error: Arc<Mutex<Option<String>>>,
     lifecycle: Mutex<()>,
     last_refresh_attempt: Mutex<Option<(Instant, &'static str)>>,
+    last_refresh_error: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
@@ -63,6 +67,7 @@ struct RunnerStatus {
     access_token_expires_at_ms: Option<u64>,
     reauth_required_by_ms: Option<u64>,
     credential_state: String,
+    credential_error_code: Option<String>,
 }
 
 fn safe_io_error(_: std::io::Error) -> String {
@@ -125,6 +130,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
     } else {
         "disconnected"
     };
+    let mut credential_error_code = None;
     let now_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -145,10 +151,34 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
                     if attempted_at.elapsed() < Duration::from_secs(3_600) =>
                 {
                     credential_state = "reauth_required";
+                    credential_error_code = state
+                        .last_refresh_error
+                        .lock()
+                        .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?
+                        .clone();
                     false
                 }
-                Some((attempted_at, _)) if attempted_at.elapsed() < Duration::from_secs(30) => {
+                Some((attempted_at, "renewing"))
+                    if attempted_at.elapsed() < Duration::from_secs(35) =>
+                {
+                    credential_state = "renewing";
+                    false
+                }
+                Some((attempted_at, "retrying"))
+                    if attempted_at.elapsed() < Duration::from_secs(30) =>
+                {
                     credential_state = "retrying";
+                    credential_error_code = state
+                        .last_refresh_error
+                        .lock()
+                        .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?
+                        .clone();
+                    false
+                }
+                Some((attempted_at, "renewed"))
+                    if attempted_at.elapsed() < Duration::from_secs(30) =>
+                {
+                    credential_state = "renewed";
                     false
                 }
                 _ => {
@@ -167,11 +197,15 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
                 Ok(refreshed) => {
                     connection = refreshed;
                     credential_state = "renewed";
+                    if let Ok(mut last_error) = state.last_refresh_error.lock() {
+                        *last_error = None;
+                    }
                     if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
                         *last_attempt = Some((Instant::now(), "renewed"));
                     }
                 }
                 Err(error) => {
+                    credential_error_code = Some(safe_refresh_error_code(&error));
                     credential_state = if ["_401", "_403", "REVOKED", "runner_revoked"]
                         .iter()
                         .any(|marker| error.contains(marker))
@@ -182,6 +216,9 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
                     };
                     if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
                         *last_attempt = Some((Instant::now(), credential_state));
+                    }
+                    if let Ok(mut last_error) = state.last_refresh_error.lock() {
+                        *last_error = credential_error_code.clone();
                     }
                 }
             }
@@ -210,6 +247,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         access_token_expires_at_ms,
         reauth_required_by_ms,
         credential_state: credential_state.into(),
+        credential_error_code,
     })
 }
 
@@ -233,6 +271,9 @@ async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String>
     if result.is_ok() {
         if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
             *last_attempt = None;
+        }
+        if let Ok(mut last_error) = state.last_refresh_error.lock() {
+            *last_error = None;
         }
     }
     result
@@ -489,6 +530,7 @@ fn main() {
                 last_error: Arc::new(Mutex::new(None)),
                 lifecycle: Mutex::new(()),
                 last_refresh_attempt: Mutex::new(None),
+                last_refresh_error: Mutex::new(None),
             });
 
             let open =
