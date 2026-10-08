@@ -13,6 +13,7 @@ import {
 
 export type RunnerSummary = {
   runnerId: string;
+  deviceId: string | null;
   displayName: string;
   profile: string;
   nodeKind: string;
@@ -21,6 +22,14 @@ export type RunnerSummary = {
   lastSeenAt: string | null;
   runnerVersion: string | null;
   platform: { os?: string; architecture?: string; target?: string } | null;
+  toolInventory: Array<{
+    toolId: string;
+    displayName: string;
+    version: string | null;
+    availabilityState: string;
+    trustState: string;
+    reasonCodes: string[];
+  }>;
   toolCount: number;
   readyToolCount: number;
   capabilityCount: number;

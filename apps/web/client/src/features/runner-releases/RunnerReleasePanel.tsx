@@ -103,6 +103,19 @@ function updatePhaseLabel(phase: string, t: (key: string) => string): string {
 export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
   const { t } = useScopedTranslation(["dashboard"]);
   const { catalog, runners, isLoading, error, checkedAt, desktopDownloads, desktopDownloadError, refresh, requestUpdate } = useRunnerReleaseCatalog(enabled);
+  const latestRunners = useMemo(() => {
+    const byDevice = new Map<string, typeof runners[number]>();
+    for (const runner of runners) {
+      const key = runner.deviceId ? `device:${runner.deviceId}` : `runner:${runner.runnerId}`;
+      const previous = byDevice.get(key);
+      const runnerSeenAt = Date.parse(runner.lastSeenAt ?? "") || 0;
+      const previousSeenAt = Date.parse(previous?.lastSeenAt ?? "") || 0;
+      if (!previous || runnerSeenAt > previousSeenAt) byDevice.set(key, runner);
+    }
+    return [...byDevice.values()].sort(
+      (left, right) => (Date.parse(right.lastSeenAt ?? "") || 0) - (Date.parse(left.lastSeenAt ?? "") || 0),
+    );
+  }, [runners]);
   const desktopDownloadsByVersion = useMemo(() => {
     const groups = new Map<string, typeof desktopDownloads>();
     for (const download of desktopDownloads) {
@@ -117,7 +130,7 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isRequestingUpdate, setIsRequestingUpdate] = useState(false);
 
-  const localRunner = useMemo(() => runners.find(runner => runner.profile === "local_device") ?? null, [runners]);
+  const localRunner = useMemo(() => latestRunners.find(runner => runner.profile === "local_device") ?? null, [latestRunners]);
   const preferredTarget = catalog?.latestByTarget.find(target => targetMatches(target, preferred.platform, preferred.architecture)) ?? null;
   const preferredLatest = preferredTarget ? latestVersion(preferredTarget) : null;
   const currentVersion = localRunner?.runnerVersion ?? null;
@@ -309,11 +322,11 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
       </div>
       <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className={dashboardCardTitleClass}>{t("dashboard:runnerReleases.connectedRunners")}</p>
-        {runners.length === 0 ? (
+        {latestRunners.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">{t("dashboard:runnerReleases.noConnectedRunners")}</p>
         ) : (
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {runners.map(runner => (
+            {latestRunners.map(runner => (
               <article key={runner.runnerId} className="rounded-lg border border-slate-200 bg-white p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -326,6 +339,38 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
                   {t("dashboard:runnerReleases.toolReadiness", { ready: runner.readyToolCount, total: runner.toolCount })} · {t("dashboard:runnerReleases.capabilityReadiness", { ready: runner.readyCapabilityCount, total: runner.capabilityCount })}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">{runner.lastSeenAt ? new Date(runner.lastSeenAt).toLocaleString() : t("dashboard:runnerReleases.neverSeen")}</p>
+                <details className="mt-3 border-t border-slate-100 pt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-sky-700">
+                    {t("dashboard:runnerReleases.inspectTools", { ready: runner.readyToolCount, total: runner.toolCount })}
+                  </summary>
+                  {(runner.toolInventory ?? []).length === 0 ? (
+                    <p className="mt-2 text-xs text-slate-500">{t("dashboard:runnerReleases.noToolsFound")}</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {(runner.toolInventory ?? []).map(tool => {
+                        const ready = tool.trustState === "ready" && tool.availabilityState === "available";
+                        const toolStatus = tool.availabilityState === "busy"
+                          ? "busy"
+                          : tool.trustState === "auth_required"
+                            ? "auth_required"
+                            : tool.availabilityState !== "available"
+                              ? tool.availabilityState
+                              : tool.trustState;
+                        return (
+                          <li key={tool.toolId} className="flex items-start justify-between gap-3 text-xs">
+                            <span className="min-w-0 text-slate-700">
+                              <span className="block">{tool.displayName}{tool.version ? ` · ${tool.version}` : ""}</span>
+                              {tool.reasonCodes.length > 0 && <span className="mt-0.5 block text-[11px] text-slate-500">{tool.reasonCodes.join(", ")}</span>}
+                            </span>
+                            <span className={ready ? "shrink-0 text-emerald-700" : "shrink-0 text-amber-700"}>
+                              {t(`dashboard:runnerReleases.toolStatus.${toolStatus}`)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </details>
               </article>
             ))}
           </div>
