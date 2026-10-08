@@ -60,21 +60,16 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "MINI_APP_FULL_RUNTIME_BROWSER_UAT",
-    "state": "PARTIAL_INTEGRATED",
-    "objective": "Run the full web application composition against an isolated Mini App PostgreSQL baseline and complete authenticated Research Notes browser acceptance on desktop, tablet, and mobile.",
+    "id": "RESEARCH_NOTES_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP",
+    "state": "FAST_GATE_PASSED_PENDING_PR",
+    "objective": "Exercise canonical worker_jobs/outbox retry, terminal failure, recovery, idempotency, and tenant ownership in the disposable Research Notes runtime.",
     "implementation": [
-      "apps/web/server/routers/appIdentity.ts",
-      "apps/web/client/src/pages/ResearchNotesPage.tsx",
-      "apps/web/scripts/test-mini-app-full-runtime.sh",
-      "apps/web/tests/e2e/research-notes-browser.spec.ts"
+      "apps/web/scripts/research-notes-background-worker-runtime.ts"
     ],
-    "sourceSha": "3efdedd6e29eb2d70549f3898aae5538098aca3c",
-    "evidence": "PASS: pnpm --filter @smartspec/web run test:mini-app-full-runtime. Normal apps/web/server/_core/index.ts process bound to 127.0.0.1; /healthz and /readyz returned 200; Research Notes UI shell and authenticated project/note API passed. Playwright 8/8 passed: desktop/tablet/mobile CRUD, search, archive, pending background status, project switching, loading, error, unauthenticated redirect, and revoked membership. This is an isolated Mini App-schema runtime harness, not deployment or full non-Mini-App schema coverage.",
-    "integration": "MERGED_PR_280",
-    "nextAction": "Continue PACKAGE_VALIDATION_CONTEXT_AND_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP; preserve runtime/browser evidence as harness-only, not deployment.",
-    "integratedSha": "26cec5a96d243479d947717325e6e0901905b22d",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/280"
+    "sourceSha": "7a5641d763ec6b2bda60417f95ecc835423d28b4",
+    "evidence": "PASS: pnpm --filter @smartspec/web run test:research-notes-background-worker-runtime on disposable PostgreSQL 17. Successful settlement and duplicate admission/poll remain covered. A transient synthetic failure reached retry_scheduled, wrong-tenant recovery was denied, authorized due retry republished outbox and succeeded on attempt 2; a separate permanent synthetic failure reached failed with a FAILED worker event. No provider invoked.",
+    "integration": "PENDING_PR",
+    "nextAction": "Integrate this safe runtime proof and continue Factory durable program ID/Mini App ID/state binding; then seek digest-bound V5/V6 package evidence."
   },
   "checkpoints": [
     {
@@ -276,6 +271,12 @@
       "sha": "26cec5a96d243479d947717325e6e0901905b22d",
       "pr": "https://github.com/naibarn/SmartSpecPro/pull/280",
       "evidence": "PR #280 merged normally. Isolated PostgreSQL 17 Mini App schema with normal server composition: /healthz, /readyz, Research Notes UI and authenticated API passed; unauthenticated API returned 401. Playwright 8/8 passed across desktop/tablet/mobile. This is not deployment or full application schema evidence."
+    },
+    {
+      "id": "RESEARCH_NOTES_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP",
+      "state": "FAST_GATE_PASSED_PENDING_PR",
+      "sourceSha": "7a5641d763ec6b2bda60417f95ecc835423d28b4",
+      "evidence": "Disposable PostgreSQL 17 worker harness passed: success settlement, idempotent duplicate admission, duplicate poll ignored, transient retry scheduled, cross-tenant retry denied, outbox recovery published and succeeded on attempt 2, permanent failure terminalized with FAILED event. Synthetic cost-free executor only."
     }
   ],
   "completedWorkunits": [
@@ -433,7 +434,7 @@
     "crossSessionHandoff": "PARTIAL",
     "blockedWorkBypass": "PARTIAL_EXISTING_WORKER_JOB_CONTINUATION; PROGRAM_LEVEL_SELECTION_NOT_IMPLEMENTED",
     "parallelSafeExecution": "PARTIAL_EXISTING_WORKER_JOB_FENCING; MINI_APP_FACTORY_WAVE_POLICY_NOT_IMPLEMENTED",
-    "nextEligibleWorkunit": "PACKAGE_VALIDATION_CONTEXT_AND_BACKGROUND_RETRY_FAILURE_RECOVERY_OWNERSHIP; then Factory durable program ID/Mini App ID binding.",
+    "nextEligibleWorkunit": "FACTORY_DURABLE_PROGRAM_ID_MINI_APP_BINDING; then same-runtime worker completion/package digest evidence and package validation V5/V6.",
     "integrationWaitPolicy": "WAITING_EXTERNAL_RETRYABLE is scoped to this integration workunit; the program remains WORKING.",
     "githubRetryPolicy": {
       "state": "IDLE_AFTER_SUCCESS",
@@ -448,11 +449,6 @@
         "predicate": "Normal server composition and authenticated browser UAT passed against a disposable PostgreSQL 17 Mini App schema. Deployment artifact/runtime ID and full application-schema runtime remain pending."
       },
       {
-        "id": "RESEARCH_NOTES_BACKGROUND_EXECUTION",
-        "state": "PARTIAL_PASS_RETRY_FAILURE_RECOVERY_OWNERSHIP_PENDING",
-        "predicate": "Basic worker_jobs/outbox publish, worker execution, idempotent admission and success settlement passed in a disposable PostgreSQL 17 harness with a synthetic cost-free executor. Add retry, terminal failure, recovery and ownership assertions; do not invoke a paid provider without existing cost authorization."
-      },
-      {
         "id": "FACTORY_STAGE_EXECUTOR_APPROVED_WORKER_BINDING",
         "state": "WAITING_EXECUTION_RUNTIME_BINDING",
         "predicate": "An approved non-retired stage implementation callback/runtime is available and can be invoked from DevelopmentRun with durable checkpoint/retry semantics; current generic executor has no default worker binding."
@@ -461,6 +457,11 @@
         "id": "RESEARCH_NOTES_AI_PROVIDER_RUNTIME",
         "state": "WAITING_EXTERNAL_RETRYABLE",
         "predicate": "A configured provider/runtime is available and provider-cost authorization is present; mocked or contract tests do not count as provider PASS."
+      },
+      {
+        "id": "RESEARCH_NOTES_AI_PROVIDER_RUNTIME",
+        "state": "WAITING_EXTERNAL_CONFIGURATION",
+        "predicate": "An existing allowed provider, credential broker, tenant/project authorization, and cost gate are present; synthetic provider was used for background execution proof."
       }
     ]
   },
@@ -469,10 +470,10 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T00:18:10+00:00",
+  "updatedAt": "2026-10-08T00:24:00+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
-    "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PARTIAL_WORKER_EXECUTION_IDEMPOTENCY_SETTLEMENT_PASS_RETRY_FAILURE_RECOVERY_OWNERSHIP_PENDING; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
+    "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
     "M3_RESEARCH_NOTES_PACKAGE_COMPLETE": "PARTIAL_PACKAGE_BUILT; VALIDATION_NEEDS_CONTEXT_V5_RUNTIME_PLACEMENT_AND_V6_MIGRATION_ROLLBACK_EVIDENCE",
     "M4_RESEARCH_NOTES_DEPLOYED_NONPROD": "PARTIAL_FULL_SERVER_MINIAPP_SCHEMA_RUNTIME_AND_BROWSER_PASS; DEPLOYMENT_DESCRIPTOR_RUNTIME_ID_AND_FULL_SCHEMA_PENDING",
     "M5_RESEARCH_NOTES_UAT_PASS": "PARTIAL_AUTHENTICATED_BROWSER_8_OF_8_AND_HEADLESS_API_PASS; SAME_RUNTIME_WORKER_COMPLETION_AND_PACKAGE_REVISION_EVIDENCE_PENDING",
