@@ -116,7 +116,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "f072ec8448884b88970310fab954c97a465fc6b9",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
@@ -356,7 +356,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -373,17 +373,21 @@
     "title": "Spec 205 — SmartAIHub Runner Cross-Platform Runtime"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "f072ec8448884b88970310fab954c97a465fc6b9"
+    ],
     "mapping": [],
-    "source_paths": [],
+    "source_paths": [
+      "apps/runner-app/src/diagnostics.rs"
+    ],
     "started": false,
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "f072ec8448884b88970310fab954c97a465fc6b9",
+    "integrated": true,
+    "integrated_at": "2026-10-08T14:23:23Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -1145,7 +1149,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.102236Z",
+  "updated_at": "2026-10-08T14:23:37.160250Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
