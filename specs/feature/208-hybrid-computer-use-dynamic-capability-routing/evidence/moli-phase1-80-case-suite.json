@@ -1,0 +1,660 @@
+{
+  "schema_version": 1,
+  "suite_id": "SPEC-208-MOLI-PHASE1-80",
+  "created_from_revision": 7,
+  "pinned_moli_version": "1.1.15",
+  "baseline_engine": "chromium",
+  "suite_status": "IMPLEMENTED_NOT_EXECUTED",
+  "execution_note": "Case definitions only. No benchmark measurements are claimed until each case is run against the pinned Runner integration and an equivalent Chromium baseline.",
+  "required_bindings": [
+    "tenantId",
+    "userId",
+    "projectRef",
+    "jobId",
+    "attemptId",
+    "leaseId",
+    "fencingToken"
+  ],
+  "cases": [
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-01",
+      "category": "dom_extraction",
+      "scenario": "title and canonical URL",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-02",
+      "category": "dom_extraction",
+      "scenario": "visible text with whitespace",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-03",
+      "category": "dom_extraction",
+      "scenario": "nested semantic landmarks",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-04",
+      "category": "dom_extraction",
+      "scenario": "tables with headers",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-05",
+      "category": "dom_extraction",
+      "scenario": "lists with stable order",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-06",
+      "category": "dom_extraction",
+      "scenario": "shadow-root boundary behavior",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-07",
+      "category": "dom_extraction",
+      "scenario": "cross-origin frame exclusion",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-DOM_EXTRACTION-08",
+      "category": "dom_extraction",
+      "scenario": "large document bounded extraction",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-01",
+      "category": "forms",
+      "scenario": "text field fill",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-02",
+      "category": "forms",
+      "scenario": "textarea fill",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-03",
+      "category": "forms",
+      "scenario": "checkbox state",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-04",
+      "category": "forms",
+      "scenario": "radio group selection",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-05",
+      "category": "forms",
+      "scenario": "select option selection",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-06",
+      "category": "forms",
+      "scenario": "required-field validation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-07",
+      "category": "forms",
+      "scenario": "submit intent without duplicate submission",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FORMS-08",
+      "category": "forms",
+      "scenario": "form result verification",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-01",
+      "category": "navigation",
+      "scenario": "same-origin navigation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-02",
+      "category": "navigation",
+      "scenario": "cross-origin allowlisted navigation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-03",
+      "category": "navigation",
+      "scenario": "denied host navigation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-04",
+      "category": "navigation",
+      "scenario": "redirect to denied host",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-05",
+      "category": "navigation",
+      "scenario": "redirect loop timeout",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-06",
+      "category": "navigation",
+      "scenario": "malformed URL rejection",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-07",
+      "category": "navigation",
+      "scenario": "private IPv4 destination denial",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NAVIGATION-08",
+      "category": "navigation",
+      "scenario": "IPv6/link-local metadata destination denial",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-01",
+      "category": "storage_isolation",
+      "scenario": "cookies across tenant contexts",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-02",
+      "category": "storage_isolation",
+      "scenario": "localStorage across tenant contexts",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-03",
+      "category": "storage_isolation",
+      "scenario": "sessionStorage across job attempts",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-04",
+      "category": "storage_isolation",
+      "scenario": "IndexedDB across project contexts",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-05",
+      "category": "storage_isolation",
+      "scenario": "CacheStorage across user contexts",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-06",
+      "category": "storage_isolation",
+      "scenario": "service-worker registration across attempts",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-07",
+      "category": "storage_isolation",
+      "scenario": "HTTP cache across isolated profiles",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-STORAGE_ISOLATION-08",
+      "category": "storage_isolation",
+      "scenario": "storage absent after context dispose and relaunch",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-01",
+      "category": "auth_secrets",
+      "scenario": "authorization token in localStorage",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-02",
+      "category": "auth_secrets",
+      "scenario": "session token in sessionStorage",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-03",
+      "category": "auth_secrets",
+      "scenario": "cookie with HttpOnly flag",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-04",
+      "category": "auth_secrets",
+      "scenario": "cookie domain/path separation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-05",
+      "category": "auth_secrets",
+      "scenario": "no profile import or credential copy",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-06",
+      "category": "auth_secrets",
+      "scenario": "no cross-engine session transfer",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-07",
+      "category": "auth_secrets",
+      "scenario": "revoked grant before next CDP command",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-AUTH_SECRETS-08",
+      "category": "auth_secrets",
+      "scenario": "expired lease before next navigation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-01",
+      "category": "failure_safety",
+      "scenario": "browser launch timeout",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-02",
+      "category": "failure_safety",
+      "scenario": "browser process crash",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-03",
+      "category": "failure_safety",
+      "scenario": "CDP socket disconnect",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-04",
+      "category": "failure_safety",
+      "scenario": "navigation failure",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-05",
+      "category": "failure_safety",
+      "scenario": "invalid or stale CDP session",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-06",
+      "category": "failure_safety",
+      "scenario": "expired job lease",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-07",
+      "category": "failure_safety",
+      "scenario": "revoked permission",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-FAILURE_SAFETY-08",
+      "category": "failure_safety",
+      "scenario": "agent cancellation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-01",
+      "category": "network_policy",
+      "scenario": "loopback fixture allowlist",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-02",
+      "category": "network_policy",
+      "scenario": "unapproved public host denial",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-03",
+      "category": "network_policy",
+      "scenario": "DNS rebinding defense",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-04",
+      "category": "network_policy",
+      "scenario": "redirect destination revalidation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-05",
+      "category": "network_policy",
+      "scenario": "proxy-only egress enforcement",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-06",
+      "category": "network_policy",
+      "scenario": "private network block",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-07",
+      "category": "network_policy",
+      "scenario": "cloud metadata endpoint block",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-NETWORK_POLICY-08",
+      "category": "network_policy",
+      "scenario": "network policy violation receipt",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-01",
+      "category": "protocol_compat",
+      "scenario": "CDP version discovery",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-02",
+      "category": "protocol_compat",
+      "scenario": "CDP target creation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-03",
+      "category": "protocol_compat",
+      "scenario": "isolated BrowserContext creation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-04",
+      "category": "protocol_compat",
+      "scenario": "DOM query",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-05",
+      "category": "protocol_compat",
+      "scenario": "JavaScript evaluation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-06",
+      "category": "protocol_compat",
+      "scenario": "form input",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-07",
+      "category": "protocol_compat",
+      "scenario": "unsupported command rejection",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-PROTOCOL_COMPAT-08",
+      "category": "protocol_compat",
+      "scenario": "WebDriver command surface disabled",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-01",
+      "category": "resources_observability",
+      "scenario": "per-attempt CPU budget",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-02",
+      "category": "resources_observability",
+      "scenario": "per-attempt memory budget",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-03",
+      "category": "resources_observability",
+      "scenario": "navigation timeout",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-04",
+      "category": "resources_observability",
+      "scenario": "CDP command timeout",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-05",
+      "category": "resources_observability",
+      "scenario": "bounded concurrent pages",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-06",
+      "category": "resources_observability",
+      "scenario": "resource exhaustion receipt",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-07",
+      "category": "resources_observability",
+      "scenario": "audit binding includes tenant/user/project/job/attempt",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-RESOURCES_OBSERVABILITY-08",
+      "category": "resources_observability",
+      "scenario": "evidence hash and engine version",
+      "result": "NOT_RUN",
+      "measurement_required": true,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-01",
+      "category": "cleanup_fallback",
+      "scenario": "close target success",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-02",
+      "category": "cleanup_fallback",
+      "scenario": "dispose context success",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-03",
+      "category": "cleanup_fallback",
+      "scenario": "profile directory deletion",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-04",
+      "category": "cleanup_fallback",
+      "scenario": "cleanup retry exhaustion fails job",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-05",
+      "category": "cleanup_fallback",
+      "scenario": "child process termination",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-06",
+      "category": "cleanup_fallback",
+      "scenario": "cancellation cleanup receipt",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-07",
+      "category": "cleanup_fallback",
+      "scenario": "Chromium fallback after pre-launch Moli failure",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    },
+    {
+      "id": "MOLI-P1-CLEANUP_FALLBACK-08",
+      "category": "cleanup_fallback",
+      "scenario": "no fallback after authenticated session creation",
+      "result": "NOT_RUN",
+      "measurement_required": false,
+      "expected": "must satisfy the named SPEC-208 isolation, policy, correctness, or cleanup invariant; any tenant/session leak is a hard failure"
+    }
+  ]
+}
