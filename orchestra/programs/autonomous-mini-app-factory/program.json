@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+    "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
-      "canonical_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
-      "canonical_user_workspace_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "integrated_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+      "canonical_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+      "canonical_user_workspace_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01",
-      "verified_at": "2026-10-08T17:17:07.072Z"
+      "receipt_id": "workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b",
+      "verified_at": "2026-10-08T17:29:21.981Z"
     },
-    "observedAt": "2026-10-08T17:17:07.072Z",
+    "observedAt": "2026-10-08T17:29:21.981Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "canonical_user_workspace_sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
       "dirty": false,
-      "reason": "PR #375 merged normally; workspace converge and verify passed."
+      "reason": "PR #377 merged normally; workspace converge and verify passed."
     },
-    "latestIntegratedProgramChange": "PR #375 added receipt-backed economic settlement port and exact approved budget-cap/currency binding; live settlement remains waiting for registered accounting verifier and authorized ledger source.",
+    "latestIntegratedProgramChange": "PR #375 integrated receipt-backed settlement and budget binding; PR #377 integrated deterministic orchestration retry/reconciliation tests. Live settlement still lacks registered policy verifier and authorized ledger source.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01",
-      "verifiedAt": "2026-10-08T17:17:07.072Z"
+      "convergenceReceipt": "workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b",
+      "verifiedAt": "2026-10-08T17:29:21.981Z"
     }
   },
   "inventory": {
@@ -77,12 +77,12 @@
       "apps/web/server/services/externalAgentRunnerDispatcher.ts",
       "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json"
     ],
-    "sourceSha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
-    "evidence": "PR #375 merged normally at d8791f7a7bd71c47506d46fffabce5c2c820d3e6. Focused Vitest 8 files/63 tests passed; Windows launcher safety tests 3/3 passed on Linux only; disposable PostgreSQL 17 migrations 0389–0394 passed; Linux installer lifecycle passed but registered Linux runtime remains unverified. Exact approved budget-cap/currency binding and receipt-backed economic settlement port are integrated. Settlement port has no registered production verifier/account source. Last read-only control-plane evidence is 2026-10-08T16:17:17Z and is stale: Windows capability snapshot expired, no job-specific source binding, no DevelopmentRun/job/attempt, and zero budget/account/hold rows. No owner grant, budget, ledger account, dispatch, receipt, settlement, or deployment was created. UI assertion failure reproduces on canonical baseline; ESLint unavailable because resolved ESLint 6.4.0 has no configuration.",
-    "integration": "PR #375 MERGED_NORMALLY",
-    "integratedSha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+    "sourceSha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+    "evidence": "PR #375 merged normally at d8791f7a7bd71c47506d46fffabce5c2c820d3e6. Focused Vitest 8 files/63 tests passed; Windows launcher safety tests 3/3 passed on Linux only; disposable PostgreSQL 17 migrations 0389–0394 passed; Linux installer lifecycle passed but registered Linux runtime remains unverified. Exact approved budget-cap/currency binding and receipt-backed economic settlement port are integrated. Settlement port has no registered production verifier/account source. Last read-only control-plane evidence is 2026-10-08T16:17:17Z and is stale: Windows capability snapshot expired, no job-specific source binding, no DevelopmentRun/job/attempt, and zero budget/account/hold rows. No owner grant, budget, ledger account, dispatch, receipt, settlement, or deployment was created. UI assertion failure reproduces on canonical baseline; ESLint unavailable because resolved ESLint 6.4.0 has no configuration. Follow-on PR #377 adds deterministic transaction-orchestration tests; combined focused Vitest is 9 files/68 tests, including actual-only capture/release, idempotent replay, untrusted reconciliation, verifier failure, retry after transient capture failure, and attempt mismatch. These tests mock repository/ledger boundaries; they are not PostgreSQL transaction or live settlement evidence.",
+    "integration": "PR #375 implementation, PR #376 metadata handoff, PR #377 transaction tests merged normally",
+    "integratedSha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
     "nextAction": "Refresh Windows Runner and Codex auth/capability snapshot; create a real DevelopmentRun/job/attempt and attested workspace binding; obtain exact owner-issued P-RECOVERY grant plus owner-authorized non-production budget, funding source, and ledger accounts. Register the policy-backed accounting verifier/account source, then dispatch and verify receipt, artifact, settlement, retry, and resume. Continue registered Linux Runner readiness and non-production target as independent workunits.",
-    "pr": "https://github.com/naibarn/SmartSpecPro/pull/375",
+    "pr": "https://github.com/naibarn/SmartSpecPro/pull/377",
     "ownerActionManifest": "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json",
     "handoff": "orchestra/programs/autonomous-mini-app-factory/lane1-authority-settlement-handoff.v1.md",
     "independentWorkunits": [
@@ -638,7 +638,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T17:20:32Z",
+  "updatedAt": "2026-10-08T17:29:21.981Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -665,17 +665,17 @@
   },
   "executionCheckpoint": {
     "taskWorktree": "/home/dev/.cache/codex/worktrees/lane1-receipt-settlement",
-    "sourceBranch": "codex/lane1-receipt-settlement",
+    "sourceBranch": "codex/runner-economic-transaction-tests",
     "localCommits": [
-      "2ecbe20b9d8967ef236a07c21f08c76f32e7b660"
+      "130bf5e90f08b3682dedaf20b5fd3c91bf61a410"
     ],
-    "intendedRemoteBranch": "codex/lane1-receipt-settlement",
+    "intendedRemoteBranch": "codex/runner-economic-transaction-tests",
     "pendingPullRequest": {
-      "number": 375,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/375",
+      "number": 377,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/377",
       "state": "MERGED",
-      "sourceSha": "2ecbe20b9d8967ef236a07c21f08c76f32e7b660",
-      "integratedSha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6"
+      "sourceSha": "130bf5e90f08b3682dedaf20b5fd3c91bf61a410",
+      "integratedSha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181"
     },
     "testEvidence": [
       {
@@ -922,6 +922,16 @@
         "revision": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
         "command": "pnpm exec eslint <changed TypeScript paths>",
         "outcome": "NOT_RUN: resolved ESLint 6.4.0; repository configuration not found"
+      },
+      {
+        "revision": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+        "command": "pnpm exec vitest run server/services/__tests__/economicReceiptSettlement.test.ts server/services/__tests__/economicReceiptSettlementTransaction.test.ts server/services/__tests__/spec224AuthorizationBinding.test.ts server/services/__tests__/agentControlPlaneContracts.test.ts server/services/__tests__/externalAgentRunnerDispatcher.test.ts server/services/__tests__/spec224ProtectedExecutionStart.test.ts server/services/__tests__/spec224AuthorizationRevocation.test.ts server/services/__tests__/economicSettlementService.test.ts server/services/__tests__/spec224ApprovalContinuation.test.ts",
+        "outcome": "PASS: 9 focused files, 68 tests; includes deterministic repository-boundary orchestration tests. No PostgreSQL transaction atomicity/live Runner or settlement claim."
+      },
+      {
+        "revision": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
+        "command": "pnpm exec prettier --check server/services/__tests__/economicReceiptSettlementTransaction.test.ts; git diff --check",
+        "outcome": "PASS"
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
@@ -1053,10 +1063,10 @@
     },
     "canonicalWorkspaceConvergence": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "sha": "42f2e62f9a1aab4c1ceb3bdc609dcffa73cb0181",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receiptId": "workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01",
-      "verifiedAt": "2026-10-08T17:17:07.072Z"
+      "receiptId": "workspace-convergence:41e2ac1f-5d66-497d-b165-f0a563f9f90b",
+      "verifiedAt": "2026-10-08T17:29:21.981Z"
     }
   },
   "authorityResolution": {
