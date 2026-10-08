@@ -500,7 +500,7 @@ mod tests {
     fn windows_cmd_shim_runs_with_the_requested_arguments() {
         let temp = tempfile::tempdir().unwrap();
         let program = temp.path().join("codex.cmd");
-        std::fs::write(&program, "@echo off\r\necho %*\r\n").unwrap();
+        std::fs::write(&program, "@echo off\r\necho %~1 %~2 %~3\r\n").unwrap();
         let args = vec!["exec".into(), "--json".into(), "hello-world".into()];
         let mut command = command_for_cli(&program, &args).unwrap();
         command.current_dir(temp.path());
