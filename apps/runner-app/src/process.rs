@@ -35,9 +35,18 @@ fn command_for_cli_on_platform(
                     invocation.push_str(arg);
                     invocation.push('"');
                 }
-                command
-                    .args(["/d", "/s", "/c"])
-                    .arg(format!("\"{invocation}\""));
+                command.args(["/d", "/s", "/c"]);
+                #[cfg(windows)]
+                {
+                    use std::os::windows::process::CommandExt;
+
+                    // cmd.exe parses this as a command line. Passing it through
+                    // Command::arg applies CRT escaping, which leaves literal
+                    // backslashes before quotes for cmd.exe to interpret.
+                    command.raw_arg(format!("\"{invocation}\""));
+                }
+                #[cfg(not(windows))]
+                command.arg(format!("\"{invocation}\""));
                 return Ok(command);
             }
             Some("ps1") => {
