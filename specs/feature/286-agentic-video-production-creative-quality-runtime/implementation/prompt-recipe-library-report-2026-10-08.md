@@ -17,7 +17,7 @@
 - Before PR preparation, `origin/main` advanced to `c32a13652a04999646f8dc28f0b827c008a4320d` with unrelated public-homepage polish and SPEC-263 evidence/handoff; this worktree is reconciled to that tip before checkpoint promotion.
 - This continuation did not modify Runner-owned worktrees or Windows/Linux Runner code.
 - Runner-owned worktrees/branches were inventoried and left untouched. Windows Runner repair remains external.
-- Latest pre-change canonical handoff at this continuation start: manifest generation 18, `DORMANT_UNRESOLVED`, `VALIDATION_PENDING`, `RECONCILIATION_REQUIRED`, 0/746 requirements passed; scoped validation had `valid=true`, `completion_eligible=false`. Reconciliation after the Spec amendment produced generation 19; evidence-based continuation update produced generation 20. All 756 current ledger rows remain unresolved; no requirement is marked PASS by mock evidence.
+- Latest pre-change canonical handoff at this continuation start: manifest generation 18, `DORMANT_UNRESOLVED`, `VALIDATION_PENDING`, `RECONCILIATION_REQUIRED`, 0/746 requirements passed; scoped validation had `valid=true`, `completion_eligible=false`. Reconciliation after the Spec amendment produced generation 19; evidence-based continuation reconciliation and blocker updates advanced it through generation 24. Post-PR integration handoff is generation 25. All 756 current ledger rows remain unresolved; no requirement is marked PASS by mock evidence.
 - Upstream source shape was inspected read-only at `yihui-dev/awesome-opus5-5-videos` commit `756290289742535eb0ac3817548f152e9759cc70` (2026-10-08T02:12:38Z). The fixture is synthetic; no upstream creator prompt/media was committed or imported.
 - Existing authority reused: 13-entry Motion Template Registry metadata, `VideoProjectDocument.motionCandidates`, existing project revision flow, and `worker_jobs`/Runner Authority. No new database, queue, timeline, executor, or registry was added.
 
@@ -77,6 +77,7 @@ ranking. Generated code has no path from the returned plan to execution.
 - The importer now rejects movable branch/tag names as `sourceRevision`; only immutable 40/64-hex Git commit SHAs pass schema and runtime validation.
 - A shared read-only `node_modules` link from the clean primary checkout was used by the isolated worktree; no dependencies were installed or modified.
 - These checks exercise mocked rights and vector-candidate seams plus local metadata ranking only. They are **not** live Broker, rights-authority, Runner, runtime, render, visual-quality, or production PASS evidence.
+- PR [#346](https://github.com/naibarn/SmartSpecPro/pull/346) merged at canonical SHA `3af48182a57667ac025084ac06ebfad9b78a629e`; implementation/test source was commit `5fd3cf75da8271ba57dcb277f4c93268ea77ac62`, reachable from main. Handoff records that integrated SHA separately from the unit-test SHA.
 - `git diff --check` is part of the fast integration gate.
 
 ## Cost and quality comparison

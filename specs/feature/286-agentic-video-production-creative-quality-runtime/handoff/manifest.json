@@ -108,14 +108,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "c32a13652a04999646f8dc28f0b827c008a4320d",
+    "expected_canonical_sha": "3af48182a57667ac025084ac06ebfad9b78a629e",
     "expected_spec_digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0"
   },
   "continuation": {
-    "next_action": "Resume Runner baseline only after Lane A readiness and authorized Windows receipts; separately bind the canonical RetrievalBroker and catalog Rights Authority before live hybrid retrieval or full prompt use. Keep Linux readiness separate, WP0.4 PARTIAL/BLOCKED, and generated code non-executable.",
+    "next_action": "Bind live Recipe hybrid retrieval only after the canonical RetrievalBroker and approved recipe index are available; bind source-specific Rights Authority before full prompt use. Keep generated code disabled, WP0.4 PARTIAL/BLOCKED until real Golden Render A/B/C, and assess Linux Runner separately.",
     "next_ready_workunit": "WP0.4_WINDOWS_GOLDEN_RENDER_BASELINE",
     "reactivation_predicate": "Runner Authority returns an authorized Windows executor with the required Remotion capability and artifact upload path; all A/B/C job artifacts are visible with exact project revisions and output digests.",
-    "resume_point": "Prompt Recipe retrieval is implemented as a deterministic fallback plus mock-only vector candidate fusion. Live Broker and source-catalog Rights Authority remain blocked. Manifest generation 20 reconciles continuation based on explicit current direction; authority/disposition remain unresolved pending registry owner binding. WP0.4 remains blocked on Lane A Windows receipts.",
+    "resume_point": "PR #346 Prompt Recipe retrieval code integrated at 3af48182a57667ac025084ac06ebfad9b78a629e; focused unit/mock evidence binds to source 5fd3cf75da8271ba57dcb277f4c93268ea77ac62. Live RetrievalBroker and catalog Rights Authority remain blocked. WP0.4 remains PARTIAL/BLOCKED on real Windows Golden Render A/B/C receipts; Linux readiness is separate.",
     "waiting_predicate": "Resume render work when an authorized Windows Runner capability/readiness receipt with a verified Remotion runtime pack is available. Do not claim baseline complete until A/B/C each have a durable worker job and output/QA evidence."
   },
   "continuation_assessment": {
@@ -128,7 +128,7 @@
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
       },
       {
-        "digest": "312b94abf77aeb8b530bbcec960a90bcc8716ee2d176072261445485bc6c9979",
+        "digest": "bac6f92b106c1fb46d0fc21eceb2ac44f8e31514797f6a9edd11865d8d40bfdb",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
       },
@@ -238,7 +238,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 24,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
     "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
@@ -261,7 +261,9 @@
       "7ac5707058fb77e93cbdf20c4d2a6de067766f30",
       "6658bd549ef4436a9b5a6b74933189da25d2065f",
       "1ecbe3ea0395a70186f158f0859a5432aed68795",
-      "6cff930cfeaa1aaf8cdb592c60d98d7e13202b73"
+      "6cff930cfeaa1aaf8cdb592c60d98d7e13202b73",
+      "5fd3cf75da8271ba57dcb277f4c93268ea77ac62",
+      "3af48182a57667ac025084ac06ebfad9b78a629e"
     ],
     "mapping": [
       {
@@ -307,6 +309,18 @@
           "apps/web/server/services/__tests__/promptRecipeLibrary.test.ts"
         ],
         "source_sha": "6cff930cfeaa1aaf8cdb592c60d98d7e13202b73"
+      },
+      {
+        "coverage": "PARTIAL; provider-independent RRF candidate fusion and deterministic fallback pass focused fixture/mock tests; live Broker and catalog Rights Authority remain blocked.",
+        "scope": "SPEC-286 §166 bilingual hybrid retrieval and rights-safe metadata discovery",
+        "source_paths": [
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
+          "apps/web/shared/videoIntelligence/promptRecipe.schema.json",
+          "apps/web/server/services/promptRecipeLibrary.ts",
+          "apps/web/server/services/__tests__/promptRecipeLibrary.test.ts",
+          "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/retrieval-authority-audit-2026-10-08.md"
+        ],
+        "source_sha": "5fd3cf75da8271ba57dcb277f4c93268ea77ac62"
       }
     ],
     "source_paths": [
@@ -327,9 +341,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "c32a13652a04999646f8dc28f0b827c008a4320d",
+    "canonical_sha": "3af48182a57667ac025084ac06ebfad9b78a629e",
     "integrated": true,
-    "integrated_at": "2026-10-08T07:39:39Z"
+    "integrated_at": "2026-10-08T08:08:36Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -348,7 +362,7 @@
           "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md"
         },
         {
-          "digest": "312b94abf77aeb8b530bbcec960a90bcc8716ee2d176072261445485bc6c9979",
+          "digest": "bac6f92b106c1fb46d0fc21eceb2ac44f8e31514797f6a9edd11865d8d40bfdb",
           "kind": "SUPPORTING_ARTIFACT",
           "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/implementation/prompt-recipe-library-report-2026-10-08.md"
         },
@@ -564,7 +578,7 @@
     "unresolved": 756
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T08:07:18.473558Z",
+  "updated_at": "2026-10-08T08:09:32.975992Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -575,13 +589,15 @@
       "At source SHA 7ac5707058fb77e93cbdf20c4d2a6de067766f30: python3 -m tools.spec_handoff validate --spec-dir specs/feature/286-agentic-video-production-creative-quality-runtime returned valid=true, zero validation errors, completion_eligible=false after §166 ledger reconciliation.",
       "WP0.4 remains PARTIAL/BLOCKED: no Golden Fixture A/B/C real Windows execution receipts or rendered visual artifacts; Lane A Runner repair is external.",
       "Post-integration at canonical SHA 6658bd549ef4436a9b5a6b74933189da25d2065f: focused Vitest run passed 14/14 tests; HEAD and origin/main trees were identical. This remains mock/fixture code evidence, not Runner/runtime/render/visual-quality PASS.",
-      "Post-PR #344 integration at canonical SHA 1ecbe3ea0395a70186f158f0859a5432aed68795: focused Vitest run passed 14/14 tests on a tree identical to origin/main; fixture/mock evidence only, not Runner/runtime/render/visual-quality PASS."
+      "Post-PR #344 integration at canonical SHA 1ecbe3ea0395a70186f158f0859a5432aed68795: focused Vitest run passed 14/14 tests on a tree identical to origin/main; fixture/mock evidence only, not Runner/runtime/render/visual-quality PASS.",
+      "Unit/mock evidence at source SHA 5fd3cf75da8271ba57dcb277f4c93268ea77ac62: focused Prompt Recipe Library Vitest suite passed 18/18 in 10 consecutive QA rounds; includes Thai/English intent, tenant isolation, rights revoke/expiry/staleness/outage, metadata-only discovery, verified-only compatibility, RRF ranking/fallback, and no-code-execution boundary. No live RetrievalBroker, source Rights Authority, Runner, render, or runtime evidence.",
+      "PR #346 merged to refs/heads/main as 3af48182a57667ac025084ac06ebfad9b78a629e at 2026-10-08T08:08:36Z; implementation commit 5fd3cf75da8271ba57dcb277f4c93268ea77ac62 is reachable from canonical main. Integration is distinct from verification, runtime, and acceptance."
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "1ecbe3ea0395a70186f158f0859a5432aed68795",
+    "sha": "5fd3cf75da8271ba57dcb277f4c93268ea77ac62",
     "status": "PARTIAL",
     "task_regressions": []
   }
