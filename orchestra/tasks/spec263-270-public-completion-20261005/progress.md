@@ -201,3 +201,10 @@
 ## 2026-10-06 handoff state
 - PR #40 merged normally as `25883550a64f6a93fd8fc75f1dfbd2cbccf9c382`; GitHub API and fetched `origin/main` confirm this is latest main. PR #40 is docs-only; deployed static application SHA remains `4b536d8afa4750e7a3fb8c90be9e7e4dd441cc63` (index SHA-256 `c1879fffe401d4b5ef6e1fa6a88326796d6298667a60ebd6baf54b6480986723`).
 - Current disposition: static responsive-image criterion complete for 15/15 observed production cases; Spec 263/270 aggregate remains partial/open. See `acceptance-status.md` for the raw SEO failure, backend/migration blocker, native Spec 270 authority, consent/rights, accessibility, RUM/indexation, tenant fixture, and full-typecheck next actions.
+
+
+## Homepage presentation repair — 2026-10-08 (integrated `7d3791488`)
+
+- Aligned the homepage hero copy with the editorial image, applied restrained teal SmartAIHub public-theme tokens, widened the content frame slightly, and removed the duplicate no-JS SEO body after the active client route renders.
+- Focused SEO test passed (1 file / 4 tests). Thai browser captures at 390×844, 768×1024, and 1440×900 had matching document/viewport widths, no page errors, and no remaining `#smartaihub-prerender` node. Evidence: `evidence/browser-homepage-polish-7d3791488.json`.
+- Implementation commit is integrated into `origin/main`; canonical user workspace is converged and verified at the commit SHA. Production deployment/acceptance was not performed. This checkpoint does not close Spec 263's remaining external design, claim/rights, route, accessibility, crawl, and production evidence requirements.

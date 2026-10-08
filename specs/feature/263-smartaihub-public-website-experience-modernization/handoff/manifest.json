@@ -116,7 +116,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "expected_canonical_sha": "7d3791488afaa6b7381c670302ce895782c5cc8b",
     "expected_spec_digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6"
   },
   "continuation": {
@@ -363,7 +363,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/263-smartaihub-public-website-experience-modernization/spec.md",
     "digest": "580a623057b367d540cd8e159b711a4dec1ede0d84df2aed8ce7e38698af6ce6",
@@ -380,17 +380,24 @@
     "title": "Spec 263 — SmartAIHub Public Website Experience Modernization"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "7d3791488afaa6b7381c670302ce895782c5cc8b"
+    ],
     "mapping": [],
-    "source_paths": [],
+    "source_paths": [
+      "apps/web/client/src/components/Seo.tsx",
+      "apps/web/client/src/components/__tests__/Seo.test.tsx",
+      "apps/web/client/src/components/publicUi/PublicHomeExperience.tsx",
+      "apps/web/client/src/components/publicUi/publicHomeTheme.ts"
+    ],
     "started": false,
     "status": "UNKNOWN"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
+    "canonical_sha": "7d3791488afaa6b7381c670302ce895782c5cc8b",
     "integrated": true,
-    "integrated_at": "2026-10-07T04:21:12Z"
+    "integrated_at": "2026-10-08T08:03:16.867Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -829,13 +836,21 @@
     "unresolved": 434
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:22:34.161444Z",
+  "updated_at": "2026-10-08T08:05:19.750913Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "FOCUSED_BROWSER_AND_TEST",
+        "path": "orchestra/tasks/spec263-270-public-completion-20261005/evidence/browser-homepage-polish-7d3791488.json",
+        "result": "PASS",
+        "scope": "Thai homepage viewports 390x844, 768x1024, 1440x900; Seo.test.tsx 4 tests",
+        "source_sha": "7d3791488afaa6b7381c670302ce895782c5cc8b"
+      }
+    ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
-    "sha": null,
+    "sha": "7d3791488afaa6b7381c670302ce895782c5cc8b",
     "status": "UNKNOWN",
     "task_regressions": []
   }
