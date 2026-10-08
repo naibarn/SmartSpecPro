@@ -99,7 +99,11 @@ await client.researchNotes.archiveNote.mutate({
 console.log("FULL_APP_AUTHENTICATED_API_PASS");
 TS
 NODE_ENV=test JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FULL_APP_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" pnpm exec tsx "$SMOKE_FILE"
-env -i PATH="$PATH" HOME="$HOME" USER="$USER" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters APP_ID=smartspec-local-dev CONTROL_PLANE_API_KEY=synthetic-control-plane-test-key CONTROL_PLANE_URL=http://127.0.0.1:1 API_KEY_HMAC_SECRET=synthetic-api-key-hmac-secret-at-least-32-chars PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" pnpm exec playwright test tests/e2e/research-notes-browser.spec.ts --project=chromium
+if [[ "${SKIP_BROWSER_UAT:-0}" == "1" ]]; then
+  echo "FULL_APP_BROWSER_UAT_SKIPPED_FOR_RUNTIME_PLACEMENT_ONLY"
+else
+  env -i PATH="$PATH" HOME="$HOME" USER="$USER" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters APP_ID=smartspec-local-dev CONTROL_PLANE_API_KEY=synthetic-control-plane-test-key CONTROL_PLANE_URL=http://127.0.0.1:1 API_KEY_HMAC_SECRET=synthetic-api-key-hmac-secret-at-least-32-chars PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" pnpm exec playwright test tests/e2e/research-notes-browser.spec.ts --project=chromium
+fi
 
-echo "FULL_APP_RUNTIME_BOOT_PASS healthz=$HEALTH_CODE readyz=$READY_CODE research_notes_ui=$UI_CODE authenticated_api=PASS unauthenticated_api=$API_CODE host=127.0.0.1"
+echo "FULL_APP_RUNTIME_BOOT_PASS runtimeId=loopback:$WEB_PORT healthz=$HEALTH_CODE readyz=$READY_CODE research_notes_ui=$UI_CODE authenticated_api=PASS unauthenticated_api=$API_CODE host=127.0.0.1"
 PASS=1

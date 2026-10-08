@@ -17,7 +17,7 @@ export type { SecretScanResult } from "./validate/secrets";
 export { classifyDigestExclusion, computePackageDigest } from "./digest";
 export type { DigestResult } from "./digest";
 export { validateSpaasPackage } from "./validate/pipeline";
-export type { SpaasValidationInput, SpaasValidationReport, ValidationProfile } from "./validate/pipeline";
+export type { ExternalValidationEvidence, SpaasValidationInput, SpaasValidationReport, ValidationProfile } from "./validate/pipeline";
 export type {
   CanonicalPackage,
   Diagnostic,

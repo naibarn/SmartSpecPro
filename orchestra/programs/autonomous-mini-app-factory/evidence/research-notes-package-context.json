@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "mini-app-package-validation-context.v1",
+  "programId": "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+  "appId": "app_research_notes",
+  "sourceSha": "862bbb47e50740040e33d215088b6440f303bf0e",
+  "packageDigest": "spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17",
+  "archiveSha256": "69c9fc6f7779a28a598446a82ea2d4a7a0ae0f46f1e9f667ac5d9ed1ea4e0056",
+  "archiveFormat": "tar.gz",
+  "runtimeId": "loopback:40797",
+  "runtimeEvidence": "isolated normal server composition on loopback using disposable PostgreSQL 17 Mini App schema; not deployment/full application schema",
+  "migrationId": "0393_spec302_canonical_project_identity",
+  "migrationEvidence": "0393 applied, populated, and reversed on a disposable PostgreSQL 17 database; 0392-owned app identity and route alias schema/data remained intact",
+  "evidence": [
+    {
+      "schemaVersion": "spaas-evidence-v1",
+      "digest": "spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17",
+      "manifestIdentity": "app_research_notes",
+      "manifestVersion": "1.0.0",
+      "profile": "offline-package",
+      "outcome": "passed",
+      "observedAt": "2026-10-08T00:39:05.247Z",
+      "expiresAt": "2026-10-08T01:39:05.247Z",
+      "stage": "V5",
+      "checkId": "runtime-placement",
+      "reasonCode": "LOOPBACK_RUNTIME_PASS",
+      "evidenceId": "runtime:862bbb47e507:1791419945247"
+    },
+    {
+      "schemaVersion": "spaas-evidence-v1",
+      "digest": "spaas-package-v1:sha256:8b079ae84f142605ea9ab73c114f6ff362ec643d981b7cb9ef0590d17effed17",
+      "manifestIdentity": "app_research_notes",
+      "manifestVersion": "1.0.0",
+      "profile": "offline-package",
+      "outcome": "passed",
+      "observedAt": "2026-10-08T00:39:05.247Z",
+      "expiresAt": "2026-10-08T01:39:05.247Z",
+      "stage": "V6",
+      "checkId": "migration-rollback",
+      "reasonCode": "MIGRATION_0393_ROLLBACK_PASS",
+      "evidenceId": "migration-0393:862bbb47e507:1791419945247"
+    }
+  ],
+  "validation": {
+    "profile": "offline-package",
+    "status": "valid",
+    "stages": [
+      {
+        "stage": "V1",
+        "status": "passed",
+        "mandatory": true,
+        "evidenceIds": []
+      },
+      {
+        "stage": "V2",
+        "status": "passed",
+        "mandatory": true,
+        "evidenceIds": []
+      },
+      {
+        "stage": "V3",
+        "status": "passed",
+        "mandatory": false,
+        "evidenceIds": []
+      },
+      {
+        "stage": "V4",
+        "status": "passed",
+        "mandatory": true,
+        "evidenceIds": []
+      },
+      {
+        "stage": "V5",
+        "status": "passed",
+        "mandatory": true,
+        "evidenceIds": [
+          "runtime:862bbb47e507:1791419945247"
+        ]
+      },
+      {
+        "stage": "V6",
+        "status": "passed",
+        "mandatory": true,
+        "evidenceIds": [
+          "migration-0393:862bbb47e507:1791419945247"
+        ]
+      },
+      {
+        "stage": "V7",
+        "status": "not_evaluated",
+        "mandatory": false,
+        "evidenceIds": []
+      },
+      {
+        "stage": "V8",
+        "status": "not_evaluated",
+        "mandatory": false,
+        "evidenceIds": []
+      }
+    ]
+  },
+  "validatedAt": "2026-10-08T00:39:05.757Z"
+}
