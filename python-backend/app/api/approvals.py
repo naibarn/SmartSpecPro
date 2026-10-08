@@ -88,6 +88,29 @@ class Spec224RecoveryGrantIssue(BaseModel):
     scope: dict
 
 
+@router.post("/spec224/recovery-grants")
+async def issue_spec224_recovery_grant(
+    request: Spec224RecoveryGrantIssue,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Issue a narrow recovery grant only through the authenticated tenant owner."""
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="TENANT_CONTEXT_REQUIRED")
+    try:
+        return await ApprovalDBService(db).issue_spec224_recovery_grant(
+            tenant_id=tenant_id,
+            owner_id=int(current_user.id),
+            idempotency_key=request.idempotency_key,
+            scope=request.scope,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 class Spec224RecoveryGrantRevoke(BaseModel):
     reason: str = Field(..., min_length=4, max_length=500)
 
