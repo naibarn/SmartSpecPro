@@ -875,15 +875,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6abad215078bbed5df8d158be504d56bb6f77559",
+    "expected_canonical_sha": "1b0b86492b3f4b387bb0645605140ce4a9bfcc3f",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "Map Revision 22 action-basis, permission, independent verification, durable recovery, and bounded-repair criteria to current code and fresh focused tests; keep implementation PARTIAL and verification NOT_RUN until those receipts bind to an exact candidate SHA.",
-    "next_ready_workunit": "SPEC224_REQUIREMENT_LEVEL_EVIDENCE_MAPPING",
-    "reactivation_predicate": null,
-    "resume_point": "SPEC-224 Revision 22, SPEC-06 R1.1, and handoffs 305-307 integrated through PR #315 at 0565e8c4e0c92025362b11bec26496056231b2aa. The 83-test handoff suite passed on candidate tree a8105ddb; merged tree is identical. Runtime verification remains NOT_RUN; deployment UNKNOWN; requirement mapping remains partial.",
-    "waiting_predicate": null
+    "next_action": "Obtain accountable Platform/Security owner approval for a dedicated non-production source-attestation issuer, signing key/KMS identity, key lifecycle/revocation policy, and immutable evidence bucket/prefix. Then configure server-side authority adapters and integrate only after independent validation; keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied.",
+    "next_ready_workunit": "SPEC224_REMOTE_SOURCE_TRUST_AUTHORITY_APPROVAL",
+    "reactivation_predicate": "Authenticated Platform/Security owner approval and resolvable approved issuer/key/storage policy are present.",
+    "resume_point": "PR #387 merged at 1b0b86492b3f4b387bb0645605140ce4a9bfcc3f. Isolated verifier v1 and focused 11-test evidence are in orchestra/tasks/spec224-remote-source-trust-authority-20261009/implementation-handoff.md. The verifier is unregistered and grants no dispatch permission. No authorized remote issuer/trust root/evidence store exists; runtime admission remains DENY. Next: owner approval and authority provisioning, then protected-start integration with atomic replay consumption and commit-time revocation recheck.",
+    "waiting_predicate": "Reactivate when owner-approved issuer identity, trust-key catalog/resource, scoped tenant/profile policy, and dedicated evidence storage configuration are available and verifiable server-side."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,9 +1123,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6abad215078bbed5df8d158be504d56bb6f77559",
+    "canonical_sha": "1b0b86492b3f4b387bb0645605140ce4a9bfcc3f",
     "integrated": true,
-    "integrated_at": "2026-10-08T23:18:50Z"
+    "integrated_at": "2026-10-08T23:52:41Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -3070,7 +3070,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T23:19:40.691214Z",
+  "updated_at": "2026-10-08T23:54:21.445903Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
