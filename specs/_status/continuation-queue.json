@@ -105,7 +105,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 11,
-      "next_action": "Select an independent app-local product slice from fresh inventory; preserve the 100 OPEN rows for future requirement-led slices and avoid broad historical reconciliation.",
+      "next_action": "Evaluate the remaining 99 OPEN requirements for independent CMS vertical slices. For the structured-data 100% target, obtain representative Google Rich Results Test evidence; keep dashboard and API work app-local and do not resume broad historical reconciliation.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
@@ -4869,7 +4869,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "priority": "P1",
-      "rationale": "Select an independent app-local product slice from fresh inventory; preserve the 100 OPEN rows for future requirement-led slices and avoid broad historical reconciliation.",
+      "rationale": "Evaluate the remaining 99 OPEN requirements for independent CMS vertical slices. For the structured-data 100% target, obtain representative Google Rich Results Test evidence; keep dashboard and API work app-local and do not resume broad historical reconciliation.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
     },

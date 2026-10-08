@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "evidence_type": "focused-product-vertical-slice-verification",
+  "workunit": "SPEC-038 CMS structured-data dashboard validation details",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/365",
+  "source_ref": "refs/heads/main",
+  "source_sha": "3fa80c98aa2bcaf2a718a818a25d65a04c04c9e7",
+  "profile": "package",
+  "command": "pnpm exec vitest run client/src/pages/__tests__/ContentQualityDashboard.test.tsx server/routers/contentQuality.router.test.ts server/services/contentOutputProcessor.test.ts server/services/jsonLdGenerator.test.ts server/services/articleWriterSkillsUpgrade.test.ts server/services/reviewerSkillsUpgrade.test.ts",
+  "scope": "CMS dashboard pass/fail counts and validation details, loading/error/empty states, tenant-scoped API, JSON-LD processing, and CMS skill output acceptance regressions",
+  "started_at": "2026-10-08T16:09:10Z",
+  "completed_at": "2026-10-08T16:09:12Z",
+  "exit_code": 0,
+  "signal": null,
+  "result": "PASS",
+  "test_files_passed": 6,
+  "tests_passed": 109,
+  "failed": 0,
+  "skipped": 0,
+  "qa_passes": 10,
+  "qa_test_files": 2,
+  "qa_tests_per_pass": 10,
+  "qa_test_executions": 100,
+  "test_files": [
+    "apps/web/client/src/pages/__tests__/ContentQualityDashboard.test.tsx",
+    "apps/web/server/routers/contentQuality.router.test.ts",
+    "apps/web/server/services/contentOutputProcessor.test.ts",
+    "apps/web/server/services/jsonLdGenerator.test.ts",
+    "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
+    "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
+  ],
+  "focused_dashboard_run": {
+    "test_files_passed": 4,
+    "tests_passed": 38,
+    "failed": 0,
+    "skipped": 0
+  },
+  "acceptance": {
+    "pass_fail_counts": "Existing overview KPIs remain visible and are covered by UI/API tests.",
+    "actionable_failures": "Recent invalid artifacts show title fallback, skill, format, created date and persisted structured_data_errors.",
+    "states": ["loading", "error with retry", "empty", "issues with missing-detail fallback"],
+    "authorization": "Endpoint remains adminProcedure protected and tenant filtered.",
+    "data_authority": "Uses existing content_artifacts.qualityScore JSONB; no migration added."
+  },
+  "resource_observation": {
+    "collected": false,
+    "reason": "Focused package tests completed in under two seconds; no memory-heavy profile was run."
+  },
+  "worktree": "/home/dev/.codex/worktrees/parallel-value-lane-20261008-lane2",
+  "notes": "Structural JSON-LD validation and stored failures are reported; no external Google Rich Results Test was run. The overall Spec remains PARTIAL_INTEGRATED."
+}
