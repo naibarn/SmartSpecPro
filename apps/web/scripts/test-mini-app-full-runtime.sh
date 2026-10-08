@@ -99,6 +99,8 @@ await client.researchNotes.archiveNote.mutate({
 console.log("FULL_APP_AUTHENTICATED_API_PASS");
 TS
 NODE_ENV=test JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FULL_APP_BASE_URL="http://127.0.0.1:$WEB_PORT" FULL_APP_SESSION_TOKEN_FILE="$RUNTIME_DIR/session-token" pnpm exec tsx "$SMOKE_FILE"
+env -i PATH="$PATH" HOME="$HOME" USER="$USER" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters FEATURE_186_NODE_WORKER_HEARTBEAT_FILE="$RUNTIME_DIR/worker.heartbeat" pnpm exec tsx scripts/research-notes-background-worker-runtime.ts
+echo "FULL_APP_SAME_RUNTIME_BACKGROUND_WORKER_PASS"
 if [[ "${SKIP_BROWSER_UAT:-0}" == "1" ]]; then
   echo "FULL_APP_BROWSER_UAT_SKIPPED_FOR_RUNTIME_PLACEMENT_ONLY"
 else
