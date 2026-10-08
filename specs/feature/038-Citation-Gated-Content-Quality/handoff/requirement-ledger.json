@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 10,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -707,26 +707,33 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L381"
       ],
       "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L381",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/contentOutputProcessor.ts",
+        "apps/web/server/services/jsonLdGenerator.ts",
+        "apps/web/server/routers/contentQuality.ts",
+        "apps/web/client/src/pages/ContentQualityDashboard.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Keep exact-SHA verification current when these content-quality paths change; continue with independent product slices without broad Spec reconciliation.",
       "requirement_digest": "bc2f01748a9e9b9c92a7e170bd61814e75ded10c63bed971f329b8043ddd5245",
       "requirement_id": "REQ-B65ECF6CDA64",
       "requirement_text": "- `apps/web/server/services/contentOutputProcessor.ts`",
       "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json"
+      ],
+      "verification_method": "Focused Vitest run covering CMS processing, JSON-LD validation, tenant overview API authorization/results, and dashboard KPI rendering."
     },
     {
       "applicability": "UNASSESSED",
@@ -795,26 +802,33 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L449"
       ],
       "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L449",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/contentOutputProcessor.ts",
+        "apps/web/server/services/jsonLdGenerator.ts",
+        "apps/web/server/routers/contentQuality.ts",
+        "apps/web/client/src/pages/ContentQualityDashboard.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Keep exact-SHA verification current when these content-quality paths change; continue with independent product slices without broad Spec reconciliation.",
       "requirement_digest": "c0c8164061982c52aa37eb881fad74704c20910c2ca8162b18b5cfe7da3766d3",
       "requirement_id": "REQ-82664B7A464F",
       "requirement_text": "- `apps/web/server/services/jsonLdGenerator.ts`",
       "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json"
+      ],
+      "verification_method": "Focused Vitest run covering CMS processing, JSON-LD validation, tenant overview API authorization/results, and dashboard KPI rendering."
     },
     {
       "applicability": "APPLICABLE",
@@ -826,7 +840,7 @@
       "blocker": null,
       "current_relevance": "CONFIRMED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "evidence_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/skills/",
@@ -834,7 +848,7 @@
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "No further action for REQ-82D72A4A21B6; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
+      "next_action": "No further action for REQ-82D72A4A21B6; focused CMS skill-output acceptance passed at canonical SHA 00b41b933df64ff6a225b8a91254d70ddcb1ece7.",
       "requirement_digest": "a9ac06642ed632056b0fd7ceb083bab75cf90742c19d580dfa0f0090e07490ae",
       "requirement_id": "REQ-82D72A4A21B6",
       "requirement_text": "**Goal**: อัพเกรด reviewer ทั้ง 15 ตัวให้รองรับ ProductReviewCMS.v1",
@@ -842,7 +856,8 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json"
       ],
       "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
     },
@@ -1340,7 +1355,7 @@
       "blocker": null,
       "current_relevance": "CONFIRMED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "evidence_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/skills/",
@@ -1348,7 +1363,7 @@
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "No further action for REQ-AFBE9F138116; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
+      "next_action": "No further action for REQ-AFBE9F138116; focused CMS skill-output acceptance passed at canonical SHA 00b41b933df64ff6a225b8a91254d70ddcb1ece7.",
       "requirement_digest": "cb43c802693192efc752861e0ab372934e3d202b80b9eb689a0d43cd402b1766",
       "requirement_id": "REQ-AFBE9F138116",
       "requirement_text": "**Goal**: อัพเกรด article writers 8 ตัวให้รองรับ ArticleCMS.v1",
@@ -1356,7 +1371,8 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json"
       ],
       "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
     },
@@ -2043,26 +2059,33 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L749"
       ],
       "authority_source": "specs/feature/038-Citation-Gated-Content-Quality/spec.md#L749",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/contentOutputProcessor.ts",
+        "apps/web/server/services/jsonLdGenerator.ts",
+        "apps/web/server/routers/contentQuality.ts",
+        "apps/web/client/src/pages/ContentQualityDashboard.tsx"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Keep exact-SHA verification current when these content-quality paths change; continue with independent product slices without broad Spec reconciliation.",
       "requirement_digest": "7b7e11d8088fdd01973797d22f199466dc1a728576e97932f766ddb4bd5d4715",
       "requirement_id": "REQ-FB7281AC8C41",
       "requirement_text": "| Structured data validity | JSON-LD validation | Pass/fail count |",
       "source_spec_digest": "d9e8eca89db1b4881e2347466dedbaa1f0e54d53e67e72916cf6a180089b3383",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json"
+      ],
+      "verification_method": "Focused Vitest run covering CMS processing, JSON-LD validation, tenant overview API authorization/results, and dashboard KPI rendering."
     },
     {
       "applicability": "UNASSESSED",
@@ -2206,7 +2229,7 @@
       "blocker": null,
       "current_relevance": "CONFIRMED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "evidence_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/skills/",
@@ -2214,7 +2237,7 @@
         "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "No further action for REQ-706E5F6CC7D5; its skill-output acceptance passed at canonical SHA f12bf6eee8d8b07f6e582336ccbb7685930c5c70.",
+      "next_action": "No further action for REQ-706E5F6CC7D5; focused CMS skill-output acceptance passed at canonical SHA 00b41b933df64ff6a225b8a91254d70ddcb1ece7.",
       "requirement_digest": "24da66744dcf709a6077a50e994d68786666aa9db1c69cd24ec345ef9f3a9f65",
       "requirement_id": "REQ-706E5F6CC7D5",
       "requirement_text": "| Skills with CMS output support | 23/23 (100%) | Schema validation test |",
@@ -2222,7 +2245,8 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-verification-2a0dfd7.json",
-        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json"
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/focused-skill-upgrade-f12bf6e.json",
+        "specs/feature/038-Citation-Gated-Content-Quality/handoff/evidence/lane2-structured-data-quality-20261008.json"
       ],
       "verification_method": "Run the six focused SPEC-038 apps/web Vitest files against the exact integrated main SHA."
     },
