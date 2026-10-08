@@ -26,8 +26,7 @@
     "lifecycle.DORMANT_VALID": 2,
     "lifecycle.NOT_A_CANONICAL_SPEC": 158,
     "lifecycle.PARTIAL_INTEGRATED": 5,
-    "lifecycle.VALIDATION_PENDING": 31,
-    "lifecycle.VERIFIED": 1,
+    "lifecycle.VALIDATION_PENDING": 32,
     "record_kind.CANONICAL_SPEC": 314,
     "record_kind.COLLECTION_ENTRY_NO_SPEC": 1,
     "record_kind.DUPLICATE_SPEC_COPY": 1,
@@ -36,8 +35,8 @@
     "record_kind.PLANNING_ARTIFACT": 112,
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 1,
-    "verification.PARTIAL": 5,
-    "verification.PASS": 2,
+    "verification.PARTIAL": 6,
+    "verification.PASS": 1,
     "verification.UNKNOWN": 464
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
@@ -135688,7 +135687,9 @@
       "completion_reasons": [
         "Spec authority is unresolved or conflicting",
         "disposition is not an active continuation target",
-        "requirement UNPARSED-SPEC-AACD834B is OPEN"
+        "lifecycle has not reached implementation completion",
+        "requirement UNPARSED-SPEC-AACD834B is OPEN",
+        "required verification evidence is missing"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/project",
@@ -135707,8 +135708,8 @@
       "evidence_freshness": "EXACT_SHA",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:19.043588Z",
-      "lifecycle": "VERIFIED",
-      "next_action": "Proceed to FINAL_CANONICAL_SPEC_HANDOFF_MIGRATION_GATE on current canonical main. Do not set CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE = TRUE until that gate passes.",
+      "lifecycle": "VALIDATION_PENDING",
+      "next_action": "Keep CANONICAL_SPEC_HANDOFF_MIGRATION_COMPLETE unset. Resolve SPEC-06 requirement extraction, reconcile missing handoffs for SPEC-305/306/307 with their owners, classify candidate relationship cycles, then rerun the full final gate against the then-current origin/main SHA.",
       "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof",
       "primary_blocker": null,
       "problem": null,
@@ -135763,7 +135764,7 @@
       "successors": [],
       "title": "Exhaustive Reconciliation Proof",
       "true_blockers": 0,
-      "verification": "PASS"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
