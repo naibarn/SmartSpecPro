@@ -19,16 +19,23 @@
     "status": "UNRESOLVED",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "AUTHORITY",
+      "id": "SPEC275_PRODUCTION_FAILURE_EVIDENCE_AUTHORITY",
+      "next_action": "SPEC-275/SPEC-271 and SPEC-224 owners must identify and approve the existing durable failure-evidence event and tenant/retention adapters, then validate them in a non-production environment.",
+      "root_cause": "The WP2A portable receipt factory permits receipt construction only for ACCEPTED independent acceptance; the repository has no established owner-authorized production binding for failed/blocked run events, tenant/project authorization, and retention evidence."
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "expected_canonical_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
     "expected_spec_digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Keep WP2B PARTIAL. Obtain owner-backed failure-evidence, tenant/project authorization, retention, and canonical settlement interfaces before production ingestion; keep learning/promotion disabled.",
     "next_ready_workunit": null,
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "SPEC275_WP1_FIXTURE_ONLY_COMPLETE; production authority resolution remains open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -71,7 +78,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/275-autonomous-execution-learning-reliability/spec.md",
     "digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
@@ -88,23 +95,177 @@
     "title": "SmartAIHub Autonomous Execution Learning, Reliability &"
   },
   "implementation": {
-    "checkpoint_shas": [],
-    "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "checkpoint_shas": [
+      "612495a06a2472478d92a6aaa9cd8c81684815e1"
+    ],
+    "mapping": [
+      {
+        "requirement_id": "REQ-3E279092D72A",
+        "scope": "fixture-only structured run/event/verification lineage"
+      },
+      {
+        "requirement_id": "REQ-F77B870DC7CC",
+        "scope": "fixture-only tenant/project scope and replay; retention remains unavailable"
+      },
+      {
+        "requirement_id": "REQ-11594872B177",
+        "scope": "fixture output explicitly forbids auto-promotion"
+      },
+      {
+        "requirement_id": "REQ-F626F73C40F4",
+        "scope": "conflicting replay is quarantined; no production candidate quarantine"
+      }
+    ],
+    "source_paths": [
+      "apps/web/server/services/spec275FixtureEvidenceIntake.ts",
+      "apps/web/server/services/__tests__/spec275FixtureEvidenceIntake.test.ts"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "canonical_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
     "integrated": true,
-    "integrated_at": "2026-10-06T04:36:24Z"
+    "integrated_at": "2026-10-08T10:17:51Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-10-06T04:27:58.560548Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-11594872B177": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L778"
+        ],
+        "authority_source": "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L778",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC275_PRODUCTION_FAILURE_EVIDENCE_AUTHORITY",
+          "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+          "root_cause": "Production failure evidence, retention, and canonical acceptance owners/interfaces are not established; WP2A receipt creation requires ACCEPTED independent acceptance."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/spec275FixtureEvidenceIntake.ts",
+          "apps/web/server/services/__tests__/spec275FixtureEvidenceIntake.test.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+        "requirement_digest": "90a42304d4560f9bd6c6bf846f747983cd04787ca6daa6db0bdfe7a14ba816ff",
+        "requirement_id": "REQ-11594872B177",
+        "requirement_text": "Evidence MUST NOT be promoted from Tenant A into Tenant B or",
+        "source_spec_digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/275-autonomous-execution-learning-reliability/handoff/evidence/spec275-wp1-fixture-intake-612495a06a2472478d92a6aaa9cd8c81684815e1.json"
+        ],
+        "verification_method": "Focused fixture Vitest (10/10) and changed-file scoped TypeScript check; no production ingestion or learning acceptance."
+      },
+      "REQ-3E279092D72A": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L80"
+        ],
+        "authority_source": "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L80",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC275_PRODUCTION_FAILURE_EVIDENCE_AUTHORITY",
+          "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+          "root_cause": "Production failure evidence, retention, and canonical acceptance owners/interfaces are not established; WP2A receipt creation requires ACCEPTED independent acceptance."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/spec275FixtureEvidenceIntake.ts",
+          "apps/web/server/services/__tests__/spec275FixtureEvidenceIntake.test.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+        "requirement_digest": "4218ea35f76dc2c5da39482260a511f1ef4d64f6633d7c367584020a967c5aa6",
+        "requirement_id": "REQ-3E279092D72A",
+        "requirement_text": "1.  capture structured execution and verification evidence;",
+        "source_spec_digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/275-autonomous-execution-learning-reliability/handoff/evidence/spec275-wp1-fixture-intake-612495a06a2472478d92a6aaa9cd8c81684815e1.json"
+        ],
+        "verification_method": "Focused fixture Vitest (10/10) and changed-file scoped TypeScript check; no production ingestion or learning acceptance."
+      },
+      "REQ-F626F73C40F4": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L1688"
+        ],
+        "authority_source": "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L1688",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC275_PRODUCTION_FAILURE_EVIDENCE_AUTHORITY",
+          "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+          "root_cause": "Production failure evidence, retention, and canonical acceptance owners/interfaces are not established; WP2A receipt creation requires ACCEPTED independent acceptance."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/spec275FixtureEvidenceIntake.ts",
+          "apps/web/server/services/__tests__/spec275FixtureEvidenceIntake.test.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+        "requirement_digest": "7451e5913280f0cdf174641ba1692aa6a77222671044e7c66afba3e79a28492b",
+        "requirement_id": "REQ-F626F73C40F4",
+        "requirement_text": "The system SHALL provide a quarantine path for suspicious evidence, clusters, and candidates. Quarantined material MUST NOT participate in automatic promotion.",
+        "source_spec_digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/275-autonomous-execution-learning-reliability/handoff/evidence/spec275-wp1-fixture-intake-612495a06a2472478d92a6aaa9cd8c81684815e1.json"
+        ],
+        "verification_method": "Focused fixture Vitest (10/10) and changed-file scoped TypeScript check; no production ingestion or learning acceptance."
+      },
+      "REQ-F77B870DC7CC": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L718"
+        ],
+        "authority_source": "specs/feature/275-autonomous-execution-learning-reliability/spec.md#L718",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC275_PRODUCTION_FAILURE_EVIDENCE_AUTHORITY",
+          "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+          "root_cause": "Production failure evidence, retention, and canonical acceptance owners/interfaces are not established; WP2A receipt creation requires ACCEPTED independent acceptance."
+        },
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/spec275FixtureEvidenceIntake.ts",
+          "apps/web/server/services/__tests__/spec275FixtureEvidenceIntake.test.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Production evidence, retention and learning/promotion remain out of scope; obtain the existing owner-approved durable event and policy interfaces before runtime ingestion.",
+        "requirement_digest": "9d2c56f2fd36dbf2ff0673d921c4b35807fd28d6c106a92779031dc65ceb4dc3",
+        "requirement_id": "REQ-F77B870DC7CC",
+        "requirement_text": "Historical replay MUST respect tenant isolation and data-retention",
+        "source_spec_digest": "e066de3f307be39d2aa2b3aeb3382bef90c52e9544a3cf08c1da9c2af309b246",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/275-autonomous-execution-learning-reliability/handoff/evidence/spec275-wp1-fixture-intake-612495a06a2472478d92a6aaa9cd8c81684815e1.json"
+        ],
+        "verification_method": "Focused fixture Vitest (10/10) and changed-file scoped TypeScript check; no production ingestion or learning acceptance."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -182,14 +343,16 @@
     "unresolved": 138
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:37:58.555642Z",
+  "updated_at": "2026-10-08T10:21:05.549166Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
+    "evidence": [
+      "specs/feature/275-autonomous-execution-learning-reliability/handoff/evidence/spec275-wp1-fixture-intake-612495a06a2472478d92a6aaa9cd8c81684815e1.json"
+    ],
+    "freshness": "FRESH",
     "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "sha": "612495a06a2472478d92a6aaa9cd8c81684815e1",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
