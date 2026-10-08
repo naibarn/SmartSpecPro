@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "evidence_type": "focused-product-vertical-slice-verification",
+  "workunit": "SPEC-038 CMS verified fact age metric and distribution",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/368",
+  "source_ref": "refs/heads/main",
+  "source_sha": "1e002aac5b481ec0b2a285f7174a6afee17bf741",
+  "profile": "package",
+  "command": "pnpm exec vitest run client/src/pages/__tests__/ContentQualityDashboard.test.tsx server/routers/contentQuality.router.test.ts server/services/contentOutputProcessor.test.ts server/services/jsonLdGenerator.test.ts server/services/articleWriterSkillsUpgrade.test.ts server/services/reviewerSkillsUpgrade.test.ts",
+  "scope": "Tenant-scoped median verified age and age distribution, dashboard states, structured data issues, JSON-LD processing and CMS skill-output regressions",
+  "started_at": "2026-10-08T16:17:10Z",
+  "completed_at": "2026-10-08T16:17:12Z",
+  "exit_code": 0,
+  "signal": null,
+  "result": "PASS",
+  "test_files_passed": 6,
+  "tests_passed": 113,
+  "failed": 0,
+  "skipped": 0,
+  "qa_passes": 10,
+  "qa_test_files": 2,
+  "qa_tests_per_pass": 14,
+  "qa_test_executions": 140,
+  "test_files": [
+    "apps/web/client/src/pages/__tests__/ContentQualityDashboard.test.tsx",
+    "apps/web/server/routers/contentQuality.router.test.ts",
+    "apps/web/server/services/contentOutputProcessor.test.ts",
+    "apps/web/server/services/jsonLdGenerator.test.ts",
+    "apps/web/server/services/articleWriterSkillsUpgrade.test.ts",
+    "apps/web/server/services/reviewerSkillsUpgrade.test.ts"
+  ],
+  "acceptance": {
+    "median": "Returns median days since lastVerifiedAt; displays an em dash when no artifacts are verified.",
+    "distribution": "Shows 0-7, 8-30, 31-90, over-90-day and unverified counts as age bands.",
+    "data_authority": "Uses existing content_artifacts.lastVerifiedAt, which saveArtifact and refreshArtifact already write.",
+    "authorization": "Computed through the existing admin-only, tenant-filtered contentQuality.getOverview query.",
+    "migration": "No schema or migration change."
+  },
+  "resource_observation": {
+    "collected": false,
+    "reason": "Focused package tests completed in under two seconds; no memory-heavy profile was run."
+  },
+  "worktree": "/home/dev/.codex/worktrees/parallel-value-lane-20261008-lane2",
+  "notes": "This is a last-verified age proxy for CMS artifacts, not an external fact-correctness audit. SPEC-038 remains partial."
+}
