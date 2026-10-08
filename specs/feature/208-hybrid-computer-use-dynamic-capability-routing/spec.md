@@ -2,7 +2,7 @@
 
 **Status:** Architecture Freeze Candidate / Ready for Implementation  
 **Spec ID:** 208  
-**Revision:** 6 — Adds an optional Moli lightweight browser-engine provider contract, evidence-backed compatibility boundaries, capability routing and fallback rules, security/session isolation, benchmark acceptance gates, and phased rollout; no runtime integration is claimed
+**Revision:** 7 — Carries Revision 6 forward and records Phase 0 Moli source pinning, SBOM/security findings, and prototype protocol evidence; production remains Chromium-only and Moli is not wired to the job executor
 **Date:** 2026-10-08
 **Suggested repository path:** `specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md`  
 **Primary systems:** SmartAIHub Web, Universal AI Assistant, Feature 196 Goal Orchestrator, Feature 195 Unified Async Job Control Plane, Feature 197 Runner Adaptive Execution Fabric, Capability Registry/Resolver, Approval Service, Spec 207 Economic Control Plane, Spec 209 AI Workflow Studio, Spec 210 Orca Runtime Adapter under Spec 200/206, SmartAIHub Runner, SmartAIHub Worker App, Library/Asset Gateway  
@@ -94,6 +94,10 @@ The upstream Moli README currently documents an independent Rust browser kernel 
 Go requires all of the following on the same pinned build and corpus: no cross-tenant/session or secret-leak findings; zero unapproved destination access; no unresolved non-idempotent outcomes; at least 98% DOM extraction field accuracy; at least 95% correct bounded form completion on applicable cases; task completion no more than 3 percentage points below Chromium on the eligible subset; at least 30% lower median and P95 peak RSS per successful task at concurrency 10 or higher where both engines are admitted; no more than 1% crash/timeout rate; and 100% cancellation/ephemeral-profile cleanup within the configured deadline. Any failed gate is No-Go. Rollback disables new Moli selections, drains/cancels according to the canonical job contract, preserves completed receipts, and starts new sessions on the prior compatible route. Existing stateful sessions are never transparently migrated.
 
 The benchmark corpus, case mix, resource admission, report schema, and implementation phases are specified in the companion audit. Upstream-published benchmarks are explicitly excluded from these acceptance results.
+
+### Revision 7 — Phase 0 evidence update
+
+The pinned upstream release, source/artifact digests, CycloneDX inventory, OSV query results, and bounded CDP/WebDriver smoke evidence are recorded in [`moli-phase0-prototype-2026-10-08.md`](moli-phase0-prototype-2026-10-08.md). The OSV scan returned unresolved advisories and the smoke test found that WebDriver sessions on one Moli server share storage; only separate CDP BrowserContexts isolated the tested local storage. These findings do not satisfy the security, isolation, Runner integration, or rollout gates. Chromium remains the only browser engine dispatched by the current job executor. Moli is disabled and production use remains No-Go.
 
 # 1. Executive Summary
 

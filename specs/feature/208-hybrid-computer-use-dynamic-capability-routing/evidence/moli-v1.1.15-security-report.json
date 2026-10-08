@@ -1,0 +1,166 @@
+{
+  "scanner": "OSV querybatch API",
+  "queried_at": "2026-10-08T02:20:40.158274+00:00",
+  "ecosystem": "crates.io",
+  "pinned_registry_package_versions": 509,
+  "batch_size": 50,
+  "findings": [
+    {
+      "package": "crossbeam-epoch",
+      "version": "0.9.18",
+      "id": "RUSTSEC-2026-0204",
+      "modified": "2026-07-06T22:30:04.159269Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "moli-core@0.1.0",
+        "moli-renderer-v8@0.1.0",
+        "stylo@0.20.0",
+        "rayon-core@1.13.0",
+        "crossbeam-deque@0.8.6",
+        "crossbeam-epoch@0.9.18"
+      ]
+    },
+    {
+      "package": "paste",
+      "version": "1.0.15",
+      "id": "RUSTSEC-2024-0436",
+      "modified": "2026-01-27T22:03:15.694766Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "moli-protocol@0.1.0",
+        "v8@152.2.0",
+        "paste@1.0.15"
+      ]
+    },
+    {
+      "package": "rand",
+      "version": "0.9.2",
+      "id": "GHSA-cq8v-f236-94qc",
+      "modified": "2026-09-10T03:50:43.958966Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "axum@0.8.8",
+        "tokio-tungstenite@0.28.0",
+        "tungstenite@0.28.0",
+        "rand@0.9.2"
+      ]
+    },
+    {
+      "package": "rand",
+      "version": "0.9.2",
+      "id": "RUSTSEC-2026-0097",
+      "modified": "2026-07-17T16:00:04.554426Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "axum@0.8.8",
+        "tokio-tungstenite@0.28.0",
+        "tungstenite@0.28.0",
+        "rand@0.9.2"
+      ]
+    },
+    {
+      "package": "rustls",
+      "version": "0.23.38",
+      "id": "GHSA-2mjx-qc3c-rqvc",
+      "modified": "2026-10-05T23:45:08.859781Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "axum@0.8.8",
+        "tokio-tungstenite@0.28.0",
+        "rustls@0.23.38"
+      ]
+    },
+    {
+      "package": "rustls",
+      "version": "0.23.38",
+      "id": "RUSTSEC-2026-0285",
+      "modified": "2026-09-14T16:15:03.240735Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "axum@0.8.8",
+        "tokio-tungstenite@0.28.0",
+        "rustls@0.23.38"
+      ]
+    },
+    {
+      "package": "rustls-webpki",
+      "version": "0.103.12",
+      "id": "GHSA-82j2-j2ch-gfr8",
+      "modified": "2026-09-19T03:55:33.412079Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "axum@0.8.8",
+        "tokio-tungstenite@0.28.0",
+        "rustls@0.23.38",
+        "rustls-webpki@0.103.12"
+      ]
+    },
+    {
+      "package": "rustls-webpki",
+      "version": "0.103.12",
+      "id": "RUSTSEC-2026-0104",
+      "modified": "2026-09-19T08:42:27Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "axum@0.8.8",
+        "tokio-tungstenite@0.28.0",
+        "rustls@0.23.38",
+        "rustls-webpki@0.103.12"
+      ]
+    },
+    {
+      "package": "smallbitvec",
+      "version": "2.6.0",
+      "id": "GHSA-97wc-2hqc-cjgr",
+      "modified": "2026-06-08T23:45:14.600600Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "moli-core@0.1.0",
+        "moli-renderer-v8@0.1.0",
+        "stylo@0.20.0",
+        "smallbitvec@2.6.0"
+      ]
+    },
+    {
+      "package": "thin-vec",
+      "version": "0.2.14",
+      "id": "GHSA-xphw-cqx3-667j",
+      "modified": "2026-09-10T03:50:44.986828Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "moli-core@0.1.0",
+        "moli-dom@0.1.0",
+        "thin-vec@0.2.14"
+      ]
+    },
+    {
+      "package": "thin-vec",
+      "version": "0.2.14",
+      "id": "RUSTSEC-2026-0103",
+      "modified": "2026-04-27T20:30:06.701766Z",
+      "summary": null,
+      "dependency_path": [
+        "moli@1.1.15",
+        "moli-core@0.1.0",
+        "moli-dom@0.1.0",
+        "thin-vec@0.2.14"
+      ]
+    }
+  ],
+  "query_errors": [],
+  "limitations": [
+    "The dependency closure follows normal/build edges from the Moli package in Cargo metadata; target-specific platform and feature selection are not filtered.",
+    "OSV results cover registry crates only; git dependencies and native/system libraries require separate review.",
+    "This report does not replace cargo-audit or a signed upstream artifact verification."
+  ]
+}
