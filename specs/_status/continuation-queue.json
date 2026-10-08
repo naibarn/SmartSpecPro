@@ -4911,21 +4911,21 @@
     },
     {
       "confidence": "MEDIUM",
-      "decision": "VALIDATION_ONLY",
-      "path": "specs/security/20260211",
-      "priority": "P2",
-      "rationale": "Complete focused editor insertion verification and rerun normalized external URL validation with deterministic DNS fixtures.",
-      "record_key": "canonical:specs/security/20260211",
-      "spec_id": null
-    },
-    {
-      "confidence": "MEDIUM",
       "decision": "MAINTENANCE_ONLY",
       "path": "specs/feature/296-silence-detection",
       "priority": "P4",
       "rationale": "No further implementation work is required. Keep the focused silence detection UI and FFmpeg tests in the regression set.",
       "record_key": "canonical:specs/feature/296-silence-detection",
       "spec_id": "296"
+    },
+    {
+      "confidence": "MEDIUM",
+      "decision": "MAINTENANCE_ONLY",
+      "path": "specs/security/20260211",
+      "priority": "P4",
+      "rationale": "No further implementation work is required for the external-image security acceptance criteria. Keep focused library/editor and URL policy regressions in the regression set.",
+      "record_key": "canonical:specs/security/20260211",
+      "spec_id": null
     }
   ],
   "schema_version": 1

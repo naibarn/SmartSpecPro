@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-10-08T02:01:54Z",
+  "canonical_ref": "refs/heads/main",
+  "canonical_sha": "3099b819dad92fa45a0643aad3b6bc1cb53b9eb2",
+  "scope": "Focused external-image security, editor/library integration, and handoff-writer verification on the refreshed canonical main tip.",
+  "candidate_assessment": {
+    "open_requirements_before": 3,
+    "remaining_scope": "SMALL",
+    "dependencies_ready": true,
+    "factory_collision": "NONE: only library/editor tests and Security handoff paths; no reserved Factory ownership or shared migrations changed.",
+    "expected_product_outcome": "External HTTPS image imports resolve to tenant-owned managed storage while editor insertion, HTML rendering, and Markdown serialization remain usable; unsafe URL cases remain rejected.",
+    "expected_completion_state": "IMPLEMENTED_VERIFIED"
+  },
+  "commands": [
+    {
+      "command": "JWT_SECRET=<test-only value> TMPDIR=/home/dev/.cache/lane2-tmp pnpm --filter @smartspec/web exec vitest run server/services/securityRegressionReleaseGate.test.ts server/services/libraryUrlPolicy.test.ts server/services/imageProxySafety.test.ts server/services/uploadContentSafety.test.ts server/services/libraryFeatureFlags.test.ts server/routers/libraryOps.test.ts client/src/lib/securityCompatibility.test.ts client/src/components/editor/TiptapMarkdownBridge.test.ts client/src/components/editor/TiptapEditor.test.tsx client/src/components/editor/extensions/__tests__/imageExtension.test.ts client/src/components/library/DocumentPreviewPanel.test.tsx client/src/components/media/LibrarySearchPanel.test.ts client/src/components/editor/MediaInsertMenu.test.tsx",
+      "result": "PASS",
+      "passed": 134,
+      "failed": 0,
+      "skipped": 3,
+      "files_passed": 13,
+      "notes": "Includes external HTTPS preview, safe/unsafe URL, tenant isolation, library media thumbnail, Markdown bridge, and default editor insert/render/serialize coverage."
+    },
+    {
+      "command": "JWT_SECRET=<test-only value> TMPDIR=/home/dev/.cache/lane2-tmp pnpm --filter @smartspec/web exec vitest run server/services/libraryService.test.ts -t 'normalized sourceUrl|unsafe sourceUrl|unsafe thumbnailUrl'",
+      "result": "PASS",
+      "passed": 3,
+      "failed": 0,
+      "notes": "Deterministic durable-media mock verifies public external image ingestion, managed source/thumbnail URLs, preservation of provider_original_url, and unsafe URL rejection without relying on external DNS or storage."
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "python3 -m unittest discover -s tools/spec_handoff/tests",
+      "result": "PASS",
+      "passed": 83,
+      "failed": 0,
+      "notes": "Includes atomic multi-row requirement evidence refresh across canonical SHA advancement."
+    }
+  ],
+  "product_capability_evidence": [
+    "External HTTPS image sources are copied into managed tenant/user media storage and both library source and thumbnail resolve to the managed image URL.",
+    "Default Tiptap editor extensions accept an external HTTPS image, render it as HTML, and serialize it back to Markdown with alt text.",
+    "Unsafe source and thumbnail URLs remain rejected by deterministic validation tests."
+  ],
+  "limitations": [
+    "No production deployment or manual user acceptance evidence was checked.",
+    "The full libraryService test file was not run; the normalized URL and unsafe source/thumbnail security cases were run directly, while the previously recorded broad DB mock contract failures remain outside this focused verification scope."
+  ]
+}
