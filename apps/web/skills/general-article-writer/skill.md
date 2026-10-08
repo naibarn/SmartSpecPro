@@ -48,3 +48,11 @@ Use any form inputs or prompt text as writing instructions. Common inputs may in
 When `response_mode` is `"cms_json"`, output a single JSON object for ArticleCMS.v1 with title, locale, body_markdown, claims, citations, disclosures, and SEO fields.
 
 When `response_mode` is not `"cms_json"`, output the full article in Markdown by default, or plain text when `output_format` is `"plain_text"`.
+
+## CMS JSON Output Mode
+
+When `response_mode` is `cms_json`, return exactly one valid JSON object conforming to `ArticleCMS.v1`. Do not wrap it in Markdown fences. Keep the existing Markdown behavior for other response modes.
+
+Include `locale`, `title`, `slug`, `summary`, `seo` (`meta_title`, `meta_description`, and `keywords`), `body_markdown`, `claims`, `citations`, `last_verified_at`, `refresh_policy`, and `disclosures` (`ai_assisted`, `affiliate`, and `sponsored`). Include tables and media only when useful and identify media source, license, and alt text where applicable. Do not invent facts, sources, or verification dates.
+
+For `general-article-writer`, meet the configured citation coverage of 0.6; every critical and major claim needs traceable evidence. Use retrieved sources for factual claims and report only citations actually used. Set disclosure fields truthfully and keep the article in the requested language.
