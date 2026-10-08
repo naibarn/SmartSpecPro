@@ -11,12 +11,21 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import uuid
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 class DeployError(RuntimeError):
     pass
+
+
+class CanonicalAdvanced(DeployError):
+    pass
+
+
+MAX_CANONICAL_BUILD_ATTEMPTS = 2
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -31,21 +40,38 @@ def run_git(repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def bootstrap_controller(repo: Path, temporary: Path) -> tuple[Path, Path, str]:
+def bootstrap_controller(repo: Path, temporary: Path) -> tuple[Path, Path, str, str]:
     """Load policy and builder from fetched main so stale checkouts can run this."""
+    bootstrap_ref = f"refs/codex/build-deploy/bootstrap/{uuid.uuid4().hex}"
     fetch = subprocess.run(
-        ["git", "-C", str(repo), "fetch", "--no-tags", "origin", "main"],
+        [
+            "git",
+            "-C",
+            str(repo),
+            "fetch",
+            "--no-tags",
+            "origin",
+            f"refs/heads/main:{bootstrap_ref}",
+        ],
         text=True,
         capture_output=True,
         check=False,
     )
     if fetch.returncode:
         raise DeployError(f"Unable to fetch origin/main: {fetch.stderr.strip()}")
-    source_sha = run_git(repo, "rev-parse", "FETCH_HEAD^{commit}")
-    policy_text = run_git(repo, "show", f"{source_sha}:.development-repository.toml")
-    controller_text = run_git(
-        repo, "show", f"{source_sha}:scripts/development-lifecycle/canonical_source.py"
-    )
+    source_sha = run_git(repo, "rev-parse", f"{bootstrap_ref}^{{commit}}")
+    try:
+        policy_text = run_git(repo, "show", f"{source_sha}:.development-repository.toml")
+        controller_text = run_git(
+            repo, "show", f"{source_sha}:scripts/development-lifecycle/canonical_source.py"
+        )
+    finally:
+        subprocess.run(
+            ["git", "-C", str(repo), "update-ref", "-d", bootstrap_ref],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
     policy_path = temporary / "repository.toml"
     controller_path = temporary / "canonical_source.py"
     policy_path.write_text(policy_text + "\n", encoding="utf-8")
@@ -53,7 +79,39 @@ def bootstrap_controller(repo: Path, temporary: Path) -> tuple[Path, Path, str]:
     policy = tomllib.loads(policy_text)["repository"]
     if policy.get("remote") != "origin" or policy.get("canonical_ref") != "refs/heads/main":
         raise DeployError("origin/main differs from the repository's configured canonical ref")
-    return policy_path, controller_path, source_sha
+    return policy_path, controller_path, policy["remote"], policy["canonical_ref"]
+
+
+def remote_canonical_tip(repo: Path, remote: str, canonical_ref: str) -> str:
+    output = run_git(repo, "ls-remote", "--exit-code", remote, canonical_ref)
+    revisions = [line.split("\t", 1)[0] for line in output.splitlines() if "\t" in line]
+    if len(revisions) != 1 or len(revisions[0]) not in {40, 64}:
+        raise DeployError("Canonical ref resolution returned an invalid result")
+    return revisions[0]
+
+
+def ensure_canonical_tip(
+    repo: Path, remote: str, canonical_ref: str, expected_revision: str
+) -> None:
+    actual_revision = remote_canonical_tip(repo, remote, canonical_ref)
+    if actual_revision != expected_revision:
+        raise CanonicalAdvanced(
+            "Canonical source advanced before publication; "
+            f"built={expected_revision}, current={actual_revision}"
+        )
+
+
+def controller_matches_source(
+    repo: Path, controller_path: Path, policy_path: Path, source_revision: str
+) -> bool:
+    source_controller = run_git(
+        repo, "show", f"{source_revision}:scripts/development-lifecycle/canonical_source.py"
+    )
+    source_policy = run_git(repo, "show", f"{source_revision}:.development-repository.toml")
+    return (
+        controller_path.read_text(encoding="utf-8").strip() == source_controller
+        and policy_path.read_text(encoding="utf-8").strip() == source_policy
+    )
 
 
 def service_web_root() -> Path:
@@ -99,7 +157,12 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def publish_public_tree(source: Path, destination: Path, backup: Path) -> tuple[int, str]:
+def publish_public_tree(
+    source: Path,
+    destination: Path,
+    backup: Path,
+    before_index_swap: Callable[[], None] | None = None,
+) -> tuple[int, str]:
     source_index = source / "index.html"
     destination_index = destination / "index.html"
     if not source_index.is_file() or not destination_index.is_file():
@@ -141,6 +204,8 @@ def publish_public_tree(source: Path, destination: Path, backup: Path) -> tuple[
     temporary_index = Path(temporary_name)
     try:
         shutil.copy2(source_index, temporary_index)
+        if before_index_swap is not None:
+            before_index_swap()
         os.replace(temporary_index, destination_index)
     finally:
         temporary_index.unlink(missing_ok=True)
@@ -168,52 +233,106 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="sspro-main-builder-") as temporary_dir:
         temporary = Path(temporary_dir)
-        policy_path, controller_path, fetched_sha = bootstrap_controller(repo, temporary)
         service_root = service_web_root()
         destination = service_root / "dist/public"
         if plan_only:
-            print(f"SOURCE_REVISION={fetched_sha}")
+            _, _, remote, canonical_ref = bootstrap_controller(repo, temporary)
+            print(f"SOURCE_REVISION={remote_canonical_tip(repo, remote, canonical_ref)}")
             print(f"PUBLISH_TARGET={destination}")
             print("MODE=plan; no build or publication performed")
             return 0
 
-        command = [
-            sys.executable,
-            str(controller_path),
-            "build",
-            "--repository",
-            str(repo),
-            "--policy",
-            str(policy_path),
-            "--build-target",
-            "smartspec-web",
-        ]
         required_revision = os.environ.get("SSP_REQUIRED_INTEGRATED_REVISION")
-        if required_revision:
-            command.extend(["--required-integrated-revision", required_revision])
-        result = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=False)
-        if result.returncode:
-            raise DeployError(f"Canonical build failed with exit code {result.returncode}")
-        try:
-            build = json.loads(result.stdout.strip().splitlines()[-1])
-        except (IndexError, json.JSONDecodeError) as exc:
-            raise DeployError("Canonical builder did not return a result record") from exc
-        if build.get("status") != "BUILD_PASSED":
-            raise DeployError(f"Canonical build status is {build.get('status')!r}; nothing was published")
-        if build.get("source_revision") != fetched_sha:
-            raise DeployError("The canonical source advanced during bootstrap; rerun the command")
+        for attempt in range(1, MAX_CANONICAL_BUILD_ATTEMPTS + 1):
+            if attempt > 1:
+                print(
+                    f"[build:deploy] Retrying once from the latest canonical source "
+                    f"(attempt {attempt}/{MAX_CANONICAL_BUILD_ATTEMPTS}).",
+                    file=sys.stderr,
+                )
+            policy_path, controller_path, remote, canonical_ref = bootstrap_controller(
+                repo, temporary
+            )
+            command = [
+                sys.executable,
+                str(controller_path),
+                "build",
+                "--repository",
+                str(repo),
+                "--policy",
+                str(policy_path),
+                "--build-target",
+                "smartspec-web",
+            ]
+            if required_revision:
+                command.extend(["--required-integrated-revision", required_revision])
+            result = subprocess.run(command, text=True, stdout=subprocess.PIPE, check=False)
+            if result.returncode not in (0, 75):
+                raise DeployError(f"Canonical build failed with exit code {result.returncode}")
+            try:
+                build = json.loads(result.stdout.strip().splitlines()[-1])
+            except (IndexError, json.JSONDecodeError) as exc:
+                raise DeployError("Canonical builder did not return a result record") from exc
 
-        source = Path(build["isolated_workspace"]) / "apps/web/dist/public"
-        backup_root = Path.home() / ".cache/codex/deploy-backups"
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-        backup = backup_root / f"smartspec-web-main-{stamp}"
-        copied, index_hash = publish_public_tree(source, destination, backup)
-        print(f"SOURCE_REVISION={build['source_revision']}")
-        print(f"PUBLISH_TARGET={destination}")
-        print(f"BACKUP={backup}")
-        print(f"PUBLISHED_ASSETS={copied}")
-        print(f"INDEX_SHA256={index_hash}")
-        print("SERVICE_RESTART=not-required-for-static-assets")
+            if result.returncode == 75 or build.get("status") == "STALE_CANONICAL_ADVANCED":
+                if attempt < MAX_CANONICAL_BUILD_ATTEMPTS:
+                    print(
+                        "[build:deploy] Canonical source changed during build; "
+                        "discarding that result and retrying once from the latest tip.",
+                        file=sys.stderr,
+                    )
+                    continue
+                raise CanonicalAdvanced("Canonical source advanced during both build attempts; nothing was published")
+            if result.returncode != 0 or build.get("status") != "BUILD_PASSED":
+                raise DeployError(
+                    f"Canonical build status is {build.get('status')!r}; nothing was published"
+                )
+
+            source_revision = build.get("source_revision")
+            if not source_revision or build.get("canonical_ref") != canonical_ref:
+                raise DeployError("Canonical builder returned a mismatched source or ref; nothing was published")
+            stale_reason = None
+            if build.get("canonical_tip_after_build") != source_revision:
+                stale_reason = "canonical source advanced while the build was running"
+            elif not controller_matches_source(repo, controller_path, policy_path, source_revision):
+                stale_reason = "canonical build controller changed after bootstrap"
+            elif remote_canonical_tip(repo, remote, canonical_ref) != source_revision:
+                stale_reason = "canonical source advanced after the build completed"
+            if stale_reason:
+                if attempt < MAX_CANONICAL_BUILD_ATTEMPTS:
+                    print(
+                        f"[build:deploy] {stale_reason}; retrying once from the latest tip.",
+                        file=sys.stderr,
+                    )
+                    continue
+                raise CanonicalAdvanced(f"{stale_reason}; nothing was published after both attempts")
+
+            source = Path(build["isolated_workspace"]) / "apps/web/dist/public"
+            backup_root = Path.home() / ".cache/codex/deploy-backups"
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+            backup = backup_root / f"smartspec-web-main-{stamp}"
+            try:
+                ensure_canonical_tip(repo, remote, canonical_ref, source_revision)
+                copied, index_hash = publish_public_tree(
+                    source,
+                    destination,
+                    backup,
+                    before_index_swap=lambda: ensure_canonical_tip(
+                        repo, remote, canonical_ref, source_revision
+                    ),
+                )
+            except CanonicalAdvanced:
+                if attempt < MAX_CANONICAL_BUILD_ATTEMPTS:
+                    continue
+                raise
+
+            print(f"SOURCE_REVISION={source_revision}")
+            print(f"PUBLISH_TARGET={destination}")
+            print(f"BACKUP={backup}")
+            print(f"PUBLISHED_ASSETS={copied}")
+            print(f"INDEX_SHA256={index_hash}")
+            print("SERVICE_RESTART=not-required-for-static-assets")
+            break
     return 0
 
 
