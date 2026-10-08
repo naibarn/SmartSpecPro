@@ -1,4 +1,7 @@
 import type { DevelopmentWorkUnit } from "./developmentLifecycleContracts";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export type MiniAppFactoryStage = {
   id: string;
@@ -7,6 +10,27 @@ export type MiniAppFactoryStage = {
   outputs?: string[];
   gate?: string;
 };
+
+/** Loads the canonical Factory pipeline contract used by the autonomous program. */
+export function loadMiniAppFactoryPipeline(path = process.env.SMARTSPEC_MINI_APP_FACTORY_PIPELINE_PATH): MiniAppFactoryPipeline {
+  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+  const filePath = path ?? resolve(repositoryRoot, "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json");
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(filePath, "utf8"));
+  } catch {
+    throw new Error("FACTORY_PIPELINE_SOURCE_UNAVAILABLE");
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("FACTORY_PIPELINE_INVALID");
+  const value = raw as Record<string, unknown>;
+  const pipeline = {
+    schemaVersion: value.schemaVersion,
+    pipelineId: value.pipelineId,
+    stages: value.stages,
+  } as MiniAppFactoryPipeline;
+  validateMiniAppFactoryPipeline(pipeline);
+  return pipeline;
+}
 
 export type MiniAppFactoryPipeline = {
   schemaVersion: "mini-app-factory-pipeline.v1";

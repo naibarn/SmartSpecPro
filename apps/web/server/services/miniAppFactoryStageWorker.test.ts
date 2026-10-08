@@ -91,7 +91,7 @@ describe("Mini App Factory worker_jobs binding", () => {
     const assertActive = vi.fn(async () => undefined);
     const reporter = { assertActive, progress: vi.fn(async () => undefined) };
     const canonicalCreate = vi.fn(async () => ({ jobId: "auto-next-stage-job", created: true }));
-    const executor = createMiniAppFactoryStageJobExecutor(() => ({ pipeline, service: service as any, executeStage }));
+    const executor = createMiniAppFactoryStageJobExecutor(() => ({ pipeline, service: service as any, executeStage, allowSyntheticExecution: true }));
     const job = {
       context: {
         jobId: "canonical-worker-job", tenantId: run.tenantId, requestedByUserId: run.actorId,
@@ -114,6 +114,28 @@ describe("Mini App Factory worker_jobs binding", () => {
     const duplicate = await executor(job as any);
     expect(duplicate).toEqual({ output: { stageId: "SPEC", state: "ALREADY_CHECKPOINTED", nextJobId: "auto-next-stage-job" } });
     expect(executeStage).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes production stages to a deferred DevelopmentRun and never invokes a synthetic stage callback", async () => {
+    const run = makeRun();
+    const executeStage = vi.fn(async () => ({ artifacts: ["synthetic"] }));
+    const createRunnerStage = vi.fn(async () => ({ runId: "factory-stage-run", jobId: "held-runner-job", created: true, state: "PENDING_AUTHORIZATION" as const }));
+    const executor = createMiniAppFactoryStageJobExecutor(() => ({
+      pipeline,
+      service: { get: async () => ({ run, revision: 1, events: [] }) } as any,
+      executeStage,
+      createRunnerStage,
+    }));
+    const result = await executor({
+      context: { jobId: "coordinator-job", tenantId: run.tenantId, requestedByUserId: run.actorId,
+        input: { contractVersion: MINI_APP_FACTORY_STAGE_CONTRACT, runId: run.runId, stageId: "SPEC" } } as any,
+      lease: { jobId: "coordinator-job", attemptId: "attempt-1", fencingVersion: 1 } as any,
+      reporter: { assertActive: vi.fn(async () => undefined), progress: vi.fn(async () => undefined) } as any,
+      controlPlane: {} as any,
+    } as any);
+    expect(result).toEqual({ output: { stageId: "SPEC", state: "WAITING_AUTHORIZATION", childRunId: "factory-stage-run", jobId: "held-runner-job" } });
+    expect(createRunnerStage).toHaveBeenCalledOnce();
+    expect(executeStage).not.toHaveBeenCalled();
   });
 
   it("does not fabricate success when the worker runtime is unconfigured", async () => {

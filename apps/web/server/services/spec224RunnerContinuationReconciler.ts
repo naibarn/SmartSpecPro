@@ -14,6 +14,7 @@ import {
   createDevelopmentRunService,
   defaultDevelopmentRunPersistenceAdapter,
 } from "./spec224DevelopmentRunPersistence";
+import { settleMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerSettlement";
 
 const INTENT_EVENT = "SPEC224_CONTINUATION_PENDING";
 const PROCESSED_EVENTS = [
@@ -217,15 +218,6 @@ export async function reconcileSpec224RunnerContinuations(
         )
       )
       .limit(1);
-    if (alreadyContinued.length) {
-      await markOperation(
-        intent,
-        "SPEC224_CONTINUATION_RECONCILED",
-        "development_run_transition_already_persisted"
-      );
-      reconciled += 1;
-      continue;
-    }
     const validProjection =
       projection &&
       typeof projection === "object" &&
@@ -319,6 +311,20 @@ export async function reconcileSpec224RunnerContinuations(
       continue;
     }
 
+    if (alreadyContinued.length) {
+      await settleMiniAppFactoryRunnerStage({
+        runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
+        receiptEventId: intent.receiptEventId, developmentRuns,
+      });
+      await markOperation(
+        intent,
+        "SPEC224_CONTINUATION_RECONCILED",
+        "development_run_transition_already_persisted"
+      );
+      reconciled += 1;
+      continue;
+    }
+
     let settlementOk = true;
     if (job.status === "waiting_external") {
       if (intent.receiptEventType === "RUNNER_EXECUTION_COMPLETED") {
@@ -391,6 +397,10 @@ export async function reconcileSpec224RunnerContinuations(
       );
       reviewRequired += 1;
     } else {
+      await settleMiniAppFactoryRunnerStage({
+        runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId,
+        receiptEventId: intent.receiptEventId, developmentRuns,
+      });
       await markOperation(
         intent,
         "SPEC224_CONTINUATION_RECONCILED",

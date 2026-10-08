@@ -308,6 +308,7 @@ describe("job control plane", () => {
     job.inputJson.manifest.policyBinding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "b", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
     job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding: job.inputJson.manifest.policyBinding };
     expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
+    expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
     expect(job.status).toBe("queued");
     expect(state.outbox).toHaveLength(1);
   });
