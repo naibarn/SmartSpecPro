@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "804411ba46401c5a2b819afe284e4aa537b20612",
+    "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
-      "canonical_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
-      "canonical_user_workspace_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
+      "integrated_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "canonical_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "canonical_user_workspace_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:83254837-036a-4844-9458-b88ba86d0658",
-      "verified_at": "2026-10-08T16:23:58.565Z"
+      "receipt_id": "workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01",
+      "verified_at": "2026-10-08T17:17:07.072Z"
     },
-    "observedAt": "2026-10-08T16:26:31.080Z",
+    "observedAt": "2026-10-08T17:17:07.072Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "804411ba46401c5a2b819afe284e4aa537b20612",
+      "canonical_user_workspace_sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
       "dirty": false,
-      "reason": "PR #370 handoff merged normally at 804411ba46401c5a2b819afe284e4aa537b20612; workspace converge and verify passed."
+      "reason": "PR #375 merged normally; workspace converge and verify passed."
     },
-    "latestIntegratedProgramChange": "PR #367 exposes the existing P-RECOVERY issuer through authenticated tenant-owner authority. Real Runner dispatch remains blocked by expired capability evidence, missing job-scoped authority/budget/ledger provisioning, and missing receipt-to-economic-capture integration.",
+    "latestIntegratedProgramChange": "PR #375 added receipt-backed economic settlement port and exact approved budget-cap/currency binding; live settlement remains waiting for registered accounting verifier and authorized ledger source.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "804411ba46401c5a2b819afe284e4aa537b20612",
+      "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:83254837-036a-4844-9458-b88ba86d0658",
-      "verifiedAt": "2026-10-08T16:23:58.565Z"
+      "convergenceReceipt": "workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01",
+      "verifiedAt": "2026-10-08T17:17:07.072Z"
     }
   },
   "inventory": {
@@ -66,24 +66,37 @@
     "outsideMainSources": "not fully audited yet; validate --all reports missing handoffs for canonical Specs 305 and 306"
   },
   "currentWorkunit": {
-    "id": "LANE1_TRUSTED_RUNNER_BINDING_AND_NONPROD_DEPLOYMENT",
-    "state": "PARTIAL_INTEGRATED_OWNER_SCOPED_RECOVERY_GRANT_ISSUER; REAL_RUN_WAITING_AUTHORITY",
-    "objective": "Bind Factory execution to the existing authenticated DevelopmentRun/Runner control plane and deploy Research Notes through a registered non-production target.",
+    "id": "LANE1_RECEIPT_BACKED_SETTLEMENT_AND_WINDOWS_RUNNER_AUTHORITY",
+    "state": "PARTIAL_INTEGRATED_SETTLEMENT_PORT; REAL_DISPATCH_WAITING_FRESH_RUNNER_AND_OWNER_AUTHORITY",
+    "objective": "Bind real Windows Codex execution and receipt-backed accounting to existing trusted Runner, DevelopmentRun, authorization, and economic ledger authority.",
     "implementation": [
-      "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
-      "apps/web/server/services/miniAppFactoryRunnerSettlement.ts",
-      "apps/web/server/services/miniAppFactoryRuntime.ts",
-      "apps/web/server/services/miniAppFactoryStageWorker.ts",
-      "apps/web/server/services/spec224RunnerContinuationReconciler.ts",
-      "apps/web/server/services/jobControlPlane.ts",
-      "apps/web/server/jobs/postgresNodeJobWorker.ts"
+      "apps/web/server/services/economicReceiptSettlement.ts",
+      "apps/web/server/services/economicDurableService.ts",
+      "apps/web/server/services/spec224AuthorizationBinding.ts",
+      "apps/web/server/services/spec224AuthorizationService.ts",
+      "apps/web/server/services/externalAgentRunnerDispatcher.ts",
+      "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json"
     ],
-    "sourceSha": "3d4159ea7bde45c3bc9498a827e986ce1283948b",
-    "evidence": "PR #367 merged normally at 98ec7c9645cdceaa3ba534622e86db06f47defd4; exposes existing ApprovalDBService.issue_spec224_recovery_grant through authenticated tenant-owner route. Focused Python tests 19/19 and 12 control-plane Vitest files 60/60 passed on integrated SHA; py_compile, diff check, canonical workspace converge+verify passed. Read-only loopback control-plane observation at 2026-10-08T16:17:17Z: local-runner trusted/online but capability snapshot observed 15:58:21Z expired 16:03:21Z; zero fresh snapshots. Runner-published workspace ws-codextest-36c7be692aaa exists, but no job/conversation workspace binding. Counts: worker_job_grants=0 (not used by this trusted Runner dispatch path), budgets=0, ledger accounts=0, holds=0. No grant, budget, ledger account, hold, dispatch, receipt, or settlement was created. Receipt-to-economic-capture production caller is still absent. Deployment target remains independent and blocked.",
-    "integration": "PR #318 MERGED_NORMALLY",
-    "integratedSha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
-    "nextAction": "Owner: refresh the Windows Runner capability snapshot and confirm workspace ws-codextest-36c7be692aaa; approve a minimal isolated-non-production P-RECOVERY scope bound to the actual DevelopmentRun/job/attempt, source and attestation, runner/session/snapshot, workspace and protected operation; provide the authorized budget cap/currency and ledger funding/source plus debit/credit account authorization/configuration. Implementation: add receipt-backed economic capture/release integration before claiming settlement. Then execute one real Windows Codex job and verify dispatch, callback, receipt, artifact, settlement, retry and resume. Continue Linux Runner and registered non-production target as separate workunits.",
-    "pr": "https://github.com/naibarn/SmartSpecPro/pull/367"
+    "sourceSha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+    "evidence": "PR #375 merged normally at d8791f7a7bd71c47506d46fffabce5c2c820d3e6. Focused Vitest 8 files/63 tests passed; Windows launcher safety tests 3/3 passed on Linux only; disposable PostgreSQL 17 migrations 0389–0394 passed; Linux installer lifecycle passed but registered Linux runtime remains unverified. Exact approved budget-cap/currency binding and receipt-backed economic settlement port are integrated. Settlement port has no registered production verifier/account source. Last read-only control-plane evidence is 2026-10-08T16:17:17Z and is stale: Windows capability snapshot expired, no job-specific source binding, no DevelopmentRun/job/attempt, and zero budget/account/hold rows. No owner grant, budget, ledger account, dispatch, receipt, settlement, or deployment was created. UI assertion failure reproduces on canonical baseline; ESLint unavailable because resolved ESLint 6.4.0 has no configuration.",
+    "integration": "PR #375 MERGED_NORMALLY",
+    "integratedSha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+    "nextAction": "Refresh Windows Runner and Codex auth/capability snapshot; create a real DevelopmentRun/job/attempt and attested workspace binding; obtain exact owner-issued P-RECOVERY grant plus owner-authorized non-production budget, funding source, and ledger accounts. Register the policy-backed accounting verifier/account source, then dispatch and verify receipt, artifact, settlement, retry, and resume. Continue registered Linux Runner readiness and non-production target as independent workunits.",
+    "pr": "https://github.com/naibarn/SmartSpecPro/pull/375",
+    "ownerActionManifest": "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json",
+    "handoff": "orchestra/programs/autonomous-mini-app-factory/lane1-authority-settlement-handoff.v1.md",
+    "independentWorkunits": [
+      {
+        "id": "LINUX_RUNNER_READINESS",
+        "state": "PARTIAL_LOCAL_INSTALL; REGISTERED_AUTHENTICATED_CAPABILITY_NOT_VERIFIED",
+        "nextAction": "Use the existing local Runner UI/control plane to perform the authorized Codex probe and confirm the Linux Runner identity/session independently from Windows."
+      },
+      {
+        "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
+        "state": "WAITING_REGISTERED_NONPROD_TARGET_AND_OWNER_AUTHORITY",
+        "nextAction": "Owner authorizes target identity, isolated DB, credentials and migration/deployment window; then deploy and run smoke/UAT."
+      }
+    ]
   },
   "checkpoints": [
     {
@@ -410,12 +423,11 @@
     {
       "id": "FACTORY_LIVE_RUNNER_AUTHORITY",
       "state": "WAITING_EXTERNAL_AUTHORITY_AND_FRESH_RUNNER_EVIDENCE",
-      "rootCause": "At 2026-10-08T16:17:17Z the loopback control-plane DB shows local-runner trusted/online, tenant tenant-ZCSKEM9s, ownerUserId 1, recorded session 68bd6529-052a-455c-84ae-4a7c472ea2fb, but its latest Codex-capable snapshot observed 15:58:21Z expired 16:03:21Z (0 fresh snapshots). Snapshot publishes workspace ws-codextest-36c7be692aaa but no job/conversation binding exists. worker_job_grants=0 is not a blocker for this authenticated trusted Runner path. Actual gaps: no same-job P-RECOVERY grant/approval, no economic_budgets rows, no economic_ledger_accounts rows, no reserve debit/credit account IDs in app environment, and no production caller of captureEconomicHold to settle a verified receipt. Schema tables exist; absence is authority provisioning/configuration and missing receipt settlement integration, not missing migration. PR #367 integrated the owner-only issuer but issued no grant.",
-      "reactivationPredicate": "Windows owner refreshes capability snapshot and confirms workspace; authenticated tenant owner approves exact isolated-non-production run/job/attempt source-attestation-runner-session-capability-workspace-operation scope; authorized budget cap, currency and ledger source/accounts are configured; receipt-backed settlement caller is integrated. Then recheck every predicate and dispatch the minimal Codex job.",
-      "evidence": "Current DB: 0 fresh snapshots; 0 budgets/accounts/holds. No live dispatch or settlement. Owner-only issuer merged as PR #367.",
+      "rootCause": "Last read-only control-plane observation at 2026-10-08T16:17:17Z (stale) showed the Windows Codex capability snapshot expired at 16:03:21Z and no job-specific workspace binding, DevelopmentRun/job/attempt, P-RECOVERY grant, budget, ledger account, or hold. worker_job_grants=0 is not the authority for this trusted Runner path. PR #375 integrated receipt settlement and exact budget-cap/currency binding, but the settlement port still has no registered production verifier or authorized ledger account source. These are fresh Runner evidence, owner authority/provisioning, and production composition gaps; not missing settlement schema.",
+      "reactivationPredicate": "Re-read current Runner/session/capability and control-plane DB; require a nonexpired authenticated Windows Codex snapshot, a real DevelopmentRun/job/attempt, exact job-specific source attestation, owner-issued P-RECOVERY scope, approved non-production budget/funding and ledger accounts, and registered policy verifier. Recheck every binding immediately before dispatch.",
+      "evidence": "Last recorded DB evidence is stale and must be rechecked before action. No real dispatch or settlement was performed. PR #375 integrated the settlement port, but live dispatch and settlement remain NOT_VERIFIED.",
       "ownerActionRequired": {
         "tenantId": "tenant-ZCSKEM9s",
-        "ownerUserId": 1,
         "runnerId": "local-runner",
         "runnerSessionIdLastObserved": "68bd6529-052a-455c-84ae-4a7c472ea2fb",
         "capabilitySnapshotIdLastObserved": "capability:local-runner:2026-10-08T15:58:21.967Z",
@@ -428,14 +440,18 @@
           "Set the maximum spend cap and currency for this one job.",
           "Identify and authorize the ledger funding/source and debit/credit account provisioning/configuration; account creation alone has zero balance.",
           "Authorize settlement usage evidence semantics for Codex receipt so only measured, verified actual cost is captured; do not capture the full cap by assumption."
-        ]
-      }
+        ],
+        "ownerIdentityAtRequest": "Derive from authenticated server context at request time; previously observed ownerUserId=1 is stale evidence only.",
+        "budgetCap": "Owner must choose and approve a positive amount in currency minor units; no value is pre-authorized.",
+        "productionAccountingVerifier": "Register and approve a policy-backed verifier and tenant ledger account source before settlement."
+      },
+      "evidenceFreshness": "STALE_RECHECK_REQUIRED"
     },
     {
       "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
-      "state": "WAITING_SCHEMA_MIGRATIONS_AND_EXTERNAL_AUTHORITY",
-      "rootCause": "The local loopback control-plane database is at migration 0388_worker_job_event_context (349 recorded migrations). Deployment target table migration 0389_spec288_provider_deployment_target_authority and credential table migration 0391_tenant_deployment_credentials are unapplied; current canonical migration journal continues through 0394_project_wiki_pages_mini_app. The implementation and admin APIs exist in code, but this database has no target/credential tables or registered target. Local apps/web/.env has no Cloudflare account/API token values. Applying 0389-0394 would also apply intervening shared migration changes, so no migration or target/credential provisioning was performed without an approved environment/owner action.",
-      "reactivationPredicate": "Confirm the intended non-production tenant/project/environment/provider/target/runtime identity and isolated DB; obtain deployment authorization and credential source. Run the repository migration chain 0389-0394 against the explicitly authorized non-production DB, then register the target and credential via existing admin authority, bind package digest, deploy and run smoke/UAT.",
+      "state": "WAITING_REGISTERED_NONPROD_TARGET_AND_OWNER_AUTHORITY",
+      "rootCause": "Last recorded shared loopback DB observation was migration 0388 and had no registered target or credential authority. Disposable PostgreSQL 17 migration chain 0389–0394 has now passed, but no migration was applied to the shared DB and no non-production target, isolated database, credential source, or deployment approval was created.",
+      "reactivationPredicate": "Owner identifies and authorizes the non-production tenant/project/environment/provider/target/runtime identity, isolated database, and credential source; then approve and apply migrations 0389–0394 only to that isolated target, register package/artifact digest, deploy, and run smoke/UAT.",
       "ownerActionRequired": {
         "requiredDecisions": [
           "Name the tenant, project, environment and provider for the non-production target.",
@@ -445,7 +461,15 @@
           "Authorize the Research Notes package digest and deployment/UAT window."
         ]
       },
-      "evidence": "At 2026-10-08T16:24:09Z local DB migration head is 0388 (349 rows); target schema 0389 and credentials schema 0391 absent; journal head is 0394. No target registration or credential rows exist. Environment presence check found no Cloudflare account/API token values in apps/web/.env. No migration or target was created."
+      "evidence": "Disposable migration-chain validation 0389–0394 passed on an isolated PostgreSQL 17 cluster. Shared DB remains untouched; target identity, isolated runtime/database, credentials, and deployment authorization remain unregistered."
+    },
+    {
+      "id": "LINUX_RUNNER_READINESS",
+      "state": "PARTIAL_LOCAL_INSTALL; REGISTERED_AUTHENTICATED_CAPABILITY_NOT_VERIFIED",
+      "rootCause": "Fresh local CLI status reports Runner 0.2.13 ready and Codex installed, but Codex auth/health/availability remain unknown with reason probe_required and readyToolCount=0. This does not prove a tenant-bound registered Linux Runner session or fresh capability snapshot.",
+      "reactivationPredicate": "Complete an authorized Codex probe on the Linux host, register/heartbeat through existing Runner control plane, and verify a fresh tenant-bound session/capability snapshot with tool.execute.codex before any dispatch.",
+      "evidence": "Read-only /home/dev/.local/bin/smartaihub-runner status observedAt 2026-10-08T17:20:17.216Z: state=ready, version=0.2.13, toolCount=11, readyToolCount=0; codex install_state=ready but auth_state/health_state/availability_state=unknown, trust_state=discovered, reason_codes=[probe_required]. No probe or job was run.",
+      "nextAction": "Use the existing local Runner UI/control plane to perform the authorized Codex probe and confirm the Linux Runner identity/session independently from Windows."
     }
   ],
   "criticalPath": [
@@ -614,7 +638,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T16:30:21.934Z",
+  "updatedAt": "2026-10-08T17:20:32Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -628,71 +652,30 @@
     "M8_SECOND_MINI_APP_REUSE_PASS": "PASS_PROJECT_WIKI_SHARED_FACTORY_STAGE_CHAIN_TO_PACKAGE; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "deployment": {
-    "state": "WAITING_SCHEMA_MIGRATIONS_AND_EXTERNAL_AUTHORITY",
+    "state": "WAITING_REGISTERED_NONPROD_TARGET_AND_EXTERNAL_AUTHORITY",
     "targetId": "UNREGISTERED",
-    "reason": "Loopback DB is at migration 0388; target/credential migrations 0389 and 0391 and later canonical migrations through 0394 are unapplied. No authorized non-production target identity, isolated DB, credential source, or deployment approval is registered. No deployment performed.",
-    "productionTouched": false
+    "reason": "Disposable PostgreSQL 17 migration chain 0389–0394 passed. Shared control-plane DB was not migrated. No approved non-production target identity, isolated DB, credential authority, or deployment receipt exists.",
+    "productionTouched": false,
+    "migrationValidation": "DISPOSABLE_POSTGRESQL_17_0389_0394_PASS"
   },
   "factoryPipeline": {
     "path": "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json",
-    "state": "WORKER_JOBS_OUTBOX_STAGE_EXECUTOR_AND_CROSS_PROCESS_SYNTHETIC_RESUME_TESTED; DEFERRED_RUN_AUTHORIZATION_HOLD_FIXED; TRUSTED_FACTORY_STAGE_COMPOSITION_AND_LIVE_RECEIPT_SETTLEMENT_PENDING",
+    "state": "WORKER_JOBS_OUTBOX_STAGE_EXECUTOR_AND_CROSS_PROCESS_SYNTHETIC_RESUME_TESTED; RECEIPT_SETTLEMENT_PORT_INTEGRATED; TRUSTED_FACTORY_STAGE_LIVE_DISPATCH_AND_ACCOUNTING_VERIFIER_PENDING",
     "secondMiniApp": "PASS_PROJECT_WIKI_THROUGH_PACKAGE_USING_SHARED_EXECUTOR; DEPLOYMENT_SMOKE_UAT_PENDING"
   },
   "executionCheckpoint": {
-    "taskWorktree": "/home/dev/worktrees/factory-lane1-20261008",
-    "sourceBranch": "codex/factory-runner-stage-20261008",
+    "taskWorktree": "/home/dev/.cache/codex/worktrees/lane1-receipt-settlement",
+    "sourceBranch": "codex/lane1-receipt-settlement",
     "localCommits": [
-      "88a7870c963941b71aca348ae860d0d1d97b8ae3",
-      "f7bf736adbee6ee3403be1cef0f3851e8223f47f",
-      "453811db9a79c6f944590aad0ca0a7f8e91c7cf5",
-      "091a3b7f66fdaebbb5d4fdeec95b06fa3e5dfd17",
-      "4ea5bb2fed3f2a4140d870b86d0a258bd2c05727",
-      "e48bd280bc9ab0877a58f39dc1dace873f31db23",
-      "290360e194974ee270e652dd811693336d1dad88",
-      "2ecd11664227b82f3d007a7db737f06baf1f93e2",
-      "85ed6ce87079cfb6c81cc5043a18d0c83f37c368",
-      "592aec5c4d732f85e9baed40cf56516e68962a92",
-      "357f55a63b2db85510af80610208a0e9f3a19cbf",
-      "f89c9f549047c9a94a86aed3769fa29b8fc89c42",
-      "9886550e2a5d194efe59fffaac2abdf9cfe81ce6",
-      "c1b5d3777f9cafdc6358cf7048b7edf2942afba6",
-      "fb0ec8c37ecdb0e0e9d02055f3c93ecc5151e6ce",
-      "74bc4fcc74a9d6984e3c4509dc9ae041e2644598",
-      "d8bf17af0974a85feac7e10287371f1096d7ff35",
-      "928de50657f8fbe245ae5c9b9ed8975d3d036c6d",
-      "c37c8c3d94673821da9248a76eddc1923b6e1d47",
-      "7095848218ca39076413e2afa12f6b18eecad999",
-      "3efdedd6e",
-      "fa09dfa865610f64fce3e91494d7e88dc1838d91",
-      "cb59c6b13",
-      "f616bf013",
-      "0b6acb833",
-      "862bbb47e",
-      "af27ee588839816a23f05e56c223e155284abccc",
-      "558d67ab08ee28fc0f5f0c00e82de50971fc7585",
-      "402b089f0a198b773350ce7b66a246f7d16dbe23",
-      "ea3e1f54f66b2d3fd81ee1821aef67842d2a85a8",
-      "65a4d47ee98ee12b0dbe5dee820a9d6734637984",
-      "04894ce3df64218e42cacd81cfb11bca919e660f",
-      "357341fad2f45ce192ae6c1af86d36c584bfc5bd",
-      "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c",
-      "ada93bda6fca71a4ce059f63f982bafa1291e88a",
-      "4e7d7d751fe988aa19273f2f8d3080a964357476",
-      "dfc835869dd1eb464155d39576fae49829d0c072",
-      "7df68896db7f151c4718866d3d1894d43a9db9ee",
-      "4e7d7d751fe988aa19273f2f8d3080a964357476",
-      "dfc835869dd1eb464155d39576fae49829d0c072",
-      "7df68896db7f151c4718866d3d1894d43a9db9ee",
-      "562b610adb4fa574be318f75abd8f8a4159f60f2",
-      "98291cc166767f6b5ed330e58b791290e2d2081c"
+      "2ecbe20b9d8967ef236a07c21f08c76f32e7b660"
     ],
-    "intendedRemoteBranch": "codex/factory-runner-stage-20261008",
+    "intendedRemoteBranch": "codex/lane1-receipt-settlement",
     "pendingPullRequest": {
-      "number": 318,
-      "url": "https://github.com/naibarn/SmartSpecPro/pull/318",
+      "number": 375,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/375",
       "state": "MERGED",
-      "sourceSha": "98291cc166767f6b5ed330e58b791290e2d2081c",
-      "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1"
+      "sourceSha": "2ecbe20b9d8967ef236a07c21f08c76f32e7b660",
+      "integratedSha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6"
     },
     "testEvidence": [
       {
@@ -909,6 +892,36 @@
         "revision": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
         "command": "Focused Python grant/admission tests; 12 focused Vitest authorization, Runner, budget and settlement files; py_compile; diff check; read-only control-plane authority query",
         "outcome": "PASS: Python 19 tests, Vitest 12 files/60 tests; syntax/patch checks pass. Runtime facts recorded in authorityResolution; no authority or economic rows mutated."
+      },
+      {
+        "revision": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+        "command": "pnpm exec vitest run server/services/__tests__/economicReceiptSettlement.test.ts server/services/__tests__/spec224AuthorizationBinding.test.ts server/services/__tests__/agentControlPlaneContracts.test.ts server/services/__tests__/externalAgentRunnerDispatcher.test.ts server/services/__tests__/spec224ProtectedExecutionStart.test.ts server/services/__tests__/spec224AuthorizationRevocation.test.ts server/services/__tests__/economicSettlementService.test.ts server/services/__tests__/spec224ApprovalContinuation.test.ts",
+        "outcome": "PASS: 8 focused files, 63 tests; receipt accounting, auth budget binding, trusted Runner contracts/dispatch, economic settlement, protection, revocation, and approval continuation"
+      },
+      {
+        "revision": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+        "command": "cargo test --locked --offline windows_powershell_shims_preserve_arguments_without_a_shell_command_string; cargo test --locked --offline native_windows_executable_does_not_use_a_shell; cargo test --locked --offline cmd_shims_fail_closed_for_shell_metacharacters_in_path_or_arguments",
+        "outcome": "PASS: 3 focused Windows launcher safety tests compiled and passed on Linux; Windows host execution not claimed"
+      },
+      {
+        "revision": "disposable PostgreSQL 17; migration source from d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+        "command": "Apply and inspect canonical migration chain 0389–0394 in disposable PostgreSQL cluster",
+        "outcome": "PASS: required tables/indexes present; shared/production database untouched"
+      },
+      {
+        "revision": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+        "command": "Run apps/runner-app/tests/test-linux-install.sh in isolated task temp directory",
+        "outcome": "PASS: Linux installer lifecycle only; registered Linux Runner readiness not established"
+      },
+      {
+        "revision": "main and task branch at base 34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab",
+        "command": "pnpm exec vitest run client/src/components/chat/__tests__/UniversalControlPlanePanel.test.tsx -t \"explains installed, usable, and not-yet-connected harnesses\"",
+        "outcome": "BASELINE_FAILURE on both revisions: same existing Thai label assertion; unrelated to settlement changes"
+      },
+      {
+        "revision": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+        "command": "pnpm exec eslint <changed TypeScript paths>",
+        "outcome": "NOT_RUN: resolved ESLint 6.4.0; repository configuration not found"
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
@@ -1037,12 +1050,19 @@
       "state": "MERGED",
       "sourceSha": "3d4159ea7bde45c3bc9498a827e986ce1283948b",
       "integratedSha": "98ec7c9645cdceaa3ba534622e86db06f47defd4"
+    },
+    "canonicalWorkspaceConvergence": {
+      "status": "CANONICAL_CONVERGENCE_VERIFIED",
+      "sha": "d8791f7a7bd71c47506d46fffabce5c2c820d3e6",
+      "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
+      "receiptId": "workspace-convergence:2dc16d49-2bb6-43e7-b0fd-aa67a2a1ae01",
+      "verifiedAt": "2026-10-08T17:17:07.072Z"
     }
   },
   "authorityResolution": {
     "observedAt": "2026-10-08T16:17:17.708Z",
     "controlPlane": "loopback PostgreSQL read-only query loaded from apps/web/.env",
-    "rootCause": "Missing fresh capability and authorized provisioning plus absent receipt-backed economic capture integration; not a missing schema migration.",
+    "rootCause": "Live Windows dispatch remains blocked by stale Runner capability evidence, absent job-scoped P-RECOVERY approval, and absent owner-authorized budget/funding/ledger provisioning. PR #375 integrated the receipt-backed settlement port and exact cap/currency binding, but production accounting verifier and account-source wiring are not registered. Runner authority absence is provisioning/policy; non-production deployment additionally requires an authorized target and applying the already disposable-validated migration chain only there.",
     "dependencyMatrix": [
       {
         "dependency": "tenant identity",
@@ -1096,13 +1116,13 @@
       },
       {
         "dependency": "economic settlement",
-        "state": "IMPLEMENTATION_GAP",
-        "evidence": "captureEconomicHold has no production caller; actual billable amount cannot be inferred"
+        "state": "SETTLEMENT_PORT_INTEGRATED_VERIFIER_NOT_REGISTERED",
+        "evidence": "PR #375 integrated an idempotent receipt-backed settlement port and deterministic tests. No production verifier/account source is registered; no real economic settlement receipt exists."
       },
       {
         "dependency": "migration",
-        "state": "NOT_ROOT_CAUSE",
-        "evidence": "Runner/grant/budget/ledger schemas are present; local DB migration head 0388 predates deployment target 0389 and credential 0391. Thus Runner authority rows are provisioning/configuration gaps, while non-production target availability also has an incomplete migration chain."
+        "state": "NOT_ROOT_CAUSE_FOR_RUNNER; DEPLOYMENT_SCHEMA_REMAINS_TARGET_SCOPED",
+        "evidence": "Disposable PostgreSQL 17 migration chain 0389–0394 passed. Shared DB/production was not migrated; deployment target registration still requires an authorized isolated target."
       },
       {
         "dependency": "deployment target schema migration",
