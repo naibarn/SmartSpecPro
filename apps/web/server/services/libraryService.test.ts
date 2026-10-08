@@ -13,6 +13,14 @@ const { mockGetDb, mockDb } = vi.hoisted(() => {
   };
 });
 
+const { mockEnsureExternalMediaAssetDurable } = vi.hoisted(() => ({
+  mockEnsureExternalMediaAssetDurable: vi.fn(),
+}));
+
+vi.mock("./durableMediaAssetService", () => ({
+  ensureExternalMediaAssetDurable: mockEnsureExternalMediaAssetDurable,
+}));
+
 vi.mock("../db", () => ({
   getDb: mockGetDb,
 }));
@@ -146,6 +154,17 @@ function makeSelectOrderByChain(rows: any[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockEnsureExternalMediaAssetDurable.mockResolvedValue({
+    assetId: 901,
+    copy: {
+      storageKey: "durable-media/5/42/library_migrated/test.png",
+      url: "/api/storage/files/durable-media%2F5%2F42%2Flibrary_migrated%2Ftest.png",
+      mimeType: "image/png",
+      fileSize: 123,
+      checksumSha256: "a".repeat(64),
+      originalUrl: "https://cdn.example.com/a.png",
+    },
+  });
   mockGetDb.mockResolvedValue(mockDb);
   mockDb.select.mockReturnValue(makeSelectChain([]));
   groupsServiceMocks.getUserGroups.mockResolvedValue([]);
@@ -315,8 +334,8 @@ describe("createLibraryItem", () => {
           status: "ready",
           visibility: "private",
           metadata: {},
-          sourceUrl: "https://cdn.example.com/a.png",
-          thumbnailUrl: "/uploads/thumb.png",
+          sourceUrl: "/api/storage/files/durable-media%2F5%2F42%2Flibrary_migrated%2Ftest.png",
+          thumbnailUrl: "/api/storage/files/durable-media%2F5%2F42%2Flibrary_migrated%2Ftest.png",
           deletedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -342,12 +361,26 @@ describe("createLibraryItem", () => {
       },
     );
 
-    expect(result.item.sourceUrl).toBe("https://cdn.example.com/a.png");
-    expect(result.item.thumbnailUrl).toBe("/uploads/thumb.png");
+    const durableUrl = "/api/storage/files/durable-media%2F5%2F42%2Flibrary_migrated%2Ftest.png";
+    expect(mockEnsureExternalMediaAssetDurable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "5",
+        userId: 42,
+        mediaType: "image",
+        sourceUrl: "https://cdn.example.com/a.png",
+      }),
+    );
+    expect(result.item.sourceUrl).toBe(durableUrl);
+    expect(result.item.thumbnailUrl).toBe(durableUrl);
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceUrl: "https://cdn.example.com/a.png",
-        thumbnailUrl: "/uploads/thumb.png",
+        sourceUrl: durableUrl,
+        thumbnailUrl: durableUrl,
+        metadata: expect.objectContaining({
+          provider_original_url: "https://cdn.example.com/a.png",
+          media_asset_id: 901,
+          media_availability: "r2_ready",
+        }),
       }),
     );
   });
