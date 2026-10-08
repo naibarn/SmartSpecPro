@@ -558,7 +558,7 @@ fn list_workspaces(state: State<'_, RunnerState>) -> Result<Vec<LocalWorkspaceDe
 }
 
 #[tauri::command]
-fn add_workspace(
+async fn add_workspace(
     app: tauri::AppHandle,
     state: State<'_, RunnerState>,
 ) -> Result<Option<LocalWorkspaceDetails>, String> {

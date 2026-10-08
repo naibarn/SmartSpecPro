@@ -77,6 +77,17 @@ function safeError(error) {
     RUNNER_WORKSPACE_NEEDS_RESELECT: "โฟลเดอร์หลักถูกย้ายหรือลบ กรุณาเลือก workspace ใหม่",
     RUNNER_WORKSPACE_PATH_NOT_FOUND: "ไม่พบโฟลเดอร์ที่เลือก",
     RUNNER_WORKSPACE_MUST_BE_DIRECTORY: "รายการที่เลือกไม่ใช่โฟลเดอร์",
+    RUNNER_WORKSPACE_SELECTION_INVALID: "อ่านตำแหน่งโฟลเดอร์ที่เลือกไม่ได้ กรุณาเลือกโฟลเดอร์ใหม่",
+    RUNNER_WORKSPACE_NAME_INVALID: "ใช้ชื่อโฟลเดอร์นี้เป็นชื่อ workspace ไม่ได้ กรุณาเลือกโฟลเดอร์อื่น",
+    RUNNER_WORKSPACE_ID_COLLISION: "พบ workspace ID ซ้ำ กรุณาเลือกโฟลเดอร์อื่นและส่งไฟล์ Debug ให้ทีมตรวจสอบ",
+    RUNNER_WORKSPACE_REGISTRY_READ_FAILED: "อ่านรายการ workspace ในเครื่องไม่ได้",
+    RUNNER_WORKSPACE_REGISTRY_INVALID: "ข้อมูล workspace ในเครื่องเสียหาย กรุณาส่งไฟล์ Debug ให้ทีมตรวจสอบ",
+    RUNNER_WORKSPACE_REGISTRY_LIMIT_EXCEEDED: "เพิ่ม workspace เกินจำนวนที่ Runner รองรับแล้ว",
+    RUNNER_WORKSPACE_REGISTRY_PATH_INVALID: "ตำแหน่งจัดเก็บรายการ workspace ไม่ถูกต้อง",
+    RUNNER_WORKSPACE_REGISTRY_WRITE_FAILED: "บันทึกรายการ workspace ในเครื่องไม่ได้ ตรวจสอบสิทธิ์โฟลเดอร์ของ Runner",
+    RUNNER_WORKSPACE_REGISTRY_SERIALIZE_FAILED: "จัดทำข้อมูล workspace เพื่อบันทึกไม่ได้",
+    RUNNER_WORKSPACE_REGISTRY_COMMIT_FAILED: "ยืนยันการบันทึก workspace ไม่สำเร็จ",
+    RUNNER_WORKSPACE_REGISTRY_PERMISSIONS_FAILED: "ตั้งค่าสิทธิ์ไฟล์ workspace ในเครื่องไม่สำเร็จ",
     RUNNER_TRUSTED_WORKSPACE_CHANGED: "โฟลเดอร์นี้ถูกย้ายหรือลบ กรุณาเลือกใหม่",
     RUNNER_AUTO_START_ENABLE_FAILED: "เปิดเริ่มอัตโนมัติไม่สำเร็จ",
     RUNNER_AUTO_START_DISABLE_FAILED: "ปิดเริ่มอัตโนมัติไม่สำเร็จ",
@@ -368,14 +379,21 @@ elements["stop-button"].addEventListener("click", async () => {
   }
 });
 elements["add-workspace-button"].addEventListener("click", async () => {
+  const button = elements["add-workspace-button"];
+  button.disabled = true;
+  setNotice(elements["runtime-notice"], "กำลังเปิดหน้าต่างเลือกโฟลเดอร์…");
   try {
     const workspace = await invoke("add_workspace");
     if (workspace) {
       await refreshWorkspaces();
       setNotice(elements["runtime-notice"], `เพิ่ม ${workspace.displayName} แล้ว`);
+    } else {
+      setNotice(elements["runtime-notice"], "ยกเลิกการเลือกโฟลเดอร์แล้ว");
     }
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    button.disabled = false;
   }
 });
 elements["default-workspace"].addEventListener("change", async event => {
