@@ -407,7 +407,8 @@ fn connection_status_inner(
     let endpoint = ControlEndpoint::from_control_url(control_url)?;
     let configured_token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
     let stored_connection = if configured_token.trim().is_empty() {
-        crate::connection::load_or_refresh(config)?
+        crate::connection::load_or_refresh(config)
+            .map_err(|error| crate::connection::safe_refresh_error_code(&error))?
     } else {
         None
     };
@@ -1956,14 +1957,47 @@ where
 }
 
 fn runtime_error_reason(error: &str) -> &'static str {
-    if error.contains("ACCESS_TOKEN") || error.contains("CONNECTION") {
+    if error.contains("ACCESS_TOKEN")
+        || error.contains("CONNECTION")
+        || error.contains("REJECTED_401")
+        || error.contains("REJECTED_403")
+    {
         "RUNNER_CONNECTION_REQUIRED"
-    } else if error.contains("CONTROL") || error.contains("TRANSPORT") || error.contains("WSS") {
+    } else if error.contains("CONTROL")
+        || error.contains("CONNECT_")
+        || error.contains("TRANSPORT")
+        || error.contains("WSS")
+    {
         "RUNNER_CONNECTION_INTERRUPTED"
     } else if error.contains("UPDATE") {
         "RUNNER_UPDATE_FAILED"
     } else {
         "RUNNER_OPERATION_FAILED"
+    }
+}
+
+#[cfg(test)]
+mod refresh_runtime_reason_tests {
+    use super::runtime_error_reason;
+
+    #[test]
+    fn maps_refresh_http_auth_errors_to_required_and_transport_to_interrupted() {
+        assert_eq!(
+            runtime_error_reason("RUNNER_CONNECT_REQUEST_REJECTED_401"),
+            "RUNNER_CONNECTION_REQUIRED"
+        );
+        assert_eq!(
+            runtime_error_reason("RUNNER_CONNECT_REQUEST_REJECTED_403"),
+            "RUNNER_CONNECTION_REQUIRED"
+        );
+        assert_eq!(
+            runtime_error_reason("RUNNER_CONNECT_TIMEOUT"),
+            "RUNNER_CONNECTION_INTERRUPTED"
+        );
+        assert_eq!(
+            runtime_error_reason("RUNNER_CONNECT_REQUEST_REJECTED_503"),
+            "RUNNER_CONNECTION_INTERRUPTED"
+        );
     }
 }
 
