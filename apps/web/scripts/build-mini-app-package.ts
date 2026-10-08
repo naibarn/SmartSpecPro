@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateSpaasPackage } from "../../../packages/spaas-standard/src/index.ts";
+import type { ExternalValidationEvidence } from "../../../packages/spaas-standard/src/index.ts";
 import type { ManifestSupportContext, PackageEntry } from "../../../packages/spaas-standard/src/model.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -21,6 +22,11 @@ if (archiveName.includes("/") || archiveName.includes("\\") || archiveName === "
 }
 const archivePath = join(outputRoot, archiveName);
 const reportPath = join(outputRoot, "package-report.json");
+const evidencePath = option("--evidence-file");
+const externalEvidence = evidencePath
+  ? JSON.parse(readFileSync(resolve(repositoryRoot, evidencePath), "utf8")) as ExternalValidationEvidence[]
+  : undefined;
+if (externalEvidence !== undefined && !Array.isArray(externalEvidence)) throw new Error("--evidence-file must contain an evidence array");
 
 function packageFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true })
@@ -49,7 +55,13 @@ const support: ManifestSupportContext = {
   supportedOptionalFeatures: [],
   extensions: [],
 };
-const report = validateSpaasPackage({ manifest, support, entries, profile: "offline-package" });
+const report = validateSpaasPackage({
+  manifest,
+  support,
+  entries,
+  profile: "offline-package",
+  ...(externalEvidence ? { externalEvidence, validationTime: new Date().toISOString() } : {}),
+});
 if (report.status === "invalid" || !report.digest) {
   process.stderr.write(`${JSON.stringify({ status: report.status, stages: report.stages, diagnostics: report.diagnostics }, null, 2)}\n`);
   process.exitCode = 1;
