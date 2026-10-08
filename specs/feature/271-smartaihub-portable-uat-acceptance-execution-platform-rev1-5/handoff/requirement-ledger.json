@@ -1,5 +1,5 @@
 {
-  "generation": 5,
+  "generation": 6,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -515,13 +515,13 @@
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L81",
       "blocker": {
-        "detail": "WP2B adapter now supports immutable conditional object create, exact byte read-back, deterministic replay, and independent artifact/oracle revalidation. No owner-backed UAT run, tenant/project authorization or retention wiring is installed; no non-production object or actual process-restart receipt has been exercised.",
-        "kind": "IMMUTABLE_RECEIPT_PERSISTENCE_AND_UAT_E2E_PENDING",
-        "owner": "SPEC-271 UAT/verification owner with existing SPEC-224 run/job, tenant/project authorization, and storage-retention owners"
+        "detail": "The object adapter verifies bytes and re-resolves evidence, but returns OBJECT_PERSISTED_REVALIDATED and leaves the embedded receipt VALIDATED_UNPERSISTED. No existing SPEC-224/job-event authoritative receipt transition is wired, and no owner-backed non-production run/auth/retention adapter or live UAT receipt exists.",
+        "kind": "AUTHORITATIVE_RECEIPT_STATE_AND_UAT_E2E_PENDING",
+        "owner": "SPEC-271 UAT/verification owner with SPEC-224/job-control, tenant/project authorization, and storage-retention owners"
       },
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "904723c3b33365cb971a668e816d64f1adff7622",
+      "evidence_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -559,10 +559,22 @@
           "pr": "https://github.com/naibarn/SmartSpecPro/pull/351",
           "scope": "Focused adapter contract tests use fixture authorities/storage; they do not establish real tenant policy wiring, a production object, or real process-restart durability.",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622"
+        },
+        {
+          "path": "apps/web/server/services/spec271DurableEvidenceReceiptStore.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Object read-back/revalidation reports OBJECT_PERSISTED_REVALIDATED while the embedded WP2A receipt stays VALIDATED_UNPERSISTED; no canonical SPEC-224/job-event acceptance state is advanced.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Regression test proves object-level replay does not promote the portable receipt into authoritative acceptance.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Obtain the existing SPEC-224 run identity, tenant/project policy and storage-retention adapters from their owners; then persist one authorized non-production receipt and verify read-back/replay after an actual process restart.",
+      "next_action": "Obtain owner-approved SPEC-224/job-event receipt-state binding plus tenant/project and retention adapters; then persist and replay one authorized non-production receipt through an actual process restart.",
       "requirement_digest": "1d5df0ef527675fed62a5328119adfe3df97884758fc25cc9cc9d3bbb6730a03",
       "requirement_id": "REQ-962CDCE30AEF",
       "requirement_text": "8. Produce an immutable evidence bundle for every important UAT run.",
@@ -640,9 +652,23 @@
           "result": "PASS",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622",
           "test": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        },
+        {
+          "cases": [
+            "33 focused SPEC-271 evaluator/WP2A/WP2B tests pass",
+            "object bytes are read back and revalidated",
+            "embedded receipt remains VALIDATED_UNPERSISTED",
+            "object adapter result does not claim canonical acceptance",
+            "real run/auth/retention authorities and process-restart storage remain unverified"
+          ],
+          "failed": 0,
+          "passed": 33,
+          "result": "PASS",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+          "test": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts"
         }
       ],
-      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B durable-adapter tests passed at the exact integrated SHA. Adapter authority checks use fixtures; real run/auth/retention wiring, persisted non-production evidence and actual process-restart recovery remain separate gates. Scoped TypeScript attempt reports a diagnostic in the unchanged shared storage.ts import path."
+      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B adapter tests pass at this exact SHA. Object read-back/revalidation is not authoritative acceptance; real SPEC-224/job-event, tenant/project and retention wiring, non-production persistence and real restart recovery remain open."
     },
     {
       "applicability": "UNASSESSED",
@@ -1509,13 +1535,13 @@
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L896",
       "blocker": {
-        "detail": "A source-bound receipt object adapter now reuses storagePutIfAbsent/storageReadBuffer and requires an enforced retention grant. Its authority ports have only fixture implementations in tests; no approved retention grant or real persisted non-production receipt/read-back is evidenced.",
-        "kind": "WP2B_STORAGE_AUTHORITY_AND_DURABILITY_PENDING",
-        "owner": "SPEC-271 UAT/verification owner with existing object-storage retention, SPEC-224 run/job, and tenant/project authorization owners"
+        "detail": "Immutable object create/read-back is implemented, but the adapter result is intentionally object-level only and does not advance canonical acceptance. Owner-backed retention and scope bindings plus a real persisted non-production sample/read-back are absent.",
+        "kind": "WP2B_AUTHORITY_AND_DURABILITY_PENDING",
+        "owner": "SPEC-271 UAT/verification owner with existing object-storage retention, SPEC-224/job-event and tenant/project authorization owners"
       },
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "904723c3b33365cb971a668e816d64f1adff7622",
+      "evidence_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -1547,10 +1573,22 @@
           "pr": "https://github.com/naibarn/SmartSpecPro/pull/351",
           "scope": "Focused adapter contract tests use fixture authorities/storage; they do not establish real tenant policy wiring, a production object, or real process-restart durability.",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622"
+        },
+        {
+          "path": "apps/web/server/services/spec271DurableEvidenceReceiptStore.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Object read-back/revalidation reports OBJECT_PERSISTED_REVALIDATED while the embedded WP2A receipt stays VALIDATED_UNPERSISTED; no canonical SPEC-224/job-event acceptance state is advanced.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Regression test proves object-level replay does not promote the portable receipt into authoritative acceptance.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Bind resolveRetention and scope authorization to existing owner-approved policies, then write/read one non-production receipt and verify exact bytes and replay across a real process restart.",
+      "next_action": "Bind object retention and scope to existing owners, connect canonical receipt state through the authorized job/event authority, then verify one non-production receipt across restart.",
       "requirement_digest": "2d098e9834fb428fd11891f054f6fd9e19b1a5aeb988972e78139f687bdad87c",
       "requirement_id": "REQ-378D26AF8464",
       "requirement_text": "Critical evidence bundles MUST include content hashes for all evidence artifacts and a signed/attested manifest when supported. The manifest must bind evidence to `uat_run_id`, tenant, scenario version, source revision, environment fingerprint, and timestamps. Evidence retention and deletion follow tenant/data-class policy rather than an unlimited default.",
@@ -1609,9 +1647,23 @@
           "result": "PASS",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622",
           "test": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        },
+        {
+          "cases": [
+            "33 focused SPEC-271 evaluator/WP2A/WP2B tests pass",
+            "object bytes are read back and revalidated",
+            "embedded receipt remains VALIDATED_UNPERSISTED",
+            "object adapter result does not claim canonical acceptance",
+            "real run/auth/retention authorities and process-restart storage remain unverified"
+          ],
+          "failed": 0,
+          "passed": 33,
+          "result": "PASS",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+          "test": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts"
         }
       ],
-      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B durable-adapter tests passed at the exact integrated SHA. Adapter authority checks use fixtures; real run/auth/retention wiring, persisted non-production evidence and actual process-restart recovery remain separate gates. Scoped TypeScript attempt reports a diagnostic in the unchanged shared storage.ts import path."
+      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B adapter tests pass at this exact SHA. Object read-back/revalidation is not authoritative acceptance; real SPEC-224/job-event, tenant/project and retention wiring, non-production persistence and real restart recovery remain open."
     },
     {
       "applicability": "UNASSESSED",
@@ -1950,13 +2002,13 @@
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L1187",
       "blocker": {
-        "detail": "The adapter requires separate READ/WRITE authorization and tests fail closed when a fixture callback denies scope. No production tenant/project policy implementation or cross-tenant/project runtime denial evidence is connected.",
+        "detail": "The adapter requires READ/WRITE authorization and its fixture denies unauthorized scope, but no production tenant/project policy binding or canonical receipt acceptance path is connected.",
         "kind": "TENANT_PROJECT_AUTHORITY_ADAPTER_PENDING",
         "owner": "Existing tenant/project authorization owner with SPEC-271 UAT/verification owner"
       },
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "904723c3b33365cb971a668e816d64f1adff7622",
+      "evidence_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -1988,10 +2040,22 @@
           "pr": "https://github.com/naibarn/SmartSpecPro/pull/351",
           "scope": "Focused adapter contract tests use fixture authorities/storage; they do not establish real tenant policy wiring, a production object, or real process-restart durability.",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622"
+        },
+        {
+          "path": "apps/web/server/services/spec271DurableEvidenceReceiptStore.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Object read-back/revalidation reports OBJECT_PERSISTED_REVALIDATED while the embedded WP2A receipt stays VALIDATED_UNPERSISTED; no canonical SPEC-224/job-event acceptance state is advanced.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Regression test proves object-level replay does not promote the portable receipt into authoritative acceptance.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Connect authorizeScope to the existing tenant/project policy and verify read/write denial across real tenant and project boundaries.",
+      "next_action": "Connect authorizeScope to the existing tenant/project policy and verify read/write denial through its authorized adapter.",
       "requirement_digest": "cae638e1d761dbad5750f393360f3ba5559e315a76865901752a6ad6a004b669",
       "requirement_id": "REQ-F5F18EFA857C",
       "requirement_text": "All UAT data MUST be tenant-scoped.",
@@ -2050,9 +2114,23 @@
           "result": "PASS",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622",
           "test": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        },
+        {
+          "cases": [
+            "33 focused SPEC-271 evaluator/WP2A/WP2B tests pass",
+            "object bytes are read back and revalidated",
+            "embedded receipt remains VALIDATED_UNPERSISTED",
+            "object adapter result does not claim canonical acceptance",
+            "real run/auth/retention authorities and process-restart storage remain unverified"
+          ],
+          "failed": 0,
+          "passed": 33,
+          "result": "PASS",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+          "test": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts"
         }
       ],
-      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B durable-adapter tests passed at the exact integrated SHA. Adapter authority checks use fixtures; real run/auth/retention wiring, persisted non-production evidence and actual process-restart recovery remain separate gates. Scoped TypeScript attempt reports a diagnostic in the unchanged shared storage.ts import path."
+      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B adapter tests pass at this exact SHA. Object read-back/revalidation is not authoritative acceptance; real SPEC-224/job-event, tenant/project and retention wiring, non-production persistence and real restart recovery remain open."
     },
     {
       "applicability": "UNASSESSED",
@@ -2347,13 +2425,13 @@
       ],
       "authority_source": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md#L1381",
       "blocker": {
-        "detail": "The durable receipt adapter requires resolveScope to return canonical requirement/source/tenant/project/UAT run/attempt/scenario identity, but no production binding to SPEC-224 DevelopmentRun/job-control was authorized or exercised.",
+        "detail": "The adapter requires resolveScope to return canonical run/attempt/source identity, but it is not bound to SPEC-224 DevelopmentRun/job-control and no canonical acceptance event is written.",
         "kind": "SPEC224_RUN_IDENTITY_ADAPTER_PENDING",
         "owner": "SPEC-224 development-run/job-control owner with SPEC-271 UAT/verification owner"
       },
       "current_relevance": "UNASSESSED",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "904723c3b33365cb971a668e816d64f1adff7622",
+      "evidence_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -2385,10 +2463,22 @@
           "pr": "https://github.com/naibarn/SmartSpecPro/pull/351",
           "scope": "Focused adapter contract tests use fixture authorities/storage; they do not establish real tenant policy wiring, a production object, or real process-restart durability.",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622"
+        },
+        {
+          "path": "apps/web/server/services/spec271DurableEvidenceReceiptStore.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Object read-back/revalidation reports OBJECT_PERSISTED_REVALIDATED while the embedded WP2A receipt stays VALIDATED_UNPERSISTED; no canonical SPEC-224/job-event acceptance state is advanced.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
+        },
+        {
+          "path": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts",
+          "pr": "https://github.com/naibarn/SmartSpecPro/pull/353",
+          "scope": "Regression test proves object-level replay does not promote the portable receipt into authoritative acceptance.",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab"
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Have the SPEC-224 owner expose a canonical run/attempt/source resolver to SPEC-271, then verify source and run mismatch rejection against an actual non-production run.",
+      "next_action": "Have SPEC-224 expose its canonical run/attempt/source and receipt-state binding; verify mismatch rejection against an actual non-production UAT run.",
       "requirement_digest": "315664ec77e91cd91122db562c79e158f619bc339cad7c4977c2ad60ae85f4e1",
       "requirement_id": "REQ-A2E47461A85A",
       "requirement_text": "The harness result MUST identify the exact source revision it produced. UAT MUST reject or restart if the tested revision differs from the candidate revision submitted to Final Verify (TOCTOU protection).",
@@ -2447,9 +2537,23 @@
           "result": "PASS",
           "source_sha": "904723c3b33365cb971a668e816d64f1adff7622",
           "test": "apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+        },
+        {
+          "cases": [
+            "33 focused SPEC-271 evaluator/WP2A/WP2B tests pass",
+            "object bytes are read back and revalidated",
+            "embedded receipt remains VALIDATED_UNPERSISTED",
+            "object adapter result does not claim canonical acceptance",
+            "real run/auth/retention authorities and process-restart storage remain unverified"
+          ],
+          "failed": 0,
+          "passed": 33,
+          "result": "PASS",
+          "source_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+          "test": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts; apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts; apps/web/server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts"
         }
       ],
-      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B durable-adapter tests passed at the exact integrated SHA. Adapter authority checks use fixtures; real run/auth/retention wiring, persisted non-production evidence and actual process-restart recovery remain separate gates. Scoped TypeScript attempt reports a diagnostic in the unchanged shared storage.ts import path."
+      "verification_method": "Focused SPEC-271 evaluator, WP2A receipt and WP2B adapter tests pass at this exact SHA. Object read-back/revalidation is not authoritative acceptance; real SPEC-224/job-event, tenant/project and retention wiring, non-production persistence and real restart recovery remain open."
     },
     {
       "applicability": "UNASSESSED",
