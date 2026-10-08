@@ -5,34 +5,34 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "fd5f9f2e1af4354e421077a12e217a094dcc46be",
+    "sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
-      "canonical_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
-      "canonical_user_workspace_sha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
+      "integrated_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+      "canonical_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+      "canonical_user_workspace_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:ad2d5215-9ef4-4a74-82fc-1ed295df47b2",
-      "verified_at": "2026-10-08T02:24:16.362+00:00"
+      "receipt_id": "workspace-convergence:dcfc1a32-5716-4f02-a800-35a4600070bd",
+      "verified_at": "2026-10-08T16:16:11.188Z"
     },
-    "observedAt": "2026-10-08T15:33:16+00:00",
+    "observedAt": "2026-10-08T16:21:47.774Z",
     "latestVerify": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "canonical_user_workspace_sha": "fd5f9f2e1af4354e421077a12e217a094dcc46be",
+      "canonical_user_workspace_sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
       "dirty": false,
-      "reason": "PR #363 handoff was merged and workspace converged/verified at this SHA."
+      "reason": "PR #367 merged normally at 98ec7c9645cdceaa3ba534622e86db06f47defd4; canonical workspace converge and verify passed."
     },
-    "latestIntegratedProgramChange": "PR #363 records the folder display fix and Windows review-build state; latest main observed fd5f9f2e1af4354e421077a12e217a094dcc46be. Windows UI UAT remains pending.",
+    "latestIntegratedProgramChange": "PR #367 exposes the existing P-RECOVERY issuer through authenticated tenant-owner authority. Real Runner dispatch remains blocked by expired capability evidence, missing job-scoped authority/budget/ledger provisioning, and missing receipt-to-economic-capture integration.",
     "latestObservedWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "workspaceId": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "sha": "903f53558a2d69e25d38d244932e443288238835",
+      "sha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
       "dirty": false,
-      "convergenceReceipt": "workspace-convergence:35355923-7730-46b7-be8b-bf64b0a39ff1",
-      "verifiedAt": "2026-10-08T15:12:09.278+00:00"
+      "convergenceReceipt": "workspace-convergence:dcfc1a32-5716-4f02-a800-35a4600070bd",
+      "verifiedAt": "2026-10-08T16:16:11.188Z"
     }
   },
   "inventory": {
@@ -67,7 +67,7 @@
   },
   "currentWorkunit": {
     "id": "LANE1_TRUSTED_RUNNER_BINDING_AND_NONPROD_DEPLOYMENT",
-    "state": "PARTIAL_INTEGRATED_WINDOWS_REVIEW_BUILD_AVAILABLE_GUI_UAT_PENDING",
+    "state": "PARTIAL_INTEGRATED_OWNER_SCOPED_RECOVERY_GRANT_ISSUER; REAL_RUN_WAITING_AUTHORITY",
     "objective": "Bind Factory execution to the existing authenticated DevelopmentRun/Runner control plane and deploy Research Notes through a registered non-production target.",
     "implementation": [
       "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
@@ -78,11 +78,12 @@
       "apps/web/server/services/jobControlPlane.ts",
       "apps/web/server/jobs/postgresNodeJobWorker.ts"
     ],
-    "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
-    "evidence": "PR #318 squash-merged normally at 0f218918f8c1c48915718020dfc522fcbf7f8cc1 (implementation source 4e7d7d751fe988aa19273f2f8d3080a964357476). Exact integrated SHA verification: 7 focused Vitest files, 93 tests passed; git diff --check passed. workspace_authority.py converge and verify both passed for /home/dev/projects/SmartSpecPro at 0f218918f8c1c48915718020dfc522fcbf7f8cc1. No real Runner ID or stage dispatch/receipt exists; no target deployment/UAT claimed. New evidence: user-supplied Windows Runner UI shows codex-cli 0.161.0 and a successful local prompt test. The application DB registers candidate runnerId local-runner as trusted Windows x86_64 and its last snapshot advertises tool.execute.codex, but status is degraded; lastSeenAt=2026-10-08T10:22:42.881Z, snapshotObservedAt=10:11:49.329Z, expiresAt=10:16:49.329Z while DB now=13:54:03Z (0 eligible fresh snapshots). SSH to 192.168.1.123:22 timed out. This proves local CLI availability, not current control-plane dispatch or a Factory receipt. PR #362 merged at 903f53558a2d69e25d38d244932e443288238835 fixes the directly observed folder display defect: LocalWorkspaceDetails previously serialized snake_case while UI reads camelCase. rustfmt check, cargo check of runner library, and git diff check passed on source 78b969182c3cf3bb7d5b4e60433fe8743db0d73e. Installed Windows Runner v0.2.23 was not rebuilt/replaced and GUI retest remains pending; source fix is not UI acceptance. Windows review build completed: workflow run 37799426870 built unsigned NSIS installer 0.2.24 from exact integrated source 903f53558a2d69e25d38d244932e443288238835; release admin UI/API checks and Windows build passed. Artifact smarthub-runner-windows-x64-0.2.24-unsigned-review, SHA-256 28aba4810479d7c3d1c37dcbda75bf6858cb20c429f82f3c996fc9ae0481d663. Screenshot also shows Runner service stopped, so GUI UAT and a fresh control-plane heartbeat/snapshot remain pending until installed, workspace selected, and Runner started. Latest DB observation at 15:33:16Z still shows local-runner degraded and 0 fresh capability snapshots.",
+    "sourceSha": "3d4159ea7bde45c3bc9498a827e986ce1283948b",
+    "evidence": "PR #367 merged normally at 98ec7c9645cdceaa3ba534622e86db06f47defd4; exposes existing ApprovalDBService.issue_spec224_recovery_grant through authenticated tenant-owner route. Focused Python tests 19/19 and 12 control-plane Vitest files 60/60 passed on integrated SHA; py_compile, diff check, canonical workspace converge+verify passed. Read-only loopback control-plane observation at 2026-10-08T16:17:17Z: local-runner trusted/online but capability snapshot observed 15:58:21Z expired 16:03:21Z; zero fresh snapshots. Runner-published workspace ws-codextest-36c7be692aaa exists, but no job/conversation workspace binding. Counts: worker_job_grants=0 (not used by this trusted Runner dispatch path), budgets=0, ledger accounts=0, holds=0. No grant, budget, ledger account, hold, dispatch, receipt, or settlement was created. Receipt-to-economic-capture production caller is still absent. Deployment target remains independent and blocked.",
     "integration": "PR #318 MERGED_NORMALLY",
-    "integratedSha": "0f218918f8c1c48915718020dfc522fcbf7f8cc1",
-    "nextAction": "Install Windows review build 0.2.24, verify selected folder display/default workspace on the Windows UI, select that workspace and start Runner. Verify a fresh nonexpired Codex capability snapshot and online status, then exercise real Factory dispatch/receipt only after same-job grant, approval, budget and workspace authority pass. Deployment target remains a separate blocker."
+    "integratedSha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+    "nextAction": "Owner: refresh the Windows Runner capability snapshot and confirm workspace ws-codextest-36c7be692aaa; approve a minimal isolated-non-production P-RECOVERY scope bound to the actual DevelopmentRun/job/attempt, source and attestation, runner/session/snapshot, workspace and protected operation; provide the authorized budget cap/currency and ledger funding/source plus debit/credit account authorization/configuration. Implementation: add receipt-backed economic capture/release integration before claiming settlement. Then execute one real Windows Codex job and verify dispatch, callback, receipt, artifact, settlement, retry and resume. Continue Linux Runner and registered non-production target as separate workunits.",
+    "pr": "https://github.com/naibarn/SmartSpecPro/pull/367"
   },
   "checkpoints": [
     {
@@ -408,10 +409,27 @@
   "blockedWorkunits": [
     {
       "id": "FACTORY_LIVE_RUNNER_AUTHORITY",
-      "state": "WAITING_EXTERNAL_AUTHORITY",
-      "rootCause": "Windows candidate runnerId local-runner is now observed as trusted and its last snapshot advertises Codex, matching the supplied UI test. Its Runner status is degraded; the only persisted capability snapshot expired at 2026-10-08T10:16:49.329Z, lastSeenAt is 10:22:42.881Z, and DB now is 13:54:03Z, so zero fresh snapshots are eligible. SSH to 192.168.1.123:22 timed out. Prior observation also found no budget debit/credit account IDs. Do not synthesize a heartbeat, session, grant, approval, budget reservation or workspace binding. The latest supplied Windows UI screenshot reports Runner service stopped. Windows review installer 0.2.24 containing the folder serialization fix is built, but not yet installed; therefore no new Runner heartbeat/capability snapshot has been observed.",
-      "reactivationPredicate": "Install the corrected review build; select a valid default workspace and start Runner; observe trusted/online status and nonexpired capability snapshot including tool.execute.codex. Then bind a real grant, approval, budget reservation, and workspace authority to the same DevelopmentRun/job.",
-      "evidence": "User screenshot proves codex-cli 0.161.0 and a successful local prompt test only. DB projection for local-runner: Windows x86_64, trusted/degraded, codex capability in expired snapshot, lastSeenAt 2026-10-08T10:22:42.881Z, snapshot expired at 10:16:49.329Z, DB now 13:54:03Z; zero eligible capability snapshots. Strict SSH check to 192.168.1.123:22 timed out. Windows Runner session refresh was not remotely reachable over SSH; the supplied UI only demonstrates local CLI execution. Current main/workspace remained clean during investigation. PR #362 also fixes local workspace details serialization so the authorized folder can render in the desktop UI. The installed v0.2.23 app still needs a corrected build and GUI retest; current control-plane snapshot remains expired. Windows build 0.2.24 succeeded from 903f53558a2d69e25d38d244932e443288238835 (run 37799426870, SHA-256 28aba4810479d7c3d1c37dcbda75bf6858cb20c429f82f3c996fc9ae0481d663). Screenshot shows Runner service stopped; latest DB query at 15:33:16Z still has 0 fresh snapshots."
+      "state": "WAITING_EXTERNAL_AUTHORITY_AND_FRESH_RUNNER_EVIDENCE",
+      "rootCause": "At 2026-10-08T16:17:17Z the loopback control-plane DB shows local-runner trusted/online, tenant tenant-ZCSKEM9s, ownerUserId 1, recorded session 68bd6529-052a-455c-84ae-4a7c472ea2fb, but its latest Codex-capable snapshot observed 15:58:21Z expired 16:03:21Z (0 fresh snapshots). Snapshot publishes workspace ws-codextest-36c7be692aaa but no job/conversation binding exists. worker_job_grants=0 is not a blocker for this authenticated trusted Runner path. Actual gaps: no same-job P-RECOVERY grant/approval, no economic_budgets rows, no economic_ledger_accounts rows, no reserve debit/credit account IDs in app environment, and no production caller of captureEconomicHold to settle a verified receipt. Schema tables exist; absence is authority provisioning/configuration and missing receipt settlement integration, not missing migration. PR #367 integrated the owner-only issuer but issued no grant.",
+      "reactivationPredicate": "Windows owner refreshes capability snapshot and confirms workspace; authenticated tenant owner approves exact isolated-non-production run/job/attempt source-attestation-runner-session-capability-workspace-operation scope; authorized budget cap, currency and ledger source/accounts are configured; receipt-backed settlement caller is integrated. Then recheck every predicate and dispatch the minimal Codex job.",
+      "evidence": "Current DB: 0 fresh snapshots; 0 budgets/accounts/holds. No live dispatch or settlement. Owner-only issuer merged as PR #367.",
+      "ownerActionRequired": {
+        "tenantId": "tenant-ZCSKEM9s",
+        "ownerUserId": 1,
+        "runnerId": "local-runner",
+        "runnerSessionIdLastObserved": "68bd6529-052a-455c-84ae-4a7c472ea2fb",
+        "capabilitySnapshotIdLastObserved": "capability:local-runner:2026-10-08T15:58:21.967Z",
+        "workspaceId": "ws-codextest-36c7be692aaa",
+        "environment": "isolated-non-production",
+        "requiredDecisions": [
+          "Refresh Runner and publish a nonexpired tool.execute.codex capability snapshot.",
+          "Confirm this workspace is authorized for the named DevelopmentRun and worker job.",
+          "Approve the exact P-RECOVERY scope: run/job/attempt/fencing/source SHA and digest/profile/attestation, runner/session/snapshot, workspace, protected operation/path, and expiry.",
+          "Set the maximum spend cap and currency for this one job.",
+          "Identify and authorize the ledger funding/source and debit/credit account provisioning/configuration; account creation alone has zero balance.",
+          "Authorize settlement usage evidence semantics for Codex receipt so only measured, verified actual cost is captured; do not capture the full cap by assumption."
+        ]
+      }
     },
     {
       "id": "REGISTERED_NONPROD_DEPLOYMENT_TARGET",
@@ -586,7 +604,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T15:33:16+00:00",
+  "updatedAt": "2026-10-08T16:21:47.774Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -876,6 +894,11 @@
         "revision": "903f53558a2d69e25d38d244932e443288238835; Windows review workflow run 37799426870",
         "command": "gh workflow run runner-desktop-release.yml --ref main -f ref=903f53558a2d69e25d38d244932e443288238835 -f version=0.2.24 -f build_id=folder-display-903f5355 -f platform=windows",
         "outcome": "PASS: Runner release admin UI/API checks and Windows x64 NSIS review build completed. Artifact smarthub-runner-windows-x64-0.2.24-unsigned-review SHA-256 28aba4810479d7c3d1c37dcbda75bf6858cb20c429f82f3c996fc9ae0481d663; unsigned review build only. Windows installation/UI retest remains pending. Fresh DB observation at 15:33Z still has local-runner degraded and zero fresh capability snapshots; screenshot shows Runner stopped."
+      },
+      {
+        "revision": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+        "command": "Focused Python grant/admission tests; 12 focused Vitest authorization, Runner, budget and settlement files; py_compile; diff check; read-only control-plane authority query",
+        "outcome": "PASS: Python 19 tests, Vitest 12 files/60 tests; syntax/patch checks pass. Runtime facts recorded in authorityResolution; no authority or economic rows mutated."
       }
     ],
     "githubIntegration": "MERGED_NORMALLY",
@@ -997,6 +1020,170 @@
       "signingStatus": "unsigned-review",
       "localArtifactPath": "/home/dev/.cache/codex/runner-review-builds/0.2.24/SmartAIHub Runner_0.2.24_x64-setup.exe",
       "windowsGuiUat": "PENDING_INSTALL_AND_RUNNER_START"
+    },
+    "latestHandoffPullRequest": {
+      "number": 367,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/367",
+      "state": "MERGED",
+      "sourceSha": "3d4159ea7bde45c3bc9498a827e986ce1283948b",
+      "integratedSha": "98ec7c9645cdceaa3ba534622e86db06f47defd4"
     }
+  },
+  "authorityResolution": {
+    "observedAt": "2026-10-08T16:17:17.708Z",
+    "controlPlane": "loopback PostgreSQL read-only query loaded from apps/web/.env",
+    "rootCause": "Missing fresh capability and authorized provisioning plus absent receipt-backed economic capture integration; not a missing schema migration.",
+    "dependencyMatrix": [
+      {
+        "dependency": "tenant identity",
+        "state": "PRESENT",
+        "evidence": "tenant-ZCSKEM9s; ownerUserId=1 from registered Runner row"
+      },
+      {
+        "dependency": "Runner trust/session",
+        "state": "PRESENT_BUT_RECHECK",
+        "evidence": "local-runner trusted/online; recorded session 68bd6529-052a-455c-84ae-4a7c472ea2fb"
+      },
+      {
+        "dependency": "capability freshness",
+        "state": "BLOCKED",
+        "evidence": "tool.execute.codex snapshot expired 2026-10-08T16:03:21.967Z; 0 fresh snapshots at 16:17:17Z"
+      },
+      {
+        "dependency": "workspace",
+        "state": "PARTIAL",
+        "evidence": "Runner publishes ws-codextest-36c7be692aaa; no job/conversation workspace binding"
+      },
+      {
+        "dependency": "worker_job_grants",
+        "state": "NOT_APPLICABLE_TO_THIS_PATH",
+        "evidence": "Zero rows; table serves delegated worker sessions, not trusted Runner/Spec224 admission"
+      },
+      {
+        "dependency": "P-RECOVERY grant and approval",
+        "state": "MISSING_AUTHORIZATION",
+        "evidence": "Existing issuer reachable through owner-authenticated route after PR #367; no grant issued"
+      },
+      {
+        "dependency": "economic budget",
+        "state": "MISSING_PROVISIONING",
+        "evidence": "economic_budgets has zero rows"
+      },
+      {
+        "dependency": "ledger accounts/reserve policy",
+        "state": "MISSING_PROVISIONING_AND_CONFIG",
+        "evidence": "economic_ledger_accounts=0; reserve debit/credit account environment IDs absent"
+      },
+      {
+        "dependency": "dispatch policy",
+        "state": "DENY",
+        "evidence": "Fails closed without fresh snapshot, exact grant/approval, job workspace binding and budget hold"
+      },
+      {
+        "dependency": "execution receipt",
+        "state": "NOT_CREATED",
+        "evidence": "No dispatch occurred"
+      },
+      {
+        "dependency": "economic settlement",
+        "state": "IMPLEMENTATION_GAP",
+        "evidence": "captureEconomicHold has no production caller; actual billable amount cannot be inferred"
+      },
+      {
+        "dependency": "migration",
+        "state": "NOT_ROOT_CAUSE",
+        "evidence": "Runner/grant/budget/ledger tables exist; provisioning, configuration or approval is absent"
+      }
+    ],
+    "qaReviewPasses": [
+      {
+        "area": "identity and tenant binding",
+        "result": "PASS_REVIEW",
+        "finding": "Tenant and owner derive from registered control-plane identity"
+      },
+      {
+        "area": "Runner trust and session",
+        "result": "PASS_REVIEW",
+        "finding": "Trusted/online and session exist; status alone does not prove freshness"
+      },
+      {
+        "area": "capability freshness",
+        "result": "PASS_REVIEW",
+        "finding": "Expired snapshot correctly blocks dispatch"
+      },
+      {
+        "area": "workspace authorization",
+        "result": "PASS_REVIEW",
+        "finding": "Runner allow-list is not a per-job conversation binding"
+      },
+      {
+        "area": "delegated worker grants",
+        "result": "PASS_REVIEW",
+        "finding": "Zero rows are unrelated to trusted Runner dispatch"
+      },
+      {
+        "area": "P-RECOVERY issuer",
+        "result": "PASS_REVIEW",
+        "finding": "Server-derived tenant/owner; exact scope validation and durable approval/audit use existing issuer"
+      },
+      {
+        "area": "budget authorization",
+        "result": "PASS_REVIEW",
+        "finding": "Zero budget rows; existing path requires a reserve hold"
+      },
+      {
+        "area": "ledger source/config",
+        "result": "PASS_REVIEW",
+        "finding": "Zero accounts and reserve account IDs absent; no economic rows created"
+      },
+      {
+        "area": "receipt and stage settlement",
+        "result": "PASS_REVIEW",
+        "finding": "No live dispatch/receipt; durable Factory stage settlement is a separate layer"
+      },
+      {
+        "area": "economic capture/retry",
+        "result": "PASS_REVIEW",
+        "finding": "Capture service is idempotent but has no runtime caller; requires verified actual amount"
+      }
+    ],
+    "executionEvidence": {
+      "dispatch": "NOT_RUN_AUTHORITY_BLOCKED",
+      "receipt": "NONE",
+      "artifact": "NONE",
+      "economicSettlement": "NONE",
+      "retryResume": "NOT_RUN"
+    },
+    "integratedFix": {
+      "pr": 367,
+      "url": "https://github.com/naibarn/SmartSpecPro/pull/367",
+      "sourceSha": "3d4159ea7bde45c3bc9498a827e986ce1283948b",
+      "integratedSha": "98ec7c9645cdceaa3ba534622e86db06f47defd4",
+      "state": "MERGED_NORMALLY",
+      "focusedPythonTests": "19 passed",
+      "controlPlaneVitest": "12 files, 60 tests passed"
+    },
+    "nextEligibleWorkunits": [
+      {
+        "id": "RECEIPT_BACKED_ECONOMIC_CAPTURE_INTEGRATION",
+        "state": "IMPLEMENTATION_NEXT",
+        "dependency": "Validate authoritative measured Codex usage; capture only verified actual amount; preserve idempotency and release/reconciliation semantics."
+      },
+      {
+        "id": "WINDOWS_FRESH_CAPABILITY_AND_OWNER_AUTHORITY",
+        "state": "WAITING_EXTERNAL_AUTHORITY",
+        "dependency": "Owner refreshes Runner and authorizes exact scoped grant, budget and ledger source."
+      },
+      {
+        "id": "LINUX_RUNNER_ACCEPTANCE",
+        "state": "SEPARATE_WORKUNIT",
+        "dependency": "Independent Linux registration/trust/session/capability acceptance."
+      },
+      {
+        "id": "REGISTERED_NONPROD_TARGET",
+        "state": "SEPARATE_WAITING_AUTHORITY",
+        "dependency": "Approved target identity, runtime, isolated DB and deployment authorization."
+      }
+    ]
   }
 }
