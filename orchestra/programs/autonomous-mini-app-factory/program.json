@@ -614,7 +614,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T16:26:31.080Z",
+  "updatedAt": "2026-10-08T16:30:21.934Z",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -1160,6 +1160,11 @@
         "area": "economic capture/retry",
         "result": "PASS_REVIEW",
         "finding": "Capture service is idempotent but has no runtime caller; requires verified actual amount"
+      },
+      {
+        "area": "Linux Runner installer lifecycle",
+        "result": "PASS_TEST",
+        "finding": "Isolated install/rollback/uninstall test passed; no Linux Runner identity/session/capability or dispatch was created."
       }
     ],
     "executionEvidence": {
@@ -1181,8 +1186,8 @@
     "nextEligibleWorkunits": [
       {
         "id": "RECEIPT_BACKED_ECONOMIC_CAPTURE_INTEGRATION",
-        "state": "IMPLEMENTATION_NEXT",
-        "dependency": "Validate authoritative measured Codex usage; capture only verified actual amount; preserve idempotency and release/reconciliation semantics."
+        "state": "IMPLEMENTATION_BLOCKED_ON_USAGE_AUTHORITY",
+        "dependency": "Owner/provider contract must identify authoritative measured Codex usage; capture only verified actual amount and preserve idempotency/release/reconciliation semantics."
       },
       {
         "id": "WINDOWS_FRESH_CAPABILITY_AND_OWNER_AUTHORITY",
@@ -1191,13 +1196,13 @@
       },
       {
         "id": "LINUX_RUNNER_ACCEPTANCE",
-        "state": "SEPARATE_WORKUNIT",
-        "dependency": "Independent Linux registration/trust/session/capability acceptance."
+        "state": "IMPLEMENTATION_AND_RUNTIME_SEPARATE",
+        "dependency": "Installer lifecycle QA passes; runtime still requires an approved Linux device enrollment, fresh registration/trust/session/capability and independent receipt gate."
       },
       {
         "id": "REGISTERED_NONPROD_TARGET",
         "state": "WAITING_MIGRATIONS_AND_OWNER_AUTHORITY",
-        "dependency": "Owner names target identity, isolated DB, credential source and authorizes the complete 0389-0394 migration chain."
+        "dependency": "Owner names target identity, isolated DB, credential source and authorizes the 0389-0394 migration chain."
       }
     ],
     "latestIndependentWorkunitObservation": {
@@ -1214,7 +1219,13 @@
         "targetAndCredentialTables": "ABSENT"
       },
       "deploymentCredentials": "No Cloudflare account/API token values in local apps/web/.env; no external secret source was queried.",
-      "action": "No migrations, runner identities, target identities, credentials or economic records created."
+      "action": "No migrations, runner identities, target identities, credentials or economic records created.",
+      "linuxInstallerTest": {
+        "revision": "43b77fdd7bf9aeb361d2a0b221425da2cfc68e50 (runner installer test unchanged from tested worktree base)",
+        "command": "bash apps/runner-app/tests/test-linux-install.sh",
+        "result": "PASS",
+        "outcome": "Install/upgrade rollback/uninstall lifecycle passed in isolated temporary HOME; enrollment data preservation verified. This is installer QA only, not a registered or live Linux Runner acceptance."
+      }
     }
   }
 }
