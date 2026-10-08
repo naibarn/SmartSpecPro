@@ -2338,10 +2338,11 @@ def handle_dead_air_cut(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.9, "finalizing", "Finalizing output")
 
-    # Calculate derived metadata
+    # Calculate metadata from the buffer-adjusted ranges actually passed to FFmpeg.
     original_duration_ms = duration_ms
-    removed_ms = sum(end_ms - start_ms for start_ms, end_ms in validated_segments)
-    output_duration_ms = original_duration_ms - removed_ms
+    kept_duration_ms = round(sum(end - start for start, end in keep_segments) * 1000)
+    output_duration_ms = min(original_duration_ms, max(0, kept_duration_ms))
+    removed_ms = original_duration_ms - output_duration_ms
 
     # Determine MIME type based on streams
     if media_info["has_video"]:
