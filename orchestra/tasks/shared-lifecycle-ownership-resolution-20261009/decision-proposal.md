@@ -1,13 +1,13 @@
 # Shared Lifecycle Eligibility — Owner Decision Proposal
 
-**Status:** PROPOSAL — canonical owner approvals pending
+**Status:** CONDITIONALLY ACCEPTED BY PROJECT OWNER — required canonical/runtime owner confirmations pending
 **Repository baseline:** `origin/main` / `34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab`
 **Date:** 2026-10-09 (Asia/Bangkok)
 **Scope:** Architecture and bounded implementation handoff only. No runtime, Spec, handoff, generated-view, schema, migration, grant, or dispatch changes are authorized by this record.
 
 ## Decision requested
 
-Approve or amend Decisions A–D from the task request before any production-facing implementation. This proposal does not itself establish canonical ownership or runtime authority.
+The project owner accepted Decisions A–D as the design direction, conditional on confirmation by the responsible canonical and runtime owners. This is not a canonical owner approval, implementation authorization, runtime grant, economic authorization, or dispatch permission. The required owner confirmations remain pending.
 
 | Concern | Proposed owner/boundary | Current evidence | Approval status |
 |---|---|---|---|
@@ -80,15 +80,16 @@ Required semantics:
 - Do not persist these results in a new ledger. Return/project them from the existing domain record or DevelopmentRun, with any durable event/job state remaining on its current owner.
 - Keep `reasonCodes` stable and machine-readable; free-text rationale may accompany but cannot replace them.
 
-## Integration plan, gated by approvals
+## Phase 1 boundary and integration plan, gated by approvals
 
-1. Obtain written approval from the SPEC-224 runtime owner for the shared result shape, DevelopmentRun adapter reuse, and the exact admission call site.
-2. Obtain approval from the canonical handoff/global-view owner that continuation outputs remain reporting-only and that any display change preserves generated-view ownership.
-3. For each non-DevelopmentRun adapter, obtain the domain owner's durable identity, tenant boundary, predicate/evidence source, freshness rule, and ownership verification contract. Do not infer eligibility from Spec ID or queue rank.
-4. Obtain SPEC-186/runtime-admission owner approval for consumption of the advisory result while retaining all current dispatch controls.
-5. Only after ownership and path reservations are verified, define tests around the existing registry/watcher and approved domain adapters. Implement a minimal guard at the authorized admission path; do not add storage or migrations without separately proven necessity and approval.
-6. Reconcile the SPEC-038 blocked unit as a negative case, and prove unrelated eligible work remains selectable through an approved owner adapter.
-7. After implementation, run at least ten independent focused QA/review passes plus focused DevelopmentRun compatibility tests. Those reviews do not substitute for runtime, tenant, database/outbox, or exact-SHA verification.
+1. Obtain written approval from the SPEC-224 runtime owner for the DevelopmentRun-only result semantics, reuse of its existing predicate registry/watcher, and exact owned admission call site.
+2. Obtain approval from the canonical handoff/global-view owner that continuation output remains reporting-only and confirm whether any reporting change is necessary. No generated-view changes are included in Phase 1 by default.
+3. Obtain SPEC-186/runtime-admission owner approval for the exact consumption point and confirm that all existing dispatch gates remain authoritative.
+4. Verify file ownership, active reservations, and a collision-free task workunit before implementation. If any owner or path remains unresolved, stop at this boundary.
+5. After those approvals, implement only a DevelopmentRun lifecycle/admission guard using the existing durable DevelopmentRun and `worker_jobs`/outbox path. Do not enable non-DevelopmentRun adapters, change canonical Spec Handoff, create new storage, or add migrations in Phase 1.
+6. Define and run focused tests for the approved DevelopmentRun path, including fail-closed predicates, evidence freshness, tenant authorization, idempotency/fencing, and the SPEC-038 blocked regression. SPEC-038 remains a negative case; do not reopen CMS implementation.
+7. After authorized implementation, run at least ten independent focused QA/review passes plus existing DevelopmentRun compatibility tests. Those reviews do not substitute for runtime, tenant, database/outbox, or exact-SHA verification.
+8. A later non-DevelopmentRun adapter requires a separate collision-free WorkUnit and explicit approval from that domain owner; no such adapter is enabled by this proposal.
 
 ## Focused acceptance matrix for the authorized implementation
 
@@ -111,9 +112,9 @@ Read-only inspection at this task start found `/home/dev/worktrees/SmartSpecPro-
 
 ## Unresolved approvals and next action
 
-- **SPEC-224/runtime owner:** accept/amend the shared result semantics and identify the exact DevelopmentRun/admission integration owner/path.
-- **Canonical handoff/global-view owner:** accept/amend the reporting-only boundary and confirm the generated view contract.
-- **SPEC-186/runtime admission owner:** confirm where advisory eligibility is consumed without weakening dispatch gates.
+- **SPEC-224/runtime owner:** confirm the DevelopmentRun-only result semantics and identify/accept the exact lifecycle/admission integration owner/path.
+- **Canonical handoff/global-view owner:** confirm the reporting-only boundary and generated-view ownership. No display change is needed for Phase 1 unless that owner identifies one.
+- **SPEC-186/runtime-admission owner:** confirm the specific admission call site and retained dispatch gates.
 - **Each non-DevelopmentRun domain owner:** identify the existing durable ID and approve its adapter contract; SPEC-269 and SPEC-275 require separate domain evidence/ownership approval.
 - **Collision owner:** identify and reconcile the dirty ecosystem-foundation worktree through its owner; no one else should stage, rebase, cherry-pick, or overwrite it.
 
@@ -122,6 +123,8 @@ No exact next shared WorkUnit is declared eligible. The continuation queue conta
 ## Evidence and limitations
 
 - Canonical source inspected: `34aa1137b2bfa1aa2c1c752fbad23cf5d02157ab`.
+- Project-owner conditional acceptance was received on 2026-10-09; it does not replace the three canonical/runtime owner confirmations above.
+- PR #374 currently has no comments, reviews, or requested reviewers; therefore no required owner confirmation is evidenced there.
 - `tools/spec_handoff next` returns generated continuation-queue rows; repository search found no runtime caller that turns those rows into dispatch.
 - `apps/web/server/services/developmentLifecyclePredicateRegistry.ts` fails closed for unavailable and duplicate predicate IDs; `developmentLifecycleDependencyWatcher.ts` uses the existing worker-job-backed DevelopmentRun persistence path.
 - No runtime tests were run: this artifact is an architecture proposal and the authorized owner approvals are not present. Passing documentation checks would not prove runtime behavior.
