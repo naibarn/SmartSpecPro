@@ -105,7 +105,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 11,
-      "next_action": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
+      "next_action": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
@@ -4757,6 +4757,17 @@
     },
     {
       "authority": "UNRESOLVED",
+      "confidence": "UNRESOLVED",
+      "declared_claim_count": 0,
+      "next_action": "Initialize and reconcile canonical handoff.",
+      "path": "specs/feature/307-smartaihub-local-edge-inference-access-fabric",
+      "priority": "R5_NO_DIRECT_EVIDENCE",
+      "record_key": "canonical:specs/feature/307-smartaihub-local-edge-inference-access-fabric",
+      "reference_counts": {},
+      "spec_id": "307"
+    },
+    {
+      "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -4837,7 +4848,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "priority": "P1",
-      "rationale": "Create a separate implementation WorkUnit for the missing writer/reviewer skill frontmatter and CMS output sections; rerun the focused package suite on the exact canonical SHA.",
+      "rationale": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
     },

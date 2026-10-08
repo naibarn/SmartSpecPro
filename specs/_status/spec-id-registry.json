@@ -142,11 +142,11 @@
   ],
   "historical_spec_ids": [],
   "next_safe_spec_ids": [
-    "307",
     "308",
     "309",
     "310",
-    "311"
+    "311",
+    "312"
   ],
   "occupied_spec_ids": [
     "000",
@@ -454,7 +454,8 @@
     "303",
     "304",
     "305",
-    "306"
+    "306",
+    "307"
   ],
   "registry_version": 1,
   "reserved_spec_ids": [],
