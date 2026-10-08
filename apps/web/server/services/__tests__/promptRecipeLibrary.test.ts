@@ -52,7 +52,8 @@ describe("Prompt Recipe Library", () => {
   it("rejects malformed source records and missing owner scope", async () => {
     expect((await importOpusVideoRecipes([null], importOptions)).rejected[0]?.reason).toBe("invalid_source");
     expect((await importOpusVideoRecipes([{ ...(fixture[0] as object), author_url: "http://unsafe.test/creator" }], importOptions)).rejected[0]?.reason).toBe("missing_attribution");
-    expect((await importOpusVideoRecipes(fixture.slice(0, 1), { sourceRevision: "main", rightsCheck: rightsApproval })).rejected[0]?.reason).toBe("missing_scope");
+    await expect(importOpusVideoRecipes(fixture.slice(0, 1), { sourceRevision: "main", rightsCheck: rightsApproval })).rejects.toThrow("immutable Git commit SHA");
+    expect((await importOpusVideoRecipes(fixture.slice(0, 1), { sourceRevision: "a".repeat(40), rightsCheck: rightsApproval })).rejected[0]?.reason).toBe("missing_scope");
   });
 
   it("validates imported recipes against the published JSON Schema", async () => {

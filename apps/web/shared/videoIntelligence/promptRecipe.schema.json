@@ -19,7 +19,7 @@
       "required": ["repository", "revision", "path", "sourceUrl", "author", "authorUrl", "attribution", "contentDigest", "rightsStatus"],
       "properties": {
         "repository": { "type": "string", "minLength": 1, "maxLength": 256 },
-        "revision": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "revision": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
         "path": { "type": "string", "minLength": 1, "maxLength": 512 },
         "sourceUrl": { "type": "string", "format": "uri" },
         "author": { "type": "string", "minLength": 1, "maxLength": 160 },
