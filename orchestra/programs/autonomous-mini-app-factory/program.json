@@ -5,27 +5,27 @@
   "canonical": {
     "repository": "naibarn/SmartSpecPro",
     "ref": "origin/main",
-    "sha": "a3ed4e394f58e02dca6b3a7181d7d9db270f68d0",
+    "sha": "443859de75d2ccd297dbfa416a790d584cae3113",
     "userWorkspace": "/home/dev/projects/SmartSpecPro",
     "userWorkspaceClean": true,
     "convergenceReceipt": {
       "status": "CANONICAL_CONVERGENCE_VERIFIED",
-      "integrated_sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
-      "canonical_sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
-      "canonical_user_workspace_sha": "3f036eb5d41b2d5d97a139fcb6f3053baef3eb7e",
+      "integrated_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
+      "canonical_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
+      "canonical_user_workspace_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
       "canonical_user_workspace_dirty": false,
       "canonical_user_workspace_id": "workspace:63612604-a004-447e-b1c4-616de72d86b7",
-      "receipt_id": "workspace-convergence:cfc1135e-2a6d-443f-aa7d-20de8774a2d5",
-      "verified_at": "2026-10-08T01:25:57.511+00:00"
+      "receipt_id": "workspace-convergence:35462e36-c2f9-4ce4-aa53-3e7541d66690",
+      "verified_at": "2026-10-08T02:21:14.793+00:00"
     },
-    "observedAt": "2026-10-08T02:19:41+00:00",
+    "observedAt": "2026-10-08T02:21:20+00:00",
     "latestVerify": {
-      "status": "CLEAN_AT_LATEST_ORIGIN_MAIN",
-      "canonical_user_workspace_sha": "a3ed4e394f58e02dca6b3a7181d7d9db270f68d0",
+      "status": "CANONICAL_VERIFIED",
+      "canonical_user_workspace_sha": "443859de75d2ccd297dbfa416a790d584cae3113",
       "dirty": false,
-      "reason": "Read-only git status confirms the registered path is clean on main at the observed canonical SHA; post-promotion convergence still needs resolver verification."
+      "reason": "workspace_authority.py resolve verified the registered canonical user workspace at this SHA."
     },
-    "latestIntegratedProgramChange": "Latest observed origin/main a3ed4e394f58e02dca6b3a7181d7d9db270f68d0. Factory trusted-runner adapter checkpoint ff7898c0b7d18d71ba6887fec2196be5f654f9ef is local and pending normal PR integration; canonical workspace was observed clean at the fetched main SHA."
+    "latestIntegratedProgramChange": "origin/main is 443859de75d2ccd297dbfa416a790d584cae3113. Registered canonical user workspace /home/dev/projects/SmartSpecPro was verified clean at this SHA. Factory adapter checkpoint is separate and pending PR."
   },
   "inventory": {
     "canonicalSpecCount": 313,
@@ -70,11 +70,11 @@
       "apps/web/server/services/jobControlPlane.ts",
       "apps/web/server/jobs/postgresNodeJobWorker.ts"
     ],
-    "sourceSha": "ff7898c0b7d18d71ba6887fec2196be5f654f9ef",
-    "evidence": "Focused Vitest: 7 files, 93 tests passed after rebasing on origin/main a3ed4e394f58e02dca6b3a7181d7d9db270f68d0; latest focused rerun: 3 files, 73 tests passed; git diff --check passed. Production composition now reads the canonical pipeline, creates a deferred existing DevelopmentRun/external_agent_task bound to inherited persisted authority and immutable staged input, and settles validated Runner receipts to parent checkpoint/auto-next. No real Runner dispatch/receipt or synthetic test is claimed as runtime evidence.",
+    "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
+    "evidence": "Rebased implementation commit 4e7d7d751fe988aa19273f2f8d3080a964357476 is based on origin/main 443859de75d2ccd297dbfa416a790d584cae3113. Focused Vitest: 7 files, 93 tests passed; git diff --check passed. Production composition wires the canonical pipeline to deferred existing DevelopmentRun/external_agent_task; immutable stage input and validated Runner receipt settlement/auto-next are implemented. No real dispatch or runtime acceptance is claimed.",
     "integration": "PENDING_NORMAL_PR",
     "integratedSha": null,
-    "nextAction": "Push the rebased branch normally, open/update PR and merge through required protection. Then rerun focused verification against the merged SHA. Resume actual stage only after a real trusted Runner registration/session/capability plus grant, approval, budget and workspace authority are valid. Deployments remain blocked on an existing authorized registered non-production target."
+    "nextAction": "Push the rebased branch normally and open/merge a PR. Then verify the integrated SHA and re-run scoped checks. Execute live only when a trusted Runner and authentic session, capability, grant, approval, budget and workspace authorities are present; deployment waits for an approved registered non-production target."
   },
   "checkpoints": [
     {
@@ -339,8 +339,8 @@
     {
       "id": "FACTORY_TRUSTED_RUNNER_STAGE_ADAPTER_AND_RECEIPT_SETTLEMENT",
       "state": "FAST_GATE_PASSED_PENDING_PR",
-      "sourceSha": "ff7898c0b7d18d71ba6887fec2196be5f654f9ef",
-      "evidence": "Factory stage production composition is wired to existing deferred DevelopmentRun/external_agent_task and validated receipt reconciliation. Focused tests 7 files/93 tests; latest focused rerun 3 files/73 tests; diff check passed. No live dispatch/runtime claim.",
+      "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
+      "evidence": "Production Factory composition uses existing deferred DevelopmentRun/external_agent_task and validated Runner receipt settlement. 7 focused Vitest files/93 tests passed on the candidate based on 443859de75d2ccd297dbfa416a790d584cae3113; no live Runner dispatch claim.",
       "nextAction": "Normal PR integration; then live execute only with real Runner authority and valid authorization."
     }
   ],
@@ -556,7 +556,7 @@
     "External provider/runtime certification beyond the first supported target",
     "Retirement of stale or unknown worktrees"
   ],
-  "updatedAt": "2026-10-08T02:19:41+00:00",
+  "updatedAt": "2026-10-08T02:21:20+00:00",
   "milestones": {
     "M1_RESEARCH_NOTES_LOCAL_COMPLETE": "PASS_IMPLEMENTED_TESTED",
     "M2_RESEARCH_NOTES_AI_BACKGROUND_COMPLETE": "PASS_BACKGROUND_RUNTIME_RETRY_FAILURE_RECOVERY_IDEMPOTENCY_OWNERSHIP; AI_PROVIDER_WAITING_EXTERNAL_CONFIGURATION",
@@ -619,14 +619,16 @@
       "357341fad2f45ce192ae6c1af86d36c584bfc5bd",
       "57b8f9b694b1431f3cbb0bfa74e9bf0bc1543b2c",
       "ada93bda6fca71a4ce059f63f982bafa1291e88a",
-      "ff7898c0b7d18d71ba6887fec2196be5f654f9ef"
+      "4e7d7d751fe988aa19273f2f8d3080a964357476",
+      "dfc835869dd1eb464155d39576fae49829d0c072",
+      "7df68896db7f151c4718866d3d1894d43a9db9ee"
     ],
     "intendedRemoteBranch": "codex/factory-runner-stage-20261008",
     "pendingPullRequest": {
       "number": null,
       "url": null,
       "state": "PENDING_CREATE",
-      "sourceSha": "ff7898c0b7d18d71ba6887fec2196be5f654f9ef",
+      "sourceSha": "4e7d7d751fe988aa19273f2f8d3080a964357476",
       "integratedSha": null
     },
     "testEvidence": [
@@ -811,14 +813,14 @@
         "outcome": "PASS"
       },
       {
-        "revision": "ff7898c0b7d18d71ba6887fec2196be5f654f9ef based on origin/main a3ed4e394f58e02dca6b3a7181d7d9db270f68d0",
+        "revision": "4e7d7d751fe988aa19273f2f8d3080a964357476 based on origin/main 443859de75d2ccd297dbfa416a790d584cae3113",
         "command": "pnpm --dir apps/web exec vitest run server/services/miniAppFactoryPipeline.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts server/services/miniAppFactoryRunnerSettlement.test.ts server/services/miniAppFactoryStageWorker.test.ts server/services/__tests__/jobControlPlane.test.ts server/services/externalAgentTaskExecutor.test.ts server/services/__tests__/externalAgentRunnerDispatcher.test.ts server/services/__tests__/jobReconciler.test.ts",
-        "outcome": "PASS: 7 test files, 93 tests; focused rerun on adapter/settlement/jobControlPlane: 3 files, 73 tests. git diff --check passed. Runtime authorization, real Runner receipt, deployment and UAT remain unproven."
+        "outcome": "PASS: 7 test files, 93 tests; git diff --check passed. Runner authorization/receipt, deployment, runtime and UAT remain pending."
       }
     ],
-    "githubIntegration": "WAITING_EXTERNAL_RETRYABLE",
+    "githubIntegration": "READY_NORMAL_PR",
     "deploymentState": "WAITING_EXTERNAL_AUTHORITY_NO_TARGET_REGISTERED",
-    "canonicalAtCheckpoint": "a3ed4e394f58e02dca6b3a7181d7d9db270f68d0",
+    "canonicalAtCheckpoint": "443859de75d2ccd297dbfa416a790d584cae3113",
     "canonicalWorkspace": {
       "path": "/home/dev/projects/SmartSpecPro",
       "sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
