@@ -124,21 +124,21 @@
       "status": "OPEN"
     },
     {
-      "evidence": "Package typecheck resource-deferred; no real Runner end-to-end or browser crash/timeout test.",
+      "evidence": "Typecheck started but exit code was not captured; no real Runner end-to-end, browser crash/timeout, or Runner egress/authorization tests.",
       "id": "TYPECHECK_AND_E2E",
       "severity": "verification",
       "status": "OPEN"
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "6f16fdcb75b075f35b638d31fbc42d02a1a8bf08",
+    "expected_canonical_sha": "9035fc13e6056763f6c575ef8b10c6d6e1b18e6f",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
     "next_action": "Implement Runner-owned browser job cancellation, lease/fencing/deadline enforcement, connection-time egress checks, resource accounting, audit receipts, and profile cleanup; then wire CDP-only Moli through existing worker_jobs authorization and run end-to-end verification. Resolve applicable upstream advisories and complete artifact provenance/license review before production consideration.",
     "next_ready_workunit": "SPEC208_MOLI_RUNNER_CONTROL_PLANE_VERTICAL_SLICE",
     "reactivation_predicate": "Runner browser-command cancellation and process/profile cleanup are implemented with live job lease, policy, audit, and egress enforcement; supply-chain findings have a verified remediation path.",
-    "resume_point": "Phase 1 checkpoint d3e13f2 records CDP-only hardening, a 19-test focused pass, and 80 unexecuted benchmark cases. It is not integrated. Runner is present in apps/runner-app; its browser cancellation/lease/egress/cleanup contract remains incomplete. Keep WebDriver disabled and production on Chromium.",
+    "resume_point": "Phase 1 code and evidence remain preserved on local branch codex/spec208-moli-phase1-20261008 (latest branch commit aba9677). Latest fetched origin/main baseline at handoff update is 9035fc13e6056763f6c575ef8b10c6d6e1b18e6f. Focused 19/19 tests passed on the Phase 1 branch; package typecheck has no confirmed exit result. Runner vertical slice, CDP-only listener boundary, and dependency/provenance closures remain open. Do not enable Moli production or WebDriver.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -336,7 +336,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 30,
+  "generation": 31,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -374,7 +374,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6f16fdcb75b075f35b638d31fbc42d02a1a8bf08",
+    "canonical_sha": "9035fc13e6056763f6c575ef8b10c6d6e1b18e6f",
     "integrated": true,
     "integrated_at": "2026-10-08T02:29:10Z"
   },
@@ -742,7 +742,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T03:00:55.266479Z",
+  "updated_at": "2026-10-08T08:52:07.546760Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -774,26 +774,8 @@
       },
       {
         "path": "apps/web/package.json",
-        "reason": "8 GiB configured heap; 13 GiB host available while unrelated workloads were active",
-        "result": "TYPECHECK_RESOURCE_DEFERRED"
-      },
-      {
-        "canonical_specs": 314,
-        "discovered_records": 472,
-        "invalid_manifests": 0,
-        "missing_handoffs": 0,
-        "path": "tools.spec_handoff validate --all",
-        "result": "PASS"
-      },
-      {
-        "drift": [
-          "spec-index.json",
-          "reconciliation-report.json",
-          "ambiguity-review.json"
-        ],
-        "path": "tools.spec_handoff index --check",
-        "result": "BASELINE_DRIFT",
-        "scope": "global generated views, unchanged in this task"
+        "reason": "pnpm typecheck emitted no diagnostics before execution session ended; status is unverified",
+        "result": "TYPECHECK_STARTED_NO_EXIT_CODE"
       }
     ],
     "freshness": "FRESH",
