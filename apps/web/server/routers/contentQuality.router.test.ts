@@ -70,6 +70,12 @@ describe("contentQuality.getOverview structured data metrics", () => {
         avg_coverage: 0.82,
         structured_data_valid_count: 2,
         structured_data_invalid_count: 1,
+        median_fact_age_days: 12.4,
+        fact_age_0_7_count: 4,
+        fact_age_8_30_count: 3,
+        fact_age_31_90_count: 2,
+        fact_age_over_90_count: 1,
+        fact_age_unverified_count: 2,
       }));
 
     const caller = contentQualityRouter.createCaller(createContext("admin"));
@@ -82,6 +88,14 @@ describe("contentQuality.getOverview structured data metrics", () => {
       avg_citation_coverage: 0.82,
       structured_data_valid_count: 2,
       structured_data_invalid_count: 1,
+      median_fact_age_days: 12.4,
+      fact_age_counts: {
+        days_0_7: 4,
+        days_8_30: 3,
+        days_31_90: 2,
+        over_90_days: 1,
+        unverified: 2,
+      },
     });
   });
 

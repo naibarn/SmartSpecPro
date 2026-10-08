@@ -32,6 +32,13 @@ export default function ContentQualityDashboard() {
   });
 
   const stats = overview.data;
+  const factAgeBands = [
+    { label: "0–7 days", count: stats?.fact_age_counts.days_0_7 ?? 0, variant: "default" },
+    { label: "8–30 days", count: stats?.fact_age_counts.days_8_30 ?? 0, variant: "secondary" },
+    { label: "31–90 days", count: stats?.fact_age_counts.days_31_90 ?? 0, variant: "outline" },
+    { label: "Over 90 days", count: stats?.fact_age_counts.over_90_days ?? 0, variant: "destructive" },
+    { label: "Unverified", count: stats?.fact_age_counts.unverified ?? 0, variant: "outline" },
+  ] as const;
 
   return (
     <div className="space-y-6 p-6">
@@ -50,7 +57,47 @@ export default function ContentQualityDashboard() {
         <DashboardKpiCard icon={BarChart3} label="Avg Coverage" value={stats ? `${Math.round(stats.avg_citation_coverage * 100)}%` : "—"} />
         <DashboardKpiCard icon={FileCheck} label="Structured Data Valid" value={stats?.structured_data_valid_count ?? 0} valueClassName="text-green-600" />
         <DashboardKpiCard icon={AlertTriangle} label="Structured Data Invalid" value={stats?.structured_data_invalid_count ?? 0} valueClassName="text-amber-600" />
+        <DashboardKpiCard
+          icon={BarChart3}
+          label="Median Fact Age"
+          value={stats?.median_fact_age_days != null ? `${Math.round(stats.median_fact_age_days)} days` : "—"}
+        />
       </div>
+
+      <DashboardCard
+        title="Verified Fact Age Distribution"
+        description="Age since each CMS artifact was last verified"
+      >
+        {overview.isLoading ? (
+          <p role="status">Loading verified fact age distribution…</p>
+        ) : overview.isError ? (
+          <>
+            <p role="alert">Could not load verified fact age distribution.</p>
+            <Button variant="outline" size="sm" onClick={() => overview.refetch()}>
+              Retry
+            </Button>
+          </>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Age</TableHead>
+                <TableHead>Artifacts</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {factAgeBands.map((band) => (
+                <TableRow key={band.label}>
+                  <TableCell>{band.label}</TableCell>
+                  <TableCell>
+                    <Badge variant={band.variant}>{band.count}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </DashboardCard>
 
       <DashboardCard
         title="Structured Data Validation"

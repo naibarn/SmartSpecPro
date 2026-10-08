@@ -37,6 +37,12 @@ export const contentQualityRouter = router({
         avg_coverage: sql<number>`COALESCE(AVG((${contentArtifacts.qualityScore}->>'citation_coverage')::float), 0)`,
         structured_data_valid_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.qualityScore}->>'structured_data_valid' = 'true')::int`,
         structured_data_invalid_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.qualityScore}->>'structured_data_valid' = 'false')::int`,
+        median_fact_age_days: sql<number | null>`PERCENTILE_CONT(0.5::double precision) WITHIN GROUP (ORDER BY GREATEST(EXTRACT(EPOCH FROM (NOW() - ${contentArtifacts.lastVerifiedAt})) / 86400.0, 0)::double precision) FILTER (WHERE ${contentArtifacts.lastVerifiedAt} IS NOT NULL)`,
+        fact_age_0_7_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.lastVerifiedAt} >= NOW() - INTERVAL '7 days')::int`,
+        fact_age_8_30_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.lastVerifiedAt} < NOW() - INTERVAL '7 days' AND ${contentArtifacts.lastVerifiedAt} >= NOW() - INTERVAL '30 days')::int`,
+        fact_age_31_90_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.lastVerifiedAt} < NOW() - INTERVAL '30 days' AND ${contentArtifacts.lastVerifiedAt} >= NOW() - INTERVAL '90 days')::int`,
+        fact_age_over_90_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.lastVerifiedAt} < NOW() - INTERVAL '90 days')::int`,
+        fact_age_unverified_count: sql<number>`COUNT(*) FILTER (WHERE ${contentArtifacts.lastVerifiedAt} IS NULL)::int`,
       })
       .from(contentArtifacts)
       .where(eq(contentArtifacts.tenantId, tenantId));
@@ -49,6 +55,14 @@ export const contentQualityRouter = router({
       avg_citation_coverage: Math.round((coverageRow?.avg_coverage ?? 0) * 100) / 100,
       structured_data_valid_count: coverageRow?.structured_data_valid_count ?? 0,
       structured_data_invalid_count: coverageRow?.structured_data_invalid_count ?? 0,
+      median_fact_age_days: coverageRow?.median_fact_age_days ?? null,
+      fact_age_counts: {
+        days_0_7: coverageRow?.fact_age_0_7_count ?? 0,
+        days_8_30: coverageRow?.fact_age_8_30_count ?? 0,
+        days_31_90: coverageRow?.fact_age_31_90_count ?? 0,
+        over_90_days: coverageRow?.fact_age_over_90_count ?? 0,
+        unverified: coverageRow?.fact_age_unverified_count ?? 0,
+      },
     };
   }),
 
