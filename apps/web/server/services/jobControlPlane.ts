@@ -45,6 +45,7 @@ import {
 import { CONTENT_PROTECTION_RUNTIME_TYPE } from "../../shared/contentProtectionWorker";
 import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContracts";
 import { runJobSettlementHooks } from "./jobSettlementHooks";
+import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
@@ -1238,7 +1239,7 @@ export async function createCanonicalJobInTransaction(input: {
       jobType: normalizedDefinition.jobType,
       executionClass: normalizedDefinition.executionClass,
       contractVersion: normalizedDefinition.contractVersion,
-      status: "queued",
+      status: input.options?.deferredAdmission ? "pending" : "queued",
       priority: normalizedDefinition.priority ?? 0,
       capabilityRequirementsJson:
         normalizedDefinition.requiredCapabilities ?? {},
@@ -1274,19 +1275,20 @@ export async function createCanonicalJobInTransaction(input: {
     eventIdempotencyKey: `created:${row.id}`,
     payloadJson: input.createdPayload,
   });
-  await appendJobEvent(input.query, {
-    workerJobId: row.id,
-    eventType: "QUEUED",
-    eventIdempotencyKey: `queued:${row.id}`,
-    payloadJson: input.queuedPayload,
-  });
-  await appendJobEvent(input.query, {
-    workerJobId: row.id,
-    eventType: "DISPATCH_REQUESTED",
-    eventIdempotencyKey: `dispatch-requested:${row.id}:1`,
-    payloadJson: { attempt: 1 },
-  });
-  await input.query.insert(workerJobOutbox).values({
+  if (!input.options?.deferredAdmission) {
+    await appendJobEvent(input.query, {
+      workerJobId: row.id,
+      eventType: "QUEUED",
+      eventIdempotencyKey: `queued:${row.id}`,
+      payloadJson: input.queuedPayload,
+    });
+    await appendJobEvent(input.query, {
+      workerJobId: row.id,
+      eventType: "DISPATCH_REQUESTED",
+      eventIdempotencyKey: `dispatch-requested:${row.id}:1`,
+      payloadJson: { attempt: 1 },
+    });
+    await input.query.insert(workerJobOutbox).values({
     workerJobId: row.id,
     envelopeVersion: normalizedDefinition.contractVersion,
     envelopeJson: {
@@ -1299,7 +1301,15 @@ export async function createCanonicalJobInTransaction(input: {
     nextAttemptAt: normalizedDefinition.scheduledAt
       ? new Date(normalizedDefinition.scheduledAt)
       : now,
-  });
+    });
+  } else {
+    await appendJobEvent(input.query, {
+      workerJobId: row.id,
+      eventType: "AUTHORIZATION_HOLD_PLACED",
+      eventIdempotencyKey: `authorization-hold:${row.id}`,
+      payloadJson: { reason: "external_execution_authorization_required" },
+    });
+  }
   return { jobId: row.id, created: true };
 }
 
@@ -1864,6 +1874,8 @@ export type CreateJobOptions = {
   requestedBySystemComponent?: string | null;
   /** Provider-backed work is accepted durably before a provider slot exists. */
   admissionMode?: "strict" | "durable_queue";
+  /** Hold externally executed work until persisted authorization is bound. */
+  deferredAdmission?: boolean;
   /**
    * Internal migration hook for domain job records that already have a
    * durable UUID. It is never accepted from the public gateway payload.
@@ -2118,6 +2130,46 @@ export function createJobControlPlane(
   repository: JobControlPlaneRepository = defaultJobControlPlaneRepository
 ) {
   return {
+    async releaseAuthorizationHold(input: { jobId: string; tenantId: string; requestedByUserId: number }): Promise<boolean> {
+      return repository.transaction(async repo => {
+        const job = await repo.findJob(input.jobId);
+        if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId) return false;
+        if (job.status === "queued") return true;
+        if (job.status !== "pending" || job.jobType !== "external_agent_task") return false;
+        const jobInput = job.inputJson as Record<string, any>;
+        const progress = job.progressJson as Record<string, any>;
+        const manifest = jobInput.manifest;
+        const specRun = jobInput.spec224Run;
+        const auth = progress.spec224Authorization;
+        const binding = auth?.binding;
+        if (!manifest || auth?.status !== "READY_FOR_LIVE" || !binding ||
+          JSON.stringify(manifest.policyBinding) !== JSON.stringify(binding) ||
+          !specRun || specRun.workerJobId !== job.id || specRun.tenantId !== job.tenantId ||
+          Number(specRun.actorId) !== job.requestedByUserId ||
+          [binding.runnerId, binding.runnerSessionId, binding.capabilitySnapshotId, binding.capabilitySnapshotRevision,
+            binding.authorizationGrantRef, binding.approvalRef, binding.budgetReservationRef, binding.workspaceRef, binding.deadline]
+            .some(value => typeof value !== "string" || !value.trim())) return false;
+        const authorized = await repo.assertRunnerAuthorizationBinding?.({
+          tenantId: input.tenantId, runnerId: binding.runnerId, runnerSessionId: binding.runnerSessionId,
+          capabilitySnapshotId: binding.capabilitySnapshotId, capabilitySnapshotRevision: binding.capabilitySnapshotRevision,
+          now: new Date(),
+        });
+        if (!authorized) return false;
+        const updated = await repo.updateJob({ jobId: job.id, expectedStatus: "pending", expectedTenantId: input.tenantId,
+          expectedRequestedByUserId: input.requestedByUserId, values: { status: "queued", statusReason: null } });
+        if (!updated) return false;
+        await repo.insertEvent({ workerJobId: job.id, eventType: "QUEUED", eventIdempotencyKey: `queued:${job.id}` });
+        await repo.insertEvent({ workerJobId: job.id, eventType: "AUTHORIZATION_HOLD_RELEASED",
+          eventIdempotencyKey: `authorization-hold-released:${job.id}`, payloadJson: { runnerId: binding.runnerId,
+            capabilitySnapshotId: binding.capabilitySnapshotId, approvalRef: binding.approvalRef, budgetReservationRef: binding.budgetReservationRef } });
+        await repo.insertEvent({ workerJobId: job.id, eventType: "DISPATCH_REQUESTED",
+          eventIdempotencyKey: `dispatch-requested:${job.id}:1`, payloadJson: { attempt: 1 } });
+        await repo.insertOutbox({ workerJobId: job.id, envelopeVersion: job.contractVersion,
+          envelopeJson: { jobId: job.id, businessAttempt: job.attempt, contractVersion: job.contractVersion,
+            dedupeKey: `job:${job.id}:attempt:${job.attempt}` }, dedupeKey: `job:${job.id}:attempt:${job.attempt}`, nextAttemptAt: new Date() });
+        return true;
+      });
+    },
     async getContext(jobId: string, scope?: JobMutationScope) {
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
@@ -2546,7 +2598,7 @@ export function createJobControlPlane(
             jobType: normalizedDefinition.jobType,
             executionClass: normalizedDefinition.executionClass,
             contractVersion: normalizedDefinition.contractVersion,
-            status: "queued",
+            status: options.deferredAdmission ? "pending" : "queued",
             priority: normalizedDefinition.priority ?? 0,
             capabilityRequirementsJson:
               normalizedDefinition.requiredCapabilities ?? {},
@@ -2595,18 +2647,25 @@ export function createJobControlPlane(
             eventType: "CREATED",
             eventIdempotencyKey: `created:${row.id}`,
           });
-          await repo.insertEvent({
-            workerJobId: row.id,
-            eventType: "QUEUED",
-            eventIdempotencyKey: `queued:${row.id}`,
-          });
-          await repo.insertEvent({
-            workerJobId: row.id,
-            eventType: "DISPATCH_REQUESTED",
-            eventIdempotencyKey: `dispatch-requested:${row.id}:1`,
-            payloadJson: { attempt: 1 },
-          });
-          await repo.insertOutbox({
+          if (options.deferredAdmission) {
+            await repo.insertEvent({
+              workerJobId: row.id,
+              eventType: "AUTHORIZATION_HOLD_PLACED",
+              eventIdempotencyKey: `authorization-hold:${row.id}`,
+            });
+          } else {
+            await repo.insertEvent({
+              workerJobId: row.id,
+              eventType: "QUEUED",
+              eventIdempotencyKey: `queued:${row.id}`,
+            });
+            await repo.insertEvent({
+              workerJobId: row.id,
+              eventType: "DISPATCH_REQUESTED",
+              eventIdempotencyKey: `dispatch-requested:${row.id}:1`,
+              payloadJson: { attempt: 1 },
+            });
+            await repo.insertOutbox({
             workerJobId: row.id,
             envelopeVersion: normalizedDefinition.contractVersion,
             envelopeJson: {
@@ -2619,7 +2678,8 @@ export function createJobControlPlane(
             nextAttemptAt: normalizedDefinition.scheduledAt
               ? new Date(normalizedDefinition.scheduledAt)
               : new Date(),
-          });
+            });
+          }
           if (normalizedDefinition.schedule) {
             if (
               !repo.insertScheduleOccurrence ||

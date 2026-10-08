@@ -292,6 +292,40 @@ const definition = {
 };
 
 describe("job control plane", () => {
+  it("keeps deferred external runs out of the outbox until a job-bound authorization is persisted", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: "deferred-external-run",
+      input: { manifest: {}, spec224Run: { runId: "run-a", tenantId: "tenant-a", actorId: 1, workerJobId: "job-a" } },
+    }, { deferredAdmission: true, canonicalJobId: "job-a" });
+    const job = state.jobs.get(created.jobId)!;
+    expect(job.status).toBe("pending");
+    expect(state.outbox).toHaveLength(0);
+
+    job.inputJson.manifest.policyBinding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "b", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
+    job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding: job.inputJson.manifest.policyBinding };
+    expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
+    expect(job.status).toBe("queued");
+    expect(state.outbox).toHaveLength(1);
+  });
+
+  it("does not release a deferred external run without persisted authorization", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: "deferred-external-no-auth",
+      input: { manifest: {}, spec224Run: { runId: "run-b", tenantId: "tenant-a", actorId: 1, workerJobId: "job-b" } },
+    }, { deferredAdmission: true, canonicalJobId: "job-b" });
+    expect(await controlPlane.releaseAuthorizationHold({ jobId: created.jobId, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(false);
+    expect(state.jobs.get(created.jobId)?.status).toBe("pending");
+    expect(state.outbox).toHaveLength(0);
+  });
+
   it("keeps idempotency stable when an adaptive deadline changes", async () => {
     const { computeJobDefinitionHash } = await import("../jobCanonicalization");
     const historicalDefinition = { ...definition, retryPolicy: { ...definition.retryPolicy, deadlineMs: 60 * 60 * 1000 } };
