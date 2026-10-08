@@ -2101,7 +2101,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "f12bf6eee8d8b07f6e582336ccbb7685930c5c70",
+      "canonical_sha": "00b41b933df64ff6a225b8a91254d70ddcb1ece7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -2138,11 +2138,9 @@
         "requirement REQ-809B1F3A5820 is OPEN",
         "requirement REQ-5F44BC275481 is OPEN",
         "requirement REQ-EB44275F218A is OPEN",
-        "requirement REQ-B65ECF6CDA64 is OPEN",
         "requirement REQ-1A32C33FB17C is OPEN",
         "requirement REQ-9758CAEA8902 is OPEN",
         "requirement REQ-2B0CEFB964B6 is OPEN",
-        "requirement REQ-82664B7A464F is OPEN",
         "requirement REQ-C17EC9C16F3C is OPEN",
         "requirement REQ-F00FA36DC6B2 is OPEN",
         "requirement REQ-22685775D803 is OPEN",
@@ -2196,7 +2194,6 @@
         "requirement REQ-E932270F4AB3 is OPEN",
         "requirement REQ-796E7A62B45B is OPEN",
         "requirement REQ-A2B452456E81 is OPEN",
-        "requirement REQ-FB7281AC8C41 is OPEN",
         "requirement REQ-80910D9B529A is OPEN",
         "requirement REQ-028588461FFC is OPEN",
         "requirement REQ-75F629D444E5 is OPEN",
@@ -2380,7 +2377,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:14.889285Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Reconcile the remaining 103 OPEN requirements against current canonical implementation and select the next dependency-ready product WorkUnit.",
+      "next_action": "Select an independent app-local product slice from fresh inventory; preserve the 100 OPEN rows for future requirement-led slices and avoid broad historical reconciliation.",
       "path": "specs/feature/038-Citation-Gated-Content-Quality",
       "primary_blocker": null,
       "problem": null,
@@ -2873,8 +2870,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 103,
-        "pass": 3,
+        "open": 100,
+        "pass": 6,
         "total": 106
       },
       "review_priority": "R1_RUNTIME_REFERENCE",
