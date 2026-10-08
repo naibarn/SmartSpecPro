@@ -300,10 +300,27 @@ pub fn probe_failure_reason(error: &str) -> &'static str {
     match error {
         "RUNNER_ADAPTER_PROBE_TIMEOUT" => "probe_timeout",
         "RUNNER_ADAPTER_PROBE_SPAWN_FAILED" => "probe_launch_failed",
+        "RUNNER_ADAPTER_PROBE_SPAWN_NOT_FOUND" => "probe_executable_not_found",
+        "RUNNER_ADAPTER_PROBE_SPAWN_PERMISSION_DENIED" => "probe_permission_denied",
+        "RUNNER_ADAPTER_PROBE_SPAWN_INVALID_EXECUTABLE" => "probe_invalid_executable",
         "RUNNER_ADAPTER_PROBE_STATUS_FAILED" => "probe_status_failed",
         "RUNNER_ADAPTER_PROBE_EXITED_NONZERO" => "probe_nonzero_exit",
+        "RUNNER_WINDOWS_SYSTEM_ROOT_UNAVAILABLE" => "probe_system_path_unavailable",
+        "RUNNER_PROCESS_CMD_SHIM_UNSAFE_ARGUMENT" => "probe_unsafe_cli_shim",
         _ => "probe_failed",
     }
+}
+
+fn probe_spawn_error(error: std::io::Error) -> String {
+    let code = match error.kind() {
+        std::io::ErrorKind::NotFound => "RUNNER_ADAPTER_PROBE_SPAWN_NOT_FOUND",
+        std::io::ErrorKind::PermissionDenied => "RUNNER_ADAPTER_PROBE_SPAWN_PERMISSION_DENIED",
+        std::io::ErrorKind::InvalidInput | std::io::ErrorKind::InvalidData => {
+            "RUNNER_ADAPTER_PROBE_SPAWN_INVALID_EXECUTABLE"
+        }
+        _ => "RUNNER_ADAPTER_PROBE_SPAWN_FAILED",
+    };
+    code.to_string()
 }
 
 /// Extends the approved browser.v1 version probe with the authenticated,
@@ -573,9 +590,7 @@ fn run_version_probe(
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
     hide_console_window(&mut command);
-    let mut child = command
-        .spawn()
-        .map_err(|_| "RUNNER_ADAPTER_PROBE_SPAWN_FAILED".to_string())?;
+    let mut child = command.spawn().map_err(probe_spawn_error)?;
     let stdout = child
         .stdout
         .take()
@@ -1700,6 +1715,42 @@ pub fn can_execute(candidate: &ToolCandidate) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn probe_spawn_failures_map_to_safe_actionable_reason_codes() {
+        assert_eq!(
+            probe_failure_reason("RUNNER_ADAPTER_PROBE_SPAWN_NOT_FOUND"),
+            "probe_executable_not_found"
+        );
+        assert_eq!(
+            probe_failure_reason("RUNNER_ADAPTER_PROBE_SPAWN_PERMISSION_DENIED"),
+            "probe_permission_denied"
+        );
+        assert_eq!(
+            probe_failure_reason("RUNNER_ADAPTER_PROBE_SPAWN_INVALID_EXECUTABLE"),
+            "probe_invalid_executable"
+        );
+        assert_eq!(
+            probe_failure_reason("RUNNER_WINDOWS_SYSTEM_ROOT_UNAVAILABLE"),
+            "probe_system_path_unavailable"
+        );
+        assert_eq!(
+            probe_failure_reason("RUNNER_PROCESS_CMD_SHIM_UNSAFE_ARGUMENT"),
+            "probe_unsafe_cli_shim"
+        );
+        assert_eq!(
+            probe_spawn_error(std::io::Error::from(std::io::ErrorKind::NotFound)),
+            "RUNNER_ADAPTER_PROBE_SPAWN_NOT_FOUND"
+        );
+        assert_eq!(
+            probe_spawn_error(std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+            "RUNNER_ADAPTER_PROBE_SPAWN_PERMISSION_DENIED"
+        );
+        assert_eq!(
+            probe_spawn_error(std::io::Error::from(std::io::ErrorKind::InvalidInput)),
+            "RUNNER_ADAPTER_PROBE_SPAWN_INVALID_EXECUTABLE"
+        );
+    }
 
     #[test]
     fn only_harnesses_with_a_documented_one_shot_prompt_are_task_verifiable() {
