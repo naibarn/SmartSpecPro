@@ -20,6 +20,7 @@ import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 
 export default function ContentQualityDashboard() {
   const overview = trpc.contentQuality.getOverview.useQuery();
+  const structuredDataIssues = trpc.contentQuality.getStructuredDataIssues.useQuery({ limit: 25 });
   const bySkill = trpc.contentQuality.getBySkill.useQuery();
   const staleList = trpc.contentQuality.getStaleList.useQuery();
   const costBreakdown = trpc.contentQuality.getCostBreakdown.useQuery();
@@ -50,6 +51,70 @@ export default function ContentQualityDashboard() {
         <DashboardKpiCard icon={FileCheck} label="Structured Data Valid" value={stats?.structured_data_valid_count ?? 0} valueClassName="text-green-600" />
         <DashboardKpiCard icon={AlertTriangle} label="Structured Data Invalid" value={stats?.structured_data_invalid_count ?? 0} valueClassName="text-amber-600" />
       </div>
+
+      <DashboardCard
+        title="Structured Data Validation"
+        description="Recent CMS artifacts that need JSON-LD fixes"
+      >
+        <>
+          {structuredDataIssues.isLoading ? (
+            <p role="status">
+              Loading structured data validation issues…
+            </p>
+          ) : structuredDataIssues.isError ? (
+            <>
+              <p role="alert">
+                Could not load structured data validation issues.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => structuredDataIssues.refetch()}>
+                Retry
+              </Button>
+            </>
+          ) : structuredDataIssues.data?.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Artifact</TableHead>
+                  <TableHead>Skill</TableHead>
+                  <TableHead>Format</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Validation failures</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {structuredDataIssues.data.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">
+                      {item.title || `Artifact #${item.id}`}
+                    </TableCell>
+                    <TableCell>{item.skill_slug}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{item.output_format}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {item.created_at ? new Date(item.created_at).toLocaleDateString() : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <ul>
+                        {(item.structured_data_errors?.length
+                          ? item.structured_data_errors
+                          : ["Validation failed; no detail was recorded."]
+                        ).map((error, index) => (
+                          <li key={`${item.id}-${index}`}>{error}</li>
+                        ))}
+                      </ul>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p role="status">
+              No structured data validation failures. CMS artifacts are passing the JSON-LD quality gate.
+            </p>
+          )}
+        </>
+      </DashboardCard>
 
       {/* Per-Skill Breakdown */}
       <DashboardCard title="Coverage by Skill">
