@@ -52,6 +52,30 @@ export const contentQualityRouter = router({
     };
   }),
 
+  getStructuredDataIssues: adminProcedure
+    .input(z.object({ limit: z.number().min(1).max(100).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const tenantId = getTenantId(ctx);
+      return db
+        .select({
+          id: contentArtifacts.id,
+          skill_slug: contentArtifacts.skillSlug,
+          output_format: contentArtifacts.outputFormat,
+          created_at: contentArtifacts.createdAt,
+          title: sql<string | null>`NULLIF(${contentArtifacts.contentJson}->>'title', '')`,
+          structured_data_errors: sql<string[]>`COALESCE(${contentArtifacts.qualityScore}->'structured_data_errors', '[]'::jsonb)`,
+        })
+        .from(contentArtifacts)
+        .where(
+          and(
+            eq(contentArtifacts.tenantId, tenantId),
+            sql`${contentArtifacts.qualityScore}->>'structured_data_valid' = 'false'`
+          )
+        )
+        .orderBy(desc(contentArtifacts.createdAt))
+        .limit(input?.limit ?? 25);
+    }),
+
   getBySkill: adminProcedure.query(async ({ ctx }) => {
     const tenantId = getTenantId(ctx);
     const rows = await db
