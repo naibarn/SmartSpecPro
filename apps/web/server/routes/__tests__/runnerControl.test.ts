@@ -1149,6 +1149,20 @@ describe("Runner control transport routes", () => {
       refreshToken: expect.any(String),
       expiresInSeconds: 900,
     });
+
+    // If the first response is lost, retrying the same refresh token inside
+    // the grace window must return the converged token set instead of failing
+    // at the route's preflight revocation check.
+    const replayed = await request(app)
+      .post(`/api/runners/${runnerId}/access/refresh`)
+      .set("Authorization", `Bearer ${refresh.refreshToken}`)
+      .expect(200);
+    expect(replayed.body).toMatchObject({
+      executionToken: refreshed.body.executionToken,
+      uploadToken: refreshed.body.uploadToken,
+      refreshToken: refreshed.body.refreshToken,
+      expiresInSeconds: 900,
+    });
   });
 
   it("revokes a local Runner only for its authenticated owner", async () => {

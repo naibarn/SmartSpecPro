@@ -582,10 +582,29 @@ export async function verifyRunnerRefreshToken(
   token: string,
   expected?: RunnerTokenExpectation
 ): Promise<RunnerRefreshAuthContext> {
+  let presentedJti = "";
+  try {
+    presentedJti = String((await verifyBearerToken(token)).jti || "");
+  } catch {
+    // verifyRunnerToken below owns the canonical invalid-token error.
+  }
+  const now = Date.now();
+  const localGrace = presentedJti
+    ? runnerRefreshGrace.get(presentedJti)
+    : undefined;
+  const distributedGrace = await readDistributedRunnerRefreshGrace(presentedJti);
   return (await verifyRunnerToken(token, {
     audience: RUNNER_CONTROL_PLANE_AUDIENCE,
     tokenUses: ["runner_refresh"],
     expected,
+    // A refresh token may be replayed briefly when the server rotated it but
+    // the response was lost. Keep the route's device-proof check, but allow
+    // revocation bypass only while the matching bounded grace record exists.
+    allowRevokedJti: async jti =>
+      jti === presentedJti &&
+      Boolean(
+        (localGrace && localGrace.expiresAtMs > now) || distributedGrace
+      ),
   })) as RunnerRefreshAuthContext;
 }
 
