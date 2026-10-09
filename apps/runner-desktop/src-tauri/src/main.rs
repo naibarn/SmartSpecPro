@@ -7,7 +7,10 @@ use smartaihub_runner::{
         connect_local_runner, load_connection, load_or_refresh, safe_refresh_error_code,
         token_expiry_ms,
     },
-    diagnostics::{discover_local_tools, run_local_entrypoint_desktop, verify_local_tool},
+    diagnostics::{
+        discover_local_tools, run_local_entrypoint_desktop, runner_credential_diagnostics,
+        verify_local_tool,
+    },
     workspace_registry::{self, LocalWorkspaceDetails},
 };
 use std::{
@@ -446,6 +449,7 @@ async fn export_runner_debug_report(
                 "running": running,
                 "lastErrorCode": safe_debug_code(last_error.as_deref()),
                 "credentialRefreshErrorCode": safe_debug_code(refresh_error.as_deref()),
+                "credentialRuntime": runner_credential_diagnostics(),
             },
             "environment": {
                 "os": std::env::consts::OS,

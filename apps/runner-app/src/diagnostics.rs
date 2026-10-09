@@ -29,6 +29,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 const DEFAULT_REFRESH_INTERVAL_SECONDS: u64 = 300;
@@ -37,6 +38,30 @@ const MAX_REFRESH_INTERVAL_SECONDS: u64 = 86_400;
 const CONTROL_CHANNEL_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 const CAPABILITY_SNAPSHOT_TTL: Duration = Duration::from_secs(300);
 const CAPABILITY_SNAPSHOT_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
+static RUNNER_CREDENTIAL_DIAGNOSTICS: OnceLock<Mutex<serde_json::Value>> = OnceLock::new();
+
+/// Returns the current process-local credential handoff status for sanitized
+/// Desktop debug export. The object never contains credentials or key material.
+pub fn runner_credential_diagnostics() -> serde_json::Value {
+    RUNNER_CREDENTIAL_DIAGNOSTICS
+        .get_or_init(|| {
+            Mutex::new(json!({
+                "credentialRevision": 0,
+                "credentialRefreshObserved": false,
+                "runtimeCredentialUpdated": false,
+                "runtimeCredentialUpdatedAt": null,
+                "wssTransportRecreated": false,
+                "wssAuthenticationAcknowledged": false,
+                "lastWssAuthenticationAcknowledgedAt": null,
+                "lastCapabilityPublicationAcknowledgedAt": null,
+                "lastFailureCode": null,
+                "lastFailureAt": null
+            }))
+        })
+        .lock()
+        .map(|value| value.clone())
+        .unwrap_or_else(|_| json!({ "diagnosticsState": "unavailable" }))
+}
 #[cfg(target_os = "linux")]
 const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
 
@@ -432,9 +457,51 @@ fn connection_status_inner(
         .as_ref()
         .and_then(|connection| connection.tenant_id.clone())
         .or_else(|| crate::connection::token_tenant_id(&access_token));
+    let device_proof = match config.profile {
+        crate::config::RunnerProfile::LocalDevice if !configured_token.trim().is_empty() => {
+            DeviceProofSigner::from_env(
+                config.device_id.as_deref().unwrap_or_default(),
+                &access_token,
+            )?
+        }
+        crate::config::RunnerProfile::LocalDevice => stored_connection
+            .as_ref()
+            .map(|connection| {
+                DeviceProofSigner::from_material(
+                    &crate::device_proof::DeviceProofMaterial {
+                        device_id: connection.device_id.clone(),
+                        machine_fingerprint: connection.machine_fingerprint.clone(),
+                        public_key_pem: connection.public_key_pem.clone(),
+                        private_key_pem: connection.private_key_pem.clone(),
+                    },
+                    &access_token,
+                )
+            })
+            .transpose()?,
+        crate::config::RunnerProfile::SharedContainer => None,
+    };
+    let native_transport = NativeControlTransport::with_device_proof(
+        access_token.clone(),
+        std::time::Duration::from_secs(10),
+        device_proof,
+    )?;
+    let mut transport = RotatingControlTransport::new(
+        native_transport,
+        if configured_token.trim().is_empty() {
+            stored_connection.as_ref()
+        } else {
+            None
+        },
+        &config.data_root,
+        &access_token,
+    );
+    transport
+        .refresh_credentials_if_changed()
+        .map_err(|error| transport_error_code(error).to_owned())?;
+    let snapshot_credential_revision = transport.credential_revision;
     let Some((mut tools, browser_grant)) = scan_capability_tools(
         config,
-        &access_token,
+        transport.access_token(),
         runner_session_id.as_deref(),
         tenant_id.as_deref(),
         stop,
@@ -533,34 +600,6 @@ fn connection_status_inner(
     for event in session_inventory_events {
         coordinator.enqueue(event)?;
     }
-    let device_proof = match config.profile {
-        crate::config::RunnerProfile::LocalDevice if !configured_token.trim().is_empty() => {
-            DeviceProofSigner::from_env(
-                config.device_id.as_deref().unwrap_or_default(),
-                &access_token,
-            )?
-        }
-        crate::config::RunnerProfile::LocalDevice => stored_connection
-            .as_ref()
-            .map(|connection| {
-                DeviceProofSigner::from_material(
-                    &crate::device_proof::DeviceProofMaterial {
-                        device_id: connection.device_id.clone(),
-                        machine_fingerprint: connection.machine_fingerprint.clone(),
-                        public_key_pem: connection.public_key_pem.clone(),
-                        private_key_pem: connection.private_key_pem.clone(),
-                    },
-                    &access_token,
-                )
-            })
-            .transpose()?,
-        crate::config::RunnerProfile::SharedContainer => None,
-    };
-    let mut transport = NativeControlTransport::with_device_proof(
-        access_token.clone(),
-        std::time::Duration::from_secs(10),
-        device_proof,
-    )?;
     let mut delivery = json!({ "delivery": "accepted" });
     let startup_event_count = coordinator.reconcile("startup").pending_events;
     let mut unavailable_retries = 0;
@@ -592,7 +631,10 @@ fn connection_status_inner(
                 continue;
             }
             Err(error) => {
-                delivery = json!({ "delivery": "queued", "error": format!("{error:?}") });
+                if error == TransportError::CredentialBindingMismatch {
+                    return Err(transport_error_code(error).to_owned());
+                }
+                delivery = json!({ "delivery": "queued", "error": transport_error_code(error) });
                 break;
             }
         }
@@ -607,7 +649,7 @@ fn connection_status_inner(
             &mut transport,
             &mut channel,
             node_kind,
-            &access_token,
+            snapshot_credential_revision,
             &mut tools,
             &mut execution_snapshot,
             browser_grant,
@@ -770,17 +812,334 @@ fn rebind_capability_snapshot(
     Ok(())
 }
 
+struct RotatingControlTransport {
+    inner: NativeControlTransport,
+    data_root: Option<String>,
+    binding: Option<crate::connection::StoredRunnerConnection>,
+    current_token: String,
+    credential_revision: u64,
+    last_rotation_at: Option<String>,
+    last_wss_auth_acknowledged_at: Option<String>,
+    last_capability_acknowledged_at: Option<String>,
+    wss_transport_recreated: bool,
+    last_failure_code: Option<String>,
+    last_failure_at: Option<String>,
+}
+
+impl RotatingControlTransport {
+    fn new(
+        inner: NativeControlTransport,
+        binding: Option<&crate::connection::StoredRunnerConnection>,
+        data_root: &str,
+        access_token: &str,
+    ) -> Self {
+        let transport = Self {
+            inner,
+            data_root: binding.map(|_| data_root.to_owned()),
+            binding: binding.cloned(),
+            current_token: access_token.to_owned(),
+            credential_revision: u64::from(binding.is_some()),
+            last_rotation_at: None,
+            last_wss_auth_acknowledged_at: None,
+            last_capability_acknowledged_at: None,
+            wss_transport_recreated: false,
+            last_failure_code: None,
+            last_failure_at: None,
+        };
+        transport.publish_runtime_diagnostics();
+        transport
+    }
+
+    fn access_token(&self) -> &str {
+        &self.current_token
+    }
+
+    fn refresh_credentials_if_changed(&mut self) -> Result<bool, TransportError> {
+        match self.refresh_credentials_from_store() {
+            Ok(changed) => {
+                if changed {
+                    self.last_failure_code = None;
+                    self.last_failure_at = None;
+                }
+                self.publish_runtime_diagnostics();
+                Ok(changed)
+            }
+            Err(error) => {
+                self.last_failure_code = Some(transport_error_code(error).to_owned());
+                self.last_failure_at = Some(current_time_iso());
+                self.publish_runtime_diagnostics();
+                Err(error)
+            }
+        }
+    }
+
+    fn refresh_credentials_from_store(&mut self) -> Result<bool, TransportError> {
+        let (Some(data_root), Some(binding)) = (&self.data_root, &self.binding) else {
+            return Ok(false);
+        };
+        let mut latest = None;
+        for attempt in 0..4 {
+            match crate::connection::load_connection(data_root) {
+                Ok(Some(connection)) => {
+                    latest = Some(connection);
+                    break;
+                }
+                Ok(None) => {}
+                Err(error) if error == "RUNNER_CONNECTION_STORE_INVALID" => {
+                    return Err(TransportError::CredentialInvalid);
+                }
+                Err(_) => {}
+            }
+            if attempt < 3 {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
+        let latest = latest.ok_or(TransportError::CredentialStoreUnavailable)?;
+        if !same_stored_connection_identity(binding, &latest) {
+            return Err(TransportError::CredentialBindingMismatch);
+        }
+        if latest.control_token == self.current_token {
+            return Ok(false);
+        }
+        let session_matches = binding.runner_session_id.as_deref().is_some_and(|session| {
+            crate::connection::token_runner_session_id(&latest.control_token)
+                .as_deref()
+                .is_none_or(|token_session| token_session == session)
+        });
+        let tenant_matches = binding.tenant_id.as_deref().is_none_or(|tenant| {
+            crate::connection::token_tenant_id(&latest.control_token)
+                .as_deref()
+                .is_none_or(|token_tenant| token_tenant == tenant)
+        });
+        if !crate::connection::token_valid_for(&latest.control_token, 60)
+            || !session_matches
+            || !tenant_matches
+        {
+            return Err(TransportError::CredentialInvalid);
+        }
+        let proof = DeviceProofSigner::from_material(
+            &crate::device_proof::DeviceProofMaterial {
+                device_id: latest.device_id.clone(),
+                machine_fingerprint: latest.machine_fingerprint.clone(),
+                public_key_pem: latest.public_key_pem.clone(),
+                private_key_pem: latest.private_key_pem.clone(),
+            },
+            &latest.control_token,
+        )
+        .map_err(|_| TransportError::CredentialInvalid)?;
+        self.inner
+            .replace_credentials(latest.control_token.clone(), Some(proof))
+            .map_err(|_| TransportError::CredentialInvalid)?;
+        self.current_token = latest.control_token;
+        self.credential_revision = self.credential_revision.saturating_add(1);
+        self.last_rotation_at = Some(current_time_iso());
+        self.last_wss_auth_acknowledged_at = None;
+        self.last_capability_acknowledged_at = None;
+        self.wss_transport_recreated = true;
+        Ok(true)
+    }
+
+    fn publish_runtime_diagnostics(&self) {
+        let value = self.credential_diagnostics(self.last_failure_code.as_deref());
+        if let Ok(mut current) = RUNNER_CREDENTIAL_DIAGNOSTICS
+            .get_or_init(|| Mutex::new(json!({})))
+            .lock()
+        {
+            *current = value;
+        }
+    }
+
+    fn receive_server_message(&mut self) -> Result<serde_json::Value, TransportError> {
+        self.refresh_credentials_if_changed()?;
+        let message = match self.inner.receive_server_message() {
+            Ok(message) => message,
+            Err(TransportError::Idle) => return Err(TransportError::Idle),
+            Err(error) => {
+                self.last_failure_code = Some(transport_error_code(error).to_owned());
+                self.last_failure_at = Some(current_time_iso());
+                self.publish_runtime_diagnostics();
+                return Err(error);
+            }
+        };
+        // A Desktop refresh may race a blocking WSS read. Recheck before the
+        // received command is parsed, acknowledged, or executed.
+        self.refresh_credentials_if_changed()?;
+        Ok(message)
+    }
+
+    fn credential_diagnostics(&self, last_failure_code: Option<&str>) -> serde_json::Value {
+        json!({
+            "credentialRevision": self.credential_revision,
+            "credentialRefreshObserved": self.credential_revision > 1,
+            "lastCredentialRotationAt": self.last_rotation_at,
+            "runtimeCredentialUpdated": self.credential_revision > 1,
+            "runtimeCredentialUpdatedAt": self.last_rotation_at,
+            "wssTransportRecreated": self.wss_transport_recreated,
+            "wssAuthenticationAcknowledged": self.inner.wss_auth_acknowledged(),
+            "lastWssAuthenticationAcknowledgedAt": self.last_wss_auth_acknowledged_at,
+            "lastCapabilityPublicationAcknowledgedAt": self.last_capability_acknowledged_at,
+            "lastFailureCode": last_failure_code,
+            "lastFailureAt": self.last_failure_at,
+        })
+    }
+}
+
+fn transport_error_code(error: TransportError) -> &'static str {
+    match error {
+        TransportError::Unavailable => "RUNNER_TRANSPORT_UNAVAILABLE",
+        TransportError::Idle => "RUNNER_TRANSPORT_IDLE",
+        TransportError::Unauthorized => "RUNNER_TRANSPORT_UNAUTHORIZED",
+        TransportError::Protocol => "RUNNER_TRANSPORT_PROTOCOL_ERROR",
+        TransportError::Rejected => "RUNNER_TRANSPORT_REJECTED",
+        TransportError::HttpRejected(_) => "RUNNER_TRANSPORT_HTTP_REJECTED",
+        TransportError::CredentialStoreUnavailable => "RUNNER_CREDENTIAL_STORE_UNAVAILABLE",
+        TransportError::CredentialBindingMismatch => "RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH",
+        TransportError::CredentialInvalid => "RUNNER_CREDENTIAL_INVALID",
+    }
+}
+
+impl ControlTransport for RotatingControlTransport {
+    fn send_wss(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError> {
+        self.refresh_credentials_if_changed()?;
+        let ack = match self.inner.send_wss(endpoint, event) {
+            Ok(ack) => ack,
+            Err(error) => {
+                self.last_failure_code = Some(transport_error_code(error).to_owned());
+                self.last_failure_at = Some(current_time_iso());
+                self.publish_runtime_diagnostics();
+                return Err(error);
+            }
+        };
+        if self.inner.wss_auth_acknowledged() && self.last_wss_auth_acknowledged_at.is_none() {
+            self.last_wss_auth_acknowledged_at = Some(current_time_iso());
+        }
+        if event
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("runner.capabilities.update")
+            && matches!(
+                ack,
+                AckState::Accepted | AckState::Applied | AckState::Duplicate
+            )
+        {
+            self.last_capability_acknowledged_at = Some(current_time_iso());
+        }
+        if matches!(
+            ack,
+            AckState::Accepted | AckState::Applied | AckState::Duplicate
+        ) {
+            self.last_failure_code = None;
+            self.last_failure_at = None;
+        } else {
+            self.last_failure_code = Some("RUNNER_CONTROL_EVENT_REJECTED".into());
+            self.last_failure_at = Some(current_time_iso());
+        }
+        self.publish_runtime_diagnostics();
+        Ok(ack)
+    }
+
+    fn send_https(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError> {
+        self.refresh_credentials_if_changed()?;
+        match self.inner.send_https(endpoint, event) {
+            Ok(ack) => Ok(ack),
+            Err(error) => {
+                self.last_failure_code = Some(transport_error_code(error).to_owned());
+                self.last_failure_at = Some(current_time_iso());
+                self.publish_runtime_diagnostics();
+                Err(error)
+            }
+        }
+    }
+}
+
+fn same_stored_connection_identity(
+    expected: &crate::connection::StoredRunnerConnection,
+    actual: &crate::connection::StoredRunnerConnection,
+) -> bool {
+    expected.server_url == actual.server_url
+        && expected.runner_id == actual.runner_id
+        && expected.device_id == actual.device_id
+        && expected.machine_fingerprint == actual.machine_fingerprint
+        && expected.public_key_pem == actual.public_key_pem
+        && expected.private_key_pem == actual.private_key_pem
+        && expected.runner_session_id == actual.runner_session_id
+        && expected.tenant_id == actual.tenant_id
+}
+
 fn run_live_control_loop(
     config: &RunnerConfig,
     endpoint: &ControlEndpoint,
-    transport: &mut NativeControlTransport,
+    transport: &mut RotatingControlTransport,
     channel: &mut ControlChannel,
     node_kind: NodeKind,
-    access_token: &str,
+    snapshot_credential_revision: u64,
+    tools: &mut Vec<ToolCandidate>,
+    snapshot: &mut serde_json::Value,
+    browser_grant: Option<BrowserAuthorizationGrant>,
+    stop: Option<&AtomicBool>,
+) -> Result<String, String> {
+    let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
+    let result = run_live_control_loop_inner(
+        config,
+        endpoint,
+        transport,
+        channel,
+        node_kind,
+        snapshot_credential_revision,
+        tools,
+        snapshot,
+        browser_grant,
+        stop,
+        &mut external_processes,
+    );
+    if result
+        .as_ref()
+        .is_err_and(|error| credential_failure_requires_cancellation(error))
+    {
+        for active in external_processes.values_mut() {
+            let _ = active.process.cancel();
+        }
+    }
+    result
+}
+
+fn credential_failure_requires_cancellation(error: &str) -> bool {
+    error.starts_with("RUNNER_CREDENTIAL_")
+}
+
+#[cfg(test)]
+mod credential_failure_safety_tests {
+    use super::credential_failure_requires_cancellation;
+
+    #[test]
+    fn credential_authority_failures_cancel_active_processes() {
+        for code in [
+            "RUNNER_CREDENTIAL_STORE_UNAVAILABLE",
+            "RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH",
+            "RUNNER_CREDENTIAL_INVALID",
+        ] {
+            assert!(credential_failure_requires_cancellation(code));
+        }
+        assert!(!credential_failure_requires_cancellation(
+            "RUNNER_TRANSPORT_UNAVAILABLE"
+        ));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_live_control_loop_inner(
+    config: &RunnerConfig,
+    endpoint: &ControlEndpoint,
+    transport: &mut RotatingControlTransport,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    snapshot_credential_revision: u64,
     tools: &mut Vec<ToolCandidate>,
     snapshot: &mut serde_json::Value,
     mut browser_grant: Option<BrowserAuthorizationGrant>,
     stop: Option<&AtomicBool>,
+    external_processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
 ) -> Result<String, String> {
     let tenant_id = snapshot
         .get("tenantId")
@@ -799,7 +1158,6 @@ fn run_live_control_loop(
         .to_string();
     rebind_capability_snapshot(config, channel, browser_grant.as_ref(), snapshot)?;
     let mut receipt_sequences = std::collections::HashMap::<String, u64>::new();
-    let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
     // Raw input grants arrive over the authenticated socket and remain only in
     // this process memory. They are deliberately excluded from the command and
     // receipt journals.
@@ -821,7 +1179,7 @@ fn run_live_control_loop(
         &control_plane_origin,
         &mut receipt_sequences,
         &mut receipt_journal,
-        &mut external_processes,
+        external_processes,
     )?;
     let mut last_keepalive = std::time::Instant::now();
     let mut last_capability_refresh = std::time::Instant::now();
@@ -830,7 +1188,17 @@ fn run_live_control_loop(
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| "RUNNER_CAPABILITY_REVISION_REQUIRED".to_string())?
         .to_string();
+    let mut last_seen_credential_revision = snapshot_credential_revision;
+    let mut force_capability_refresh =
+        transport.credential_revision != snapshot_credential_revision;
     loop {
+        let credentials_changed = transport
+            .refresh_credentials_if_changed()
+            .map_err(|error| transport_error_code(error).to_owned())?;
+        if credentials_changed || transport.credential_revision != last_seen_credential_revision {
+            force_capability_refresh = true;
+            last_seen_credential_revision = transport.credential_revision;
+        }
         if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
             for active in external_processes.values_mut() {
                 let _ = active.process.cancel();
@@ -845,16 +1213,24 @@ fn run_live_control_loop(
                     last_keepalive = std::time::Instant::now();
                 }
                 Ok(other) => return Err(format!("RUNNER_KEEPALIVE_REJECTED_{other:?}")),
-                Err(error) => return Err(format!("RUNNER_KEEPALIVE_DELIVERY_{error:?}")),
+                Err(error) => {
+                    return Err(format!(
+                        "RUNNER_KEEPALIVE_DELIVERY_{}",
+                        transport_error_code(error)
+                    ))
+                }
             }
         }
-        if keepalive_due(
-            last_capability_refresh.elapsed(),
-            CAPABILITY_SNAPSHOT_REFRESH_INTERVAL,
-        ) {
+        if force_capability_refresh
+            || keepalive_due(
+                last_capability_refresh.elapsed(),
+                CAPABILITY_SNAPSHOT_REFRESH_INTERVAL,
+            )
+        {
+            let revision_before_publication = transport.credential_revision;
             let Some((refreshed_tools, refreshed_browser_grant)) = scan_capability_tools(
                 config,
-                &access_token,
+                transport.access_token(),
                 Some(&runner_session_id),
                 Some(&tenant_id),
                 stop,
@@ -896,9 +1272,20 @@ fn run_live_control_loop(
                         .ok_or_else(|| "RUNNER_CAPABILITY_REVISION_REQUIRED".to_string())?
                         .to_string();
                     last_capability_refresh = std::time::Instant::now();
+                    force_capability_refresh = false;
+                    if transport.credential_revision != revision_before_publication {
+                        force_capability_refresh = true;
+                        last_seen_credential_revision = transport.credential_revision;
+                        continue;
+                    }
                 }
                 Ok(other) => return Err(format!("RUNNER_CAPABILITY_REFRESH_REJECTED_{other:?}")),
-                Err(error) => return Err(format!("RUNNER_CAPABILITY_REFRESH_DELIVERY_{error:?}")),
+                Err(error) => {
+                    return Err(format!(
+                        "RUNNER_CAPABILITY_REFRESH_DELIVERY_{}",
+                        transport_error_code(error)
+                    ))
+                }
             }
         }
         poll_external_agents(
@@ -907,13 +1294,18 @@ fn run_live_control_loop(
             channel,
             node_kind,
             &mut receipt_sequences,
-            &mut external_processes,
+            external_processes,
             &mut receipt_journal,
         )?;
         let incoming = match transport.receive_server_message() {
             Ok(incoming) => incoming,
             Err(TransportError::Idle) => continue,
-            Err(error) => return Err(format!("RUNNER_CONTROL_CHANNEL_{error:?}")),
+            Err(error) => {
+                return Err(format!(
+                    "RUNNER_CONTROL_CHANNEL_{}",
+                    transport_error_code(error)
+                ))
+            }
         };
         let envelope: Envelope = serde_json::from_value(incoming.clone())
             .map_err(|_| "RUNNER_SERVER_ENVELOPE_INVALID".to_string())?;
@@ -1377,9 +1769,9 @@ fn cancellation_target_matches(cancel: &RunnerJobCommand, target: &RunnerJobComm
         && cancel.adapter_id == target.adapter_id
 }
 
-fn poll_external_agents(
+fn poll_external_agents<T: ControlTransport>(
     endpoint: &ControlEndpoint,
-    transport: &mut NativeControlTransport,
+    transport: &mut T,
     channel: &mut ControlChannel,
     node_kind: NodeKind,
     receipt_sequences: &mut std::collections::HashMap<String, u64>,
@@ -1593,9 +1985,9 @@ fn send_external_receipt<T: ControlTransport>(
     send_enqueued_runner_receipt(endpoint, transport, receipt_journal, envelope)
 }
 
-fn send_runner_receipt(
+fn send_runner_receipt<T: ControlTransport>(
     endpoint: &ControlEndpoint,
-    transport: &mut NativeControlTransport,
+    transport: &mut T,
     channel: &mut ControlChannel,
     node_kind: NodeKind,
     command: &RunnerJobCommand,
@@ -1621,9 +2013,9 @@ fn send_runner_receipt(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn send_input_materialized_receipt(
+fn send_input_materialized_receipt<T: ControlTransport>(
     endpoint: &ControlEndpoint,
-    transport: &mut NativeControlTransport,
+    transport: &mut T,
     channel: &mut ControlChannel,
     node_kind: NodeKind,
     command: &RunnerJobCommand,
@@ -1656,9 +2048,9 @@ fn send_input_materialized_receipt(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn send_cancel_receipt(
+fn send_cancel_receipt<T: ControlTransport>(
     endpoint: &ControlEndpoint,
-    transport: &mut NativeControlTransport,
+    transport: &mut T,
     channel: &mut ControlChannel,
     node_kind: NodeKind,
     command: &RunnerJobCommand,
@@ -1775,7 +2167,10 @@ fn send_enqueued_runner_receipt<T: ControlTransport>(
             receipt_journal.acknowledge(&idempotency_key)
         }
         Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
-        Err(error) => Err(format!("RUNNER_RECEIPT_DELIVERY_{error:?}")),
+        Err(error) => Err(format!(
+            "RUNNER_RECEIPT_DELIVERY_{}",
+            transport_error_code(error)
+        )),
     }
 }
 
@@ -1791,7 +2186,12 @@ fn replay_pending_runner_receipts<T: ControlTransport>(
                 receipt_journal.acknowledge(&idempotency_key)?;
             }
             Ok(other) => return Err(format!("RUNNER_RECEIPT_REPLAY_REJECTED_{other:?}")),
-            Err(error) => return Err(format!("RUNNER_RECEIPT_REPLAY_DELIVERY_{error:?}")),
+            Err(error) => {
+                return Err(format!(
+                    "RUNNER_RECEIPT_REPLAY_DELIVERY_{}",
+                    transport_error_code(error)
+                ))
+            }
         }
     }
     Ok(())
@@ -1925,6 +2325,9 @@ where
             Err(error) => {
                 observer(Some(runtime_error_reason(&error)));
                 eprintln!("runner refresh error: {error}");
+                if error.contains("RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH") {
+                    return Err(error);
+                }
             }
         }
         if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
@@ -1957,7 +2360,10 @@ where
 }
 
 fn runtime_error_reason(error: &str) -> &'static str {
-    if error.contains("ACCESS_TOKEN")
+    if error.contains("CREDENTIAL_SESSION_BINDING_MISMATCH") {
+        "RUNNER_CONNECTION_REQUIRED"
+    } else if error.contains("CREDENTIAL")
+        || error.contains("ACCESS_TOKEN")
         || error.contains("CONNECTION")
         || error.contains("REJECTED_401")
         || error.contains("REJECTED_403")
@@ -1998,6 +2404,364 @@ mod refresh_runtime_reason_tests {
             runtime_error_reason("RUNNER_CONNECT_REQUEST_REJECTED_503"),
             "RUNNER_CONNECTION_INTERRUPTED"
         );
+    }
+}
+
+#[cfg(test)]
+mod rotating_transport_tests {
+    use super::*;
+    use base64::Engine as _;
+    use rsa::pkcs1v15::{Signature, VerifyingKey};
+    use rsa::pkcs8::DecodePublicKey;
+    use rsa::signature::Verifier;
+    use sha2::Sha256;
+    use std::net::TcpListener;
+    use std::sync::{Arc, Mutex};
+    use std::thread;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn token(jti: &str) -> String {
+        token_for(jti, "session-rotation-test", "tenant-rotation-test")
+    }
+
+    fn token_for(jti: &str, session: &str, tenant: &str) -> String {
+        let claims = json!({
+            "exp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 3600,
+            "jti": jti,
+            "tenantId": tenant,
+            "runnerSessionId": session
+        });
+        format!(
+            "e30.{}.test-signature",
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(claims.to_string())
+        )
+    }
+
+    fn connection(token: String) -> crate::connection::StoredRunnerConnection {
+        let proof =
+            crate::device_proof::generate_device_proof_material(Some("device-rotation-test"))
+                .unwrap();
+        crate::connection::StoredRunnerConnection {
+            server_url: "https://control.example.test".into(),
+            runner_id: "runner-rotation-test".into(),
+            display_name: "rotation test".into(),
+            device_id: proof.device_id,
+            machine_fingerprint: proof.machine_fingerprint,
+            public_key_pem: proof.public_key_pem,
+            private_key_pem: proof.private_key_pem,
+            control_token: token,
+            refresh_token: "synthetic-refresh-token".into(),
+            runner_session_id: Some("session-rotation-test".into()),
+            tenant_id: Some("tenant-rotation-test".into()),
+        }
+    }
+
+    fn persist(root: &std::path::Path, connection: &crate::connection::StoredRunnerConnection) {
+        std::fs::write(
+            crate::connection::connection_path(root.to_str().unwrap()),
+            serde_json::to_vec(connection).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn capability_event() -> Envelope {
+        Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-rotation-test",
+            None,
+            None,
+            None,
+            json!({"type": "runner.capabilities.update", "snapshot": {"revision": "r2"}}),
+        )
+    }
+
+    #[test]
+    fn active_loop_transport_reads_rotated_connection_and_rebuilds_token_bound_device_proof() {
+        let root = tempfile::tempdir().unwrap();
+        let token_a = token("jti-A");
+        let token_b = token("jti-B");
+        let connection_a = connection(token_a.clone());
+        persist(root.path(), &connection_a);
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!(
+            "ws://{}/api/runners/control",
+            listener.local_addr().unwrap()
+        );
+        let captures = Arc::new(Mutex::new(Vec::<Vec<(String, String)>>::new()));
+        let captures_server = Arc::clone(&captures);
+        let server = thread::spawn(move || {
+            for ack in ["rejected", "applied"] {
+                let (stream, _) = listener.accept().unwrap();
+                let captures = Arc::clone(&captures_server);
+                let mut socket = tungstenite::accept_hdr(
+                    stream,
+                    move |request: &tungstenite::handshake::server::Request,
+                          response: tungstenite::handshake::server::Response| {
+                        let headers = [
+                            "authorization",
+                            "x-runner-device-id",
+                            "x-runner-device-public-key",
+                            "x-runner-device-nonce",
+                            "x-runner-device-timestamp",
+                            "x-runner-device-signature",
+                            "x-runner-body-sha256",
+                        ]
+                        .into_iter()
+                        .map(|name| {
+                            (
+                                name.to_owned(),
+                                request
+                                    .headers()
+                                    .get(name)
+                                    .and_then(|value| value.to_str().ok())
+                                    .unwrap_or_default()
+                                    .to_owned(),
+                            )
+                        })
+                        .collect();
+                        captures.lock().unwrap().push(headers);
+                        Ok(response)
+                    },
+                )
+                .unwrap();
+                socket
+                    .send(tungstenite::Message::Text(
+                        r#"{"ackState":"accepted"}"#.into(),
+                    ))
+                    .unwrap();
+                let _event = socket.read().unwrap();
+                socket
+                    .send(tungstenite::Message::Text(
+                        format!(r#"{{"ackState":"{ack}"}}"#).into(),
+                    ))
+                    .unwrap();
+            }
+        });
+
+        let proof_a = DeviceProofSigner::from_material(
+            &crate::device_proof::DeviceProofMaterial {
+                device_id: connection_a.device_id.clone(),
+                machine_fingerprint: connection_a.machine_fingerprint.clone(),
+                public_key_pem: connection_a.public_key_pem.clone(),
+                private_key_pem: connection_a.private_key_pem.clone(),
+            },
+            &token_a,
+        )
+        .unwrap();
+        let native = NativeControlTransport::with_device_proof(
+            token_a.clone(),
+            Duration::from_secs(2),
+            Some(proof_a),
+        )
+        .unwrap();
+        let mut transport = RotatingControlTransport::new(
+            native,
+            Some(&connection_a),
+            root.path().to_str().unwrap(),
+            &token_a,
+        );
+
+        assert_eq!(
+            transport.send_wss(&endpoint, &capability_event()),
+            Ok(AckState::Rejected)
+        );
+        transport.inner.close_wss();
+
+        let mut connection_b = connection_a.clone();
+        connection_b.control_token = token_b.clone();
+        persist(root.path(), &connection_b);
+        assert_eq!(
+            transport.send_wss(&endpoint, &capability_event()),
+            Ok(AckState::Applied)
+        );
+        server.join().unwrap();
+
+        let captures = captures.lock().unwrap();
+        assert_eq!(captures.len(), 2);
+        assert_eq!(captures[0][0].1, format!("Bearer {token_a}"));
+        assert_eq!(captures[1][0].1, format!("Bearer {token_b}"));
+        let headers = &captures[1];
+        let header = |name: &str| {
+            headers
+                .iter()
+                .find(|(key, _)| key == name)
+                .unwrap()
+                .1
+                .as_str()
+        };
+        let public_key_pem = header("x-runner-device-public-key").replace("\\n", "\n");
+        let public_key = rsa::RsaPublicKey::from_public_key_pem(&public_key_pem).unwrap();
+        let verifying_key = VerifyingKey::<Sha256>::new(public_key);
+        let signature_bytes = base64::engine::general_purpose::STANDARD
+            .decode(header("x-runner-device-signature"))
+            .unwrap();
+        let signature = Signature::try_from(signature_bytes.as_slice()).unwrap();
+        let signed_payload = [
+            "GET",
+            "/api/runners/control",
+            "jti-B",
+            header("x-runner-device-timestamp"),
+            header("x-runner-device-nonce"),
+            header("x-runner-body-sha256"),
+        ]
+        .join("\n");
+        verifying_key
+            .verify(signed_payload.as_bytes(), &signature)
+            .expect("the new bearer token must use its matching device proof");
+        assert_eq!(transport.credential_revision, 2);
+        assert!(transport.last_rotation_at.is_some());
+        assert!(transport.last_wss_auth_acknowledged_at.is_some());
+        assert!(transport.last_capability_acknowledged_at.is_some());
+        assert!(!transport
+            .credential_diagnostics(None)
+            .to_string()
+            .contains(&token_a));
+        assert!(!transport
+            .credential_diagnostics(None)
+            .to_string()
+            .contains(&token_b));
+    }
+
+    #[test]
+    fn changed_session_or_tenant_fails_closed_without_replacing_current_credentials() {
+        let root = tempfile::tempdir().unwrap();
+        let token_a = token("jti-A");
+        let connection_a = connection(token_a.clone());
+        for (session, tenant) in [
+            ("session-other", "tenant-rotation-test"),
+            ("session-rotation-test", "tenant-other"),
+        ] {
+            let native =
+                NativeControlTransport::new(token_a.clone(), Duration::from_secs(1)).unwrap();
+            let mut transport = RotatingControlTransport::new(
+                native,
+                Some(&connection_a),
+                root.path().to_str().unwrap(),
+                &token_a,
+            );
+            let mut changed = connection_a.clone();
+            changed.runner_session_id = Some(session.into());
+            changed.tenant_id = Some(tenant.into());
+            changed.control_token = token_for("jti-other", session, tenant);
+            persist(root.path(), &changed);
+
+            assert_eq!(
+                transport.refresh_credentials_if_changed(),
+                Err(TransportError::CredentialBindingMismatch)
+            );
+            assert_eq!(transport.access_token(), token_a);
+            assert_eq!(transport.credential_revision, 1);
+        }
+    }
+
+    #[test]
+    fn invalid_rotated_token_is_rejected_and_diagnostic_contains_only_safe_fields() {
+        let root = tempfile::tempdir().unwrap();
+        let token_a = token("jti-A");
+        let connection_a = connection(token_a.clone());
+        let native = NativeControlTransport::new(token_a.clone(), Duration::from_secs(1)).unwrap();
+        let mut transport = RotatingControlTransport::new(
+            native,
+            Some(&connection_a),
+            root.path().to_str().unwrap(),
+            &token_a,
+        );
+        let mut changed = connection_a.clone();
+        changed.control_token = "not-a-jwt".into();
+        persist(root.path(), &changed);
+
+        assert_eq!(
+            transport.refresh_credentials_if_changed(),
+            Err(TransportError::CredentialInvalid)
+        );
+        assert_eq!(transport.credential_revision, 1);
+        let diagnostics = transport.credential_diagnostics(Some("RUNNER_CREDENTIAL_INVALID"));
+        assert_eq!(diagnostics["credentialRevision"], 1);
+        assert_eq!(diagnostics["lastFailureCode"], "RUNNER_CREDENTIAL_INVALID");
+        let serialized = diagnostics.to_string();
+        assert!(!serialized.contains(&token_a));
+        assert!(!serialized.contains("private_key"));
+    }
+
+    #[test]
+    fn repeated_rotations_advance_revision_and_restart_uses_latest_persisted_token() {
+        let root = tempfile::tempdir().unwrap();
+        let token_a = token("jti-A");
+        let token_b = token("jti-B");
+        let token_c = token("jti-C");
+        let connection_a = connection(token_a.clone());
+        persist(root.path(), &connection_a);
+        let native = NativeControlTransport::new(token_a.clone(), Duration::from_secs(1)).unwrap();
+        let mut active = RotatingControlTransport::new(
+            native,
+            Some(&connection_a),
+            root.path().to_str().unwrap(),
+            &token_a,
+        );
+
+        let mut connection_b = connection_a.clone();
+        connection_b.control_token = token_b.clone();
+        persist(root.path(), &connection_b);
+        assert_eq!(active.refresh_credentials_if_changed(), Ok(true));
+        assert_eq!(active.credential_revision, 2);
+
+        let mut connection_c = connection_a.clone();
+        connection_c.control_token = token_c.clone();
+        persist(root.path(), &connection_c);
+        assert_eq!(active.refresh_credentials_if_changed(), Ok(true));
+        assert_eq!(active.credential_revision, 3);
+        assert_eq!(active.access_token(), token_c);
+
+        let restarted_native =
+            NativeControlTransport::new(token_c.clone(), Duration::from_secs(1)).unwrap();
+        let restarted = RotatingControlTransport::new(
+            restarted_native,
+            Some(&connection_c),
+            root.path().to_str().unwrap(),
+            &token_c,
+        );
+        assert_eq!(restarted.credential_revision, 1);
+        assert_eq!(restarted.access_token(), token_c);
+    }
+
+    #[test]
+    fn missing_or_expired_rotated_connection_fails_closed() {
+        let root = tempfile::tempdir().unwrap();
+        let token_a = token("jti-A");
+        let connection_a = connection(token_a.clone());
+        let native = NativeControlTransport::new(token_a.clone(), Duration::from_secs(1)).unwrap();
+        let mut transport = RotatingControlTransport::new(
+            native,
+            Some(&connection_a),
+            root.path().to_str().unwrap(),
+            &token_a,
+        );
+        assert_eq!(
+            transport.refresh_credentials_if_changed(),
+            Err(TransportError::CredentialStoreUnavailable)
+        );
+
+        let expired = format!(
+            "e30.{}.test-signature",
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(
+                json!({
+                    "exp": 1,
+                    "jti": "jti-expired",
+                    "tenantId": "tenant-rotation-test",
+                    "runnerSessionId": "session-rotation-test"
+                })
+                .to_string()
+            )
+        );
+        let mut expired_connection = connection_a;
+        expired_connection.control_token = expired;
+        persist(root.path(), &expired_connection);
+        assert_eq!(
+            transport.refresh_credentials_if_changed(),
+            Err(TransportError::CredentialInvalid)
+        );
+        assert_eq!(transport.credential_revision, 1);
     }
 }
 
