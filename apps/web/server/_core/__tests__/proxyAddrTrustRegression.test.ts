@@ -16,7 +16,8 @@ describe("Express proxy-addr trust behavior", () => {
       .set("X-Forwarded-For", "203.0.113.50");
 
     expect(response.status).toBe(200);
-    expect(response.body.ip).toBe("127.0.0.1");
+    expect(response.body.ip).toMatch(/^(?:::ffff:)?127\.0\.0\.1$/);
+    expect(response.body.ip).not.toBe("203.0.113.50");
     expect(response.body.ips).toEqual([]);
   });
 

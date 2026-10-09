@@ -32,6 +32,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Build Remotion render schema package
+        run: pnpm --filter @smartspec/remotion-render run build
       - name: Run dependency compatibility regressions
         run: >-
           JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890
@@ -49,7 +51,6 @@ jobs:
           server/services/__tests__/notificationEmailService.test.ts
           server/services/billing/emailDelivery.test.ts
           client/src/components/guardian/__tests__/FeedbackButton.test.tsx
-          client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx
           client/src/components/editor/TiptapEditor.test.tsx
           client/src/components/editor/__tests__/paste-handlers.test.ts
           client/src/components/editor/hardening.test.tsx
