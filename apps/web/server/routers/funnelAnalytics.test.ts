@@ -8,11 +8,24 @@ import {
   MAX_RANGE_DAYS,
   STAGE_PRESETS,
   MAX_EXPORT_ROWS,
+  findLatestObservedEventAt,
   DISALLOWED_PROPERTY_KEYS,
   type FunnelScope,
 } from "./funnelAnalytics";
 
 describe("funnelAnalytics helpers", () => {
+  describe("findLatestObservedEventAt", () => {
+    it("returns the latest event timestamp without treating it as a watermark", () => {
+      const earlier = new Date("2026-10-08T12:00:00.000Z");
+      const later = new Date("2026-10-08T13:00:00.000Z");
+      expect(findLatestObservedEventAt([earlier, null, later])).toBe(later);
+    });
+
+    it("returns null when the selected result has no events", () => {
+      expect(findLatestObservedEventAt([null, null])).toBeNull();
+    });
+  });
+
   describe("buildScopeFilter", () => {
     it("returns tenantId scope for admin role", () => {
       const scope = buildScopeFilter({

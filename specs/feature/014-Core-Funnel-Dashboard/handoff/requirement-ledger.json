@@ -1,31 +1,119 @@
 {
-  "generation": 4,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
-      "applicability": "APPLICABLE",
+      "applicability": "UNASSESSED",
       "authority_refs": [
         "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117"
       ],
       "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L117",
       "blocker": null,
-      "current_relevance": "ACTIVE",
+      "current_relevance": "UNASSESSED",
       "evidence_freshness": "UNKNOWN",
       "evidence_sha": null,
       "final_state": "OPEN",
       "implementation_evidence": [],
       "implementation_status": "UNVERIFIED",
-      "next_action": "Verify the required users, registration_events, credit_transactions, conversations, and messages indexes against canonical schema/migrations; do not close without focused schema or database evidence.",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
       "requirement_digest": "c9eb0fdd147c8a407d4acb9a356ef88f74fcb1291e16e58ee02dc2196f09ab9f",
       "requirement_id": "REQ-F5772188489C",
       "requirement_text": "These indexes are **required** for funnel query performance:",
-      "source_spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+      "source_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1517"
+      ],
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1517",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "026374038eafda5f8ed8ff60683289e610a8ee6b8c072cb04e80d9f37e0e0ce8",
+      "requirement_id": "REQ-1E89C40A100C",
+      "requirement_text": "above is historical and MUST NOT be replayed as a migration.",
+      "source_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1520"
+      ],
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1520",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "4c61bb62dde3271f899d59c4f64cda7ff97f945756703c080243d303442119ba",
+      "requirement_id": "REQ-01D17B8769D0",
+      "requirement_text": "MUST expose query `computedAt`, the latest event observed within the selected",
+      "source_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1524"
+      ],
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1524",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "715fe7df2a2c1b87a725a20275e0cbf9db81ecba1328e294579f1f2992a9fb18",
+      "requirement_id": "REQ-A80C5516DAF1",
+      "requirement_text": "MUST be disclosed with the selected period. A future source watermark can only",
+      "source_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "UNASSESSED",
+      "authority_refs": [
+        "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1526"
+      ],
+      "authority_source": "specs/feature/014-Core-Funnel-Dashboard/spec.md#L1526",
+      "blocker": null,
+      "current_relevance": "UNASSESSED",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "UNVERIFIED",
+      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "requirement_digest": "47210c843141baf87f592110794facd540c5f1389fa81f50a543eb639b0f0adc",
+      "requirement_id": "REQ-E38074317023",
+      "requirement_text": "MUST NOT be presented as current.",
+      "source_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+  "spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
   "spec_id": "014"
 }

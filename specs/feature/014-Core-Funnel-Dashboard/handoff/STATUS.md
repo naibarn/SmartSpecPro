@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (MEDIUM)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
-- Requirements: 0 pass / 1 unresolved of 1
+- Requirements: 0 pass / 5 unresolved of 5
 - Next action: Keep Feature 014 PARTIAL. Inventory the next collision-free product workunit; revisit the remaining index requirement only when migration ownership is clear.
-- Manifest generation: 16
+- Manifest generation: 17
 
 ## Source-declared status and relationship claims
 

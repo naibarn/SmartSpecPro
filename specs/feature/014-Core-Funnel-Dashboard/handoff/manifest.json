@@ -20,7 +20,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "6f19b9a2b33872a53629919e3ed648ee064bae75",
-    "expected_spec_digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21"
+    "expected_spec_digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0"
   },
   "continuation": {
     "next_action": "Reconcile latest origin/main, inspect live workspace/task ownership, then select one independently testable product slice outside Factory-owned paths.",
@@ -261,13 +261,13 @@
     "rationale": "Current canonical implementation provides the core funnel dashboard; this lane completed a user-visible authenticated export download slice. The query-performance index requirement remains open, so overall Spec completion is not claimed.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 16,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
-    "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+    "digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T09:57:07.923596Z",
+      "last_evidence_at": "2026-10-09T01:51:56.025975Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-02-16T01:15:49+07:00",
       "spec_last_changed_at": "2026-02-16T01:15:49+07:00"
@@ -577,10 +577,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T09:57:07.923596Z",
+    "reconciled_at": "2026-10-09T01:51:56.025975Z",
     "sources": [
       {
-        "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+        "digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/014-Core-Funnel-Dashboard/spec.md"
       },
@@ -801,7 +801,12 @@
         "value": "complete"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -937,7 +942,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21",
+        "digest": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/014-Core-Funnel-Dashboard/spec.md"
       },
@@ -1038,16 +1043,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1,
-    "unresolved": 1
+    "total": 5,
+    "unresolved": 5
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T01:50:40.921052Z",
+  "updated_at": "2026-10-09T01:51:56.025975Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

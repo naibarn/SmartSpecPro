@@ -164,6 +164,33 @@ describe("AdminFunnelDashboard", () => {
 
       expect(screen.getByRole("button", { name: /refresh/i })).toBeInTheDocument();
     });
+
+    it("distinguishes unknown source freshness from query computation time", () => {
+      mockSummaryQuery.mockReturnValue(
+        createQueryMock({
+          stages: [],
+          rangeClamped: false,
+          cached: false,
+          provenance: {
+            freshnessState: "unknown",
+            watermarkAvailable: false,
+            latestObservedEventAt: "2026-10-08T12:30:00.000Z",
+            computedAt: "2026-10-09T01:00:00.000Z",
+          },
+        }, false),
+      );
+      mockTimeSeriesQuery.mockReturnValue(
+        createQueryMock({ series: [], rangeClamped: false, cached: false }, false),
+      );
+
+      renderWithProviders(<AdminFunnelDashboard />);
+
+      expect(screen.getByText("Data freshness: unknown")).toBeInTheDocument();
+      expect(screen.getByText(/Latest event observed in this result/)).toBeInTheDocument();
+      expect(screen.getByText(/Query computed at:/)).toBeInTheDocument();
+      expect(screen.getByText(/does not publish a completeness watermark/)).toBeInTheDocument();
+      expect(screen.getByText(/aggregation buckets use UTC/)).toBeInTheDocument();
+    });
   });
 
   describe("Panel resilience", () => {
