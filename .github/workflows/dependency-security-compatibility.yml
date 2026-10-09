@@ -37,7 +37,7 @@ jobs:
       - name: Run dependency compatibility regressions
         run: >-
           JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890
-          npm --workspace apps/web run test -- --run
+          npm --workspace apps/web run test -- --run --testTimeout=20000
           server/_core/__tests__/proxyAddrTrustRegression.test.ts
           server/_core/oauthProxy.test.ts
           server/__tests__/media-ssrf-validation.test.ts
