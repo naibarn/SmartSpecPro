@@ -879,11 +879,11 @@
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "On the authorized Windows host, install/accept Runner Desktop 0.2.26 through its owner workflow if not already installed, reauthorize once in the browser, then capture fresh installed version, status/doctor/capabilities/rescan, token-refresh/session continuity, authenticated Control Plane acknowledgement, and Runner-bound Codex readiness. Do not dispatch. In parallel, keep remote trust DENY and request the existing authenticated owner approval/resource identities; request exact P-RECOVERY and non-production funding/ledger authority only after a fresh run/job/attempt and source/workspace bindings exist.",
+    "next_action": "On the authorized Windows host, have the Runner owner review/accept/install unsigned review artifact 11612928361 (0.2.27, source a709ec4084243386848785bd276f53445c7d36b8) as documented in the SPEC-205 evidence. Capture fresh authenticated session/capability/Codex and workspace/source evidence. Do not dispatch until remote trust, job-specific P-RECOVERY approval, economic authority, and persisted-proof checks independently pass.",
     "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_FRESH_CAPABILITY_AND_CODEX_READINESS",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "Canonical source is 042cbf207b7503bc06f81e1558d2d63cd63fb3a1. Validator latency optimization is closed NO-GO: keep Python canonical P-RECOVERY validation inside the protected transaction; do not repeat PostgreSQL latency tests absent new evidence. Current exact-SHA non-dispatch verification: 85 focused Node tests passed across DevelopmentRun/persistence, protected-start/binding/revocation, economic settlement orchestration, and external Runner dispatcher/executor; static drizzle-kit migration journal check passed without contacting a database. Trust handoff/approval request remains unchanged and no authenticated issuer/key/storage approval or resource IDs are recorded, so both remote trust classes remain DENY. Runner registry reports no active session/owner lease; Windows review build 0.2.26 install and browser reauthorization are not evidenced. Last owner-action manifest is stale: it has no DevelopmentRun/job/attempt, job-specific source/attestation binding, capability snapshot expired 2026-10-08, and zero economic budget/ledger/hold/grant counts only as of 2026-10-08. Do not treat those old counts as current. `docker-compose.full.yml` points Node and Python DATABASE_URL to the same configured Postgres endpoint template, but this host has no running web/Python service; actual runtime endpoint/ACL is unverified. The same profile uses the POSTGRES_USER bootstrap credential for both app services and contains no audit_logs GRANT/REVOKE policy; production role privileges remain unknown and direct AuditLog insert availability is a residual risk. Production receipt settlement verifier has no registered implementation/callsite. Do not create grants, budget/ledger records, dispatch, charges, or deployment without their owner authority.",
-    "waiting_predicate": "Reactivate trust-adapter work only when an authenticated owner decision names exact existing issuer principal, approved signing operation/key, storage account/bucket/prefix, distinct writer/verifier identities and permissions, tenant/project/environment/profile scope, freshness/revocation/retention policy, and durable approval reference. Reactivate Windows acceptance when the 0.2.26 review build is installed, browser reconnect/replacement is approved, and a fresh Control Plane session/capability snapshot plus Codex execution readiness is captured."
+    "resume_point": "Latest canonical source at review-build time: a709ec4084243386848785bd276f53445c7d36b8. Windows Runner review artifact 0.2.27 (Actions artifact 11612928361) built successfully from that exact SHA, SHA-256 0ca9ea4af942ff3e0f1f162e4033f659493f3b67f1a2a313281123577a1f2755, unsigned-review only; exact evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md. It contains the integrated 409 recovery, session refresh/continuity, manual refresh, and PR #401 Codex login-status changes. No Windows installation or acceptance, live backend SHA, current session/capability acknowledgement, workspace/source binding, owner P-RECOVERY approval, remote trust approval, or economic provisioning is established. Keep protected dispatch ineligible and both remote trust classes DENY.",
+    "waiting_predicate": "Reactivate the Windows gate when the authorized Windows owner installs and accepts artifact 11612928361 and the authenticated Control Plane readback confirms a fresh session and capability snapshot with Codex policy readiness and exact workspace/source binding. Protected dispatch remains separately gated by remote-trust authority, tenant-owner P-RECOVERY grant, economics, and persisted proof."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1035,7 +1035,7 @@
         "path": "apps/web/server/routes/jobControlPlane.ts"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 23,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1140,6 +1140,160 @@
     "updated_at": "2026-10-08T02:06:09.264229Z"
   },
   "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
+        },
+        {
+          "excerpt": "{\"cargoTarget\":\"x86_64-unknown-linux-gnu\",\"dependencyManifests\":{\"runtime\":[\"package.json\",\"pnpm-workspace.yaml\",\"pnpm-lock.yaml\",\"apps/web/package.json\",\"apps/runner-app/Cargo.toml\",\"apps/runner-app/Cargo.lock\",\"python-backend/pyproject.to",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 1,
+          "path": "apps/web/server/services/profiles/spec224-recovery-registered-runner-nonprod.v1.json"
+        },
+        {
+          "excerpt": "# Spec 224 admission Python profile",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 1,
+          "path": "python-backend/spec224-admission/README.md"
+        },
+        {
+          "excerpt": "This is a non-production dependency profile for the Spec 224 approval/recovery",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 3,
+          "path": "python-backend/spec224-admission/README.md"
+        },
+        {
+          "excerpt": "When this convergence is evidence for Spec 224 Final Verify, pass that run's",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 70,
+          "path": "skills/canonical-checkout-sync/SKILL.md"
+        },
+        {
+          "excerpt": "the user workspace untouched and report convergence pending. For Spec 224 Final",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 55,
+          "path": "skills/development-lifecycle/SKILL.md"
+        },
+        {
+          "excerpt": "6. Resolve and converge the registered `CANONICAL_USER_WORKSPACE` after each promotion through `scripts/development-lifecycle/workspace_authority.py` (run it on the SSH host that owns that checkout when applicable): `resolve`, then `converg",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 52,
+          "path": "skills/integration-controller/SKILL.md"
+        },
+        {
+          "excerpt": "6. Resolve and converge the registry's `CANONICAL_USER_WORKSPACE` through `scripts/development-lifecycle/workspace_authority.py`, using the integrated SHA. When this is Spec 224 completion evidence, pass the exact development run ID with `-",
+          "identity_ambiguous": false,
+          "kind": "DOCUMENTATION_OR_CONFIG",
+          "line": 43,
+          "path": "skills/session-finish/SKILL.md"
+        },
+        {
+          "excerpt": "//! Local Spec 224 candidate workspaces. Provider writes remain under the",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 1,
+          "path": "apps/runner-app/src/spec224_candidate.rs"
+        },
+        {
+          "excerpt": "<h3 id=\"spec224-workspace-heading\" className=\"text-sm font-semibold\">Spec 224 workspace</h3>",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 198,
+          "path": "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx"
+        },
+        {
+          "excerpt": "<Textarea aria-label=\"Spec 224 prompt\" value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder=\"อธิบายงานที่ต้องการให้ทำต่อใน workspace นี้\" className=\"min-h-20 resize-y text-sm\" />",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 250,
+          "path": "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx"
+        },
+        {
+          "excerpt": "<input ref={fileInput} type=\"file\" multiple accept=\".md,.json,.zip\" aria-label=\"แนบไฟล์ Spec 224\" onChange={event => void ingestFiles(event.target.files)} />",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 258,
+          "path": "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx"
+        },
+        {
+          "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 907,
+          "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
+        },
+        {
+          "excerpt": "\"Spec 224 baseline commands require a loopback target database named spec224_*_test\"",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 17,
+          "path": "apps/web/drizzle.spec224-baseline.config.ts"
+        },
+        {
+          "excerpt": "* Sealed, short-lived input bundles for one canonical Spec 224 Runner command.",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 16066,
+          "path": "apps/web/drizzle/schema.ts"
+        },
+        {
+          "excerpt": "/** Repository-wide Spec 224 FULL verification exclusion with expiring fencing lease. */",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 31977,
+          "path": "apps/web/drizzle/schema.ts"
+        },
+        {
+          "excerpt": "// Deliberately scoped to the Spec 224 DB-certification profile. This is a",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 1,
+          "path": "apps/web/drizzle/spec224-fresh-baseline/schema.ts"
+        },
+        {
+          "excerpt": "\"[Startup] Failed to initialize Spec 224 input retention job:\",",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 2758,
+          "path": "apps/web/server/_core/index.ts"
+        },
+        {
+          "excerpt": "* dispatch remains gated by the Spec 224 authorization authority.",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 238,
+          "path": "apps/web/server/routers/spec226DevelopmentControl.ts"
+        },
+        {
+          "excerpt": "return res.status(400).json({ error: \"Invalid Spec 224 approval correlation\" });",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 606,
+          "path": "apps/web/server/routes/jobControlPlane.ts"
+        },
+        {
+          "excerpt": "return res.status(409).json({ error: \"Spec 224 approval continuation requires operator review\" });",
+          "identity_ambiguous": false,
+          "kind": "SOURCE",
+          "line": 623,
+          "path": "apps/web/server/routes/jobControlPlane.ts"
+        }
+      ],
+      "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    },
     "lifecycle": {
       "current_state": "WAITING_APPROVAL",
       "previous_state": "VALIDATION_PENDING",
@@ -3090,7 +3244,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T09:56:10.759482Z",
+  "updated_at": "2026-10-09T11:35:11.288035Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3106,7 +3260,8 @@
       "apps/web/server/services/__tests__/externalAgentTaskExecutor.test.ts",
       "apps/web/drizzle.config.ts with static DATABASE_URL placeholder: drizzle-kit check passed; no DB connection",
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md",
-      "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json (stale preparation evidence, not authority)"
+      "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json (stale preparation evidence, not authority)",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [

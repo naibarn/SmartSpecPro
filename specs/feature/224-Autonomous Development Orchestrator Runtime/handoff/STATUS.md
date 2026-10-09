@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1244 unresolved of 1244
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 23
+- Next action: Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.
+- Manifest generation: 25
 
 ## Source-declared status and relationship claims
 
