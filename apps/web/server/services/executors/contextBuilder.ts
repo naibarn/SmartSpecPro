@@ -10,6 +10,11 @@ import {
   type PromptMessage,
 } from "../promptComposer";
 import {
+  captureTeamProjectProviderContextBinding,
+  TeamProjectProviderAuthorizationError,
+  type TeamProjectProviderContextBinding,
+} from "../teamProjectProviderAuthorization";
+import {
   buildWebSearchParams,
   detectProviderFamily,
 } from "../webSearchToolInjector";
@@ -126,10 +131,33 @@ export async function buildTeamContext(
   request: UnifiedExecutionRequest,
   tenantId: string,
 ): Promise<PromptMessage[]> {
+  const result = await buildTeamContextWithProviderBinding(request, tenantId);
+  return result.messages;
+}
+
+export async function buildTeamContextWithProviderBinding(
+  request: UnifiedExecutionRequest,
+  tenantId: string,
+): Promise<{
+  messages: PromptMessage[];
+  projectAuthorizationBinding: TeamProjectProviderContextBinding;
+}> {
   if (!request.teamContext) {
     throw new Error("[contextBuilder] buildTeamContext called without teamContext");
   }
   const tc = request.teamContext;
+  const initiatedByUserId = tc.initiatedByUserId ?? request.userId;
+  if (initiatedByUserId !== request.userId || tenantId !== request.tenantId) {
+    throw new TeamProjectProviderAuthorizationError();
+  }
+  const projectAuthorizationBinding =
+    await captureTeamProjectProviderContextBinding({
+      tenantId,
+      roomId: tc.roomId,
+      teamId: tc.teamId,
+      userId: initiatedByUserId,
+      runId: tc.runId,
+    });
   const input: ComposePromptInput = {
     assistantId: tc.assistantId,
     runId: tc.runId,
@@ -137,12 +165,20 @@ export async function buildTeamContext(
     teamId: tc.teamId,
     objective: tc.objective,
     tenantId,
-    initiatedByUserId: tc.initiatedByUserId ?? request.userId,
+    initiatedByUserId,
+    // Pin the exact server-read room scope. Empty string prevents composePrompt's
+    // legacy nullish fallback from picking up a project assigned mid-assembly.
+    projectId: projectAuthorizationBinding.projectId ?? "",
     currentMessage: tc.currentMessage ?? request.userMessage,
-    memoryMode: tc.memoryMode,
+    // Entity memories currently have no project filter. Suppress all persistent
+    // team-room memory until source-level provenance can be carried safely.
+    memoryMode: "off",
   };
   const result = await composePrompt(input);
-  return result.messages;
+  return {
+    messages: result.messages,
+    projectAuthorizationBinding,
+  };
 }
 
 // ─── buildDynamicModelRequirements ──────────────────────────

@@ -18,6 +18,11 @@ vi.mock("../promptComposer", () => ({
   composePrompt: vi.fn(),
 }));
 
+vi.mock("../teamProjectProviderAuthorization", () => ({
+  captureTeamProjectProviderContextBinding: vi.fn(),
+  TeamProjectProviderAuthorizationError: class TeamProjectProviderAuthorizationError extends Error {},
+}));
+
 vi.mock("../webSearchToolInjector", () => ({
   buildWebSearchParams: vi.fn(),
   detectProviderFamily: vi.fn(),
@@ -48,6 +53,7 @@ import { buildPersonaPromptSegments, getPersonaById } from "../personaService";
 import { retrieveForPrompt } from "../scopedMemoryService";
 import { getEntityMemories } from "../chatService";
 import { composePrompt } from "../promptComposer";
+import { captureTeamProjectProviderContextBinding } from "../teamProjectProviderAuthorization";
 import {
   buildWebSearchParams,
   detectProviderFamily,
@@ -65,6 +71,9 @@ const mockBuildPersonaPromptSegments = vi.mocked(buildPersonaPromptSegments);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
 const mockGetEntityMemories = vi.mocked(getEntityMemories);
 const mockComposePrompt = vi.mocked(composePrompt);
+const mockCaptureTeamProjectProviderContextBinding = vi.mocked(
+  captureTeamProjectProviderContextBinding,
+);
 const mockBuildWebSearchParams = vi.mocked(buildWebSearchParams);
 const mockDetectProviderFamily = vi.mocked(detectProviderFamily);
 const mockGetProviderForModel = vi.mocked(getProviderForModel);
@@ -85,6 +94,17 @@ function makeRequest(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+    version: "team-room-provider-context.v1",
+    tenantId: "t1",
+    roomId: "r1",
+    teamId: "t1",
+    userId: 1,
+    runId: null,
+    historyScope: "room",
+    projectId: "canonical-project-1",
+    projectAuthority: "canonical-member",
+  });
 });
 
 // ─── buildChatContext ──────────────────────────────────────
@@ -283,6 +303,17 @@ describe("buildChatContext", () => {
 
 describe("buildTeamContext", () => {
   it("delegates to composePrompt with correct parameters", async () => {
+    mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+      version: "team-room-provider-context.v1",
+      tenantId: "t1",
+      roomId: "r1",
+      teamId: "t1",
+      userId: 7,
+      runId: "run1",
+      historyScope: "run",
+      projectId: "canonical-project-1",
+      projectAuthority: "canonical-member",
+    });
     mockComposePrompt.mockResolvedValue({
       messages: [{ role: "system", content: "composed" }],
       estimatedTokens: 100,
@@ -302,7 +333,7 @@ describe("buildTeamContext", () => {
       },
     });
 
-    const messages = await buildTeamContext(req, "tenant1");
+    const messages = await buildTeamContext(req, "t1");
 
     expect(mockComposePrompt).toHaveBeenCalledWith({
       assistantId: "a1",
@@ -310,10 +341,18 @@ describe("buildTeamContext", () => {
       roomId: "r1",
       teamId: "t1",
       objective: "Write an article",
-      tenantId: "tenant1",
+      tenantId: "t1",
       initiatedByUserId: 7,
+      projectId: "canonical-project-1",
       currentMessage: "Latest guided message",
-      memoryMode: "full",
+      memoryMode: "off",
+    });
+    expect(mockCaptureTeamProjectProviderContextBinding).toHaveBeenCalledWith({
+      tenantId: "t1",
+      roomId: "r1",
+      teamId: "t1",
+      userId: 7,
+      runId: "run1",
     });
   });
 
@@ -337,8 +376,37 @@ describe("buildTeamContext", () => {
       },
     });
 
-    const messages = await buildTeamContext(req, "tenant1");
+    const messages = await buildTeamContext(req, "t1");
     expect(messages).toEqual(expectedMessages);
+  });
+
+  it("pins an unprojected room to no project scope even if the room changes during assembly", async () => {
+    mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+      version: "team-room-provider-context.v1",
+      tenantId: "t1",
+      roomId: "r1",
+      teamId: "t1",
+      userId: 1,
+      runId: null,
+      historyScope: "room",
+      projectId: null,
+      projectAuthority: "room-only",
+    });
+    mockComposePrompt.mockResolvedValue({ messages: [], estimatedTokens: 0 });
+    await buildTeamContext(makeRequest({
+      channel: "team_room",
+      teamContext: {
+        assistantId: "a1",
+        roomId: "r1",
+        teamId: "t1",
+        objective: "Do work",
+      },
+    }), "t1");
+
+    expect(mockComposePrompt).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: "",
+      memoryMode: "off",
+    }));
   });
 });
 

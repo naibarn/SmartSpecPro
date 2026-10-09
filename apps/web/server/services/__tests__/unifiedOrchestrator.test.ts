@@ -15,9 +15,15 @@ vi.mock("../executors/executorRegistry", () => ({
 vi.mock("../executors/contextBuilder", () => ({
   buildChatContext: vi.fn(),
   buildTeamContext: vi.fn(),
+  buildTeamContextWithProviderBinding: vi.fn(),
   buildDynamicModelRequirements: vi.fn(),
   buildPromptEnhancementContext: vi.fn(),
   injectWebSearchIfNeeded: vi.fn(),
+}));
+
+vi.mock("../teamProjectProviderAuthorization", () => ({
+  revalidateTeamProjectProviderContextBinding: vi.fn(),
+  TeamProjectProviderAuthorizationError: class TeamProjectProviderAuthorizationError extends Error {},
 }));
 
 vi.mock("../skillExecutionPolicy", () => ({
@@ -92,10 +98,15 @@ import { getExecutor } from "../executors/executorRegistry";
 import {
   buildChatContext,
   buildTeamContext,
+  buildTeamContextWithProviderBinding,
   buildDynamicModelRequirements,
   buildPromptEnhancementContext,
   injectWebSearchIfNeeded,
 } from "../executors/contextBuilder";
+import {
+  revalidateTeamProjectProviderContextBinding,
+  TeamProjectProviderAuthorizationError,
+} from "../teamProjectProviderAuthorization";
 import { resolveSkillExecutionPolicy } from "../skillExecutionPolicy";
 import { runPlanner, recordStepAttempt } from "../taskPlannerMiddleware";
 import {
@@ -123,6 +134,12 @@ const mockGetSkillById = vi.mocked(getSkillById);
 const mockGetExecutor = vi.mocked(getExecutor);
 const mockBuildChatContext = vi.mocked(buildChatContext);
 const mockBuildTeamContext = vi.mocked(buildTeamContext);
+const mockBuildTeamContextWithProviderBinding = vi.mocked(
+  buildTeamContextWithProviderBinding,
+);
+const mockRevalidateTeamProjectProviderContextBinding = vi.mocked(
+  revalidateTeamProjectProviderContextBinding,
+);
 const mockBuildDynamicModelReqs = vi.mocked(buildDynamicModelRequirements);
 const mockBuildPromptEnhancement = vi.mocked(buildPromptEnhancementContext);
 const mockInjectWebSearch = vi.mocked(injectWebSearchIfNeeded);
@@ -170,6 +187,18 @@ const defaultExecutorResult: ExecutorResult = {
   totalDurationMs: 500,
 };
 
+const defaultProjectAuthorizationBinding = {
+  version: "team-room-provider-context.v1" as const,
+  tenantId: "tenant-1",
+  roomId: "r1",
+  teamId: "t1",
+  userId: 1,
+  runId: null,
+  historyScope: "room" as const,
+  projectId: null,
+  projectAuthority: "room-only" as const,
+};
+
 const mockExecutor: CapabilityExecutor = {
   id: "text-skill-executor",
   capabilities: ["writing.article"] as readonly CapabilityFamily[],
@@ -211,6 +240,11 @@ beforeEach(() => {
   mockBuildTeamContext.mockResolvedValue([
     { role: "system", content: "Team composed prompt" },
   ] as any);
+  mockBuildTeamContextWithProviderBinding.mockResolvedValue({
+    messages: [{ role: "system", content: "Team composed prompt" }],
+    projectAuthorizationBinding: defaultProjectAuthorizationBinding,
+  } as any);
+  mockRevalidateTeamProjectProviderContextBinding.mockResolvedValue(undefined);
   mockBuildDynamicModelReqs.mockReturnValue({
     requirements: {},
     hasOverrides: false,
@@ -361,7 +395,7 @@ describe("unifiedOrchestrator", () => {
         await executeUnified(buildRequest());
 
         expect(mockBuildChatContext).toHaveBeenCalled();
-        expect(mockBuildTeamContext).not.toHaveBeenCalled();
+        expect(mockBuildTeamContextWithProviderBinding).not.toHaveBeenCalled();
       });
 
       it("chat with activePersonaId passes skill systemPrompt", async () => {
@@ -384,7 +418,7 @@ describe("unifiedOrchestrator", () => {
 
     // ─── Context Building -- Team Room ──────────────────────────────────
     describe("Context Building -- Team Room channel", () => {
-      it("team room calls buildTeamContext which delegates to composePrompt", async () => {
+      it("team room carries room authority and revalidates before executor dispatch", async () => {
         await executeUnified(
           buildRequest({
             channel: "team_room",
@@ -397,10 +431,41 @@ describe("unifiedOrchestrator", () => {
           }),
         );
 
-        expect(mockBuildTeamContext).toHaveBeenCalledWith(
+        expect(mockBuildTeamContextWithProviderBinding).toHaveBeenCalledWith(
           expect.objectContaining({ channel: "team_room" }),
           "tenant-1",
         );
+        expect(mockRevalidateTeamProjectProviderContextBinding).toHaveBeenCalledWith(
+          defaultProjectAuthorizationBinding,
+          expect.objectContaining({
+            tenantId: "tenant-1",
+            roomId: "r1",
+            teamId: "t1",
+            userId: 1,
+          }),
+        );
+        expect(mockRevalidateTeamProjectProviderContextBinding.mock.invocationCallOrder[0])
+          .toBeLessThan((mockExecutor.execute as any).mock.invocationCallOrder[0]);
+      });
+
+      it("does not dispatch when project authorization is revoked after context assembly", async () => {
+        mockRevalidateTeamProjectProviderContextBinding.mockRejectedValue(
+          new TeamProjectProviderAuthorizationError(),
+        );
+
+        const result = await executeUnified(buildRequest({
+          channel: "team_room",
+          teamContext: {
+            assistantId: "a1",
+            roomId: "r1",
+            teamId: "t1",
+            objective: "Write a report",
+          },
+        }));
+
+        expect(mockExecutor.execute).not.toHaveBeenCalled();
+        expect(result.route.reason).toBe("project_authorization_denied");
+        expect(result.metadata.error).toBe("project_authorization_denied");
       });
     });
 
