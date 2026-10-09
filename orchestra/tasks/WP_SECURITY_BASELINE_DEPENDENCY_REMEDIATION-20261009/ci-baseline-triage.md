@@ -26,3 +26,8 @@ Ownership boundary: repository CODEOWNERS was not present and no accountable tea
 
 - Main run `37924816780` at `19b5a890b41b95172bcd97a12fcccaa32d9984af` and candidate run `37926913394` at `f2100cef9c99cead06165e0da6640ff1b07f0a2c` have the same seven failed job outcomes and signatures. `api_generator` on both completes install and 31 tests, then fails the same baseline coverage thresholds. `local_ai_runtime` on both reports the same browser globals and missing fixture paths above.
 - Candidate `37926913394` confirms no `npm ci` lock mismatch. Its `python`, extension, workspace install, turbo types, and desktop path failures match main. Thus the only candidate-specific regression found in this comparison was the api-generator package-lock mismatch, repaired and retested locally.
+
+## Latest canonical pair — PR #413 refresh
+
+- Main control `37929463981` at `481a9f665dfb9b06de0d78ad44580cc0cb9bfa48` and candidate `37931745952` at `b8b82efa9ac63fb713f326ac88c10510bb390f8b` completed with the same seven failed jobs/signatures. `api_generator` passed install and 31 tests on both before the same coverage thresholds failed. `local_ai_runtime` on both had missing browser globals, missing `parenting-article-writer/SKILL.md` and retired `agency.json` fixture paths, and the same runtime/database fixture failures. Candidate `smartspecweb`, Python collection, extension React types, turbo Node types, and desktop path also match main.
+- Compatibility run `37930797992` on the candidate passed 18 files / 238 tests; full audit remains Moderate-only fail.
