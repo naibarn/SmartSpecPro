@@ -144,11 +144,13 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
   const mutationCallsBeforeRefresh = [...procedures].filter(procedure =>
     /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
   );
-  // Exercise Chromium's real visibility lifecycle so TanStack Query sees a
-  // genuine focus transition and refetches the now-stale shared tenant query.
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Emulation.setPageVisibilityState", { visibilityState: "hidden" });
-  await cdp.send("Emulation.setPageVisibilityState", { visibilityState: "visible" });
+  // Mount another observer of the shared tenant query via SPA navigation.
+  // This deterministically refetches stale data without reloading the app or
+  // unmounting the global Chat & Feedback dialog that owns the drafts.
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/settings?tab=notifications");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
   await expect.poll(() => tenantFlagResponses[tenantFlagResponses.length - 1]).toBe(false);
   await expect(launcher.locator("svg.lucide-message-square-plus")).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toHaveCount(0);
