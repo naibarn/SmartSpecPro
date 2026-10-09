@@ -1,0 +1,23 @@
+{
+  "evidence_id": "SPEC268_PROVIDER_BOUNDARY_CONTEXT_QUICK_20261010_R2",
+  "source_sha": "343a885ec61b3e52ef785b644228c71115ec2262",
+  "profile": "quick",
+  "status": "PASS",
+  "command": "./node_modules/.bin/vitest run server/services/__tests__/contextBuilder.test.ts server/services/__tests__/teamProjectProviderAuthorization.test.ts server/services/__tests__/contextEngineAdapter.test.ts server/services/__tests__/unifiedOrchestrator.test.ts",
+  "working_directory": "apps/web",
+  "result": {
+    "test_files_passed": 4,
+    "tests_passed": 113,
+    "duration_seconds": 1.19
+  },
+  "started_at": "2026-10-09T23:51:23Z",
+  "captured_at": "2026-10-09T23:51:33Z",
+  "scope": "Team-room provider-boundary authorization, tenant/team/room/run/project binding and revalidation, project-state stripping, team-room persistent-memory suppression, and global-only entity memory for Chat without verified project binding.",
+  "limitations": [
+    "Focused test evidence only; this does not verify all SPEC-268 requirements.",
+    "Team-room persistent memory remains disabled because room-to-canonical-project binding and source provenance are not authoritative.",
+    "The SPEC-302 resolver is advisory and does not authenticate bindings, authorize access, or issue durable receipts.",
+    "Database revalidation and an external provider request are not atomic; revocation may race after revalidation and before provider consumption.",
+    "No production deployment or SPEC-224 protected dispatch was performed."
+  ]
+}
