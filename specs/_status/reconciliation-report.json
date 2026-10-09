@@ -102079,7 +102079,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "fad61d4be74557872d03cbbfcd09986c621eb3fd",
+      "canonical_sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -103368,7 +103368,7 @@
       "deployment": "UNKNOWN",
       "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-08T02:06:09.264229Z",
       "lifecycle": "WAITING_APPROVAL",
@@ -105440,7 +105440,7 @@
       "successors": [],
       "title": "Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime",
       "true_blockers": 0,
-      "verification": "NOT_RUN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
