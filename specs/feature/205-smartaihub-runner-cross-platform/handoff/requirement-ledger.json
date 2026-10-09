@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 4,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -927,26 +927,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362"
       ],
       "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/runner-app/src/adapters.rs",
+        "apps/runner-desktop/ui/app.js"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify the current Windows Runner build, local Codex auth probe, refresh/session continuity, heartbeat, and fresh capability snapshot on the authorized Windows host; do not infer server policy authorization from local login status.",
       "requirement_digest": "44545190ce45c22a6c28995b7ccde18f49bebc51ff91050e608a0e2007700f44",
       "requirement_id": "REQ-663D83B30437",
       "requirement_text": "Discovery MUST distinguish installed, configured, authenticated, healthy,",
       "source_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md"
+      ],
+      "verification_method": "Bounded local codex login status parser and WIF deferral tests; platform runtime acceptance remains a separate gate."
     },
     {
       "applicability": "UNASSESSED",
