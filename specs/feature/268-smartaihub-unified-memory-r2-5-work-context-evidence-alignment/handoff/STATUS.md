@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1101 unresolved of 1101
-- Next action: Continue with canonical room-to-project identity and source-level memory provenance; retain team-room memory suppression until focused isolation tests pass.
-- Manifest generation: 11
+- Next action: Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.
+- Manifest generation: 12
 
 ## Source-declared status and relationship claims
 
