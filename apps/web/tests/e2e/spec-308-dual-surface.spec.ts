@@ -10,6 +10,29 @@ const TEST_IDENTITY = {
 };
 
 type TenantFlagFixture = { enabled: boolean };
+const externalRequestsByPage = new WeakMap<Page, string[]>();
+
+test.beforeEach(async ({ page }) => {
+  const externalRequests: string[] = [];
+  externalRequestsByPage.set(page, externalRequests);
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(url.hostname)) {
+      externalRequests.push(request.url());
+    }
+  });
+  await page.route("**/*", route => {
+    const url = new URL(route.request().url());
+    if (url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname)) {
+      return route.continue();
+    }
+    return route.abort("blockedbyclient");
+  });
+});
+
+test.afterEach(async ({ page }) => {
+  expect(externalRequestsByPage.get(page) ?? []).toEqual([]);
+});
 
 function trpcData(data: unknown) {
   return JSON.stringify({ result: { data: { json: data } } });
