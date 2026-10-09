@@ -180,6 +180,37 @@ class Spec224RecoveryGrantValidation(BaseModel):
     runtime_binding: Optional[Spec224RuntimeBinding] = Field(default=None, alias="runtimeBinding")
     admission_binding: Optional[Spec224AdmissionBinding] = Field(default=None, alias="admissionBinding")
 
+
+@router.post("/internal/spec224-recovery-grants/validate")
+async def validate_spec224_recovery_grant(
+    request: Spec224RecoveryGrantValidation,
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Validate a persisted P-RECOVERY grant for the authenticated Web gateway."""
+    _assert_spec224_recovery_grant_gateway_token(x_internal_token)
+    return await ApprovalDBService(db).validate_spec224_recovery_grant_contract(
+        grant_id=request.grant_id,
+        tenant_id=request.tenant_id,
+        source_commit=request.source_commit,
+        source_sha256=request.source_sha256,
+        workpackage_id=request.workpackage_id,
+        operation=request.operation,
+        path=request.path,
+        runtime_scope=request.runtime_scope,
+        environment_scope=request.environment_scope,
+        runtime_binding=(
+            request.runtime_binding.model_dump(by_alias=True)
+            if request.runtime_binding
+            else None
+        ),
+        admission_binding=(
+            request.admission_binding.model_dump(by_alias=True)
+            if request.admission_binding
+            else None
+        ),
+    )
+
 class ApprovalRequestResponse(BaseModel):
     """Response model for approval request."""
     id: str

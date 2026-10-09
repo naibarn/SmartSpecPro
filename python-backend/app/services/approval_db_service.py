@@ -504,55 +504,94 @@ class ApprovalDBService:
         await self.db.commit()
         return grant
 
-    async def validate_spec224_recovery_grant(
+    async def validate_spec224_recovery_grant_contract(
         self, *, grant_id: str, tenant_id: str, source_commit: str, source_sha256: str,
         workpackage_id: str, operation: str, path: str, runtime_scope: str, environment_scope: str,
         runtime_binding: Optional[dict] = None,
         admission_binding: Optional[dict] = None,
-    ) -> bool:
-        result = await self.db.execute(select(ApprovalRequest).where(
-            ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
-        ))
+    ) -> dict:
+        """Return the versioned, fail-closed result consumed by the Node authority adapter."""
+        validated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        result = await self.db.execute(
+            select(ApprovalRequest).where(ApprovalRequest.id == grant_id)
+        )
         request = result.scalar_one_or_none()
         grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
-        if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1" or grant.get("state") != "active":
-            return False
-        tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id))
-        if tenant_result.scalar_one_or_none() != grant.get("ownerId"):
-            return decision("INVALID_OWNER", grant)
-        owner_result = await self.db.execute(select(User.isDisabled).where(User.id == grant.get("ownerId")))
-        if owner_result.scalar_one_or_none() is not False:
-            return decision("INVALID_OWNER", grant)
-        if not self._recovery_grant_audit_valid(grant):
-            return False
-        scope = grant.get("scope")
-        if not isinstance(scope, dict):
-            return decision("INVALID_SCOPE", grant)
-        try:
-            expires = datetime.fromisoformat(str(scope["expiresAt"]).replace("Z", "+00:00"))
-        except (KeyError, ValueError):
-            return decision("INVALID_SCOPE", grant)
-        if expires <= datetime.now(timezone.utc):
-            return decision("INVALID_EXPIRED", grant)
-        if (
-            scope.get("sourceCommit") != source_commit
-            or scope.get("sourceSha256") != source_sha256
-            or scope.get("workpackageId") != workpackage_id
-            or scope.get("runtimeScope") != runtime_scope
-            or scope.get("environmentScope") != environment_scope
-            or operation not in scope.get("allowedOperations", [])
-            or operation in scope.get("forbiddenOperations", [])
-            or path not in scope.get("allowedWriteSet", [])
-        ):
-            return decision("INVALID_SCOPE", grant)
-        # Bindings are canonical grant scope, not caller annotations.
-        for field, supplied in (("runtimeBinding", runtime_binding), ("admissionBinding", admission_binding)):
-            if scope.get(field) != supplied:
-                return decision("INVALID_BINDING", grant)
-        canonical_scope = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        if hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() != grant.get("scopeDigest"):
-            return decision("INVALID_SCOPE", grant)
-        return decision("VALID", grant)
+        decision_result = "INVALID_NOT_FOUND"
+
+        if isinstance(grant, dict) and grant.get("schemaVersion") == "spec224.recovery-grant.v1":
+            if request.tenant_id != tenant_id or grant.get("tenantId") != tenant_id:
+                decision_result = "INVALID_TENANT"
+            elif grant.get("state") != "active" or request.revoked_at is not None:
+                decision_result = "INVALID_REVOKED"
+            else:
+                tenant_result = await self.db.execute(
+                    select(Tenant.owner_id).where(Tenant.id == tenant_id)
+                )
+                owner_id = tenant_result.scalar_one_or_none()
+                owner_result = await self.db.execute(
+                    select(User.isDisabled).where(User.id == grant.get("ownerId"))
+                )
+                owner_disabled = owner_result.scalar_one_or_none()
+                if owner_id != grant.get("ownerId") or owner_disabled is not False:
+                    decision_result = "INVALID_OWNER"
+                elif not self._recovery_grant_audit_valid(grant):
+                    decision_result = "INVALID_AUDIT"
+                else:
+                    scope = grant.get("scope")
+                    if not isinstance(scope, dict):
+                        decision_result = "INVALID_SCOPE"
+                    else:
+                        try:
+                            expires = datetime.fromisoformat(
+                                str(scope["expiresAt"]).replace("Z", "+00:00")
+                            )
+                        except (KeyError, TypeError, ValueError):
+                            decision_result = "INVALID_SCOPE"
+                        else:
+                            if expires.tzinfo is None:
+                                decision_result = "INVALID_SCOPE"
+                            elif expires <= datetime.now(timezone.utc):
+                                decision_result = "INVALID_EXPIRED"
+                            elif (
+                                scope.get("sourceCommit") != source_commit
+                                or scope.get("sourceSha256") != source_sha256
+                                or scope.get("workpackageId") != workpackage_id
+                                or scope.get("runtimeScope") != runtime_scope
+                                or scope.get("environmentScope") != environment_scope
+                                or not isinstance(scope.get("allowedOperations"), list)
+                                or not isinstance(scope.get("forbiddenOperations"), list)
+                                or not isinstance(scope.get("allowedWriteSet"), list)
+                                or operation not in scope["allowedOperations"]
+                                or operation in scope["forbiddenOperations"]
+                                or path not in scope["allowedWriteSet"]
+                            ):
+                                decision_result = "INVALID_SCOPE"
+                            elif any(
+                                scope.get(field) != supplied
+                                for field, supplied in (
+                                    ("runtimeBinding", runtime_binding),
+                                    ("admissionBinding", admission_binding),
+                                )
+                            ):
+                                decision_result = "INVALID_BINDING"
+                            else:
+                                decision_result = "VALID"
+
+        return {
+            "schemaVersion": "spec224.recovery-grant-validation.v1",
+            "result": decision_result,
+            "valid": decision_result == "VALID",
+            "grantId": grant_id if decision_result not in {"INVALID_NOT_FOUND", "INVALID_TENANT"} else None,
+            "grantVersion": grant.get("version") if decision_result == "VALID" else None,
+            "scopeDigest": grant.get("scopeDigest") if decision_result == "VALID" else None,
+            "validatedAt": validated_at,
+        }
+
+    async def validate_spec224_recovery_grant(self, **kwargs) -> bool:
+        """Compatibility predicate for internal callers that need only allow/deny."""
+        decision = await self.validate_spec224_recovery_grant_contract(**kwargs)
+        return decision["valid"] is True
 
     @staticmethod
     def _record_spec224_decision_intent(

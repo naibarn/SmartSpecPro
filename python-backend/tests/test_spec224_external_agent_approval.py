@@ -134,9 +134,17 @@ async def test_spec224_grant_validation_forwards_strict_runtime_binding(monkeypa
         def __init__(self, _db):
             pass
 
-        async def validate_spec224_recovery_grant(self, **kwargs):
+        async def validate_spec224_recovery_grant_contract(self, **kwargs):
             seen.update(kwargs)
-            return True
+            return {
+                "schemaVersion": "spec224.recovery-grant-validation.v1",
+                "result": "VALID",
+                "valid": True,
+                "grantId": payload.grant_id,
+                "grantVersion": 1,
+                "scopeDigest": "a" * 64,
+                "validatedAt": "2026-10-09T00:00:00Z",
+            }
 
     monkeypatch.setattr(approvals, "ApprovalDBService", FakeGrantService)
     result = await approvals.validate_spec224_recovery_grant(
@@ -147,6 +155,20 @@ async def test_spec224_grant_validation_forwards_strict_runtime_binding(monkeypa
     assert result["schemaVersion"] == "spec224.recovery-grant-validation.v1"
     assert result["result"] == "VALID"
     assert seen["runtime_binding"] == runtime_binding
+
+
+def test_spec224_recovery_grant_validation_route_is_registered():
+    route = next(
+        (
+            item
+            for item in approvals.router.routes
+            if getattr(item, "path", None)
+            == "/api/v1/approvals/internal/spec224-recovery-grants/validate"
+        ),
+        None,
+    )
+    assert route is not None
+    assert "POST" in route.methods
 
 
 def test_spec224_runtime_binding_rejects_extra_or_coerced_fields():
