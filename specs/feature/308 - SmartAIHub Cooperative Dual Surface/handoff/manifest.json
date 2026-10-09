@@ -1,0 +1,195 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "UNRESOLVED",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
+  },
+  "continuation": {
+    "next_action": null,
+    "next_ready_workunit": null,
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "UNRESOLVED",
+    "decision": "RECONCILIATION_REQUIRED",
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      }
+    ],
+    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "UNRESOLVED",
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      }
+    ],
+    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
+    "value": "DORMANT_UNRESOLVED"
+  },
+  "generation": 1,
+  "identity": {
+    "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+    "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-09T04:04:01.301528Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.2",
+    "slug": "308 - SmartAIHub Cooperative Dual Surface",
+    "spec_id": "308",
+    "title": "SmartAIHub Cooperative Dual Surface — Living Chat Mascot, Notification Bell & Reminder Balloon"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "DISCOVERING",
+    "previous_state": null,
+    "state_evidence": [],
+    "updated_at": "2026-10-09T04:04:01.301528Z"
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-09T04:04:01.301528Z",
+    "sources": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+        "source_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "value": "PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES",
+        "line": 5,
+        "source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+        "source_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "value": "PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 66,
+    "unresolved": 66
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-09T04:04:01.301528Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

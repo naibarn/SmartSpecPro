@@ -3868,6 +3868,21 @@
     },
     {
       "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "308"
+    },
+    {
+      "authority": "UNRESOLVED",
       "confidence": "UNRESOLVED",
       "declared_claim_count": 0,
       "next_action": "Review this candidate's identity and canonical-root classification.",
