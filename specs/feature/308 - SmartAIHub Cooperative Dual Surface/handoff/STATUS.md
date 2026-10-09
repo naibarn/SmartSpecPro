@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.
-- Manifest generation: 7
+- Next action: Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

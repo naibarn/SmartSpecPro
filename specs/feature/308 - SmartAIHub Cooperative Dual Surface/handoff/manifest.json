@@ -27,20 +27,20 @@
     {
       "class": "AUTHENTICATED_RUNTIME",
       "id": "SPEC308_NONPROD_APP_RUNTIME",
-      "next_action": "Provide access to an approved non-production runtime and authorized test identity through the project secret/runtime management path; do not send secret values in chat.",
-      "root_cause": "No authorized non-production DATABASE_URL, CONTROL_PLANE_API_KEY, or authenticated test user/tenant fixture is available to exercise the signed-in Notification, Settings, Chat, Task Control, and Feedback flows."
+      "next_action": "Project owner must provision or identify an approved non-production app endpoint with isolated DB/control-plane configuration and an authorized test user/tenant through approved secret management.",
+      "root_cause": "No approved non-production runtime or authorized persistent identity is available in this worktree; primary-checkout services were not used."
     },
     {
       "class": "LIVE_CONTRACT_AUTHORITY",
       "id": "SPEC308_MCP_LIVE_CI",
-      "next_action": "Configure the authorized MCP endpoint and token through repository secure CI settings, then rerun the gate.",
-      "root_cause": "The required MCP live-contract CI gate has no configured MCP_SMOKE_URL or MCP_SMOKE_TOKEN."
+      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN in GitHub Actions secrets, then reruns the live-contract-evidence gate.",
+      "root_cause": "The workflow intentionally fails closed when the authorized live MCP endpoint and token are unavailable."
     },
     {
       "class": "BASELINE_CI_FAILURE",
       "id": "MCP_CONTRACT_TEST_FIXTURES",
-      "next_action": "Repair the existing MCP test fixture/import in a separate baseline task without weakening or skipping the security gate; rerun all MCP focused suites.",
-      "root_cause": "The MCP CI workflow now builds its required workspace schema package, but existing server suites still fail without DATABASE_URL and one test uses a stale module import."
+      "next_action": "Review and integrate PR #403 after its required contract-and-security check passes; then rerun #399 against the updated base.",
+      "root_cause": "The baseline workflow and protocol fixtures expected the wrong package setup/session persistence owner. The repair is isolated in PR #403 and is not yet integrated."
     }
   ],
   "concurrency": {
@@ -48,10 +48,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Provide access to an approved non-production app runtime and authorized test user/tenant through the project runtime/secret path. Configure the live MCP endpoint through secure repository CI settings and repair existing MCP CI fixture/import failures without weakening the gate; then continue authenticated browser acceptance and remaining open requirements.",
+    "next_action": "Merge PR #403 after its contract-and-security gate completes and any required review; rerun PR #399 CI at the resulting canonical base. Obtain approved non-production app/DB/control-plane configuration and authorized test user/tenant, then complete Bell, Settings, tenant-isolation, animation and draft acceptance. Configure MCP_SMOKE_URL/MCP_SMOKE_TOKEN through secure CI settings.",
     "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
-    "reactivation_predicate": "The required runtime and test identity are available; refresh origin/main and exact-SHA handoff before continuing.",
-    "resume_point": "PR #399 branch codex/spec-308-dual-surface-20261009 at source commit 64dc5fb3c9c2fec61b909a1c956346d7476258ef, based on origin/main c7a4fbd1ff09214b462e8660b2626049d87f01c7. The focused SPEC-308 regression passed 8 files / 83 tests at this SHA. CI run 37885591534 remains blocked by existing MCP server test dependencies and missing live endpoint/token. Continue remaining SPEC-308 requirements after CI baseline repair and approved non-production runtime/auth fixture are available; do not deploy.",
+    "reactivation_predicate": "PR #403 has passed required checks and been integrated; approved non-production runtime and authorized test identity are available; secure CI contains authorized MCP smoke endpoint/token.",
+    "resume_point": "PR #399 branch codex/spec-308-dual-surface-20261009 at source commit 95fcf3e1392a34392020ca7c11c200fe8b641736, based on origin/main c7a4fbd1ff09214b462e8660b2626049d87f01c7. Seven isolated Chromium tests pass with deterministic mocked APIs; evidence is simulated, not live acceptance. PR #403 carries the separate MCP baseline test/workflow repair; its live MCP authority remains missing. Continue authenticated non-production browser acceptance only after approved endpoint and authorized test identity are provisioned. Do not deploy.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -67,11 +67,11 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.",
-    "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
+    "next_action": "Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.",
+    "rationale": "The isolated browser suite improves simulated UI evidence, but external runtime, tenant authorization, live MCP contract and integration gates remain open. The task remains partial.",
     "residual_requirements": [
-      "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
-      "Authenticated Settings, Bell, Chat/Feedback preservation, and full responsive browser acceptance remain unverified."
+      "All 66 canonical ledger rows remain OPEN; the per-ID implementation/test/evidence map is in orchestra/tasks/spec-308-20261009/evidence/requirement-map.md.",
+      "Live Bell/Settings/tenant authorization, accessibility, performance, rollback and production acceptance remain unverified."
     ]
   },
   "dependencies": {
@@ -104,7 +104,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -196,11 +196,11 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.",
-      "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
+      "next_action": "Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.",
+      "rationale": "The isolated browser suite improves simulated UI evidence, but external runtime, tenant authorization, live MCP contract and integration gates remain open. The task remains partial.",
       "residual_requirements": [
-        "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
-        "Authenticated Settings, Bell, Chat/Feedback preservation, and full responsive browser acceptance remain unverified."
+        "All 66 canonical ledger rows remain OPEN; the per-ID implementation/test/evidence map is in orchestra/tasks/spec-308-20261009/evidence/requirement-map.md.",
+        "Live Bell/Settings/tenant authorization, accessibility, performance, rollback and production acceptance remain unverified."
       ]
     },
     "disposition": {
@@ -305,19 +305,21 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:50:00.321572Z",
+  "updated_at": "2026-10-09T07:01:07.934728Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
       "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885591534.json"
+      "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
+      "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json"
     ],
     "freshness": "CURRENT",
     "required_profiles": [
       "quick"
     ],
-    "sha": "64dc5fb3c9c2fec61b909a1c956346d7476258ef",
+    "sha": "95fcf3e1392a34392020ca7c11c200fe8b641736",
     "status": "PARTIAL",
     "task_regressions": []
   }

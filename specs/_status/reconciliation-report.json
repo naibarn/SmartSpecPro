@@ -143927,13 +143927,13 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T04:04:01.301528Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.",
+      "next_action": "Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
         "id": "SPEC308_NONPROD_APP_RUNTIME",
-        "next_action": "Provide access to an approved non-production runtime and authorized test identity through the project secret/runtime management path; do not send secret values in chat.",
-        "root_cause": "No authorized non-production DATABASE_URL, CONTROL_PLANE_API_KEY, or authenticated test user/tenant fixture is available to exercise the signed-in Notification, Settings, Chat, Task Control, and Feedback flows."
+        "next_action": "Project owner must provision or identify an approved non-production app endpoint with isolated DB/control-plane configuration and an authorized test user/tenant through approved secret management.",
+        "root_cause": "No approved non-production runtime or authorized persistent identity is available in this worktree; primary-checkout services were not used."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",

@@ -31,4 +31,4 @@ PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3189 \
 Result: 7 passed, 0 failed
 ```
 
-The run was performed against the SPEC-308 source at PR head `5cfa6e0987934163389187b8a515f11d47035942`, with the isolated E2E spec and screenshots uncommitted in that same worktree. After recording the next commit, this evidence will be rebound to its exact SHA.
+Exact source SHA tested: `95fcf3e1392a34392020ca7c11c200fe8b641736` (PR #399 head at execution). Result: 7 passed, 0 failed. The browser test and screenshot evidence are included in this SHA.

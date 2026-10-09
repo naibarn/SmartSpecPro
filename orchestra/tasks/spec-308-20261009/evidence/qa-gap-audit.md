@@ -43,7 +43,7 @@ These are fourteen separate requirement lenses. They establish focused source/te
 
 ## Continuation QA — isolated browser, 2026-10-09
 
-Candidate source before this E2E-only checkpoint: `5cfa6e0987934163389187b8a515f11d47035942`. The test fixture and screenshots were in the task worktree and are rebound to the checkpoint SHA in `evidence/isolated-browser-simulation.md`.
+Exact source SHA tested: `95fcf3e1392a34392020ca7c11c200fe8b641736` (PR #399 head). The test fixture and screenshots are committed and bound in `evidence/isolated-browser-simulation.md`.
 
 | Dimension | Result | Evidence / boundary |
 |---|---|---|
