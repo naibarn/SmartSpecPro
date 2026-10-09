@@ -4,7 +4,7 @@ Goal: deliver SPEC-308 R1.2 with existing notification/chat/task/feedback author
 Scope/risk: large/high.
 Current stage: IMPLEMENT
 Resume from: IMPLEMENT
-Stop reason: implementation checkpoint recorded; consolidated verification intentionally pending
+Stop reason: implementation checkpoint da4d7d8214ffa0e144ccf89988e503663956a9f0 recorded; one consolidated exact-head verification pending
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
@@ -19,8 +19,8 @@ Stage ledger:
     status: COMPLETE
   - stage: IMPLEMENT
     status: IN_PROGRESS
-    exit_evidence: safe source checkpoint dd6a42f82; see evidence/implementation-gap-update-20261010-wave2.md
-    next_action: finish source gap sweep, then publish one checkpoint for consolidated exact-head verification
+    exit_evidence: source checkpoint da4d7d8214ffa0e144ccf89988e503663956a9f0; see evidence/implementation-gap-update-20261010-wave3.md
+    next_action: publish the frozen implementation checkpoint to PR #399 and run one consolidated exact-head CI round
   - stage: VERIFY
     status: PENDING
   - stage: DEBUG_FIX
@@ -92,3 +92,46 @@ Completion invariants:
   no_stale_required_gate: true
   review_converged: false
   final_verify_fresh: false
+
+  - gap_id: GAP-004
+    discovered_at_stage: IMPLEMENT
+    earliest_affected_stage: VERIFY
+    classification: VERIFY_ONLY
+    severity: MEDIUM
+    condition: prior browser run failed the manual motion fixture, balloon visibility measurement and post-drag alignment
+    evidence: CI 37977803447 on 2ddd19fdfeacb20f58dd01ecb75cc2844be9ada4; evidence/implementation-gap-update-20261010-wave3.md
+    owner: conductor
+    action: run consolidated browser suite on da4d7d8214ffa0e144ccf89988e503663956a9f0 and repair any remaining geometry failure from exact log data
+    attempts: 1/5
+    stale_gates: [browser, responsive geometry, motion fixture]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: candidate has not been tested; prior geometry delta may expose an additional product issue
+    root_cause: fixture omitted mock EventSource; count-only assertion accepted a hidden node; fake page clock controls the product requestAnimationFrame remeasurement
+    decision_class: FIX_NOW
+    attempted_strategies: [add EventSource fixture, assert visibility, run mocked clock for 32ms before post-drag geometry]
+    prohibited_retries: [loosen the 24px alignment threshold]
+    waiting_predicate: consolidated PR #399 browser workflow completes on the exact candidate SHA
+    reactivation_predicate: workflow run for da4d7d8214ffa0e144ccf89988e503663956a9f0 completes
+    progress_delta: test fixture/readiness and i18n behavior added; alignment check retained
+  - gap_id: GAP-005
+    discovered_at_stage: IMPLEMENT
+    earliest_affected_stage: VERIFY
+    classification: VERIFY_ONLY
+    severity: MEDIUM
+    condition: new EN/TH localized Feedback and accessible dialog copy has no exact-head browser evidence
+    evidence: source commit a5093fdcf2641939deb8afd1891cb4a9b05d8608 and locale parity scan in evidence/implementation-gap-update-20261010-wave3.md
+    owner: conductor
+    action: verify localized authenticated dialog, Feedback form, urgent control and accessible names in the consolidated browser suite
+    attempts: 0/5
+    stale_gates: [localization browser coverage, Chat/Feedback regression]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: locale key parity does not prove rendering or assistive technology behavior
+    root_cause: implementation changed localized surfaces after the prior tested SHA
+    decision_class: VERIFY_NOW
+    attempted_strategies: [static JSON parse and locale key parity passed]
+    prohibited_retries: []
+    waiting_predicate: consolidated exact-head browser run has an artifact for Thai dialog and feedback assertions
+    reactivation_predicate: browser workflow completes on the candidate SHA
+    progress_delta: translation keys and Thai dialog/form assertions added

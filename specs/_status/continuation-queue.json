@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
+      "next_action": "Run the consolidated exact-head PR #399 CI once after publishing the implementation checkpoint; then repair only failures supported by current logs.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4938,7 +4938,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
+      "rationale": "Run the consolidated exact-head PR #399 CI once after publishing the implementation checkpoint; then repair only failures supported by current logs.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },

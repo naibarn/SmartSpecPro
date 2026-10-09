@@ -1,5 +1,5 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -1147,26 +1147,28 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L322"
       ],
       "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L322",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "PENDING",
       "evidence_sha": null,
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/client/src/components/guardian/FeedbackButton.tsx: user/tenant conversation scope fencing and stale urgent-confirmation guard; a5093fdcf2641939deb8afd1891cb4a9b05d8608"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Run the focused Chat/Feedback/Task Control regression set on the final frozen implementation SHA.",
       "requirement_digest": "5d763c644f388ea37f0d632a8d50551ade20abf4dc067ef08c9f76d12e44bc82",
       "requirement_id": "AC-308-026",
       "requirement_text": "- **AC-308-026:** Existing `REPORT_ERROR_EVENT`, emergency-map chat handoff, file attachments, feedback urgent confirmation, Chat conversation guard and Task Control remain functional in regression tests.",
       "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "successor_mapping": [],
       "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_method": "Consolidated focused Chat/Feedback/Task Control regressions, including identity switch while conversation creation and urgent confirmation are pending."
     },
     {
       "applicability": "UNASSESSED",
@@ -1345,26 +1347,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L334"
       ],
       "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L334",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "PENDING",
       "evidence_sha": null,
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/client/src/components/guardian/FeedbackButton.tsx (a5093fdcf2641939deb8afd1891cb4a9b05d8608)",
+        "apps/web/client/src/locales/en/chat.json (a5093fdcf2641939deb8afd1891cb4a9b05d8608)",
+        "apps/web/client/src/locales/th/chat.json (a5093fdcf2641939deb8afd1891cb4a9b05d8608)"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete the English and Thai in-app copy audit and pass the consolidated exact-head browser simulation.",
       "requirement_digest": "ba0d1edbbbfef1df214c41dbc59aa73b05c30cd28445a5bbf51977e0ce528acf",
       "requirement_id": "AC-308-035",
       "requirement_text": "- **AC-308-035:** In-app localization (TH/EN) is correct with labels/hints/dismiss/error states; mockup image text is never copied as authoritative language.",
       "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "successor_mapping": [],
       "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_method": "One consolidated PR #399 browser simulation covering English and Thai dialog tabs, feedback form, file states, urgent confirmation and accessible names."
     },
     {
       "applicability": "UNASSESSED",

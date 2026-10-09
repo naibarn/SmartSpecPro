@@ -135,3 +135,11 @@ Loop policy:
 - Source commit: `dd6a42f82ba1452dcc7a58a7626455b31970ee4d`. Canonical handoff generation 28 records PARTIAL source progress; all 66 requirements remain OPEN/UNVERIFIED.
 - `git diff --check`, both chat-locale JSON parses, registry validation and index check passed. No tests/typecheck were run for the candidate. Local ESLint/Prettier were unavailable in this worktree; full typecheck remains prohibited by shared RAM policy.
 - Next: publish the checkpoint on PR #399 and collect its exact-head consolidated CI once source implementation is frozen. Keep PR #399 unmerged until PR #405/#403 mandatory gates clear; live Feature-049 and approved non-production identity/runtime are still required for acceptance.
+
+
+## Implementation checkpoint — 2026-10-10 (wave 3)
+- PR #399 source commit `a5093fdcf2641939deb8afd1891cb4a9b05d8608` localized Chat/Task Control/Feedback surfaces and file-state copy in EN/TH, and fenced delayed urgent confirmation across user/tenant transitions.
+- Browser harness commit `da4d7d8214ffa0e144ccf89988e503663956a9f0` installs the EventSource baseline fixture for manual-motion coverage, requires visible balloon before measurement, asserts Thai dialog/form localization, and advances the mocked rAF clock before post-drag measurement. The <=24px alignment threshold is retained.
+- Static locale parity/key coverage and `git diff --check` pass. No tests/build/typecheck run; one consolidated exact-head verification is queued.
+- Requirement rows AC-308-026 and AC-308-035 are individually mapped to PARTIAL implementation with verification pending; no row is PASS. Other ledger rows remain OPEN/UNVERIFIED.
+- Next: update generated canonical handoff, push this checkpoint to PR #399, and review the exact-SHA consolidated CI.

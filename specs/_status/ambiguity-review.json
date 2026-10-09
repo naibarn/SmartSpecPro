@@ -116368,7 +116368,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
+      "next_action": "Run the consolidated exact-head PR #399 CI once after publishing the implementation checkpoint; then repair only failures supported by current logs.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",

@@ -60,10 +60,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Push the SPEC-308 implementation checkpoint to PR #399 and collect one consolidated exact-head verification round; then reconcile PR #403/#405 in security order and continue external-authority-gated acceptance.",
+    "next_action": "Push PR #399 checkpoint da4d7d8214ffa0e144ccf89988e503663956a9f0 and collect one consolidated exact-head CI round; repair any remaining evidence-backed gap, then reconcile PR #403/#405 mandatory gates before integration.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Implementation sweep is frozen and one consolidated exact-head test round has completed; required PR #403 focused/security/audit gates and approved live MCP authority are satisfied; PR #405 mandatory audit passes with Security Owner disposition and any required Runtime Owner approval; Feature-049 tenant/revision authorization contract is confirmed; approved non-production SmartAIHub endpoint and authorized test identity are available for live acceptance.",
-    "resume_point": "PR #399 source checkpoint dd6a42f82ba1452dcc7a58a7626455b31970ee4d adds authenticated user+tenant conversation fencing and localizes launcher-owned states. CI 37975735432 on 596fcdbfc656f62c7a3b9205c44d252849f5e859 passed 16/17 browser cases; the only failure was demo dispatch before baseline readiness, now guarded in the fixture. Local tests/typecheck remain deferred for the consolidated round. PR #403/#405 active worktrees were not touched. All 66 requirements remain OPEN/UNVERIFIED; production flags remain OFF.",
+    "resume_point": "PR #399 exact candidate da4d7d8214ffa0e144ccf89988e503663956a9f0 includes source commit a5093fdcf2641939deb8afd1891cb4a9b05d8608 plus a browser-fixture commit. It localizes launcher-owned Chat/Task Control/Feedback strings and accessible names in EN/TH, fences delayed urgent confirmation by user/tenant scope, installs mock EventSource before baseline wait, requires visible balloon before geometry reads, and advances the mocked Playwright clock by 32ms so the app rAF remeasurement runs. Static `git diff --check` and locale JSON/key parity pass. No tests/typecheck/build were run. Prior CI 37977803447 on 2ddd19f had 14/17 browser tests pass and 3 failures now addressed in source; the candidate is UNVERIFIED. All 66 requirements remain OPEN/UNVERIFIED; production flags OFF.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -79,8 +79,8 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
-    "rationale": "This source checkpoint closes safe identity-boundary and localized fallback gaps. The latest browser failure was a deterministic fixture readiness race and is patched but awaits a fresh exact-head run. Mandatory dependency/MCP and live acceptance blockers remain open.",
+    "next_action": "Run the consolidated exact-head PR #399 CI once after publishing the implementation checkpoint; then repair only failures supported by current logs.",
+    "rationale": "Safe code-only localization and test-fixture readiness gaps have been implemented without touching Bell/Chat/Feedback authority or external security gates. The user requested implementation before one consolidated verification round; exact-head verification and all external runtime/security authorities remain pending.",
     "residual_requirements": [
       "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
       "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
@@ -120,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 28,
+  "generation": 31,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -144,7 +144,9 @@
       "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
       "0287181e53accb9303151a2ad0d42f890a22064a",
       "d2ad4f240e8853c717583481e6c0b95d9ba7df3f",
-      "dd6a42f82ba1452dcc7a58a7626455b31970ee4d"
+      "dd6a42f82ba1452dcc7a58a7626455b31970ee4d",
+      "a5093fdcf2641939deb8afd1891cb4a9b05d8608",
+      "da4d7d8214ffa0e144ccf89988e503663956a9f0"
     ],
     "mapping": [
       {
@@ -237,8 +239,8 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
-      "rationale": "This source checkpoint closes safe identity-boundary and localized fallback gaps. The latest browser failure was a deterministic fixture readiness race and is patched but awaits a fresh exact-head run. Mandatory dependency/MCP and live acceptance blockers remain open.",
+      "next_action": "Run the consolidated exact-head PR #399 CI once after publishing the implementation checkpoint; then repair only failures supported by current logs.",
+      "rationale": "Safe code-only localization and test-fixture readiness gaps have been implemented without touching Bell/Chat/Feedback authority or external security gates. The user requested implementation before one consolidated verification round; exact-head verification and all external runtime/security authorities remain pending.",
       "residual_requirements": [
         "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
         "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
@@ -272,6 +274,58 @@
         "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md"
       ],
       "updated_at": "2026-10-09T04:27:07.605340Z"
+    },
+    "requirements": {
+      "AC-308-026": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L322"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L322",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx: user/tenant conversation scope fencing and stale urgent-confirmation guard; a5093fdcf2641939deb8afd1891cb4a9b05d8608"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Run the focused Chat/Feedback/Task Control regression set on the final frozen implementation SHA.",
+        "requirement_digest": "5d763c644f388ea37f0d632a8d50551ade20abf4dc067ef08c9f76d12e44bc82",
+        "requirement_id": "AC-308-026",
+        "requirement_text": "- **AC-308-026:** Existing `REPORT_ERROR_EVENT`, emergency-map chat handoff, file attachments, feedback urgent confirmation, Chat conversation guard and Task Control remain functional in regression tests.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Consolidated focused Chat/Feedback/Task Control regressions, including identity switch while conversation creation and urgent confirmation are pending."
+      },
+      "AC-308-035": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L334"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L334",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (a5093fdcf2641939deb8afd1891cb4a9b05d8608)",
+          "apps/web/client/src/locales/en/chat.json (a5093fdcf2641939deb8afd1891cb4a9b05d8608)",
+          "apps/web/client/src/locales/th/chat.json (a5093fdcf2641939deb8afd1891cb4a9b05d8608)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Complete the English and Thai in-app copy audit and pass the consolidated exact-head browser simulation.",
+        "requirement_digest": "ba0d1edbbbfef1df214c41dbc59aa73b05c30cd28445a5bbf51977e0ce528acf",
+        "requirement_id": "AC-308-035",
+        "requirement_text": "- **AC-308-035:** In-app localization (TH/EN) is correct with labels/hints/dismiss/error states; mockup image text is never copied as authoritative language.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "One consolidated PR #399 browser simulation covering English and Thai dialog tabs, feedback form, file states, urgent confirmation and accessible names."
+      }
     }
   },
   "reconciliation": {
@@ -341,7 +395,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -350,7 +404,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T19:02:59.082459Z",
+  "updated_at": "2026-10-09T19:19:49.446827Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
