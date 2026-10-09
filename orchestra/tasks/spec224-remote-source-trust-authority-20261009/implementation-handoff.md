@@ -60,6 +60,22 @@ Therefore:
 
 The workspace authority scan found three clean Runner worktrees and no active session IDs or open Linux Runner PR at scan time; prior merged PRs #325, #326, and #379 were inspected. Because the user specified reservation until explicit owner release and the Linux bug owner could not be identified from the registry, all Rust/Runner/install/transport/capability/session files remain reserved. This checkpoint changes none of them.
 
+## Debian Linux Runner acceptance — 2026-10-09
+
+The operator clarified that the target for this acceptance run is the Debian Linux machine hosting SmartAIHub, not WSL2. Keep this evidence separate from WSL2, Windows, and independent Debian installation acceptance.
+
+- Host: Debian GNU/Linux 13 (trixie), x86_64, kernel `6.12.63+deb13-amd64`.
+- Installed binary: `/home/dev/.local/bin/smartaihub-runner`; version `0.2.23`; contract `sah-runner-v1`; connect schema `sah-runner-connect-v2`; SHA-256 `382791c51220a4ddeebac63096ced9444753f25c20e55f5ee09d627c0ea291ed`.
+- Local enrollment persistence: `/home/dev/.smartaihub-runner/runner-connection.json` exists with mode `0600`; redacted inspection confirms runner `local-runner`, a stored runner session ID, control/refresh token material, and device keys. This proves a local credential record is persisted; it does not prove the original `connect` process exit was captured or that the Control Plane currently accepts the record.
+- `systemctl --user status smartaihub-runner.service`: `active (running)`, PID `3917259`, executing the installed binary with `run`. Recent journal entries repeatedly report `RUNNER_CONNECT_REQUEST_REJECTED_409` for refresh and update checks.
+- Installed-binary `status`, `doctor`, and `capabilities` each returned exit 0 and local discovery state `ready`, with 11 discovered candidates and 0 ready tools. The local command state is not a connected/online claim. Codex was discovered as `codex.v1`, install state `ready`, but Runner candidate version, health, authentication, and probe remain unknown/required.
+- Codex CLI: `codex-cli 0.160.0`; `codex login status` reports `Logged in using ChatGPT`. No Runner adapter auth or readiness is inferred from this CLI login.
+- Installed-binary `rescan`, using the service data root, exited 3 with `RUNNER_CONNECT_REQUEST_REJECTED_409` before capability probing/publication. No capability snapshot revision, freshness, Control Plane acknowledgment, or live WSS/HTTPS delivery evidence was produced. The installed daemon remains running locally but is not verified online/acknowledged by the Control Plane.
+- No protected dispatch, grant, budget, or economic record was created. No Runner/Rust source was modified; the observed Control Plane rejection is an external blocker, and its underlying ownership/binding cause is not confirmed. No Linux code defect was established.
+- Focused source regression: `cargo test --locked --offline --manifest-path apps/runner-app/Cargo.toml --lib` — 163 passed, 0 failed. Shared web contract compatibility: `pnpm exec vitest run server/services/__tests__/runnerContracts.test.ts server/services/__tests__/runnerCompatibility.test.ts` — 16 passed across 2 files.
+
+**Debian Linux acceptance: BLOCKED** on the Control Plane rejecting the persisted local enrollment with HTTP 409. The Control Plane owner must identify the conflicting binding and confirm the authorized Debian Runner identity; then rerun `rescan` and verify snapshot revision/freshness plus server acknowledgment before assessing Codex probe/readiness. WSL2 browser approval remains a separate enrollment observation and does not satisfy this Debian gate.
+
 ## Next eligible workunit
 
 1. Obtain the owner decision in `owner-approval-request.md` and bind approved issuer identity, key-management resource, trust policy and dedicated evidence bucket/prefix to server configuration ownership.
