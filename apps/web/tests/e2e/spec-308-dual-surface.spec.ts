@@ -100,6 +100,42 @@ for (const width of [320, 360, 390, 767, 768, 1440]) {
   });
 }
 
+test("SPEC-308 Bell animates for a new event and retains its existing action", async ({ page }) => {
+  await page.addInitScript(() => {
+    type Listener = (event: MessageEvent) => void;
+    class MockEventSource {
+      static current: MockEventSource | undefined;
+      private listeners = new Map<string, Listener[]>();
+      constructor() { MockEventSource.current = this; }
+      addEventListener(type: string, listener: Listener) {
+        this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+      }
+      close() {}
+      emit(type: string, data: string) {
+        for (const listener of this.listeners.get(type) ?? []) listener(new MessageEvent(type, { data }));
+      }
+    }
+    (globalThis as any).EventSource = MockEventSource;
+    (window as any).__spec308EmitNotification = (data: unknown) =>
+      MockEventSource.current?.emit("notification", JSON.stringify(data));
+  });
+  await initializeAuthenticatedBrowser(page, 1024, 900);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/chat");
+  const bell = page.getByTestId("global-notification-bell");
+  await expect(bell).toBeVisible();
+  await page.evaluate(() => (window as any).__spec308EmitNotification({
+    id: 30802,
+    title: "Private notification title",
+    content: "Private notification body",
+  }));
+  const ringingIcon = page.locator(".assistant-bell-ring");
+  await expect(ringingIcon).toBeVisible();
+  await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring");
+  await bell.locator("button").click();
+  await expect(page.getByText("Mock notification")).toBeVisible();
+});
+
 test("SPEC-308 settings persist appearance per authenticated tenant and user", async ({ page }) => {
   await initializeAuthenticatedBrowser(page, 1024, 900);
   await page.goto("/settings?tab=notifications");
