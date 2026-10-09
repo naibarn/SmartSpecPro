@@ -1,5 +1,5 @@
 {
-  "generation": 1,
+  "generation": 2,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -24050,26 +24050,32 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8782"
       ],
       "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8782",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
+      "blocker": "This change rechecks project authorization at prompt assembly only. App-switch isolation and revocation after the final query but before downstream provider use remain unverified.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "1d970c5a3925bf8f8f32516005d2a9be7bb67ae8",
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/server/services/promptComposer.ts (PR #426; merge SHA 1d970c5a3925bf8f8f32516005d2a9be7bb67ae8)",
+        "apps/web/server/services/__tests__/promptComposer.enhanced.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Continue SPEC-268 long-lived conversation isolation: verify App-scope handling and define a safe authorization recheck at the final context-use boundary; preserve the point-in-time limitation until then.",
       "requirement_digest": "ae9fd8a682a371e0f503342746785ac7d8ca888725481ef7f2aa4618e5123bde",
       "requirement_id": "REQ-CF6F62069953",
       "requirement_text": "An App switch MUST NOT expose another App's private memory. A Project switch MUST NOT expose another Project's private or shared memory. Shared Project memory requires current Project authorization and the policy for the selected memory class. Revocation MUST be rechecked at the read/write boundary, including during a long-lived conversation.",
       "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "orchestra/tasks/implementation-marathon-20261010/test-design.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/426"
+      ],
+      "verification_method": "Focused Vitest on the integrated SHA, plus independent security review of project identity, tenant, lifecycle, membership, missing-initiator, late-registration, deletion, and token-budget boundaries."
     },
     {
       "applicability": "UNASSESSED",
