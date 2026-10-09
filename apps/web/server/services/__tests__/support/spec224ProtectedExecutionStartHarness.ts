@@ -12,6 +12,10 @@ import {
   type Spec224CanonicalAdmissionSnapshot,
 } from "../../spec224RuntimeAdmission";
 import { acquireSpec224RecoveryGrantFence } from "../../spec224RecoveryGrantFence";
+import {
+  assertSpec224DisposableDatabaseUrl,
+  getSpec224DisposablePostgresTarget,
+} from "./spec224DisposablePostgres";
 
 export type Spec224TestStartResult =
   | {
@@ -23,6 +27,10 @@ export type Spec224TestStartResult =
   | { outcome: "DENIED"; reason: string };
 
 async function assertCampaignDatabase(): Promise<void> {
+  const target = getSpec224DisposablePostgresTarget();
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error("SPEC224_TEST_DATABASE_URL_REQUIRED");
+  assertSpec224DisposableDatabaseUrl(databaseUrl);
   getDb();
   await db.instance.transaction(async tx => {
     const rows = (await tx.execute(sql`
@@ -41,8 +49,7 @@ async function assertCampaignDatabase(): Promise<void> {
     const identity = rows[0];
     if (
       !identity ||
-      process.env.SPEC224_TEST_DATABASE_IDENTITY !==
-        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17" ||
+      process.env.SPEC224_TEST_DATABASE_IDENTITY !== target.identity ||
       identity.database_name !== "spec224_d385_test" ||
       identity.role_name !== "spec224_d385_runtime" ||
       identity.is_superuser ||
@@ -104,6 +111,7 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
   workerJobId: string;
   lease: LeaseContext;
   afterGrantFenceAcquired?: () => Promise<void>;
+  afterStartEventPersisted?: () => Promise<void>;
   syntheticGrantVerifier: (
     snapshot: Spec224CanonicalAdmissionSnapshot
   ) => Promise<boolean>;
@@ -341,6 +349,7 @@ export async function commitSpec224ProtectedExecutionStartForTests(input: {
         testHarness: true,
       },
     });
+    await input.afterStartEventPersisted?.();
     return {
       outcome: "STARTED",
       eventIdempotencyKey: identity.eventIdempotencyKey,

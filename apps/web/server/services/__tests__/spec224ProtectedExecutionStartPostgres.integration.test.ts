@@ -6,6 +6,11 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { spec224RecoveryGrantFenceIdentity } from "../spec224RecoveryGrantFence";
+import {
+  assertSpec224DisposableDatabaseUrl,
+  assertSpec224OwnedPostgresContainer,
+  getSpec224DisposablePostgresTarget,
+} from "./support/spec224DisposablePostgres";
 
 const grantValidator = vi.hoisted(() => ({ validate: vi.fn() }));
 vi.mock("../spec224RecoveryGrantValidator", () => ({
@@ -45,6 +50,8 @@ let snapshotId = "";
 let snapshotRevision = "";
 let attestationId = "";
 let grantId = "";
+let grantScopeDigest = "";
+let grantVersion = 0;
 let lease: LeaseContext;
 let sourceCommit = "";
 let sourcePath = "python-backend/app/services/approval_db_service.py";
@@ -79,7 +86,7 @@ function runPythonGrantProcess(
       ...process.env,
       DEBUG: "false",
       SPEC224_TEST_DATABASE_IDENTITY:
-        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17",
+        getSpec224DisposablePostgresTarget().identity,
       PYTHONPATH: resolve(repositoryRoot, "python-backend"),
       SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
     },
@@ -100,7 +107,7 @@ function spawnPythonGrantProcess(
       ...process.env,
       DEBUG: "false",
       SPEC224_TEST_DATABASE_IDENTITY:
-        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17",
+        getSpec224DisposablePostgresTarget().identity,
       PYTHONPATH: resolve(repositoryRoot, "python-backend"),
       SPEC224_GRANT_TEST_INPUT: JSON.stringify(input),
     },
@@ -178,24 +185,38 @@ async function waitForAdvisoryWaiter() {
   throw new Error("SPEC224_ADVISORY_WAITER_NOT_OBSERVED");
 }
 
+async function grantFenceHolderCount() {
+  const identity = spec224RecoveryGrantFenceIdentity({ tenantId, grantId });
+  const [grantFence] = await sql`
+    SELECT hashtextextended(${identity}, 224)::text AS key
+  `;
+  const unsignedKey = BigInt.asUintN(64, BigInt(grantFence.key));
+  const lockClass = Number((unsignedKey >> 32n) & 0xffffffffn);
+  const lockObject = Number(unsignedKey & 0xffffffffn);
+  const [row] = await sql`
+    SELECT count(*)::int AS count FROM pg_locks
+    WHERE locktype = 'advisory' AND granted = true AND objsubid = 1
+      AND classid = ${lockClass}::oid AND objid = ${lockObject}::oid
+  `;
+  return row.count as number;
+}
+
+async function waitForGrantFenceHolder() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    if ((await grantFenceHolderCount()) > 0) return;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error("SPEC224_NODE_GRANT_FENCE_HOLDER_NOT_OBSERVED");
+}
+
 describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   beforeEach(async () => {
     fixtureStarted = false;
     process.env.SPEC224_EXECUTION_START_TEST_HARNESS = "true";
-    process.env.SPEC224_TEST_DATABASE_IDENTITY =
-      "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17";
-    const parsedDatabaseUrl = new URL(connectionString);
-    if (
-      parsedDatabaseUrl.hostname !== "127.0.0.1" ||
-      parsedDatabaseUrl.port !== "55493" ||
-      parsedDatabaseUrl.pathname !== "/spec224_d385_test" ||
-      decodeURIComponent(parsedDatabaseUrl.username) !==
-        "spec224_d385_runtime" ||
-      process.env.SPEC224_TEST_DATABASE_IDENTITY !==
-        "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17"
-    ) {
-      throw new Error("SPEC224_TEST_DATABASE_URL_FORBIDDEN");
-    }
+    const testTargetRunId = process.env.SPEC224_TEST_RUN_ID ?? "";
+    process.env.SPEC224_TEST_DATABASE_IDENTITY = `spec224-safe-${testTargetRunId}|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17`;
+    assertSpec224DisposableDatabaseUrl(connectionString);
     sql = postgres(connectionString, { max: 5, connect_timeout: 5 });
     const [databaseIdentity] = await sql`
       SELECT current_database() AS database_name, current_user AS role_name,
@@ -395,6 +416,8 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     `;
     const issued = issueGrant(runtimeBinding);
     grantId = issued.grantId;
+    grantScopeDigest = issued.scopeDigest;
+    grantVersion = issued.version;
     grantValidator.validate.mockResolvedValue({
       schemaVersion: "spec224.recovery-grant-validation.v1",
       result: "VALID",
@@ -477,38 +500,66 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     expect(count.count).toBe(1);
   });
 
-  it("reconstructs one durable start after restarting only the owned PostgreSQL container", async () => {
-    const [container] = JSON.parse(
-      execFileSync("docker", ["inspect", "spec224-d385-pg"], {
-        encoding: "utf8",
-      })
-    ) as Array<{
-      Name: string;
-      Config: { Image: string };
-      HostConfig: { NetworkMode: string };
-      Mounts: Array<{ Name: string; Destination: string }>;
-      NetworkSettings: {
-        Ports: Record<
-          string,
-          Array<{ HostIp: string; HostPort: string }> | null
-        >;
-      };
-    }>;
-    expect(container).toMatchObject({
-      Name: "/spec224-d385-pg",
-      Config: { Image: "postgres:15.17" },
-      HostConfig: { NetworkMode: "spec224-d385-net" },
+  it("holds the PostgreSQL grant fence while a delayed validator is pending", async () => {
+    let releaseValidation: (value: Record<string, unknown>) => void = () => {};
+    let markValidationStarted: () => void = () => {};
+    const validationStarted = new Promise<void>(resolveStarted => {
+      markValidationStarted = resolveStarted;
     });
-    expect(container.Mounts).toContainEqual(
-      expect.objectContaining({
-        Name: "spec224-d385-pgdata",
-        Destination: "/var/lib/postgresql/data",
-      })
+    grantValidator.validate.mockImplementationOnce(
+      () =>
+        new Promise(resolveValidation => {
+          releaseValidation = resolveValidation;
+          markValidationStarted();
+        })
     );
-    expect(container.NetworkSettings.Ports["5432/tcp"]).toContainEqual({
-      HostIp: "127.0.0.1",
-      HostPort: "55493",
+
+    const start = commitSpec224ProtectedExecutionStart({
+      tenantId,
+      workerJobId: jobId,
+      lease,
     });
+    await validationStarted;
+    await waitForGrantFenceHolder();
+    expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+
+    releaseValidation({
+      schemaVersion: "spec224.recovery-grant-validation.v1",
+      result: "VALID",
+      valid: true,
+      grantId,
+      grantVersion,
+      scopeDigest: grantScopeDigest,
+      validatedAt: new Date().toISOString(),
+    });
+    const result = await start;
+    expect(result.outcome).toBe("STARTED");
+    expect(await grantFenceHolderCount()).toBe(0);
+  }, 15_000);
+
+  it("rolls back a persisted start event when a later operation fails", async () => {
+    await expect(
+      commitSpec224ProtectedExecutionStartForTests({
+        tenantId,
+        workerJobId: jobId,
+        lease,
+        syntheticGrantVerifier: async () => true,
+        afterStartEventPersisted: async () => {
+          throw new Error("controlled post-event failure");
+        },
+      })
+    ).rejects.toThrow("controlled post-event failure");
+    const [rows] = await sql`
+      SELECT
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_STARTED')::int AS starts,
+        count(*) FILTER (WHERE "eventType" = 'SPEC224_PROTECTED_EXECUTION_START_DENIED')::int AS denials
+      FROM worker_job_events WHERE "workerJobId" = ${jobId}
+    `;
+    expect(rows).toMatchObject({ starts: 0, denials: 0 });
+  });
+
+  it("reconstructs one durable start after restarting only the owned PostgreSQL container", async () => {
+    const target = assertSpec224OwnedPostgresContainer();
 
     const first = await commitSpec224ProtectedExecutionStartForTests({
       tenantId,
@@ -519,7 +570,7 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     expect(first.outcome).toBe("STARTED");
     await sql.end({ timeout: 5 });
 
-    execFileSync("docker", ["restart", "spec224-d385-pg"], {
+    execFileSync("docker", ["restart", target.containerName], {
       encoding: "utf8",
       timeout: 30_000,
       stdio: ["ignore", "pipe", "pipe"],
