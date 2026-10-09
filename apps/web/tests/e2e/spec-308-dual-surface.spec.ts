@@ -313,6 +313,7 @@ test("SPEC-308 manual motion off disables decorative balloon entrance", async ({
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   await expect(launcher).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
+  await waitForNotificationBaseline(page);
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   const balloon = page.locator(".assistant-reminder-balloon");
   await expect(balloon).toBeVisible();

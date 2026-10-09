@@ -206,6 +206,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const [location, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const mascotIdentity = user?.id && user.currentTenantId ? assistantMascotStorageKey(user.id, user.currentTenantId) : null;
+  const conversationIdentity = user?.id
+    ? `${encodeURIComponent(String(user.id))}:${user.currentTenantId == null ? "no-tenant" : encodeURIComponent(String(user.currentTenantId))}`
+    : null;
+  const conversationIdentityRef = useRef(conversationIdentity);
   const { t } = useScopedTranslation("chat");
   const { t: settingsT } = useScopedTranslation("settings");
   const { confirm } = useConfirm();
@@ -261,6 +265,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const openRef = useRef(open);
   const pasteImageCounterRef = useRef(0);
   const chatConversationPromiseRef = useRef<Promise<number> | null>(null);
+  const chatConversationScopeGenerationRef = useRef(0);
   const previousLocationRef = useRef(location);
   const routeSuppressesBalloon = isAssistantBalloonSuppressedRoute(location);
 
@@ -320,6 +325,26 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       preferences: loadAssistantMascotPreferences(window.localStorage, mascotIdentity),
     });
   }, [mascotEnabled, mascotIdentity]);
+
+  useLayoutEffect(() => {
+    if (conversationIdentityRef.current === conversationIdentity) return;
+    conversationIdentityRef.current = conversationIdentity;
+    chatConversationScopeGenerationRef.current += 1;
+    chatConversationPromiseRef.current = null;
+    setChatConversationId(null);
+    setChatPromptRequest(null);
+    setMapContextDraft(null);
+    setOpen(false);
+    setActivePanel("chat");
+    setTicketType("bug");
+    setTitle("");
+    setDescription("");
+    setIsUrgent(false);
+    setIsConfirmingUrgent(false);
+    setFiles([]);
+    setPendingUploadTicketId(null);
+    setPendingDiagnostics(null);
+  }, [conversationIdentity]);
 
   useLayoutEffect(() => {
     if (attentionScopeKeyRef.current === mascotIdentity) return;
@@ -482,13 +507,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const createChatConversationMutation =
     trpc.chat.createConversation.useMutation({
-      onSuccess: data => {
-        setChatConversationId(data.id);
-      },
       onError: error => {
-        toast.error(error.message || "เปิด AI Chat ไม่สำเร็จ");
+        toast.error(error.message || t("conversation.startFailed"));
       },
     });
+  useEffect(() => {
+    createChatConversationMutation.reset();
+  }, [conversationIdentity, createChatConversationMutation.reset]);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -629,12 +654,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        toast.error(err.error || "File upload failed");
+        toast.error(err.error || t("feedback.uploadFailed"));
         return false;
       }
       return true;
     } catch {
-      toast.error("File upload failed — you can retry");
+      toast.error(t("feedback.uploadFailedRetry"));
       return false;
     } finally {
       setUploading(false);
@@ -653,7 +678,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       resetForm();
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to submit feedback");
+      toast.error(err.message || t("feedback.submitFailed"));
     },
   });
 
@@ -670,20 +695,30 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       return chatConversationPromiseRef.current;
     }
 
-    const request = createChatConversationMutation
+    const requestScopeGeneration = chatConversationScopeGenerationRef.current;
+    const requestIdentity = conversationIdentity;
+    let request: Promise<number>;
+    request = createChatConversationMutation
       .mutateAsync({ title: "AI Chat Assistant" })
       .then(result => {
+        if (
+          requestScopeGeneration !== chatConversationScopeGenerationRef.current ||
+          requestIdentity !== conversationIdentityRef.current
+        ) {
+          if (chatConversationPromiseRef.current === request) chatConversationPromiseRef.current = null;
+          return result.id;
+        }
         setChatConversationId(result.id);
-        chatConversationPromiseRef.current = null;
+        if (chatConversationPromiseRef.current === request) chatConversationPromiseRef.current = null;
         return result.id;
       })
       .catch(error => {
-        chatConversationPromiseRef.current = null;
+        if (chatConversationPromiseRef.current === request) chatConversationPromiseRef.current = null;
         throw error;
       });
     chatConversationPromiseRef.current = request;
     return request;
-  }, [chatConversationId, createChatConversationMutation, user]);
+  }, [chatConversationId, createChatConversationMutation, conversationIdentity, user]);
 
   useEffect(() => {
     if (
@@ -728,13 +763,21 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const handleOpenTaskPrompt = useCallback(
     async (prompt: string) => {
+      const requestScopeGeneration = chatConversationScopeGenerationRef.current;
+      const requestIdentity = conversationIdentity;
       const conversationId = await ensureChatConversation();
+      if (
+        requestScopeGeneration !== chatConversationScopeGenerationRef.current ||
+        requestIdentity !== conversationIdentityRef.current
+      ) {
+        throw new Error("Conversation scope changed while opening Task Control");
+      }
       setChatPromptRequest({ id: Date.now(), text: prompt });
       setActivePanel("chat");
       setOpen(true);
       return conversationId;
     },
-    [ensureChatConversation],
+    [ensureChatConversation, conversationIdentity],
   );
 
   useEffect(() => {
@@ -1134,15 +1177,15 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           ) : createChatConversationMutation.isPending && !chatConversationId ? (
             <section className="flex h-full items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Starting AI Chat...
+              {t("conversation.starting")}
             </section>
           ) : createChatConversationMutation.error && !chatConversationId ? (
             <section className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm text-destructive">
-                {createChatConversationMutation.error.message || "เปิด AI Chat ไม่สำเร็จ"}
+                {createChatConversationMutation.error.message || t("conversation.startFailed")}
               </p>
               <Button type="button" variant="outline" onClick={() => void ensureChatConversation()}>
-                Try again
+                {t("conversation.retry")}
               </Button>
             </section>
           ) : (
@@ -1170,7 +1213,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
               conversationId={chatConversationId}
               onClose={() => selectHelpPanel("chat")}
               onOpenPrompt={prompt => {
-                void handleOpenTaskPrompt(prompt);
+                void handleOpenTaskPrompt(prompt).catch(() => undefined);
               }}
             />
           </section>
