@@ -748,6 +748,19 @@ class ApprovalDBService:
                 decision_result = "INVALID_TENANT"
             elif grant.get("state") != "active" or request.revoked_at is not None:
                 decision_result = "INVALID_REVOKED"
+            elif (
+                request.status != ApprovalStatus.APPROVED
+                or request.request_type != ApprovalType.SECURITY_SENSITIVE
+                or request.requester_id != grant.get("ownerId")
+                or request.requester_type != "user"
+                or request.required_approvers != 1
+                or request.current_approvals != 1
+                or request.action_digest != grant.get("scopeDigest")
+                or not isinstance(request.payload, dict)
+                or request.payload.get("kind") != "spec224_recovery_grant"
+                or request.payload.get("scopeDigest") != grant.get("scopeDigest")
+            ):
+                decision_result = "INVALID_AUTHORITY"
             else:
                 tenant_result = await self.db.execute(
                     select(Tenant.owner_id).where(Tenant.id == tenant_id)
@@ -759,48 +772,83 @@ class ApprovalDBService:
                 owner_disabled = owner_result.scalar_one_or_none()
                 if owner_id != grant.get("ownerId") or owner_disabled is not False:
                     decision_result = "INVALID_OWNER"
-                elif not self._recovery_grant_audit_valid(grant):
-                    decision_result = "INVALID_AUDIT"
                 else:
-                    scope = grant.get("scope")
-                    if not isinstance(scope, dict):
-                        decision_result = "INVALID_SCOPE"
+                    approval_result = await self.db.execute(
+                        select(ApprovalResponse.approver_id)
+                        .where(
+                            ApprovalResponse.request_id == grant_id,
+                            ApprovalResponse.decision == "approved",
+                        )
+                        .distinct()
+                    )
+                    approver_ids = set(approval_result.scalars().all())
+                    if owner_id not in approver_ids:
+                        decision_result = "INVALID_AUTHORITY"
                     else:
-                        try:
-                            expires = datetime.fromisoformat(
-                                str(scope["expiresAt"]).replace("Z", "+00:00")
+                        audit_result = await self.db.execute(
+                            select(AuditLog).where(
+                                AuditLog.resource_id == grant_id,
+                                AuditLog.resource_type == "spec224_recovery_grant",
+                                AuditLog.action == "spec224.recovery_grant.issued",
                             )
-                        except (KeyError, TypeError, ValueError):
-                            decision_result = "INVALID_SCOPE"
+                        )
+                        issuance_audit = audit_result.scalar_one_or_none()
+                        audit_details = (
+                            issuance_audit.details
+                            if issuance_audit and isinstance(issuance_audit.details, dict)
+                            else {}
+                        )
+                        if (
+                            not self._recovery_grant_audit_valid(grant)
+                            or issuance_audit is None
+                            or issuance_audit.user_id != str(owner_id)
+                            or issuance_audit.user_role != "tenant_owner"
+                            or audit_details.get("tenantId") != tenant_id
+                            or audit_details.get("scopeDigest") != grant.get("scopeDigest")
+                            or audit_details.get("eventDigest")
+                            != (grant.get("auditEvents") or [{}])[0].get("eventDigest")
+                        ):
+                            decision_result = "INVALID_AUDIT"
                         else:
-                            if expires.tzinfo is None:
+                            scope = grant.get("scope")
+                            if not isinstance(scope, dict):
                                 decision_result = "INVALID_SCOPE"
-                            elif expires <= datetime.now(timezone.utc):
-                                decision_result = "INVALID_EXPIRED"
-                            elif (
-                                scope.get("sourceCommit") != source_commit
-                                or scope.get("sourceSha256") != source_sha256
-                                or scope.get("workpackageId") != workpackage_id
-                                or scope.get("runtimeScope") != runtime_scope
-                                or scope.get("environmentScope") != environment_scope
-                                or not isinstance(scope.get("allowedOperations"), list)
-                                or not isinstance(scope.get("forbiddenOperations"), list)
-                                or not isinstance(scope.get("allowedWriteSet"), list)
-                                or operation not in scope["allowedOperations"]
-                                or operation in scope["forbiddenOperations"]
-                                or path not in scope["allowedWriteSet"]
-                            ):
-                                decision_result = "INVALID_SCOPE"
-                            elif any(
-                                scope.get(field) != supplied
-                                for field, supplied in (
-                                    ("runtimeBinding", runtime_binding),
-                                    ("admissionBinding", admission_binding),
-                                )
-                            ):
-                                decision_result = "INVALID_BINDING"
                             else:
-                                decision_result = "VALID"
+                                try:
+                                    expires = datetime.fromisoformat(
+                                        str(scope["expiresAt"]).replace("Z", "+00:00")
+                                    )
+                                except (KeyError, TypeError, ValueError):
+                                    decision_result = "INVALID_SCOPE"
+                                else:
+                                    if expires.tzinfo is None:
+                                        decision_result = "INVALID_SCOPE"
+                                    elif expires <= datetime.now(timezone.utc):
+                                        decision_result = "INVALID_EXPIRED"
+                                    elif (
+                                        scope.get("sourceCommit") != source_commit
+                                        or scope.get("sourceSha256") != source_sha256
+                                        or scope.get("workpackageId") != workpackage_id
+                                        or scope.get("runtimeScope") != runtime_scope
+                                        or scope.get("environmentScope") != environment_scope
+                                        or not isinstance(scope.get("allowedOperations"), list)
+                                        or not isinstance(scope.get("forbiddenOperations"), list)
+                                        or not isinstance(scope.get("allowedWriteSet"), list)
+                                        or operation not in scope["allowedOperations"]
+                                        or operation in scope["forbiddenOperations"]
+                                        or path not in scope["allowedWriteSet"]
+                                    ):
+                                        decision_result = "INVALID_SCOPE"
+                                    elif any(
+                                        scope.get(field) != supplied
+                                        for field, supplied in (
+                                            ("runtimeBinding", runtime_binding),
+                                            ("admissionBinding", admission_binding),
+                                        )
+                                    ):
+                                        decision_result = "INVALID_BINDING"
+                                    else:
+                                        decision_result = "VALID"
 
         return {
             "schemaVersion": "spec224.recovery-grant-validation.v1",

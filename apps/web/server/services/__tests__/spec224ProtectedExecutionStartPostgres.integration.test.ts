@@ -210,6 +210,22 @@ async function waitForGrantFenceHolder() {
   throw new Error("SPEC224_NODE_GRANT_FENCE_HOLDER_NOT_OBSERVED");
 }
 
+async function waitForBlockedMutation(queryMarker: string) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql`
+      SELECT pid FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND query LIKE ${`%${queryMarker}%`}
+      LIMIT 1
+    `;
+    if (row) return;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error(`SPEC224_CANONICAL_MUTATION_NOT_BLOCKED:${queryMarker}`);
+}
+
 describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
   beforeEach(async () => {
     fixtureStarted = false;
@@ -536,6 +552,86 @@ describeDb("Spec 224 durable protected-start test harness PostgreSQL", () => {
     expect(result.outcome).toBe("STARTED");
     expect(await grantFenceHolderCount()).toBe(0);
   }, 15_000);
+
+  it("holds canonical approval and owner rows through validator and start commit", async () => {
+    let releaseValidation: (value: Record<string, unknown>) => void = () => {};
+    let markValidationStarted: () => void = () => {};
+    const validationStarted = new Promise<void>(resolveStarted => {
+      markValidationStarted = resolveStarted;
+    });
+    grantValidator.validate.mockImplementationOnce(
+      () =>
+        new Promise(resolveValidation => {
+          releaseValidation = resolveValidation;
+          markValidationStarted();
+        })
+    );
+    const approvalWriter = postgres(connectionString, { max: 1 });
+    const ownerWriter = postgres(connectionString, { max: 1 });
+
+    const start = commitSpec224ProtectedExecutionStart({
+      tenantId,
+      workerJobId: jobId,
+      lease,
+    });
+    try {
+      await validationStarted;
+      await waitForGrantFenceHolder();
+
+      const approvalMutation = approvalWriter
+        .begin(async tx => {
+          await tx`UPDATE approval_requests SET status = 'REJECTED' WHERE id = ${grantId}`;
+          throw new Error("ROLLBACK_APPROVAL_RACE_FIXTURE");
+        })
+        .catch(error => {
+          if (String(error).includes("ROLLBACK_APPROVAL_RACE_FIXTURE")) return;
+          throw error;
+        });
+      const ownerMutation = ownerWriter
+        .begin(async tx => {
+          await tx`UPDATE users SET "isDisabled" = true WHERE id = ${userId}`;
+          throw new Error("ROLLBACK_OWNER_RACE_FIXTURE");
+        })
+        .catch(error => {
+          if (String(error).includes("ROLLBACK_OWNER_RACE_FIXTURE")) return;
+          throw error;
+        });
+
+      await Promise.all([
+        waitForBlockedMutation(
+          "UPDATE approval_requests SET status = 'REJECTED'"
+        ),
+        waitForBlockedMutation('UPDATE users SET "isDisabled" = true'),
+      ]);
+      releaseValidation({
+        schemaVersion: "spec224.recovery-grant-validation.v1",
+        result: "VALID",
+        valid: true,
+        grantId,
+        grantVersion,
+        scopeDigest: grantScopeDigest,
+        validatedAt: new Date().toISOString(),
+      });
+      expect((await start).outcome).toBe("STARTED");
+      await Promise.all([approvalMutation, ownerMutation]);
+      expect(await grantFenceHolderCount()).toBe(0);
+    } finally {
+      releaseValidation({
+        schemaVersion: "spec224.recovery-grant-validation.v1",
+        result: "UNKNOWN",
+        valid: false,
+        grantId: null,
+        grantVersion: null,
+        scopeDigest: null,
+        validatedAt: new Date().toISOString(),
+      });
+      await Promise.all([
+        approvalWriter.end({ timeout: 5 }),
+        ownerWriter.end({ timeout: 5 }),
+      ]);
+      await start.catch(() => undefined);
+    }
+  }, 20_000);
 
   it("rolls back a persisted start event when a later operation fails", async () => {
     await expect(
