@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.
-- Manifest generation: 19
+- Next action: Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.
+- Manifest generation: 21
 
 ## Source-declared status and relationship claims
 

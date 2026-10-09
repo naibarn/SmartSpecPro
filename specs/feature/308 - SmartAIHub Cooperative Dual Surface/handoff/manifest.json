@@ -54,10 +54,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Keep all 66 requirements OPEN. Resolve the mandatory WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION gate with Security/Runtime Owner disposition for the sole remaining Moderate sprintf-js advisory; do not suppress it. Reconcile #403 focused security and live MCP authority gates. Obtain an approved non-production runtime and authorized test identity, then run the consolidated exact-head SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep production flags off and do not deploy.",
+    "next_action": "Implementation-first pass is committed to PR #399 at 9432a1ec4dbb4412c06d8cb49d6da426831d1ada, including deterministic coverage for disabling the tenant flag while Chat and Feedback drafts remain open. Do not close any of the 66 requirements before the consolidated exact-SHA verification. PR #405 compatibility fixes and api-generator lockfile alignment are in place, but the mandatory audit remains blocked on sprintf-js@1.1.3 Moderate and needs Security Owner disposition; ONNX/WSL2 testing needs Runtime Owner approval. PR #403 still needs its approved live MCP endpoint/token. Once implementation is frozen, run one consolidated verification round on current exact heads, then obtain approved non-production app runtime and authorized identity for live SPEC-308 acceptance. Keep production flags off and do not deploy.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
-    "reactivation_predicate": "Security Owner approves a compatible remediation or scoped expiring risk acceptance and the mandatory production audit passes; MCP focused security/contract gates pass and approved live MCP endpoint/identity authority is available; approved non-production app runtime and authorized test tenant/user are provisioned; final exact-SHA SPEC-308 verification is recorded.",
-    "resume_point": "Canonical base origin/main is 2087ba88555cc22901b76abbeccbe066857fa819. SPEC-308 PR #399 source head is 0274d008320aa5223609e25715cdf52df9af89ed: added accessible mascot radio previews, deterministic browser assertions for five choices/selection, appearance-vs-delivery preference isolation and demo balloon no-side-effect behavior, plus decorative balloon suppression for dialog, drag, hidden page, virtual keyboard, editable focus, modal/alert dialog and route changes. These new assertions have not been run on the current source head; existing browser evidence is stale/simulated. All 66 ledger requirements remain OPEN/UNVERIFIED. PR #405 current head 5c559a7ad187806cf810f19c0bdd15c90c165bac: latest dependency compatibility CI passed and mandatory audit still fails on one Moderate sprintf-js@1.1.3 finding. PR #403 current head 03c1c8d2a62c93598f7f996c41e3783c835f61e8: live MCP smoke fails closed for missing authorized endpoint/token; focused security job is pending. No approved non-production runtime/identity is available. Next action requires Security/Runtime Owner disposition and approved test authority; no production deployment.",
+    "reactivation_predicate": "Security Owner approves compatible sprintf-js remediation or scoped expiring risk acceptance and mandatory audit passes; Runtime Owner approves any disposable non-production ONNX/WSL2 test; PR #403 mandatory focused gates pass and approved MCP endpoint/token are configured; the consolidated exact-head verification has been completed; approved non-production SmartSpecPro runtime and authorized test tenant/user are available for authenticated SPEC-308 acceptance.",
+    "resume_point": "Canonical origin/main is df776f6fca6dde82afde3ed88a54fd80f4a68d27. PR #399 head is 9432a1ec4dbb4412c06d8cb49d6da426831d1ada. New test-only coverage makes the mocked tenant feature flag controllable, triggers a TanStack stale-query refetch by returning browser focus, confirms the flag is actually false and legacy launcher is rendered while the dialog, Chat draft, Feedback title/description, submit action and Task Control remain. It also asserts no extra chat create/send, feedback submit, or notification read mutations. `git diff --check` passed; tests/CI were not run locally. PR #403 head 1f6a05c8478a790d4a99c210cf9acc9a073ae663: install, schema build and focused MCP tests passed in automatic CI; live gate fails closed without approved endpoint/token, remaining CI jobs are pending. PR #405 head ec94f99f432ba37ab3cce8637994b24d9f7deac5: compatibility regressions pass; mandatory production audit fails on the single Moderate sprintf-js@1.1.3 via hyperframes → onnxruntime-node → global-agent → roarr. All 66 ledger rows remain OPEN/UNVERIFIED; authenticated acceptance and tenant authorization remain unverified. No deployment.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -73,11 +73,12 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.",
-    "rationale": "The implementation branch has gained accessible mascot controls, deterministic mocked browser assertions, and suppression of decorative balloons over active user surfaces. Current exact-head verification is pending/stale; security audit, tenant authorization semantics, live MCP authority, and authenticated non-production acceptance remain external blockers, so the Spec remains partial.",
+    "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
+    "rationale": "The PR head now includes a deterministic test case for tenant flag rollback without dialog unmount, but this and all current-source checks remain unexecuted. Security, live MCP, approved authenticated runtime, and tenant authorization are still true blockers. The Spec remains partial.",
     "residual_requirements": [
-      "All 66 canonical ledger rows remain OPEN; the per-ID implementation/test/evidence map is in orchestra/tasks/spec-308-20261009/evidence/requirement-map.md.",
-      "Live Bell/Settings/tenant authorization, accessibility, performance, rollback and production acceptance remain unverified."
+      "All 66 canonical requirement rows remain OPEN/UNVERIFIED until row-level evidence is produced on the current integrated SHA.",
+      "The new tenant-flag rollback test is simulated coverage design and remains unexecuted; live authenticated Bell, Settings, tenant isolation, accessibility, performance, rollback and acceptance remain open.",
+      "External decisions remain required for the sprintf-js residual, live MCP authority, and approved non-production authenticated runtime/identity."
     ]
   },
   "dependencies": {
@@ -110,7 +111,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 19,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -128,20 +129,21 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "a430a747cf4991cbb7fbbdf5351dad984f29231b"
+      "9432a1ec4dbb4412c06d8cb49d6da426831d1ada"
     ],
     "mapping": [
       {
-        "coverage": "PARTIAL; not all ACs verified and not yet integrated into origin/main.",
-        "scope": "Fail-closed opt-in presentation, five mascot renderer, Bell intent, generic new-row attention, local preference controls and responsive guest component crops.",
+        "coverage": "PARTIAL; implementation and deterministic browser coverage are committed to the PR branch but the new test has not been executed or integrated.",
+        "scope": "Fail-closed dual surface, five mascot renderer and settings, generic row-ID notification attention and bell animation, responsive hints, route/overlay suppression, and deterministic feature-flag rollback coverage preserving open Chat and Feedback drafts/actions.",
         "source_paths": [
           "apps/web/client/src/components/GlobalAlerts.tsx",
           "apps/web/client/src/components/guardian/FeedbackButton.tsx",
           "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
           "apps/web/client/src/lib/notificationAttention.ts",
-          "apps/web/client/src/lib/assistantMascotPreferences.ts"
+          "apps/web/client/src/lib/assistantMascotPreferences.ts",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
         ],
-        "source_sha": "a430a747cf4991cbb7fbbdf5351dad984f29231b"
+        "source_sha": "9432a1ec4dbb4412c06d8cb49d6da426831d1ada"
       }
     ],
     "source_paths": [
@@ -149,7 +151,8 @@
       "apps/web/client/src/components/guardian/FeedbackButton.tsx",
       "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
       "apps/web/client/src/lib/notificationAttention.ts",
-      "apps/web/client/src/lib/assistantMascotPreferences.ts"
+      "apps/web/client/src/lib/assistantMascotPreferences.ts",
+      "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
     ],
     "started": true,
     "status": "PARTIAL"
@@ -202,11 +205,12 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.",
-      "rationale": "The implementation branch has gained accessible mascot controls, deterministic mocked browser assertions, and suppression of decorative balloons over active user surfaces. Current exact-head verification is pending/stale; security audit, tenant authorization semantics, live MCP authority, and authenticated non-production acceptance remain external blockers, so the Spec remains partial.",
+      "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
+      "rationale": "The PR head now includes a deterministic test case for tenant flag rollback without dialog unmount, but this and all current-source checks remain unexecuted. Security, live MCP, approved authenticated runtime, and tenant authorization are still true blockers. The Spec remains partial.",
       "residual_requirements": [
-        "All 66 canonical ledger rows remain OPEN; the per-ID implementation/test/evidence map is in orchestra/tasks/spec-308-20261009/evidence/requirement-map.md.",
-        "Live Bell/Settings/tenant authorization, accessibility, performance, rollback and production acceptance remain unverified."
+        "All 66 canonical requirement rows remain OPEN/UNVERIFIED until row-level evidence is produced on the current integrated SHA.",
+        "The new tenant-flag rollback test is simulated coverage design and remains unexecuted; live authenticated Bell, Settings, tenant isolation, accessibility, performance, rollback and acceptance remain open.",
+        "External decisions remain required for the sprintf-js residual, live MCP authority, and approved non-production authenticated runtime/identity."
       ]
     },
     "disposition": {
@@ -311,7 +315,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T16:55:15.621476Z",
+  "updated_at": "2026-10-09T17:06:32.014938Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -325,7 +329,8 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897928261.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897633316.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37898459191.json"
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37898459191.json",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-continuation-20261010.md"
     ],
     "freshness": "STALE",
     "required_profiles": [

@@ -135419,7 +135419,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.",
+      "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
