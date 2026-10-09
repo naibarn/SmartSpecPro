@@ -87306,7 +87306,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847",
+      "canonical_sha": "51d2e57490e1fe115aeec9188c84e765e9f33fe3",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -87695,7 +87695,7 @@
       "deployment": "UNKNOWN",
       "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.102236Z",
       "lifecycle": "DISCOVERING",
@@ -88277,7 +88277,7 @@
       "successors": [],
       "title": "Spec 205 — SmartAIHub Runner Cross-Platform Runtime",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PENDING"
     },
     {
       "acceptance": "UNKNOWN",

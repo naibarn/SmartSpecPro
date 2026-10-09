@@ -129,15 +129,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847",
+    "expected_canonical_sha": "51d2e57490e1fe115aeec9188c84e765e9f33fe3",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "The session TTL repair is integrated at ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847, canonical build at d00569c58e400a5e65991adf7ff3e3f2c924b27e passed, and smartspec-web.service restarted healthy. Complete the live Windows Runner refresh/WSS continuity check after the restart; the client request has not yet appeared in the web journal. Keep WSL2 and Debian evidence separate.",
+    "next_action": "After Windows unsigned review build 0.2.25 (run 37872195649) completes, install it on the Windows host and manually click 'รีเฟรชสถานะ' while the connection is retrying/reauth-required. Confirm the busy state, fresh credential refresh, and resulting status; retain Windows acceptance as pending until that evidence exists.",
     "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Read handoff/evidence/runner-token-session-refresh-fix-20261009.md. Source ea286e0 is built and smartspec-web.service is healthy after restart at 08:47 +07. Resume with live Windows Runner reconnect/refresh evidence; do not call resolved until it passes.",
-    "waiting_predicate": "Reactivate when the Windows Runner reconnects after the 08:47 +07 web service restart and provides refreshed status plus evidence that no SESSION_EXPIRED or RUNNER_CONNECT_REQUEST_FAILED occurs."
+    "resume_point": "Read handoff/evidence/runner-desktop-manual-refresh-button-20261009.md and handoff/evidence/runner-token-session-refresh-fix-20261009.md. Source 51d2e574 is integrated; local UI syntax and credential retry tests passed. Windows unsigned review build run 37872195649 is queued. Continue with artifact outcome, then install and interactively verify the button on Windows.",
+    "waiting_predicate": "Reactivate when GitHub Actions run 37872195649 has completed and its Windows unsigned review artifact is available; then install that artifact on the Windows host and capture the manual refresh result."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -369,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -398,9 +398,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847",
+    "canonical_sha": "51d2e57490e1fe115aeec9188c84e765e9f33fe3",
     "integrated": true,
-    "integrated_at": "2026-10-09T01:20:42Z"
+    "integrated_at": "2026-10-09T01:55:28Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -1273,17 +1273,18 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T01:48:19.003846Z",
+  "updated_at": "2026-10-09T01:58:43.446961Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-manual-refresh-button-20261009.md"
     ],
-    "freshness": "UNKNOWN",
+    "freshness": "FRESH",
     "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "sha": "51d2e57490e1fe115aeec9188c84e765e9f33fe3",
+    "status": "PENDING",
     "task_regressions": []
   }
 }
