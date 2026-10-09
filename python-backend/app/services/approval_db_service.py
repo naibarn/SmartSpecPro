@@ -28,6 +28,230 @@ from app.models.audit_log import AuditLog
 
 logger = structlog.get_logger(__name__)
 
+_SPEC224_CANONICAL_UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _spec224_recovery_grant_fence_identity(tenant_id: str, grant_id: str) -> str:
+    """Build the cross-service lock key from canonical UUID identities only."""
+    if (
+        not isinstance(tenant_id, str)
+        or not isinstance(grant_id, str)
+        or not _SPEC224_CANONICAL_UUID.fullmatch(tenant_id)
+        or not _SPEC224_CANONICAL_UUID.fullmatch(grant_id)
+    ):
+        raise ValueError("SPEC224_RECOVERY_GRANT_FENCE_IDENTITY_INVALID")
+    return f"spec224:recovery-grant:{tenant_id.lower()}:{grant_id.lower()}"
+
+
+async def _record_spec224_start_containment_intents(
+    db: AsyncSession, *, grant_id: str, tenant_id: str, grant: dict,
+    actor_id: int, reason: str, revoked_at: str,
+) -> dict:
+    """Persist idempotent containment intent for an already-started bound job.
+
+    This writes only to the canonical worker_job_events stream. It does not
+    mutate job state or claim that a Runner cancellation was delivered.
+    Caller holds the cross-service grant fence and commits the transaction.
+    """
+    runtime_binding = grant.get("scope", {}).get("runtimeBinding")
+    if not isinstance(runtime_binding, dict):
+        return {"intentIds": [], "reviewEventIds": [], "reviewRequired": False, "reviewReasons": []}
+    worker_job_id = runtime_binding.get("workerJobId")
+    if not isinstance(worker_job_id, str) or not worker_job_id.strip():
+        raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+
+    result = await db.execute(text(
+        'SELECT "tenantId", attempt, "fencingVersion", status, "statusReason", "leaseExpiresAt" '
+        'FROM worker_jobs WHERE id = :worker_job_id FOR UPDATE'
+    ), {"worker_job_id": worker_job_id})
+    job = result.mappings().one_or_none()
+    bound_attempt = runtime_binding.get("attempt")
+    attempt_id_result = await db.execute(text(
+        'SELECT id, "finishedAt", "leaseExpiresAt", "leaseGeneration" '
+        'FROM worker_job_attempts WHERE "workerJobId" = :worker_job_id '
+        'AND attempt = :attempt FOR UPDATE'
+    ), {"worker_job_id": worker_job_id, "attempt": bound_attempt})
+    canonical_attempt = attempt_id_result.mappings().one_or_none()
+    canonical_attempt_id = canonical_attempt["id"] if canonical_attempt else None
+    outcome = {"intentIds": [], "reviewEventIds": [], "reviewRequired": False, "reviewReasons": []}
+
+    async def append_event(event_type: str, event_key: str, attempt_id: Optional[str], payload: dict) -> bool:
+        existing_result = await db.execute(text(
+            'SELECT "eventType", "payloadJson" FROM worker_job_events '
+            'WHERE "workerJobId" = :worker_job_id AND "eventIdempotencyKey" = :event_key LIMIT 1'
+        ), {"worker_job_id": worker_job_id, "event_key": event_key})
+        existing = existing_result.mappings().one_or_none()
+        if existing is not None:
+            existing_payload = existing["payloadJson"]
+            if isinstance(existing_payload, str):
+                try:
+                    existing_payload = json.loads(existing_payload)
+                except json.JSONDecodeError:
+                    return False
+            return existing["eventType"] == event_type and existing_payload == payload
+        sequence_result = await db.execute(text(
+            'SELECT COALESCE(MAX("eventSequence"), 0) + 1 '
+            'FROM worker_job_events WHERE "workerJobId" = :worker_job_id'
+        ), {"worker_job_id": worker_job_id})
+        await db.execute(text(
+            'INSERT INTO worker_job_events '
+            '("workerJobId", "eventType", "eventSequence", "eventIdempotencyKey", "attemptId", "payloadJson") '
+            'VALUES (:worker_job_id, :event_type, :event_sequence, :event_key, :attempt_id, CAST(:payload AS jsonb))'
+        ), {
+            "worker_job_id": worker_job_id, "event_type": event_type,
+            "event_sequence": int(sequence_result.scalar_one()), "event_key": event_key,
+            "attempt_id": attempt_id,
+            "payload": json.dumps(payload, sort_keys=True, separators=(",", ":")),
+        })
+        return True
+
+    async def add_review_intent(
+        source_event_key: Optional[str], attempt_id: Optional[str], reason_code: str,
+        *, grant_correlated: bool = True,
+    ) -> None:
+        outcome["reviewRequired"] = True
+        if reason_code not in outcome["reviewReasons"]:
+            outcome["reviewReasons"].append(reason_code)
+        if not job or job["tenantId"] != tenant_id or canonical_attempt_id is None:
+            return
+        source_identity = source_event_key or "missing-event-key"
+        source_digest = hashlib.sha256(source_identity.encode("utf-8")).hexdigest()
+        review_key = (
+            f"spec224:protected-start-review:{grant_id}:{source_digest}"
+            if grant_correlated
+            else f"spec224:protected-start-unattributed-review:{worker_job_id}:{source_digest}"
+        )
+        review_payload = {
+            "schemaVersion": "spec224.protected-execution-containment-review.v1",
+            "tenantId": tenant_id, "workerJobId": worker_job_id,
+            "sourceStartEventIdempotencyKey": source_event_key,
+            "reasonCode": reason_code, "actorId": actor_id, "reason": reason,
+            "revokedAt": revoked_at, "deliveryState": "OPERATOR_REVIEW_REQUIRED",
+        }
+        if grant_correlated:
+            review_payload["grantId"] = grant_id
+        else:
+            review_payload["authorityAttribution"] = "UNATTRIBUTED"
+        if await append_event(
+            "SPEC224_PROTECTED_EXECUTION_CONTAINMENT_REVIEW_REQUIRED",
+            review_key, attempt_id, review_payload,
+        ):
+            outcome["reviewEventIds"].append(review_key)
+            return
+        # A conflicting review marker is not overwritten and does not prevent
+        # owner revocation; the durable grant revocation records the unresolved
+        # review condition even if both event keys have been corrupted.
+        outcome["reviewReasons"].append("REVIEW_MARKER_CONFLICT")
+
+    if not job or job["tenantId"] != tenant_id or canonical_attempt_id is None:
+        outcome["reviewRequired"] = True
+        outcome["reviewReasons"].append(
+            "JOB_TENANT_BINDING_MISMATCH" if not job or job["tenantId"] != tenant_id else "ATTEMPT_BINDING_MISSING"
+        )
+        return outcome
+    current_state_matches = (
+        job["attempt"] == bound_attempt
+        and job["fencingVersion"] == runtime_binding.get("workerJobFencingVersion")
+        and job["status"] == "running"
+        and not str(job["statusReason"] or "").startswith("cancel_requested:")
+        and job["leaseExpiresAt"] is not None
+        and job["leaseExpiresAt"] > datetime.now(timezone.utc)
+        and canonical_attempt["finishedAt"] is None
+        and canonical_attempt["leaseExpiresAt"] is not None
+        and canonical_attempt["leaseExpiresAt"] > datetime.now(timezone.utc)
+    )
+    if not current_state_matches:
+        outcome["reviewRequired"] = True
+        outcome["reviewReasons"].append("CURRENT_JOB_OR_LEASE_BINDING_STALE")
+        return outcome
+
+    # Match canonical lock order: job row -> attempt row -> event stream. Both
+    # Node appendJobEvent and this Python revocation share this advisory key.
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:worker_job_id))"),
+        {"worker_job_id": worker_job_id},
+    )
+
+    result = await db.execute(text(
+        'SELECT "eventType", "eventIdempotencyKey", "attemptId", "payloadJson" '
+        'FROM worker_job_events WHERE "workerJobId" = :worker_job_id '
+        'AND "eventType" = \'SPEC224_PROTECTED_EXECUTION_STARTED\' '
+        'ORDER BY "eventSequence", "createdAt", id'
+    ), {"worker_job_id": worker_job_id})
+    start_rows = result.mappings().all()
+    for row in start_rows:
+        payload = row["payloadJson"]
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except json.JSONDecodeError:
+                if row["attemptId"] == canonical_attempt_id:
+                    await add_review_intent(
+                        row["eventIdempotencyKey"], row["attemptId"], "MALFORMED_START_PAYLOAD",
+                        grant_correlated=False,
+                    )
+                continue
+        if not isinstance(payload, dict):
+            if row["attemptId"] == canonical_attempt_id:
+                await add_review_intent(
+                    row["eventIdempotencyKey"], row["attemptId"], "MALFORMED_START_PAYLOAD",
+                    grant_correlated=False,
+                )
+            continue
+        if payload.get("grantId") != grant_id:
+            continue
+        operation_id = payload.get("operationId")
+        if (
+            payload.get("schemaVersion") != "spec224.protected-execution-start.v1"
+            or payload.get("tenantId") != tenant_id
+            or payload.get("workerJobId") != worker_job_id
+            or payload.get("attemptId") != canonical_attempt_id
+            or row["attemptId"] != canonical_attempt_id
+            or payload.get("attempt") != bound_attempt
+            or payload.get("leaseGeneration") != canonical_attempt["leaseGeneration"]
+            or payload.get("workerJobFencingVersion") != runtime_binding.get("workerJobFencingVersion")
+            or payload.get("grantVersion") != (grant.get("auditEvents") or [{}])[0].get("version")
+            or payload.get("grantScopeDigest") != grant.get("scopeDigest")
+            or not isinstance(operation_id, str)
+            or not operation_id.strip()
+            or len(operation_id) > 120
+        ):
+            await add_review_intent(row["eventIdempotencyKey"], row["attemptId"], "START_BINDING_CONFLICT")
+            continue
+
+        event_key = f"spec224:protected-start-containment:{grant_id}:{operation_id}"
+        if len(event_key) > 200:
+            await add_review_intent(row["eventIdempotencyKey"], row["attemptId"], "CONTAINMENT_IDENTITY_TOO_LONG")
+            continue
+        intent_payload = {
+            "schemaVersion": "spec224.protected-execution-containment.v1",
+            "evidenceClass": payload.get("evidenceClass", "UNCLASSIFIED"),
+            "tenantId": tenant_id,
+            "workerJobId": worker_job_id,
+            "grantId": grant_id,
+            "grantVersion": payload.get("grantVersion"),
+            "grantScopeDigest": grant.get("scopeDigest"),
+            "sourceStartEventIdempotencyKey": row["eventIdempotencyKey"],
+            "operationId": operation_id,
+            "attemptId": row["attemptId"],
+            "actorId": actor_id,
+            "reason": reason,
+            "revokedAt": revoked_at,
+            "deliveryState": "PENDING_CANONICAL_CONSUMER",
+        }
+        if not await append_event(
+            "SPEC224_PROTECTED_EXECUTION_CONTAINMENT_REQUIRED",
+            event_key, row["attemptId"], intent_payload,
+        ):
+            await add_review_intent(row["eventIdempotencyKey"], row["attemptId"], "CONTAINMENT_IDEMPOTENCY_CONFLICT")
+            continue
+        outcome["intentIds"].append(event_key)
+    return outcome
+
+
 SPEC224_PROTECTED_RUNTIME_OPERATIONS = {
     "protected_dispatch",
     "protected_execute",

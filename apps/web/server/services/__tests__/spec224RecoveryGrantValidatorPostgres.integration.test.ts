@@ -13,9 +13,17 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFile } from "node:fs/promises";
 import postgres from "postgres";
+import {
+  assertSpec224DisposableDatabaseUrl,
+  assertSpec224OwnedPostgresContainer,
+  getSpec224DisposablePostgresTarget,
+} from "./support/spec224DisposablePostgres";
 import { db } from "../../db";
 import { bindSpec224RecoveryGrant } from "../spec224RecoveryGrantBinding";
-import { acquireSpec224RecoveryGrantFence } from "../spec224RecoveryGrantFence";
+import {
+  acquireSpec224RecoveryGrantFence,
+  spec224RecoveryGrantFenceIdentity,
+} from "../spec224RecoveryGrantFence";
 import { checkSpec224RuntimeAdmission } from "../spec224RuntimeAdmission";
 import { validateSpec224RecoveryGrant } from "../spec224RecoveryGrantValidator";
 
@@ -31,8 +39,6 @@ const python = process.env.SPEC224_TEST_PYTHON;
 const validatorUrl = process.env.PYTHON_BACKEND_URL ?? "";
 const validatorPath =
   "/api/v1/approvals/internal/spec224-recovery-grants/validate";
-const identity =
-  "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17";
 const grantHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_grant_process_helper.py"
@@ -75,7 +81,14 @@ function helperEnv(input: Record<string, unknown>) {
     DATABASE_URL: process.env.DATABASE_URL,
     PYTHONUNBUFFERED: "1",
     DEBUG: "false",
-    SPEC224_TEST_DATABASE_IDENTITY: identity,
+    SPEC224_TEST_DATABASE_IDENTITY:
+      getSpec224DisposablePostgresTarget().identity,
+    SPEC224_TEST_RUN_ID: process.env.SPEC224_TEST_RUN_ID,
+    SPEC224_TEST_PG_PORT: process.env.SPEC224_TEST_PG_PORT,
+    SPEC224_TEST_PG_CONTAINER: process.env.SPEC224_TEST_PG_CONTAINER,
+    SPEC224_TEST_PG_NETWORK: process.env.SPEC224_TEST_PG_NETWORK,
+    SPEC224_TEST_PGDATA: process.env.SPEC224_TEST_PGDATA,
+    SPEC224_TEST_PG_PROXY_PID: process.env.SPEC224_TEST_PG_PROXY_PID,
     PYTHONPATH: resolve(repositoryRoot, "python-backend"),
     SMARTSPEC_WEB_GATEWAY_TOKEN: process.env.SMARTSPEC_WEB_GATEWAY_TOKEN,
     SMARTSPEC_PROXY_TOKEN: "proxy-only-test-credential",
@@ -164,6 +177,57 @@ async function waitForGrantFenceWaiter() {
   throw new Error("SPEC224_PYTHON_REVOKER_DID_NOT_WAIT_ON_SHARED_FENCE");
 }
 
+async function waitForPythonApprovalQueryBlocked() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql`
+      SELECT pid, query
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND query ILIKE '%approval_requests%'
+      ORDER BY query_start DESC
+      LIMIT 1
+    `;
+    if (row) return row as { pid: number; query: string };
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error("SPEC224_PYTHON_VALIDATOR_QUERY_NOT_BLOCKED");
+}
+
+async function waitForPythonApprovalQueryReleased() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql`
+      SELECT count(*)::int AS count
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND query ILIKE '%approval_requests%'
+    `;
+    if (row.count === 0) return;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error("SPEC224_PYTHON_VALIDATOR_QUERY_DID_NOT_RELEASE");
+}
+
+async function grantFenceHolderCount() {
+  const [grantFence] = await sql`
+    SELECT hashtextextended(
+      ${spec224RecoveryGrantFenceIdentity({ tenantId, grantId })}, 224
+    )::text AS key
+  `;
+  const unsigned = BigInt.asUintN(64, BigInt(grantFence.key));
+  const classId = Number((unsigned >> 32n) & 0xffffffffn);
+  const objectId = Number(unsigned & 0xffffffffn);
+  const [row] = await sql`
+    SELECT count(*)::int AS count FROM pg_locks
+    WHERE locktype = 'advisory' AND granted = true AND objsubid = 1
+      AND classid = ${classId}::oid AND objid = ${objectId}::oid
+  `;
+  return row.count as number;
+}
+
 const baseRequest = () => ({
   grantId,
   tenantId,
@@ -226,15 +290,8 @@ describeDb(
     }, 20_000);
 
     beforeEach(async () => {
-      const parsed = new URL(connectionString);
-      if (
-        parsed.hostname !== "127.0.0.1" ||
-        parsed.port !== "55493" ||
-        parsed.pathname !== "/spec224_d385_test" ||
-        decodeURIComponent(parsed.username) !== "spec224_d385_runtime"
-      ) {
-        throw new Error("SPEC224_TEST_DATABASE_URL_FORBIDDEN");
-      }
+      assertSpec224DisposableDatabaseUrl(connectionString);
+      assertSpec224OwnedPostgresContainer();
       sql = postgres(connectionString, { max: 5, connect_timeout: 5 });
       const [dbIdentity] = await sql`
       SELECT current_database() AS db, current_user AS role, r.rolsuper AS superuser, version()
@@ -392,14 +449,22 @@ describeDb(
       const scope = {
         sourceCommit,
         sourceSha256,
-        sourceFiles: [{ path: sourcePath, sha256: createHash("sha256")
-          .update(await readFile(resolve(repositoryRoot, sourcePath)))
-          .digest("hex") }],
+        sourceFiles: [
+          {
+            path: sourcePath,
+            sha256: createHash("sha256")
+              .update(await readFile(resolve(repositoryRoot, sourcePath)))
+              .digest("hex"),
+          },
+        ],
         workpackageId: "WP-RECOVERY-04",
         allowedWriteSet: [sourcePath],
         allowedOperations: ["protected_dispatch"],
         forbiddenOperations: [
-          "production", "paid_provider", "cloudflare_migration", "shared_worktree",
+          "production",
+          "paid_provider",
+          "cloudflare_migration",
+          "shared_worktree",
         ],
         runtimeScope: "node-control-plane",
         environmentScope: "isolated-non-production",
@@ -561,7 +626,7 @@ describeDb(
       ).resolves.toMatchObject({ result: "INVALID_TENANT" });
     });
 
-    it("loads canonical run/job/Runner state, validates through Python under the fence, then denies local-only trust", async () => {
+    it("holds the shared grant fence through actual Node-to-Python validator timeout", async () => {
       const runId = randomUUID();
       fixtureJobId = randomUUID();
       const attemptId = randomUUID();
@@ -713,28 +778,69 @@ describeDb(
         operation,
         path: sourcePath,
       });
-      const decision = await checkSpec224RuntimeAdmission({
-        tenantId,
-        workerJobId: fixtureJobId,
-        lease: {
-          jobId: fixtureJobId,
-          attemptId,
-          leaseToken,
-          fencingVersion: 4,
-          expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
-        },
+      const blocker = postgres(connectionString, {
+        max: 1,
+        connect_timeout: 5,
       });
-      expect(decision).toEqual({
-        decision: "DENY",
-        reason: "DENIED_LOCAL_ONLY_ATTESTATION",
+      let releaseTableLock: () => void = () => {};
+      let signalTableLock: () => void = () => {};
+      const tableLockReady = new Promise<void>(resolveReady => {
+        signalTableLock = resolveReady;
       });
+      const unblock = new Promise<void>(resolveUnblock => {
+        releaseTableLock = resolveUnblock;
+      });
+      const blockerTransaction = blocker.begin(async tx => {
+        await tx`LOCK TABLE approval_requests IN ACCESS EXCLUSIVE MODE`;
+        signalTableLock();
+        await unblock;
+      });
+      await tableLockReady;
+      try {
+        const startedAt = Date.now();
+        const admission = checkSpec224RuntimeAdmission({
+          tenantId,
+          workerJobId: fixtureJobId,
+          lease: {
+            jobId: fixtureJobId,
+            attemptId,
+            leaseToken,
+            fencingVersion: 4,
+            expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          },
+        });
+        const blockedValidatorQuery = await waitForPythonApprovalQueryBlocked();
+        expect(blockedValidatorQuery.query).toMatch(/approval_requests/i);
+        expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+        const settledBeforeUnlock = await Promise.race([
+          admission.then(
+            () => true,
+            () => true
+          ),
+          new Promise<boolean>(resolveWait =>
+            setTimeout(() => resolveWait(false), 100)
+          ),
+        ]);
+        expect(settledBeforeUnlock).toBe(false);
+        await expect(admission).resolves.toEqual({
+          decision: "DENY",
+          reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+        });
+        expect(Date.now() - startedAt).toBeGreaterThanOrEqual(4_500);
+        expect(await grantFenceHolderCount()).toBe(0);
+      } finally {
+        releaseTableLock();
+        await blockerTransaction;
+        await blocker.end({ timeout: 5 });
+        await waitForPythonApprovalQueryReleased();
+      }
       const validations = await sql`
         SELECT "payloadJson" FROM worker_job_events
         WHERE "workerJobId"=${fixtureJobId} AND "eventType"='SPEC224_RECOVERY_GRANT_VALIDATED'
       `;
-      expect(validations.some(row => row.payloadJson?.result === "VALID")).toBe(
-        true
-      );
-    });
+      expect(
+        validations.some(row => row.payloadJson?.result === "UNKNOWN")
+      ).toBe(true);
+    }, 15_000);
   }
 );

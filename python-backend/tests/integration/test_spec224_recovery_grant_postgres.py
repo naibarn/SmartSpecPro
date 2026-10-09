@@ -1,25 +1,20 @@
 """P-RECOVERY grant contract against a disposable PostgreSQL database."""
 
-import os
+import asyncio
+import json
+import shutil
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urlparse
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
-def _database_url() -> str:
-    raw = os.environ.get("DATABASE_URL", "")
-    parsed = urlparse(raw)
-    name = parsed.path.lstrip("/")
-    if parsed.hostname not in {"localhost", "127.0.0.1"} or not name.startswith("spec224_") or not name.endswith("_test"):
-        raise RuntimeError("P-RECOVERY grant integration requires a loopback spec224_*_test database")
-    if raw.startswith("postgresql://"):
-        raw = "postgresql+asyncpg://" + raw.removeprefix("postgresql://")
-    return raw
+sys.path.insert(0, str(Path(__file__).resolve().parent / "support"))
+from spec224_test_database import database_url as _database_url  # noqa: E402
 
 
 def _scope() -> dict:
