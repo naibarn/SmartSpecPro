@@ -1176,5 +1176,6 @@
   "admin.notificationBell.cost": "Cost",
   "admin.notificationBell.retry": "Retry",
   "admin.notificationBell.nextRetry": "Next retry",
-  "admin.notificationBell.source": "Source"
+  "admin.notificationBell.source": "Source",
+  "admin.notificationBell.emptyList": "Your notification list is empty."
 }

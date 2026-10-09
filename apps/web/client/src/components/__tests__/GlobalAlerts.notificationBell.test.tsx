@@ -79,6 +79,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "admin.notificationBell.retry": "Retry",
         "admin.notificationBell.nextRetry": "Next retry",
         "admin.notificationBell.source": "Source",
+        "admin.notificationBell.emptyList": "Your notification list is empty.",
       };
       return messages[key] ?? key;
     },
@@ -356,7 +357,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
       fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
-    expect(within(screen.getByRole("dialog")).getByText("No notifications yet")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("Your notification list is empty.")).toBeTruthy();
   });
 
   it("uses recent polling data in the bell summary before the dropdown query loads", () => {

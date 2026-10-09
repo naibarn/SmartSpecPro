@@ -2246,7 +2246,7 @@ function GlobalNotificationBell() {
                   fontSize: "13px",
                 }}
               >
-                {t("admin.notificationBell.none")}
+                {t("admin.notificationBell.emptyList")}
               </div>
             )}
           </div>

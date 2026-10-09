@@ -1174,5 +1174,6 @@
   "admin.notificationBell.cost": "ค่าใช้จ่าย",
   "admin.notificationBell.retry": "ลองอีกครั้ง",
   "admin.notificationBell.nextRetry": "กำหนดลองอีกครั้ง",
-  "admin.notificationBell.source": "แหล่งที่มา"
+  "admin.notificationBell.source": "แหล่งที่มา",
+  "admin.notificationBell.emptyList": "ไม่มีการแจ้งเตือนในรายการนี้"
 }
