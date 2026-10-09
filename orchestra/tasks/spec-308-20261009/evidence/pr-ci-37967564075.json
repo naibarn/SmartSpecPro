@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "check": "SPEC-308 Browser Simulation",
+  "head_sha": "6146063781ac3fb2b060e48b4892fdc870d000d2",
+  "run_id": 37967564075,
+  "run_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/37967564075",
+  "canonical_base_sha": "338adeb0605d160081a2ee995d0f639ad3850d9a",
+  "outcomes": {
+    "install_web_workspace_dependencies": "PASS",
+    "build_remotion_render_schema": "PASS",
+    "install_chromium": "PASS",
+    "start_ui_only_vite": "PASS",
+    "playwright_chromium": "PASS",
+    "playwright_tests": "12 passed, 0 failed"
+  },
+  "classification": "SIMULATED_BROWSER_EVIDENCE_NOT_LIVE_ACCEPTANCE",
+  "limitations": [
+    "Synthetic identity and tenant with mocked API responses; no live auth session or server-side tenant authorization was exercised.",
+    "No approved non-production SmartSpecPro runtime or authorized test identity was available.",
+    "No requirement was closed from this simulation alone."
+  ],
+  "artifacts": [
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/320x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/360x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/390x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/767x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/768x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/1440x-authenticated-ci-simulation.png"
+  ],
+  "next_action": "Resolve PR #405's sprintf-js Moderate disposition and PR #403's live MCP authority/remaining exact-head gates before integration; then obtain approved runtime and identity for live SPEC-308 acceptance."
+}

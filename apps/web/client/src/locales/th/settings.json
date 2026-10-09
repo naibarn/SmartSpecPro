@@ -1124,6 +1124,8 @@
   "contentProtection.openWorkspace": "เปิด workspace Content Protection",
   "assistantAppearance.title": "รูปลักษณ์ผู้ช่วย",
   "assistantAppearance.description": "เลือกรูปลักษณ์ปุ่ม Chat และ Feedback โดยไม่เปลี่ยนการตั้งค่าการส่งการแจ้งเตือน",
+  "assistantAppearance.launcherLabel": "AI Chat และ Feedback",
+  "assistantAppearance.launcherAriaLabel": "เปิด AI Chat และ Feedback",
   "assistantAppearance.enabled": "แสดงมาสคอตผู้ช่วย",
   "assistantAppearance.style": "รูปแบบมาสคอต",
   "assistantAppearance.reminders": "แสดงข้อความเตือนการแจ้งเตือนแบบทั่วไป",

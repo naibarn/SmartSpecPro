@@ -12,6 +12,27 @@ const TEST_IDENTITY = {
 type TenantFlagFixture = { enabled: boolean };
 const externalRequestsByPage = new WeakMap<Page, string[]>();
 
+async function installMockEventSource(page: Page) {
+  await page.addInitScript(() => {
+    type Listener = (event: MessageEvent) => void;
+    class MockEventSource {
+      static current: MockEventSource | undefined;
+      private listeners = new Map<string, Listener[]>();
+      constructor() { MockEventSource.current = this; }
+      addEventListener(type: string, listener: Listener) {
+        this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+      }
+      close() {}
+      emit(type: string, data: string) {
+        for (const listener of this.listeners.get(type) ?? []) listener(new MessageEvent(type, { data }));
+      }
+    }
+    (globalThis as any).EventSource = MockEventSource;
+    (window as any).__spec308EmitNotification = (data: unknown) =>
+      MockEventSource.current?.emit("notification", JSON.stringify(data));
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   const externalRequests: string[] = [];
   externalRequestsByPage.set(page, externalRequests);
@@ -24,6 +45,12 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/*", route => {
     const url = new URL(route.request().url());
     if (url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname)) {
+      if (route.request().resourceType() === "document") {
+        return route.fetch().then(async response => {
+          const html = (await response.text()).replace(/<link\b[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>/gi, "");
+          return route.fulfill({ response, body: html });
+        });
+      }
       return route.continue();
     }
     return route.abort("blockedbyclient");
@@ -100,13 +127,13 @@ test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback
   await initializeAuthenticatedBrowser(page, 390, 844);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/chat");
-  const launcher = page.getByRole("button", { name: "Open AI Chat and Feedback" });
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   await expect(launcher).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toHaveAttribute("data-mascot-style", "droplet");
   await expect.poll(() => page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
   expect(await page.evaluate(() => {
     const probe = document.createElement("span");
-    probe.className = "assistant-mascot-greeting";
+    probe.className = "assistant-mascot-greeting-normal";
     document.body.append(probe);
     const style = getComputedStyle(probe);
     const result = { animationName: style.animationName, animationDuration: style.animationDuration };
@@ -143,7 +170,7 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
   await mockAuthenticatedApi(page, TEST_IDENTITY, procedures, tenantFlag, tenantFlagResponses);
   await page.goto("/chat");
 
-  const launcher = page.getByRole("button", { name: "Open AI Chat and Feedback" });
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   await expect(launcher).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
   await launcher.click();
@@ -201,7 +228,15 @@ for (const width of [320, 360, 390, 767, 768, 1440]) {
   test(`SPEC-308 authenticated simulation has no horizontal overflow at ${width}px`, async ({ page }) => {
     await initializeAuthenticatedBrowser(page, width, width < 768 ? 844 : 900);
     await page.goto("/chat");
-    await expect(page.getByRole("button", { name: "Open AI Chat and Feedback" })).toBeVisible();
+    const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+    await expect(launcher).toBeVisible();
+    const launcherBox = await launcher.boundingBox();
+    const bellBox = await page.getByTestId("global-notification-bell").locator("button").boundingBox();
+    expect(launcherBox?.height).toBeGreaterThanOrEqual(44);
+    expect(launcherBox?.width).toBeGreaterThanOrEqual(44);
+    expect(bellBox?.height).toBeGreaterThanOrEqual(44);
+    expect(bellBox?.width).toBeGreaterThanOrEqual(44);
+    if (width >= 768) await expect(page.getByText("AI Chat & Feedback")).toBeVisible();
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport + 1);
     await page.screenshot({ path: `../../orchestra/tasks/spec-308-20261009/evidence/screenshots/${width}x-authenticated-simulation.png`, fullPage: true });
@@ -209,24 +244,7 @@ for (const width of [320, 360, 390, 767, 768, 1440]) {
 }
 
 test("SPEC-308 Bell animates for a new event and retains its existing action", async ({ page }) => {
-  await page.addInitScript(() => {
-    type Listener = (event: MessageEvent) => void;
-    class MockEventSource {
-      static current: MockEventSource | undefined;
-      private listeners = new Map<string, Listener[]>();
-      constructor() { MockEventSource.current = this; }
-      addEventListener(type: string, listener: Listener) {
-        this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-      }
-      close() {}
-      emit(type: string, data: string) {
-        for (const listener of this.listeners.get(type) ?? []) listener(new MessageEvent(type, { data }));
-      }
-    }
-    (globalThis as any).EventSource = MockEventSource;
-    (window as any).__spec308EmitNotification = (data: unknown) =>
-      MockEventSource.current?.emit("notification", JSON.stringify(data));
-  });
+  await installMockEventSource(page);
   await initializeAuthenticatedBrowser(page, 1024, 900);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/chat");
@@ -237,11 +255,33 @@ test("SPEC-308 Bell animates for a new event and retains its existing action", a
     title: "Private notification title",
     content: "Private notification body",
   }));
-  const ringingIcon = page.locator(".assistant-bell-ring");
+  const ringingIcon = page.locator(".assistant-bell-ring-subtle");
   await expect(ringingIcon).toBeVisible();
-  await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring");
+  await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring-subtle");
   await bell.locator("button").click();
   await expect(page.getByText("Mock notification")).toBeVisible();
+});
+
+test("SPEC-308 normal motion uses the distinct bell animation", async ({ page }) => {
+  await installMockEventSource(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("assistant-mascot:v2:tenant-spec-308-browser:30801", JSON.stringify({
+      version: 2,
+      enabled: true,
+      style: "droplet",
+      motion: "normal",
+      notificationReminders: true,
+      chatOnboarding: false,
+    }));
+  });
+  await initializeAuthenticatedBrowser(page, 1024, 900);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/chat");
+  await expect(page.getByTestId("global-notification-bell")).toBeVisible();
+  await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30804 }));
+  const ringingIcon = page.locator(".assistant-bell-ring-normal");
+  await expect(ringingIcon).toBeVisible();
+  await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring");
 });
 
 test("SPEC-308 settings expose five accessible choices and appearance changes stay local", async ({ page }) => {
@@ -282,6 +322,7 @@ test("SPEC-308 settings expose five accessible choices and appearance changes st
 });
 
 test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
+  await page.clock.install();
   const procedures: string[] = [];
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
@@ -296,11 +337,71 @@ test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
   const balloon = page.locator(".assistant-reminder-balloon");
   await expect(balloon).toBeVisible();
   expect(procedures).toEqual(callsBeforeDemo);
+  await page.clock.fastForward(2_999);
+  await expect(balloon).toBeVisible();
+  await page.clock.fastForward(1);
+  await expect(balloon).toHaveCount(0);
+  await page.getByRole("button", { name: "Demo reminder balloon" }).click();
+  await expect(balloon).toBeVisible();
   await balloon.getByRole("button", { name: "Dismiss reminder" }).click();
   await expect(balloon).toHaveCount(0);
   expect(procedures).toEqual(callsBeforeDemo);
   expect(procedures.filter(procedure => /notification.*(read|mark)|mark.*read/i.test(procedure))).toEqual([]);
   // This is an isolated mock API simulation; it does not prove authenticated live acceptance.
+});
+
+test("SPEC-308 live reminder replaces demo hint and mascot still opens Chat", async ({ page }) => {
+  await installMockEventSource(page);
+  await page.clock.install();
+  await initializeAuthenticatedBrowser(page, 390, 844);
+  await page.goto("/chat");
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+  const balloon = page.locator(".assistant-reminder-balloon");
+  await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
+  await expect(balloon).toBeVisible();
+  await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30805 }));
+  await expect(balloon).toHaveCount(0);
+  await page.clock.fastForward(2_100);
+  await expect(balloon).toHaveCount(1);
+  await expect(launcher.locator(".assistant-mascot-greeting-subtle")).toBeVisible();
+  const launcherBox = await launcher.boundingBox();
+  const balloonBox = await balloon.boundingBox();
+  const launcherRight = launcherBox!.x + launcherBox!.width;
+  const balloonRight = balloonBox!.x + balloonBox!.width;
+  const nearestAlignedEdge = Math.min(Math.abs(launcherBox!.x - balloonBox!.x), Math.abs(launcherRight - balloonRight));
+  expect(nearestAlignedEdge).toBeLessThanOrEqual(24);
+  expect(balloonBox!.x).toBeGreaterThanOrEqual(0);
+  expect(balloonBox!.y).toBeGreaterThanOrEqual(0);
+  expect(balloonBox!.x + balloonBox!.width).toBeLessThanOrEqual(390);
+  expect(balloonBox!.y + balloonBox!.height).toBeLessThanOrEqual(844);
+  await launcher.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(balloon).toHaveCount(0);
+});
+
+test("SPEC-308 reminder follows the launcher after drag and stays inside the viewport", async ({ page }) => {
+  await page.clock.install();
+  await initializeAuthenticatedBrowser(page, 390, 844);
+  await page.goto("/chat");
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+  const balloon = page.locator(".assistant-reminder-balloon");
+  await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
+  await expect(balloon).toBeVisible();
+  const initialLauncher = await launcher.boundingBox();
+  await page.mouse.move(initialLauncher!.x + initialLauncher!.width / 2, initialLauncher!.y + initialLauncher!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(180, 300, { steps: 4 });
+  await expect(balloon).toHaveCount(0);
+  await page.mouse.up();
+  await expect(balloon).toBeVisible();
+  const movedLauncher = await launcher.boundingBox();
+  const movedBalloon = await balloon.boundingBox();
+  expect(movedLauncher!.y).toBeLessThan(initialLauncher!.y - 100);
+  expect(Math.abs(movedBalloon!.x - movedLauncher!.x)).toBeLessThanOrEqual(24);
+  expect(movedBalloon!.x).toBeGreaterThanOrEqual(0);
+  expect(movedBalloon!.y).toBeGreaterThanOrEqual(0);
+  expect(movedBalloon!.x + movedBalloon!.width).toBeLessThanOrEqual(390);
+  expect(movedBalloon!.y + movedBalloon!.height).toBeLessThanOrEqual(844);
 });
 
 test("SPEC-308 balloon CTA opens the existing notification Bell", async ({ page }) => {
@@ -313,4 +414,19 @@ test("SPEC-308 balloon CTA opens the existing notification Bell", async ({ page 
   await page.getByRole("button", { name: /View notifications|assistantAppearance.viewNotifications/ }).click();
   await expect(page.getByTestId("global-notification-bell")).toBeVisible();
   await expect(page.getByText("Mock notification")).toBeVisible();
+});
+
+test("SPEC-308 Thai launcher and reminder labels are localized", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "th");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  await mockAuthenticatedApi(page);
+  await page.goto("/settings?tab=notifications");
+  await expect(page.getByRole("button", { name: "เปิด AI Chat และ Feedback" })).toBeVisible();
+  await page.getByRole("button", { name: "ทดลองบอลลูนเตือน" }).click();
+  const balloon = page.locator(".assistant-reminder-balloon");
+  await expect(balloon.getByText("มีแจ้งเตือนใหม่ อย่าลืมเข้าดู")).toBeVisible();
+  await expect(balloon.getByRole("button", { name: "ดูแจ้งเตือน" })).toBeVisible();
 });

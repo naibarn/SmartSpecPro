@@ -35,3 +35,9 @@ Result: 10 passed, 0 failed
 ```
 
 Exact source SHA `02fe8ea64145b1222f68e87801ce32efa2ece5aa`: the full Chromium spec passed 10/10 after commit. Screenshots are from this run. The simulation remains mocked, not live acceptance.
+
+## Latest CI simulation update
+
+The expanded suite subsequently passed 12/12 on source SHA `214f3d04c8b615609d6da3c18444357fd1d5a363` in [run 37966934201](https://github.com/naibarn/SmartSpecPro/actions/runs/37966934201). It adds tenant-flag rollback, Bell animation, balloon dismiss/CTA side-effect checks, settings choices and tenant-scoped local storage, and six viewport overflow checks. The workflow builds the web route's generated `@smartspec/remotion-render` schema before starting Vite. Updated six-width screenshots and row-level evidence notes are recorded in `evidence/browser-simulation-37966934201.md`. The run remains simulated evidence only; no ledger row is closed.
+
+After reconciling PR #399 with canonical `origin/main` `338adeb0605d160081a2ee995d0f639ad3850d9a`, the same 12 tests passed again on exact PR head `6146063781ac3fb2b060e48b4892fdc870d000d2` in [run 37967564075](https://github.com/naibarn/SmartSpecPro/actions/runs/37967564075). This is the latest exact-head simulation evidence and remains mocked, not live acceptance.

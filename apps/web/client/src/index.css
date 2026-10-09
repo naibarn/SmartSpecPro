@@ -628,12 +628,22 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .assistant-bell-ring {
+  .assistant-bell-ring-subtle {
+    animation: assistant-bell-ring-subtle 480ms ease-in-out 1;
+    transform-origin: 50% 15%;
+  }
+
+  .assistant-bell-ring-normal {
     animation: assistant-bell-ring 850ms ease-in-out 1;
     transform-origin: 50% 15%;
   }
 
-  .assistant-mascot-greeting {
+  .assistant-mascot-greeting-subtle {
+    animation: assistant-mascot-greeting-subtle 480ms ease-in-out 1;
+    transform-origin: 50% 75%;
+  }
+
+  .assistant-mascot-greeting-normal {
     animation: assistant-mascot-greeting 800ms ease-in-out 1;
     transform-origin: 50% 75%;
   }
@@ -646,10 +656,12 @@
 
 .assistant-reminder-balloon {
   position: fixed;
-  inset-inline-start: var(--spacing-4);
-  bottom: calc(var(--spacing-10) * 2 + env(safe-area-inset-bottom));
+  left: 0;
+  top: 0;
   z-index: 40;
   max-width: min(calc(var(--spacing-12) * 4.5), calc(100vw - var(--spacing-8)));
+  max-height: calc(100vh - var(--spacing-8));
+  overflow-y: auto;
   align-items: flex-start;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -661,10 +673,12 @@
 
 .assistant-chat-onboarding-hint {
   position: fixed;
-  inset-inline-start: var(--spacing-4);
-  bottom: calc(var(--spacing-10) * 2 + env(safe-area-inset-bottom));
+  left: 0;
+  top: 0;
   z-index: 40;
   max-width: min(calc(var(--spacing-12) * 4.5), calc(100vw - var(--spacing-8)));
+  max-height: calc(100vh - var(--spacing-8));
+  overflow-y: auto;
   align-items: flex-start;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -681,27 +695,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .assistant-bell-ring,
-  .assistant-mascot-greeting {
+  .assistant-bell-ring-subtle,
+  .assistant-bell-ring-normal,
+  .assistant-mascot-greeting-subtle,
+  .assistant-mascot-greeting-normal {
     animation: none !important;
   }
 }
 
-@media (min-width: 640px) {
-  .assistant-reminder-balloon {
-    inset-inline-start: auto;
-    inset-inline-end: var(--spacing-4);
-  }
-
-  .assistant-chat-onboarding-hint {
-    inset-inline-start: auto;
-    inset-inline-end: var(--spacing-4);
-  }
-}
-
 @media (min-width: 768px) {
-  .assistant-reminder-balloon {
-    max-width: calc(100vw - var(--spacing-8));
+  .assistant-reminder-balloon,
+  .assistant-chat-onboarding-hint {
+    max-width: min(calc(var(--spacing-12) * 7.5), calc(100vw - var(--spacing-8)));
   }
 }
 
@@ -717,6 +722,18 @@
   0%, 100% { transform: rotate(0deg); }
   35% { transform: rotate(-10deg); }
   70% { transform: rotate(7deg); }
+}
+
+@keyframes assistant-mascot-greeting-subtle {
+  0%, 100% { transform: rotate(0deg); }
+  45% { transform: rotate(-4deg); }
+  80% { transform: rotate(3deg); }
+}
+
+@keyframes assistant-bell-ring-subtle {
+  0%, 100% { transform: rotate(0deg); }
+  35% { transform: rotate(6deg); }
+  70% { transform: rotate(-4deg); }
 }
 
 @keyframes assistant-hint-enter {

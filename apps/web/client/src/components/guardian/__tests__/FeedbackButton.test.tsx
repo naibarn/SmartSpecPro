@@ -91,6 +91,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.guest.signInRequired": "Sign in to use AI Chat",
       "chat.guest.description": "Public emergency information remains available.",
       "chat.guest.signIn": "Sign in to continue",
+      "assistantAppearance.launcherLabel": "AI Chat & Feedback",
+      "assistantAppearance.launcherAriaLabel": "Open AI Chat & Feedback",
     })[key] ?? key,
   }),
 }));
@@ -150,7 +152,7 @@ describe("assistant reminder balloon eligibility", () => {
 describe("FeedbackButton placement", () => {
   it("keeps the floating trigger readable over dark public sections", () => {
     render(<FeedbackButton />);
-    const trigger = screen.getByLabelText("Open AI Chat and Feedback");
+    const trigger = screen.getByLabelText("Open AI Chat & Feedback");
     expect(trigger).toHaveClass(
       "bg-white",
       "text-slate-900",
@@ -180,14 +182,14 @@ describe("FeedbackButton placement", () => {
   });
 
   function openFeedbackForm() {
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     fireEvent.click(screen.getByRole("tab", { name: "Send Feedback" }));
   }
 
   it("docks to the bottom right by default", () => {
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -197,7 +199,7 @@ describe("FeedbackButton placement", () => {
   it("preserves the existing Chat draft when switching to Task Control and back", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
     fireEvent.change(draft, { target: { value: "Keep this unsent message" } });
     fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
@@ -209,7 +211,7 @@ describe("FeedbackButton placement", () => {
   it("attaches map context without replacing the draft and removes only the context", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
     fireEvent.change(draft, { target: { value: "My existing question" } });
     act(() => window.dispatchEvent(new CustomEvent("smartspec:emergency-map:ask-ai", {
@@ -224,7 +226,7 @@ describe("FeedbackButton placement", () => {
 
   it("keeps the anonymous public panel focused on sign-in and feedback", () => {
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
 
     expect(screen.getByRole("tab", { name: "AI Chat" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Send Feedback" })).toBeInTheDocument();
@@ -247,7 +249,7 @@ describe("FeedbackButton placement", () => {
   it("waits for session restoration before creating an authenticated conversation", async () => {
     feedbackMocks.loading = true;
     const view = render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
 
     expect(screen.getByText("Checking your sign-in…")).toBeInTheDocument();
     expect(feedbackMocks.createChat).not.toHaveBeenCalled();
@@ -271,7 +273,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -288,7 +290,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -303,7 +305,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.left).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.right).toBe("");
@@ -353,7 +355,7 @@ describe("FeedbackButton placement", () => {
   it("opens AI Chat from the single combined Help and Feedback button", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
 
     expect(screen.getByRole("tab", { name: "AI Chat" })).toHaveAttribute(
       "aria-selected",
@@ -380,7 +382,7 @@ describe("FeedbackButton placement", () => {
   it("keeps Task Control Center in the same combined panel", () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
 
     expect(screen.getByTestId("global-control-plane")).toBeInTheDocument();

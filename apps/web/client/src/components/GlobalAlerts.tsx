@@ -1430,7 +1430,7 @@ function GlobalNotificationBell({ mascotEnabled }: { mascotEnabled: boolean }) {
     : null;
   const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
-  const [bellAttention, setBellAttention] = useState(false);
+  const [bellAttentionMotion, setBellAttentionMotion] = useState<"subtle" | "normal" | null>(null);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -1494,10 +1494,10 @@ function GlobalNotificationBell({ mascotEnabled }: { mascotEnabled: boolean }) {
   }, [bellPlacement]);
 
   useEffect(() => {
-    if (!bellAttention) return;
-    const timer = window.setTimeout(() => setBellAttention(false), 850);
+    if (!bellAttentionMotion) return;
+    const timer = window.setTimeout(() => setBellAttentionMotion(null), bellAttentionMotion === "subtle" ? 480 : 850);
     return () => window.clearTimeout(timer);
-  }, [bellAttention]);
+  }, [bellAttentionMotion]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -1645,12 +1645,11 @@ function GlobalNotificationBell({ mascotEnabled }: { mascotEnabled: boolean }) {
     const key = String(notification.id);
     if (assistantAttentionSeenRef.current.has(key)) return;
     assistantAttentionSeenRef.current.add(key);
-    if (
-      mascotEnabled &&
-      loadAssistantMascotPreferences(window.localStorage, assistantAttentionScope).motion !== "off" &&
-      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      setBellAttention(true);
+    const motion = mascotEnabled
+      ? loadAssistantMascotPreferences(window.localStorage, assistantAttentionScope).motion
+      : "off";
+    if (motion !== "off" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setBellAttentionMotion(motion);
     }
     const detail: AssistantNotificationProjection = {
       scopeKey: assistantAttentionScope,
@@ -1839,6 +1838,8 @@ function GlobalNotificationBell({ mascotEnabled }: { mascotEnabled: boolean }) {
           border: "1px solid var(--border, #333)",
           borderRadius: "8px",
           padding: "8px 10px",
+          minWidth: "44px",
+          minHeight: "44px",
           cursor: isBellDragging ? "grabbing" : "grab",
           display: "flex",
           alignItems: "center",
@@ -1849,7 +1850,7 @@ function GlobalNotificationBell({ mascotEnabled }: { mascotEnabled: boolean }) {
           touchAction: "none",
         }}
       >
-        <Bell className={bellAttention ? "assistant-bell-ring" : undefined} style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
+        <Bell className={bellAttentionMotion ? `assistant-bell-ring-${bellAttentionMotion}` : undefined} style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
         {hasUnread ? (
           <span
             style={{

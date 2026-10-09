@@ -1124,6 +1124,8 @@
   "contentProtection.openWorkspace": "Open Content Protection workspace",
   "assistantAppearance.title": "Assistant appearance",
   "assistantAppearance.description": "Choose how the Chat & Feedback launcher looks. Notification delivery settings stay unchanged.",
+  "assistantAppearance.launcherLabel": "AI Chat & Feedback",
+  "assistantAppearance.launcherAriaLabel": "Open AI Chat & Feedback",
   "assistantAppearance.enabled": "Show assistant mascot",
   "assistantAppearance.style": "Mascot style",
   "assistantAppearance.reminders": "Show generic notification reminders",

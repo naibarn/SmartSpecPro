@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useReducer, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useReducer, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -234,6 +234,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const [showMascotDemo, setShowMascotDemo] = useState(false);
   const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
   const [balloonSurfaceBlocked, setBalloonSurfaceBlocked] = useState(false);
+  const [assistantHintStyle, setAssistantHintStyle] = useState<CSSProperties | null>(null);
   const [attention, dispatchAttention] = useReducer(
     reduceNotificationAttention,
     undefined,
@@ -395,9 +396,15 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   useEffect(() => {
     if (!showMascotDemo) return;
-    const timer = window.setTimeout(() => setShowMascotDemo(false), 5000);
+    const timer = window.setTimeout(() => setShowMascotDemo(false), window.innerWidth < 768 ? 3_000 : 5_000);
     return () => window.clearTimeout(timer);
   }, [showMascotDemo]);
+
+  useEffect(() => {
+    if (attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE") {
+      setShowMascotDemo(false);
+    }
+  }, [attention.status]);
 
   const chatHintSessionKey = `assistant-mascot:chat-hint:v1:${mascotIdentity ?? "guest"}`;
   const dismissChatOnboardingHint = useCallback(() => {
@@ -868,6 +875,46 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
   const canShowDecorativeBalloon = !balloonSurfaceBlocked && !routeSuppressesBalloon && !open && !isButtonDragging;
+  const hasVisibleNotificationBalloon = attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
+  const notificationAttentionPending = attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE";
+  const hasVisibleDemoBalloon = showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
+  const hasVisibleOnboardingHint = showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
+  const assistantHintPositionStyle = assistantHintStyle ?? { visibility: "hidden" as const };
+
+  useLayoutEffect(() => {
+    if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
+    const updateHintPosition = () => {
+      const anchor = feedbackButtonRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const hint = document.querySelector<HTMLElement>(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
+      const bounds = hint?.getBoundingClientRect();
+      const hintWidth = bounds?.width ?? Math.min(window.innerWidth < 768 ? 216 : 360, window.innerWidth - 32);
+      const hintHeight = bounds?.height ?? 132;
+      const left = Math.max(16, Math.min(
+        window.innerWidth - hintWidth - 16,
+        anchor.left + anchor.width / 2 - hintWidth / 2,
+      ));
+      let top = anchor.top - hintHeight - 8;
+      if (top < 16) top = anchor.bottom + 8;
+      top = Math.max(16, Math.min(top, window.innerHeight - hintHeight - 16));
+      setAssistantHintStyle({ left: `${left}px`, top: `${top}px` });
+    };
+    updateHintPosition();
+    window.addEventListener("resize", updateHintPosition);
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(updateHintPosition);
+    if (feedbackButtonRef.current) resizeObserver?.observe(feedbackButtonRef.current);
+    const hint = document.querySelector(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
+    if (hint) resizeObserver?.observe(hint);
+    window.visualViewport?.addEventListener("resize", updateHintPosition);
+    return () => {
+      window.removeEventListener("resize", updateHintPosition);
+      window.visualViewport?.removeEventListener("resize", updateHintPosition);
+      resizeObserver?.disconnect();
+    };
+  }, [canShowDecorativeBalloon, feedbackPlacement, hasVisibleDemoBalloon, hasVisibleNotificationBalloon, hasVisibleOnboardingHint]);
+
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
       left: `${feedbackPlacement.x}px`,
@@ -938,8 +985,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           ref={feedbackButtonRef}
           size="sm"
           variant="outline"
-          aria-label="Open AI Chat and Feedback"
-          className="z-50 h-11 w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-8 md:w-auto md:gap-2 md:px-3"
+          aria-label={settingsT("assistantAppearance.launcherAriaLabel")}
+          className="z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"
           style={{
             position: "fixed",
             touchAction: "none",
@@ -953,31 +1000,24 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             ? <AssistantMascot
               style={mascotPreferences.style}
               size={24}
-              className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? "assistant-mascot-greeting" : undefined}
+              className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? `assistant-mascot-greeting-${mascotPreferences.motion}` : undefined}
             />
             : <MessageSquarePlus className="h-4 w-4" />}
-          <span className="hidden md:inline">AI Chat &amp; Feedback</span>
+          <span className="hidden md:inline">{settingsT("assistantAppearance.launcherLabel")}</span>
         </Button>
       </DialogTrigger>
-      {canShowDecorativeBalloon && showMascotDemo && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
-        <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon" role="status" aria-live="polite">
+      {canShowDecorativeBalloon && (hasVisibleDemoBalloon || hasVisibleNotificationBalloon) && (
+        <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon flex-wrap" style={assistantHintPositionStyle} role="status" aria-live="polite" onFocus={() => { if (hasVisibleNotificationBalloon) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() }); }} onBlur={(event) => { if (hasVisibleNotificationBalloon && !event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
-          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => setShowMascotDemo(false)}>×</Button>
+          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); if (hasVisibleNotificationBalloon) dispatchAttention({ type: "DISMISS", now: Date.now() }); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => { setShowMascotDemo(false); if (hasVisibleNotificationBalloon) dispatchAttention({ type: "DISMISS", now: Date.now() }); }}>×</Button>
         </HStack>
       )}
-      {canShowDecorativeBalloon && showChatOnboardingHint && !showMascotDemo && attention.status !== "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding && (
-        <HStack as="aside" gap={2} align="start" className="assistant-chat-onboarding-hint" role="note">
+      {canShowDecorativeBalloon && hasVisibleOnboardingHint && (
+        <HStack as="aside" gap={2} align="start" className="assistant-chat-onboarding-hint flex-wrap" style={assistantHintPositionStyle} role="note">
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.chatHintCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dismissChatOnboardingHint(); setActivePanel("chat"); setOpen(true); }}>{settingsT("assistantAppearance.openChat")}</Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissChatHint")} onClick={dismissChatOnboardingHint}>×</Button>
-        </HStack>
-      )}
-      {canShowDecorativeBalloon && attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
-        <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon" role="status" aria-live="polite" onFocus={() => dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() })} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
-          <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
-          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dispatchAttention({ type: "DISMISS", now: Date.now() }); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => dispatchAttention({ type: "DISMISS", now: Date.now() })}>×</Button>
         </HStack>
       )}
       <DialogContent
