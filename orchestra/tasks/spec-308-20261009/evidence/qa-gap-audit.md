@@ -40,3 +40,28 @@ These are fourteen separate requirement lenses. They establish focused source/te
 - Feature settings and all five options were not exercised in a real authenticated browser session. No runtime/browser test validates balloon click while preserving a live unsaved feedback draft.
 - SSE supplies stable row IDs but no occurrence ID. Repeated updates to a grouped row intentionally do not produce a second visual episode. Critical-category-specific escalation is not inferred from title or metadata and remains unimplemented pending a trusted category contract.
 - No merge, production rollout, acceptance, or deploy occurred. SPEC-308 remains partial until the required integration and runtime gates pass.
+
+## Continuation QA — isolated browser, 2026-10-09
+
+Candidate source before this E2E-only checkpoint: `5cfa6e0987934163389187b8a515f11d47035942`. The test fixture and screenshots were in the task worktree and are rebound to the checkpoint SHA in `evidence/isolated-browser-simulation.md`.
+
+| Dimension | Result | Evidence / boundary |
+|---|---|---|
+| 1. Mocked authenticated bootstrap | PASS | Stable synthetic user/tenant through intercepted API responses. |
+| 2. Mascot renderer on launcher | PASS | Launcher exposes the current `droplet` style renderer. |
+| 3. Existing launcher action | PASS | Launcher opens the existing AI Chat & Feedback dialog. |
+| 4. Chat tab visibility | PASS | Existing Chat tab remains selected and usable. |
+| 5. Feedback tab visibility | PASS | Existing Feedback tab renders. |
+| 6. Feedback draft preservation | PASS | Unsent title persists across tab changes. |
+| 7. Chat draft preservation | PASS | Unsent text persists across Chat ↔ Task Control ↔ Chat. |
+| 8. Reduced-motion media query | PASS | Chromium emulates `prefers-reduced-motion: reduce`; launcher remains available. |
+| 9. 320px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 10. 360px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 11. 390px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 12. 767px breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
+| 13. 768px tablet breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
+| 14. 1440px desktop geometry | PASS | No document horizontal overflow; screenshot captured. |
+
+Command: isolated Playwright Chromium spec; result **7 tests passed**. Exact command, synthetic identity, screenshot paths, and evidence limits are in `evidence/isolated-browser-simulation.md`.
+
+These dimensions are simulated UI checks, not live authenticated acceptance. Bell data/read interactions and authenticated Settings are not established by this run; they remain in the focused component suite and external runtime gate respectively. No ledger row is closed by this continuation because the requirements require additional live, integrated, accessibility, security, or performance evidence.
