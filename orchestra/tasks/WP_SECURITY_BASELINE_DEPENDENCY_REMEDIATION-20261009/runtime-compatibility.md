@@ -1,0 +1,29 @@
+# Runtime exposure and compatibility review
+
+Source: `origin/main` SHA `aae75ee4a18574fa67421a7688f28f7ce8adc715`,
+production audit snapshot `advisories.json`, and read-only dependency review.
+
+| Cluster | Runtime exposure and source evidence | Compatible candidate / focused verification |
+|---|---|---|
+| `proxy-addr` | Transitive through Express 4.22.2. Express sets `trust proxy` to numeric `1` in `apps/web/server/_core/index.ts`; `req.ip` feeds auth, MCP, audit logging, and IP rate limits. Other routes also read `X-Forwarded-For` directly and warrant separate caller review. Advisory specifically affects short-prefix IPv4-mapped IPv6 trust subnets; current numeric policy does not use that subnet predicate. | `2.0.8` patch in same major; narrow `express>proxy-addr` override. Isolated Express checks passed for spoof rejection, mapped subnet correctness, and numeric hop behavior; repository regression awaits CI. |
+| `axios` | Direct `apps/web` dependency. Current callsite is OAuth SDK using configured `ENV.oAuthServerUrl`, fixed auth paths, and timeout. SSRF/HTTP2/redirect advisories still need verification; do not generalize this restricted callsite to future URL inputs. | Audit fixed floor `1.20.0`, same major but material security/redirect changes. Test OAuth exchange, headers, errors, timeout, and redirect behavior. |
+| `undici` | Transitive through active `discord.js` client in `apps/web/server/services/channelAdapters/discord.ts`; WebSocket/response behavior is reachable when that adapter runs. | Highest fixed floor `6.28.1`, same major. Test Discord connection, reconnect, send/receive, malformed/fragmented WebSocket behavior. |
+| `fast-uri` | Transitive via AJV/schema-utils and Remotion bundler in web and `packages/remotion-render`; no direct app import found. Audit includes SSRF and host/authority normalization advisories. | Common fixed floor `3.1.7`; pnpm lockfile resolution proposes `3.1.8`, same major and within AJV's `^3.0.1` range. Test URL canonicalization, SSRF guards, and Remotion bundle/render. |
+| `multer` | Direct production dependency in worker/runner/desktop release, marketplace capture, media jobs, and feedback upload routes. Affects multipart field parsing, abort cleanup, size limits, disk writes, and feedback attachments. | Use at least `2.4.0` to cover high/low/moderate findings; same major. Test field-name/index edge cases, abort/FD cleanup, async fileFilter, orphaned writes, auth/rate limits, cleanup. |
+| `sharp` | Direct at root and web plus Hyperframes path; image normalization, metadata, resize, media and storyboard services use it. | Fixed floor `0.35.5`, same minor. Test formats, metadata, resize, animated-input policy, and Linux native artifact compatibility. |
+| Tiptap / ProseMirror / `markdown-it` | Tiptap is the direct editor family; ProseMirror paste handling and markdown bridge process user content. This intersects editor serialization, paste sanitation, attachments and unsaved drafts, not SPEC-308's notification/chat UI itself. | Tiptap `>=3.30.5`, ProseMirror `>=1.42.3`; align the full Tiptap family. Test schema round-trip, paste/XSS, Markdown bridge, extensions, draft preservation. |
+| `hono` | Transitive only under Hyperframes packages; no application Hono import found. The production audit still lists 8 advisories; runtime exposure is the embedded Hyperframes studio/render service. | Audit action proposes `4.13.13` within Hono 4. Run Hyperframes preview/server and media render regressions. |
+| Content and query parsing (`dompurify`, `sanitize-html`, `mermaid`, `katex`, `qs`) | Rich text, HTML sanitization, diagrams, math, Express and Stripe query paths. Several findings are Moderate/Low but concern user-controlled output or parser inputs. | Audit does not list a safe automatic target for several packages; inspect upstream fixed versions and caller semantics. Test stored XSS/Content Protection, SVG/SMIL, Mermaid, KaTeX trust, malformed query and Markdown complexity. Do not suppress. |
+| YAML/build/tooling (`js-yaml`, `brace-expansion`, `braces`, `postcss`, `source-map-js`, `browserslist`, `baseline-browser-mapping`, `postcss-selector-parser`, `nanoid`) | Mostly transitive build, schema, or Sentry/Remotion paths; `js-yaml` is also direct in shared skill packages. Runtime exposure ranges from parsers to build/render services. | Use exact advisory patch ranges and verify parent semver/peer compatibility. Run schema, build, editor CSS, and Remotion bundle checks. `braces` reports no patched version in audit metadata; inspect safe parent upgrade or record owner-approved residual risk. |
+| `nodemailer` | Direct production email dependency; findings include parser/DoS and cross-tenant SMTP TLS server-name behavior. | Available fixes start at 10.0.5/10.0.6, crossing major 9→10. Require email delivery, transport isolation, tenant SMTP, and message parsing regressions. If major 10 is incompatible, document exact owner approval before accepting residual risk. |
+| Other transitive (`@grpc/grpc-js`, `fflate`, `sprintf-js`) | `@grpc/grpc-js` via dockerode, `fflate` via PostHog, `sprintf-js` via Hyperframes/ONNX; findings affect specific parser/network/tooling callers. | Audit action lists same-major targets for grpc-js and fflate. Validate RPC auth context, malformed archive handling, and format-string inputs where callers expose them. |
+
+## SPEC-308 regression boundary
+
+This dependency branch contains no SPEC-308 UI/source changes. The only current
+runtime-impacting change is the proxy-addr patch under Express. Prior isolated
+browser evidence for Bell/mascot/balloon, Chat, Feedback, Settings, tenant
+fixtures, mobile breakpoints, reduced motion, animation, and draft preservation
+is simulated and is not live acceptance. Re-run deterministic browser tests on
+the final integrated SHA; authenticated acceptance still requires an approved
+non-production runtime and authorized test identity.
