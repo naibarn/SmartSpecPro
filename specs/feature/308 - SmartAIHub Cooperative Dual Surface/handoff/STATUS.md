@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.
-- Manifest generation: 16
+- Next action: Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.
+- Manifest generation: 19
 
 ## Source-declared status and relationship claims
 

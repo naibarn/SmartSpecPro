@@ -54,10 +54,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Dependency/security owners triage the 85 production audit advisories (including 38 high and 1 critical) and approve compatible patched versions in a separate PR; preserve the mandatory audit gate. After the audit passes, complete PR #403 review/integration, rerun #399 on the updated canonical base, and resume authenticated non-production acceptance once the app runtime, authorized identity, and MCP smoke endpoint/token are provisioned.",
+    "next_action": "Keep all 66 requirements OPEN. Resolve the mandatory WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION gate with Security/Runtime Owner disposition for the sole remaining Moderate sprintf-js advisory; do not suppress it. Reconcile #403 focused security and live MCP authority gates. Obtain an approved non-production runtime and authorized test identity, then run the consolidated exact-head SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep production flags off and do not deploy.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
-    "reactivation_predicate": "Compatible high/critical dependency remediations are integrated and the mandatory production audit passes; PR #403 contract/security checks including live MCP authority pass and it is integrated; approved non-production runtime and authorized test identity are available.",
-    "resume_point": "PR #399 latest head 2686a8e6abaafa210d952410f9daeb43b514fad5 (source implementation/browser SHA 02fe8ea64145b1222f68e87801ce32efa2ece5aa). Full isolated Chromium simulation passed 10/10 on the exact implementation SHA. Latest #399 CI run 37898459191 failed on unchanged baseline MCP fixtures (44 failed / 76 passed) while PR #403 remains unintegrated; live smoke fails closed for missing authorized endpoint/token. PR #403 head 779532c22af916f5da0ba47f44c19e1a051c4bf5 passes 118 MCP tests, check:mcp146, and security:mcp146, but fails mandatory dependency audit on 85 baseline advisories (38 high, 1 critical); live smoke also requires external authority. All 66 requirement rows remain OPEN. Next: dependency/security owner triages compatible updates for baseline high/critical advisories, then complete #403 required gates/review. Resume authenticated non-production acceptance only when approved runtime and identity are provisioned. Do not deploy.",
+    "reactivation_predicate": "Security Owner approves a compatible remediation or scoped expiring risk acceptance and the mandatory production audit passes; MCP focused security/contract gates pass and approved live MCP endpoint/identity authority is available; approved non-production app runtime and authorized test tenant/user are provisioned; final exact-SHA SPEC-308 verification is recorded.",
+    "resume_point": "Canonical base origin/main is 2087ba88555cc22901b76abbeccbe066857fa819. SPEC-308 PR #399 source head is 0274d008320aa5223609e25715cdf52df9af89ed: added accessible mascot radio previews, deterministic browser assertions for five choices/selection, appearance-vs-delivery preference isolation and demo balloon no-side-effect behavior, plus decorative balloon suppression for dialog, drag, hidden page, virtual keyboard, editable focus, modal/alert dialog and route changes. These new assertions have not been run on the current source head; existing browser evidence is stale/simulated. All 66 ledger requirements remain OPEN/UNVERIFIED. PR #405 current head 5c559a7ad187806cf810f19c0bdd15c90c165bac: latest dependency compatibility CI passed and mandatory audit still fails on one Moderate sprintf-js@1.1.3 finding. PR #403 current head 03c1c8d2a62c93598f7f996c41e3783c835f61e8: live MCP smoke fails closed for missing authorized endpoint/token; focused security job is pending. No approved non-production runtime/identity is available. Next action requires Security/Runtime Owner disposition and approved test authority; no production deployment.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -73,8 +73,8 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.",
-    "rationale": "The isolated browser suite improves simulated UI evidence, but external runtime, tenant authorization, live MCP contract and integration gates remain open. The task remains partial.",
+    "next_action": "Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.",
+    "rationale": "The implementation branch has gained accessible mascot controls, deterministic mocked browser assertions, and suppression of decorative balloons over active user surfaces. Current exact-head verification is pending/stale; security audit, tenant authorization semantics, live MCP authority, and authenticated non-production acceptance remain external blockers, so the Spec remains partial.",
     "residual_requirements": [
       "All 66 canonical ledger rows remain OPEN; the per-ID implementation/test/evidence map is in orchestra/tasks/spec-308-20261009/evidence/requirement-map.md.",
       "Live Bell/Settings/tenant authorization, accessibility, performance, rollback and production acceptance remain unverified."
@@ -110,13 +110,13 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 16,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-09T16:40:42.914718Z",
+      "last_evidence_at": "2026-10-09T16:53:41.854515Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-09T11:06:48+07:00",
       "spec_last_changed_at": "2026-10-09T11:06:48+07:00"
@@ -202,8 +202,8 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.",
-      "rationale": "The isolated browser suite improves simulated UI evidence, but external runtime, tenant authorization, live MCP contract and integration gates remain open. The task remains partial.",
+      "next_action": "Resolve the mandatory dependency audit with Security/Runtime Owner disposition for the single Moderate sprintf-js advisory; reconcile #403 MCP security and live authority gates. Keep production flags off. Once approved non-production runtime and authorized identity are available, run final exact-SHA SPEC-308 browser, accessibility, responsive, privacy, and performance QA. Keep all 66 requirements OPEN until row-level evidence passes.",
+      "rationale": "The implementation branch has gained accessible mascot controls, deterministic mocked browser assertions, and suppression of decorative balloons over active user surfaces. Current exact-head verification is pending/stale; security audit, tenant authorization semantics, live MCP authority, and authenticated non-production acceptance remain external blockers, so the Spec remains partial.",
       "residual_requirements": [
         "All 66 canonical ledger rows remain OPEN; the per-ID implementation/test/evidence map is in orchestra/tasks/spec-308-20261009/evidence/requirement-map.md.",
         "Live Bell/Settings/tenant authorization, accessibility, performance, rollback and production acceptance remain unverified."
@@ -243,7 +243,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-09T16:40:42.914718Z",
+    "reconciled_at": "2026-10-09T16:53:41.854515Z",
     "sources": [
       {
         "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -311,7 +311,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T16:40:42.914718Z",
+  "updated_at": "2026-10-09T16:55:15.621476Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -319,13 +319,15 @@
       "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md",
       "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
       "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261009.md",
+      "orchestra/tasks/spec-308-20261009/test-design.md",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897928261.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897633316.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37898459191.json"
     ],
-    "freshness": "CURRENT",
+    "freshness": "STALE",
     "required_profiles": [
       "quick"
     ],
