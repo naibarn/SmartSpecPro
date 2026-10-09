@@ -99,6 +99,9 @@ pub enum TransportError {
     Protocol,
     Rejected,
     HttpRejected(u16),
+    CredentialStoreUnavailable,
+    CredentialBindingMismatch,
+    CredentialInvalid,
 }
 
 fn classify_http_status(status: u16) -> Option<TransportError> {
@@ -125,6 +128,7 @@ pub struct NativeControlTransport {
     device_proof: Option<DeviceProofSigner>,
     wss_socket: Option<tungstenite::WebSocket<tungstenite::stream::MaybeTlsStream<TcpStream>>>,
     wss_endpoint: Option<String>,
+    wss_auth_acknowledged: bool,
 }
 
 impl NativeControlTransport {
@@ -140,6 +144,7 @@ impl NativeControlTransport {
             device_proof: None,
             wss_socket: None,
             wss_endpoint: None,
+            wss_auth_acknowledged: false,
         })
     }
 
@@ -151,6 +156,37 @@ impl NativeControlTransport {
         let mut transport = Self::new(access_token, timeout)?;
         transport.device_proof = device_proof;
         Ok(transport)
+    }
+
+    /// Replace the bearer and its matching device proof as one operation.
+    /// A socket authenticated with the previous token is always discarded.
+    pub fn replace_credentials(
+        &mut self,
+        access_token: impl Into<String>,
+        device_proof: Option<DeviceProofSigner>,
+    ) -> Result<bool, String> {
+        let access_token = access_token.into();
+        if access_token.trim().is_empty() {
+            return Err("RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL".into());
+        }
+        if self.access_token == access_token {
+            return Ok(false);
+        }
+        self.access_token = access_token;
+        self.device_proof = device_proof;
+        self.wss_socket = None;
+        self.wss_endpoint = None;
+        self.wss_auth_acknowledged = false;
+        Ok(true)
+    }
+
+    pub fn wss_auth_acknowledged(&self) -> bool {
+        self.wss_auth_acknowledged
+    }
+
+    pub fn close_wss(&mut self) {
+        self.wss_socket = None;
+        self.wss_auth_acknowledged = false;
     }
 
     pub fn receive_server_message(&mut self) -> Result<serde_json::Value, TransportError> {
@@ -296,10 +332,15 @@ impl ControlTransport for NativeControlTransport {
         if self.wss_endpoint.as_deref() != Some(endpoint) {
             self.wss_socket = None;
             self.wss_endpoint = Some(endpoint.to_string());
+            self.wss_auth_acknowledged = false;
         }
         let mut socket = match self.wss_socket.take() {
             Some(socket) => socket,
-            None => self.connect_wss(endpoint)?,
+            None => {
+                let socket = self.connect_wss(endpoint)?;
+                self.wss_auth_acknowledged = true;
+                socket
+            }
         };
         socket
             .send(tungstenite::Message::Text(
@@ -310,12 +351,14 @@ impl ControlTransport for NativeControlTransport {
             .map_err(|error| {
                 eprintln!("runner WSS event send failed: {error:?}");
                 self.wss_socket = None;
+                self.wss_auth_acknowledged = false;
                 TransportError::Unavailable
             })?;
         let message = match read_wss_message_with_retry(self.timeout, || socket.read()) {
             Ok(message) => message,
             Err(error) => {
                 self.wss_socket = None;
+                self.wss_auth_acknowledged = false;
                 return Err(error);
             }
         };
@@ -323,6 +366,7 @@ impl ControlTransport for NativeControlTransport {
             Ok(ack) => ack,
             Err(error) => {
                 self.wss_socket = None;
+                self.wss_auth_acknowledged = false;
                 return Err(error);
             }
         };
@@ -734,5 +778,77 @@ mod tests {
 
         assert_eq!(attempts, 3);
         assert_eq!(parse_ack_message(message), Ok(AckState::Applied));
+    }
+
+    #[test]
+    fn active_transport_reauthenticates_after_credentials_are_rotated() {
+        use std::net::TcpListener;
+        use std::sync::{Arc, Mutex};
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!(
+            "ws://{}/api/runners/control",
+            listener.local_addr().unwrap()
+        );
+        let observed = Arc::new(Mutex::new(Vec::new()));
+        let observed_by_server = Arc::clone(&observed);
+        let server = thread::spawn(move || {
+            for state in ["rejected", "rejected", "applied"] {
+                let (stream, _) = listener.accept().unwrap();
+                let observed = Arc::clone(&observed_by_server);
+                let mut socket = tungstenite::accept_hdr(
+                    stream,
+                    move |request: &tungstenite::handshake::server::Request,
+                          response: tungstenite::handshake::server::Response| {
+                        observed.lock().unwrap().push(
+                            request
+                                .headers()
+                                .get("authorization")
+                                .and_then(|value| value.to_str().ok())
+                                .unwrap_or_default()
+                                .to_owned(),
+                        );
+                        Ok(response)
+                    },
+                )
+                .unwrap();
+                socket
+                    .send(tungstenite::Message::Text(
+                        r#"{"ackState":"accepted"}"#.into(),
+                    ))
+                    .unwrap();
+                let _event = socket.read().unwrap();
+                socket
+                    .send(tungstenite::Message::Text(
+                        format!(r#"{{"ackState":"{state}"}}"#).into(),
+                    ))
+                    .unwrap();
+            }
+        });
+
+        let mut transport = NativeControlTransport::new("token-A", Duration::from_secs(2)).unwrap();
+        assert_eq!(
+            transport.send_wss(&endpoint, &event()),
+            Ok(AckState::Rejected)
+        );
+
+        // Closing the socket alone must not be mistaken for credential rotation.
+        transport.close_wss();
+        assert_eq!(
+            transport.send_wss(&endpoint, &event()),
+            Ok(AckState::Rejected)
+        );
+
+        transport.replace_credentials("token-B", None).unwrap();
+        assert_eq!(
+            transport.send_wss(&endpoint, &event()),
+            Ok(AckState::Applied)
+        );
+        server.join().unwrap();
+        assert_eq!(
+            *observed.lock().unwrap(),
+            ["Bearer token-A", "Bearer token-A", "Bearer token-B"]
+        );
     }
 }

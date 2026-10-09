@@ -780,7 +780,7 @@ fn open_browser(url: &str) -> Result<(), String> {
         .map_err(|_| "RUNNER_BROWSER_OPEN_FAILED".into())
 }
 
-fn token_valid_for(token: &str, minimum_seconds: u64) -> bool {
+pub fn token_valid_for(token: &str, minimum_seconds: u64) -> bool {
     let Some(payload) = token.split('.').nth(1) else {
         return false;
     };
