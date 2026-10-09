@@ -19,5 +19,5 @@
 
 ## Artifact and acceptance boundary
 
-- Windows unsigned review build `0.2.25` was dispatched from `main` at `51d2e57490e1fe115aeec9188c84e765e9f33fe3`; GitHub Actions run: https://github.com/naibarn/SmartSpecPro/actions/runs/37872195649 . The run was queued when recorded; artifact success is not yet established.
-- The installed Windows Runner `0.2.24` does not contain this UI change. After the review artifact succeeds, install it and click “รีเฟรชสถานะ” while the connection is in retry/reauth state. Confirm visible progress, a fresh credential attempt, and the resulting status. Until that Windows interaction is observed, the fix is integrated and locally verified but not Windows-accepted.
+- Windows unsigned review build `0.2.25` from `main` source `51d2e57490e1fe115aeec9188c84e765e9f33fe3` — PASS. GitHub Actions run: https://github.com/naibarn/SmartSpecPro/actions/runs/37872195649 . Artifact: `SmartAIHub Runner_0.2.25_x64-setup.exe`; SHA-256 `844471a042dae980e46855f7f6db8b5d694a15a53621cecf971a3a44f4cc4810`; manifest signing status `unsigned-review`.
+- Download the artifact from https://github.com/naibarn/SmartSpecPro/actions/runs/37872195649/artifacts/11591400268 . The installed Windows Runner `0.2.24` does not contain this UI change. Install `0.2.25` and click “รีเฟรชสถานะ” while the connection is in retry/reauth state. Confirm visible progress, a fresh credential attempt, and the resulting status. Until that Windows interaction is observed, the fix is integrated and locally verified but not Windows-accepted.

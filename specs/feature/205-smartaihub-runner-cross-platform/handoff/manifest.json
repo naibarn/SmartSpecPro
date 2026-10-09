@@ -133,11 +133,11 @@
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "After Windows unsigned review build 0.2.25 (run 37872195649) completes, install it on the Windows host and manually click 'รีเฟรชสถานะ' while the connection is retrying/reauth-required. Confirm the busy state, fresh credential refresh, and resulting status; retain Windows acceptance as pending until that evidence exists.",
+    "next_action": "Install Windows unsigned review artifact 0.2.25 (SHA-256 844471a042dae980e46855f7f6db8b5d694a15a53621cecf971a3a44f4cc4810) from GitHub Actions artifact 11591400268, then manually click 'รีเฟรชสถานะ' while the connection is retrying/reauth-required. Confirm the busy state, fresh credential refresh, and resulting status; Windows interaction acceptance remains pending.",
     "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Read handoff/evidence/runner-desktop-manual-refresh-button-20261009.md and handoff/evidence/runner-token-session-refresh-fix-20261009.md. Source 51d2e574 is integrated; local UI syntax and credential retry tests passed. Windows unsigned review build run 37872195649 is queued. Continue with artifact outcome, then install and interactively verify the button on Windows.",
-    "waiting_predicate": "Reactivate when GitHub Actions run 37872195649 has completed and its Windows unsigned review artifact is available; then install that artifact on the Windows host and capture the manual refresh result."
+    "resume_point": "Read handoff/evidence/runner-desktop-manual-refresh-button-20261009.md and handoff/evidence/runner-token-session-refresh-fix-20261009.md. Source 51d2e574 is integrated, and unsigned Windows review installer 0.2.25 built successfully from that source. Install the artifact and interactively verify the refresh button on Windows.",
+    "waiting_predicate": "Reactivate when artifact 11591400268 has been installed on the Windows host and the manual refresh result is available; verify that the new progress state appears and refresh status recovers or reports the appropriate actionable reauthentication state."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -369,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -1273,7 +1273,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T01:58:43.446961Z",
+  "updated_at": "2026-10-09T02:09:29.685435Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
