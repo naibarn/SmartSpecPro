@@ -87,3 +87,10 @@ Runner or the overall Spec has passed acceptance.
   from the generic error code alone. Backend deployment and a live Windows
   refresh-boundary check are still required before calling the reported runtime
   issue resolved.
+
+## Refresh failure reproduced after server restart — 2026-10-09
+
+- The user rebuilt/restarted the server at source revision `2de300109fe9d8ba4c81c25ecfad194e15e03a0e` and reopened Windows Runner Desktop `0.2.24`; the same `RUNNER_CONNECT_REQUEST_FAILED` remained visible. Therefore the earlier bounded replay repair alone did not resolve the runtime failure.
+- Web service logs showed repeated WSS `SESSION_EXPIRED` rejections for `local-runner` before that restart. Inspection found the authorized session controller used a 15-minute TTL, did not extend it when a valid active session re-authorized, and refresh did not restore the session.
+- A second source repair is integrated at `ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847`. Focused session and route tests pass 29/29. See `runner-token-session-refresh-fix-20261009.md`.
+- The user's deployed build is still `2de30010`, so this repair requires a new build/restart from `ea286e0` followed by live Windows refresh-boundary verification. No live post-fix acceptance is claimed yet.

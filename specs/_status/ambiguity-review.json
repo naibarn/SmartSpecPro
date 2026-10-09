@@ -91801,7 +91801,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "f072ec8448884b88970310fab954c97a465fc6b9",
+      "canonical_sha": "ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -92194,9 +92194,14 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.102236Z",
       "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "class": "ACCEPTANCE",
+        "id": "WINDOWS_HOSTED_RUNNER_VERIFY_PENDING",
+        "next_action": "Run the pending Windows-hosted Runner workflow with release publication disabled and record its exact run and candidate revision.",
+        "root_cause": "The Windows-hosted Runner workflow for the repaired Codex shim candidate remains pending; the user's successful Windows Runner Codex prompt is a smoke check, not platform test-suite evidence."
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/205-smartaihub-runner-cross-platform",
       "record_kind": "CANONICAL_SPEC",

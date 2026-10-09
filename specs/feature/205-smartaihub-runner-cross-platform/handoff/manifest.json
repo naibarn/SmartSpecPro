@@ -129,15 +129,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e",
+    "expected_canonical_sha": "ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "The bounded refresh-token replay route repair is integrated at 326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e and its focused route regression test passed. Deploy the backend change through the normal release path, then verify automatic refresh and Control Plane session continuity on the Windows Runner. The Windows-hosted Runner shim workflow is also still pending; continue independent implementation work against the Windows-first baseline. Keep WSL2 and Debian evidence separate.",
+    "next_action": "The user deployed/restarted source 2de300109fe9d8ba4c81c25ecfad194e15e03a0e, but Windows Runner 0.2.24 still showed RUNNER_CONNECT_REQUEST_FAILED. Web logs recorded local-runner WSS SESSION_EXPIRED events. The 15-minute authorized-session TTL repair is integrated at ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847 with 29/29 focused tests passing. Build and restart from ea286e0, then verify Windows automatic refresh and WSS continuity; keep WSL2 and Debian evidence separate.",
     "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Read handoff/evidence/windows-first-runner-routing-20261009.md. Server-side bounded replay defect fixed and focused test passed; resume at backend deployment plus live Windows token-refresh verification and pending Windows-hosted shim workflow.",
-    "waiting_predicate": "Windows-hosted Runner workflow for the repaired candidate completes; independent implementation work may proceed while it runs."
+    "resume_point": "Read handoff/evidence/runner-token-session-refresh-fix-20261009.md. The previous deployed SHA 2de30010 still failed. Build/restart canonical SHA ea286e0 and complete the live Windows refresh-boundary check before claiming resolution.",
+    "waiting_predicate": "Reactivate after a server build/restart from ea286e0 and user-provided Windows Runner status/log evidence showing the refresh outcome and WSS session continuity."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -369,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 13,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -398,7 +398,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e",
+    "canonical_sha": "ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847",
     "integrated": true,
     "integrated_at": "2026-10-09T01:20:42Z"
   },
@@ -1273,11 +1273,12 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T01:21:15.182500Z",
+  "updated_at": "2026-10-09T01:44:03.731855Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md"
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [],

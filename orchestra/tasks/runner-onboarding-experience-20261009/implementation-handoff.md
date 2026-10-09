@@ -69,3 +69,11 @@ No implementation continuation is required for this checkpoint. If the user requ
   test passed. The server deployment and live Windows refresh-boundary check
   remain pending, so the screenshot's specific runtime failure is not yet
   confirmed resolved.
+
+## Auto-refresh session expiry follow-up — 2026-10-09
+
+- User-provided build/restart evidence identifies deployed source `2de300109fe9d8ba4c81c25ecfad194e15e03a0e`; reopening Windows Runner Desktop `0.2.24` still shows `RUNNER_CONNECT_REQUEST_FAILED`.
+- Web logs include WSS `SESSION_EXPIRED` rejections for `local-runner`. Root cause: authorized Runner session contracts expire after 15 minutes without renewal; refresh did not restore/renew the session.
+- Repair integrated at `ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847`; focused route/session tests pass 29/29. Revoked or identity-mismatched sessions remain denied.
+- Next action: rebuild/restart from `ea286e0`, then verify automatic refresh and WSS continuity on Windows. WSL2 and Debian remain separate acceptance lanes.
+- Evidence: `specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md`.

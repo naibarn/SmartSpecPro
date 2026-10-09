@@ -2955,7 +2955,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 15,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/205-smartaihub-runner-cross-platform",
