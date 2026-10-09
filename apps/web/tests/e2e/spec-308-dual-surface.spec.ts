@@ -152,8 +152,6 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
   await expect.poll(() => tenantFlagResponses[tenantFlagResponses.length - 1]).toBe(false);
-  await expect(launcher.locator("svg.lucide-message-square-plus")).toBeVisible();
-  await expect(launcher.locator("[data-mascot-style]")).toHaveCount(0);
 
   await expect(dialog).toBeVisible();
   await expect(page.getByRole("tab", { name: "Feedback" })).toHaveAttribute("aria-selected", "true");
@@ -164,10 +162,13 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
   await page.getByRole("tab", { name: "AI Chat" }).click();
   await expect(page.getByPlaceholder("Type a message or / for skills...")).toHaveValue(chatDraft);
   await expect(page.getByRole("tab", { name: "Task Control" })).toBeVisible();
-  await expect(launcher.locator("svg")).toBeVisible();
   expect(procedures.filter(procedure =>
     /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
   )).toEqual(mutationCallsBeforeRefresh);
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(launcher.locator("svg.lucide-message-square-plus")).toBeVisible();
+  await expect(launcher.locator("[data-mascot-style]")).toHaveCount(0);
   // This is a deterministic mock API simulation. Focus refresh may re-read
   // queries; it must not create a conversation, submit feedback, or mark a
   // notification read as a side effect of the tenant presentation rollback.
