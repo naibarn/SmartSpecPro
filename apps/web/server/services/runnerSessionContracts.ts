@@ -50,7 +50,7 @@ export class RunnerSessionError extends Error {
       | "SESSION_EXPIRED"
       | "SESSION_STATE_INVALID"
       | "CAPABILITY_BINDING_INVALID",
-    message = code
+    message = code,
   ) {
     super(message);
     this.name = "RunnerSessionError";
@@ -96,7 +96,7 @@ export class RunnerSessionController {
       session =>
         session.runnerId === runnerId &&
         session.state !== "revoked" &&
-        session.state !== "expired"
+        session.state !== "expired",
     )?.runnerSessionId;
     if (existingId) this.revoke(existingId, "runner_repaired");
     const createdAt = this.clock.now();
@@ -117,9 +117,7 @@ export class RunnerSessionController {
     return structuredClone(record);
   }
 
-  repair(
-    input: Parameters<RunnerSessionController["start"]>[0]
-  ): RunnerSessionRecord {
+  repair(input: Parameters<RunnerSessionController["start"]>[0]): RunnerSessionRecord {
     return this.start(input);
   }
 
@@ -139,10 +137,7 @@ export class RunnerSessionController {
     if (input.tenantId) {
       this.activeByRunner.delete(`${record.tenantId}:${record.runnerId}`);
       record.tenantId = input.tenantId;
-      this.activeByRunner.set(
-        `${record.tenantId}:${record.runnerId}`,
-        record.runnerSessionId
-      );
+      this.activeByRunner.set(`${record.tenantId}:${record.runnerId}`, record.runnerSessionId);
     }
     record.approvedAt = this.clock.now().toISOString();
     this.emit("runner_pairing_approved", record);
@@ -156,7 +151,7 @@ export class RunnerSessionController {
     const record = this.getActive(input.runnerSessionId);
     if (record.state === "authorized" || record.state === "capability_ready") {
       record.expiresAt = new Date(
-        this.clock.now().getTime() + DEFAULT_AUTHORIZED_SESSION_TTL_MS
+        this.clock.now().getTime() + DEFAULT_AUTHORIZED_SESSION_TTL_MS,
       ).toISOString();
       return structuredClone(record);
     }
@@ -166,7 +161,7 @@ export class RunnerSessionController {
       throw new RunnerSessionError("DEVICE_PROOF_REQUIRED");
     record.state = "authorized";
     record.expiresAt = new Date(
-      this.clock.now().getTime() + DEFAULT_AUTHORIZED_SESSION_TTL_MS
+      this.clock.now().getTime() + DEFAULT_AUTHORIZED_SESSION_TTL_MS,
     ).toISOString();
     record.authorizedAt = this.clock.now().toISOString();
     this.emit("runner_authorized", record);
@@ -183,8 +178,7 @@ export class RunnerSessionController {
   }): RunnerSessionRecord {
     const existing = this.sessions.get(input.runnerSessionId);
     if (existing) {
-      if (existing.state === "revoked")
-        throw new RunnerSessionError("SESSION_REVOKED");
+      if (existing.state === "revoked") throw new RunnerSessionError("SESSION_REVOKED");
       if (
         existing.runnerId !== input.runnerId ||
         existing.tenantId !== input.tenantId ||
@@ -195,14 +189,10 @@ export class RunnerSessionController {
       existing.state = "authorized";
       existing.expiresAt = new Date(
         this.clock.now().getTime() +
-          (input.ttlMs ?? DEFAULT_AUTHORIZED_SESSION_TTL_MS)
+          (input.ttlMs ?? DEFAULT_AUTHORIZED_SESSION_TTL_MS),
       ).toISOString();
       existing.authorizedAt = this.clock.now().toISOString();
-      this.emit(
-        "runner_authorized",
-        existing,
-        "restored_from_active_control_plane_session"
-      );
+      this.emit("runner_authorized", existing, "restored_from_active_control_plane_session");
       return structuredClone(existing);
     }
     const now = this.clock.now();
@@ -215,21 +205,12 @@ export class RunnerSessionController {
       nonce: "restored-session",
       state: "authorized",
       createdAt: now.toISOString(),
-      expiresAt: new Date(
-        now.getTime() + (input.ttlMs ?? DEFAULT_AUTHORIZED_SESSION_TTL_MS)
-      ).toISOString(),
+      expiresAt: new Date(now.getTime() + (input.ttlMs ?? DEFAULT_AUTHORIZED_SESSION_TTL_MS)).toISOString(),
       authorizedAt: now.toISOString(),
     };
     this.sessions.set(record.runnerSessionId, record);
-    this.activeByRunner.set(
-      `${record.tenantId}:${record.runnerId}`,
-      record.runnerSessionId
-    );
-    this.emit(
-      "runner_authorized",
-      record,
-      "restored_from_active_control_plane_session"
-    );
+    this.activeByRunner.set(`${record.tenantId}:${record.runnerId}`, record.runnerSessionId);
+    this.emit("runner_authorized", record, "restored_from_active_control_plane_session");
     return structuredClone(record);
   }
 
@@ -244,14 +225,8 @@ export class RunnerSessionController {
       throw new RunnerSessionError("SESSION_STATE_INVALID");
     if (input.probeState !== "ready")
       throw new RunnerSessionError("CAPABILITY_NOT_READY");
-    record.capabilitySnapshotId = assertText(
-      input.capabilitySnapshotId,
-      "CAPABILITY_BINDING_INVALID"
-    );
-    record.snapshotRevision = assertText(
-      input.snapshotRevision,
-      "CAPABILITY_BINDING_INVALID"
-    );
+    record.capabilitySnapshotId = assertText(input.capabilitySnapshotId, "CAPABILITY_BINDING_INVALID");
+    record.snapshotRevision = assertText(input.snapshotRevision, "CAPABILITY_BINDING_INVALID");
     record.state = "capability_ready";
     this.emit("runner_capability_ready", record);
     return structuredClone(record);
@@ -259,10 +234,8 @@ export class RunnerSessionController {
 
   assertAuthorized(runnerSessionId: string): RunnerSessionRecord {
     const record = this.getActive(runnerSessionId);
-    if (record.state === "revoked")
-      throw new RunnerSessionError("SESSION_REVOKED");
-    if (record.state === "expired")
-      throw new RunnerSessionError("SESSION_EXPIRED");
+    if (record.state === "revoked") throw new RunnerSessionError("SESSION_REVOKED");
+    if (record.state === "expired") throw new RunnerSessionError("SESSION_EXPIRED");
     if (record.state !== "authorized" && record.state !== "capability_ready")
       throw new RunnerSessionError("SESSION_STATE_INVALID");
     return structuredClone(record);
@@ -270,10 +243,8 @@ export class RunnerSessionController {
 
   assertCapabilityReady(runnerSessionId: string): RunnerSessionRecord {
     const record = this.getActive(runnerSessionId);
-    if (record.state === "revoked")
-      throw new RunnerSessionError("SESSION_REVOKED");
-    if (record.state === "expired")
-      throw new RunnerSessionError("SESSION_EXPIRED");
+    if (record.state === "revoked") throw new RunnerSessionError("SESSION_REVOKED");
+    if (record.state === "expired") throw new RunnerSessionError("SESSION_EXPIRED");
     if (record.state !== "capability_ready")
       throw new RunnerSessionError("CAPABILITY_NOT_READY");
     return structuredClone(record);
@@ -283,10 +254,7 @@ export class RunnerSessionController {
     const record = this.sessions.get(runnerSessionId);
     if (!record || record.state === "revoked") return;
     record.state = "revoked";
-    if (
-      this.activeByRunner.get(`${record.tenantId}:${record.runnerId}`) ===
-      runnerSessionId
-    )
+    if (this.activeByRunner.get(`${record.tenantId}:${record.runnerId}`) === runnerSessionId)
       this.activeByRunner.delete(`${record.tenantId}:${record.runnerId}`);
     this.emit("runner_session_revoked", record, reason);
   }
@@ -298,10 +266,7 @@ export class RunnerSessionController {
   private getActive(runnerSessionId: string): RunnerSessionRecord {
     const record = this.sessions.get(runnerSessionId);
     if (!record) throw new RunnerSessionError("CHALLENGE_INVALID");
-    if (
-      record.state !== "revoked" &&
-      Date.parse(record.expiresAt) <= this.clock.now().getTime()
-    ) {
+    if (record.state !== "revoked" && Date.parse(record.expiresAt) <= this.clock.now().getTime()) {
       record.state = "expired";
       this.emit("runner_session_expired", record);
       throw new RunnerSessionError("SESSION_EXPIRED");
@@ -312,7 +277,7 @@ export class RunnerSessionController {
   private emit(
     type: RunnerSessionAuditEvent["type"],
     record: RunnerSessionRecord,
-    reason?: string
+    reason?: string,
   ): void {
     this.events.push({
       type,
