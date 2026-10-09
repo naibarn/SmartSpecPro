@@ -498,10 +498,10 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
   await page.mouse.move(180, 300, { steps: 4 });
   await expect(balloon).toHaveCount(0);
   await page.mouse.up();
-  // FeedbackButton remeasures the remounted hint on requestAnimationFrame;
-  // the installed Playwright clock controls rAF, so advance one frame before
-  // asserting the final anchor geometry.
-  await page.clock.runFor(32);
+  // FeedbackButton remeasures after the final launcher placement commits and
+  // the remounted hint settles across two animation frames. The installed
+  // Playwright clock controls rAF, so advance those frames before measuring.
+  await page.clock.runFor(64);
   await expect(balloon).toBeVisible();
   let lastAlignment: { launcher: unknown; balloon: unknown; delta: number } | null = null;
   try {
