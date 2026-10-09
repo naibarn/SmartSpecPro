@@ -75,5 +75,5 @@ No implementation continuation is required for this checkpoint. If the user requ
 - User-provided build/restart evidence identifies deployed source `2de300109fe9d8ba4c81c25ecfad194e15e03a0e`; reopening Windows Runner Desktop `0.2.24` still shows `RUNNER_CONNECT_REQUEST_FAILED`.
 - Web logs include WSS `SESSION_EXPIRED` rejections for `local-runner`. Root cause: authorized Runner session contracts expire after 15 minutes without renewal; refresh did not restore/renew the session.
 - Repair integrated at `ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847`; focused route/session tests pass 29/29. Revoked or identity-mismatched sessions remain denied.
-- Next action: rebuild/restart from `ea286e0`, then verify automatic refresh and WSS continuity on Windows. WSL2 and Debian remain separate acceptance lanes.
+- Canonical build from `d00569c58e400a5e65991adf7ff3e3f2c924b27e` passed, and `smartspec-web.service` restarted healthy at 08:47 +07. Next action: reconnect/reopen Windows Runner and verify automatic refresh plus WSS continuity. WSL2 and Debian remain separate acceptance lanes.
 - Evidence: `specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md`.

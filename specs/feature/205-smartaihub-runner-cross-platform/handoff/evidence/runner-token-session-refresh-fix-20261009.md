@@ -22,3 +22,9 @@
 ## Next action
 
 Build and restart the server from canonical source `ea286e0ae6eb3be97b844c90a2e29a4e6e3ae847`, reopen Windows Runner Desktop, and verify refresh plus WSS session continuity after the access-token refresh boundary. Keep WSL2 and Debian acceptance separate. Do not call the issue resolved until this live check passes.
+
+## Post-fix build and service restart
+
+- Canonical build from source `d00569c58e400a5e65991adf7ff3e3f2c924b27e` — `BUILD_PASSED`; required repair commit `ea286e0` was verified in the source. Build artifact digest: `sha256:c576832840e791a114ce6521f343c9bbf202d93ef5cfe03e03d172371c262237`.
+- Restarted `smartspec-web.service` at `2026-10-09 08:47:49 +07`; service is active and `http://localhost:3000/healthz` returned `{"status":"ok"}`.
+- No Windows refresh request or post-restart WSS event was visible in the web journal yet. The live client refresh boundary remains the final acceptance check.
