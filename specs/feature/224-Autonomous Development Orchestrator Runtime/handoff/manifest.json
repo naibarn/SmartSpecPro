@@ -875,15 +875,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
+    "expected_canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "On the authorized Windows host, have the Runner owner review/accept/install unsigned review artifact 11612928361 (0.2.27, source a709ec4084243386848785bd276f53445c7d36b8) as documented in the SPEC-205 evidence. Capture fresh authenticated session/capability/Codex and workspace/source evidence. Do not dispatch until remote trust, job-specific P-RECOVERY approval, economic authority, and persisted-proof checks independently pass.",
+    "next_action": "On the authorized Windows host, after the normal Control Plane release containing PR #412 is verified, click Connect via browser and approve the Runner again. Then capture status, doctor, capabilities, explicit rescan, session continuity, authenticated Control Plane acknowledgement, Codex readiness, and workspace/source binding. Capture exact installed version/source SHA; the screenshot does not prove binary provenance. Do not dispatch a protected task.",
     "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_FRESH_CAPABILITY_AND_CODEX_READINESS",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "Latest canonical source at review-build time: a709ec4084243386848785bd276f53445c7d36b8. Windows Runner review artifact 0.2.27 (Actions artifact 11612928361) built successfully from that exact SHA, SHA-256 0ca9ea4af942ff3e0f1f162e4033f659493f3b67f1a2a313281123577a1f2755, unsigned-review only; exact evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md. It contains the integrated 409 recovery, session refresh/continuity, manual refresh, and PR #401 Codex login-status changes. No Windows installation or acceptance, live backend SHA, current session/capability acknowledgement, workspace/source binding, owner P-RECOVERY approval, remote trust approval, or economic provisioning is established. Keep protected dispatch ineligible and both remote trust classes DENY.",
-    "waiting_predicate": "Reactivate the Windows gate when the authorized Windows owner installs and accepts artifact 11612928361 and the authenticated Control Plane readback confirms a fresh session and capability snapshot with Codex policy readiness and exact workspace/source binding. Protected dispatch remains separately gated by remote-trust authority, tenant-owner P-RECOVERY grant, economics, and persisted proof."
+    "resume_point": "Latest canonical source at review-build time: a709ec4084243386848785bd276f53445c7d36b8. Windows Runner review artifact 0.2.27 (Actions artifact 11612928361) built successfully from that exact SHA, SHA-256 0ca9ea4af942ff3e0f1f162e4033f659493f3b67f1a2a313281123577a1f2755, unsigned-review only; exact evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md. It contains the integrated 409 recovery, session refresh/continuity, manual refresh, and PR #401 Codex login-status changes. No Windows installation or acceptance, live backend SHA, current session/capability acknowledgement, workspace/source binding, owner P-RECOVERY approval, remote trust approval, or economic provisioning is established. Keep protected dispatch ineligible and both remote trust classes DENY. Windows review build 0.2.27 completed from source a709ec4084243386848785bd276f53445c7d36b8; artifact 11612928361 is unsigned-review only (see runner-desktop-review-build-0.2.27-20261009.md). The user screenshot shows the Runner stopped and automatic refresh rejected with HTTP 400; its clipped version line and absent response body do not prove installed source or backend SHA. PR #412 merged at 1df17e691f710df466737c586838c37f7c90ff6a corrects unexpected refresh exception classification to sanitized HTTP 500; route tests passed 24/24. Deployment, browser reconnection, session/capability acknowledgement, Codex policy, and workspace/source binding remain unverified. Evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md.",
+    "waiting_predicate": "Reactivate after the authorized owner verifies the normal Control Plane release containing PR #412, completes Windows browser reconnection, and supplies fresh authenticated session/capability/Codex/workspace-source evidence. SPEC-224 dispatch remains separately gated by remote-trust approval, tenant-owner P-RECOVERY, economics, and persisted proof."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 25,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,7 +1123,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
+    "canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
     "integrated": true,
     "integrated_at": "2026-10-09T09:15:39Z"
   },
@@ -3244,7 +3244,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T11:35:11.288035Z",
+  "updated_at": "2026-10-09T12:19:38.527964Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3261,13 +3261,14 @@
       "apps/web/drizzle.config.ts with static DATABASE_URL placeholder: drizzle-kit check passed; no DB connection",
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md",
       "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json (stale preparation evidence, not authority)",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
+    "sha": "1df17e691f710df466737c586838c37f7c90ff6a",
     "status": "PARTIAL",
     "task_regressions": []
   }
