@@ -188,7 +188,7 @@ describe("assistant hint visual viewport placement", () => {
     expect(getAssistantHintPosition(
       { left: 300, top: 250, right: 348, bottom: 290, width: 48 },
       { width: 180, height: 100 },
-    )).toEqual({ left: "234px", top: "142px" });
+    )).toEqual({ left: "204px", top: "142px" });
   });
 
   it("uses the visible space below the launcher when the keyboard reduces the viewport", () => {

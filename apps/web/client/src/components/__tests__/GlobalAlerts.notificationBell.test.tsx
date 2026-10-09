@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, act, within } from "@testing-library/react";
 import React from "react";
 
 // Mutable mock data that tests can change
@@ -356,7 +356,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
       fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
-    expect(screen.getByText("No notifications yet")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("No notifications yet")).toBeTruthy();
   });
 
   it("uses recent polling data in the bell summary before the dropdown query loads", () => {
@@ -408,7 +408,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
       window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT));
     });
 
-    expect(screen.getByText("No notifications yet")).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).toContain("No notifications yet");
   });
 
   it("uses the existing Notification Center route when the bell is unavailable", async () => {
