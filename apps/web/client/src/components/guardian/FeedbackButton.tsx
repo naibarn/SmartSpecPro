@@ -84,6 +84,22 @@ type FeedbackDragState = {
 
 type HelpPanel = "chat" | "control-plane" | "feedback";
 
+export function isAssistantBalloonEligible(input: {
+  dialogOpen: boolean;
+  dragging: boolean;
+  documentVisible: boolean;
+  keyboardOpen: boolean;
+  editableControlFocused: boolean;
+  criticalOverlayOpen: boolean;
+}) {
+  return !input.dialogOpen
+    && !input.dragging
+    && input.documentVisible
+    && !input.keyboardOpen
+    && !input.editableControlFocused
+    && !input.criticalOverlayOpen;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -175,7 +191,7 @@ function FeedbackButtonFeatureGate() {
 }
 
 function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const mascotIdentity = user?.id && user.currentTenantId ? assistantMascotStorageKey(user.id, user.currentTenantId) : null;
   const { t } = useScopedTranslation("chat");
@@ -205,6 +221,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const [mascotPreferences, setMascotPreferences] = useState(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
   const [showMascotDemo, setShowMascotDemo] = useState(false);
   const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
+  const [balloonSurfaceBlocked, setBalloonSurfaceBlocked] = useState(false);
   const [attention, dispatchAttention] = useReducer(
     reduceNotificationAttention,
     undefined,
@@ -223,6 +240,52 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const openRef = useRef(open);
   const pasteImageCounterRef = useRef(0);
   const chatConversationPromiseRef = useRef<Promise<number> | null>(null);
+  const previousLocationRef = useRef(location);
+
+  useEffect(() => {
+    const updateSurfaceEligibility = () => {
+      const activeElement = document.activeElement;
+      const editableControlFocused = activeElement instanceof HTMLElement && activeElement.matches(
+        'input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="hidden"]), textarea, select, [contenteditable="true"], [role="textbox"]',
+      );
+      const viewport = window.visualViewport;
+      const keyboardOpen = Boolean(viewport && window.innerHeight - viewport.height > 120);
+      const criticalOverlayOpen = Boolean(document.querySelector(
+        '[role="alertdialog"], [aria-modal="true"]:not([data-state="closed"])',
+      ));
+      setBalloonSurfaceBlocked(!isAssistantBalloonEligible({
+        dialogOpen: open,
+        dragging: isButtonDragging,
+        documentVisible: document.visibilityState !== "hidden",
+        keyboardOpen,
+        editableControlFocused,
+        criticalOverlayOpen,
+      }));
+    };
+    updateSurfaceEligibility();
+    document.addEventListener("focusin", updateSurfaceEligibility);
+    document.addEventListener("focusout", updateSurfaceEligibility);
+    document.addEventListener("visibilitychange", updateSurfaceEligibility);
+    window.addEventListener("resize", updateSurfaceEligibility);
+    window.visualViewport?.addEventListener("resize", updateSurfaceEligibility);
+    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(updateSurfaceEligibility);
+    observer?.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["role", "aria-modal", "data-state"] });
+    return () => {
+      document.removeEventListener("focusin", updateSurfaceEligibility);
+      document.removeEventListener("focusout", updateSurfaceEligibility);
+      document.removeEventListener("visibilitychange", updateSurfaceEligibility);
+      window.removeEventListener("resize", updateSurfaceEligibility);
+      window.visualViewport?.removeEventListener("resize", updateSurfaceEligibility);
+      observer?.disconnect();
+    };
+  }, [open, isButtonDragging]);
+
+  useEffect(() => {
+    if (previousLocationRef.current === location) return;
+    previousLocationRef.current = location;
+    dispatchAttention({ type: "DISMISS", now: Date.now() });
+    setShowChatOnboardingHint(false);
+  }, [location]);
 
   useEffect(() => {
     if (!mascotEnabled || !mascotIdentity || typeof window === "undefined") {
@@ -283,18 +346,18 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   useEffect(() => {
     if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
     const hidden = document.visibilityState === "hidden";
-    if (open || isButtonDragging || hidden) {
+    if (open || isButtonDragging || hidden || balloonSurfaceBlocked) {
       dispatchAttention({ type: "SUSPEND", now: Date.now() });
       return;
     }
     dispatchAttention({ type: "SET_VISIBLE", visible: true, now: Date.now() });
-  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging]);
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked]);
 
   useEffect(() => {
     if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
     const syncVisibility = () => {
       const now = Date.now();
-      if (document.visibilityState === "hidden" || open || isButtonDragging) {
+      if (document.visibilityState === "hidden" || open || isButtonDragging || balloonSurfaceBlocked) {
         dispatchAttention({ type: "SUSPEND", now });
       } else {
         dispatchAttention({ type: "SET_VISIBLE", visible: true, now });
@@ -308,7 +371,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       window.removeEventListener("focus", syncVisibility);
       window.removeEventListener("blur", syncVisibility);
     };
-  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging]);
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked]);
 
   useEffect(() => {
     if (attention.deadlineAt === null) return;
@@ -790,6 +853,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   );
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
+  const canShowDecorativeBalloon = !balloonSurfaceBlocked && !open && !isButtonDragging;
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
       left: `${feedbackPlacement.x}px`,
@@ -881,21 +945,21 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           <span className="hidden md:inline">AI Chat &amp; Feedback</span>
         </Button>
       </DialogTrigger>
-      {showMascotDemo && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
+      {canShowDecorativeBalloon && showMascotDemo && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
         <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon" role="status" aria-live="polite">
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => setShowMascotDemo(false)}>×</Button>
         </HStack>
       )}
-      {showChatOnboardingHint && !showMascotDemo && attention.status !== "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding && (
+      {canShowDecorativeBalloon && showChatOnboardingHint && !showMascotDemo && attention.status !== "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding && (
         <HStack as="aside" gap={2} align="start" className="assistant-chat-onboarding-hint" role="note">
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.chatHintCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dismissChatOnboardingHint(); setActivePanel("chat"); setOpen(true); }}>{settingsT("assistantAppearance.openChat")}</Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissChatHint")} onClick={dismissChatOnboardingHint}>×</Button>
         </HStack>
       )}
-      {attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
+      {canShowDecorativeBalloon && attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
         <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon" role="status" aria-live="polite" onFocus={() => dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() })} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dispatchAttention({ type: "DISMISS", now: Date.now() }); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>

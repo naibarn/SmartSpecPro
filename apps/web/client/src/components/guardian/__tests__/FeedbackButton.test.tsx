@@ -95,7 +95,33 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
   }),
 }));
 
-import { FeedbackButton } from "../FeedbackButton";
+import { FeedbackButton, isAssistantBalloonEligible } from "../FeedbackButton";
+
+describe("assistant reminder balloon eligibility", () => {
+  const eligibleSurface = {
+    dialogOpen: false,
+    dragging: false,
+    documentVisible: true,
+    keyboardOpen: false,
+    editableControlFocused: false,
+    criticalOverlayOpen: false,
+  };
+
+  it.each([
+    ["an open dialog", { dialogOpen: true }],
+    ["launcher dragging", { dragging: true }],
+    ["a hidden document", { documentVisible: false }],
+    ["an open virtual keyboard", { keyboardOpen: true }],
+    ["a focused editable control", { editableControlFocused: true }],
+    ["a modal or critical overlay", { criticalOverlayOpen: true }],
+  ])("suppresses decorative balloons during %s", (_reason, blocked) => {
+    expect(isAssistantBalloonEligible({ ...eligibleSurface, ...blocked })).toBe(false);
+  });
+
+  it("allows a balloon when no blocking surface is active", () => {
+    expect(isAssistantBalloonEligible(eligibleSurface)).toBe(true);
+  });
+});
 
 describe("FeedbackButton placement", () => {
   it("keeps the floating trigger readable over dark public sections", () => {
