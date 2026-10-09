@@ -514,6 +514,7 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
       );
       const balloonLayout = await balloon.evaluate(node => {
         const style = getComputedStyle(node);
+        const viewport = window.visualViewport;
         return {
           rect: node.getBoundingClientRect().toJSON(),
           inlineLeft: (node as HTMLElement).style.left,
@@ -522,6 +523,14 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
           computedTop: style.top,
           computedWidth: style.width,
           transform: style.transform,
+          window: { width: window.innerWidth, height: window.innerHeight },
+          visualViewport: viewport && {
+            width: viewport.width,
+            height: viewport.height,
+            offsetLeft: viewport.offsetLeft,
+            offsetTop: viewport.offsetTop,
+            scale: viewport.scale,
+          },
         };
       });
       lastAlignment = { launcher: launcherBox, balloon: balloonLayout, delta };
