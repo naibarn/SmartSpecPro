@@ -934,7 +934,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       setAssistantHintStyle({ left: `${left}px`, top: `${top}px` });
     };
     updateHintPosition();
+    // Re-measure after the launcher/balloon have completed this layout pass.
+    // This is needed after a drag, when the hint is intentionally unmounted
+    // during movement and its first measurement can still reflect the old spot.
+    const positionFrame = window.requestAnimationFrame(updateHintPosition);
     window.addEventListener("resize", updateHintPosition);
+    window.addEventListener("scroll", updateHintPosition, true);
     const resizeObserver = typeof ResizeObserver === "undefined"
       ? null
       : new ResizeObserver(updateHintPosition);
@@ -943,7 +948,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     if (hint) resizeObserver?.observe(hint);
     window.visualViewport?.addEventListener("resize", updateHintPosition);
     return () => {
+      window.cancelAnimationFrame(positionFrame);
       window.removeEventListener("resize", updateHintPosition);
+      window.removeEventListener("scroll", updateHintPosition, true);
       window.visualViewport?.removeEventListener("resize", updateHintPosition);
       resizeObserver?.disconnect();
     };
