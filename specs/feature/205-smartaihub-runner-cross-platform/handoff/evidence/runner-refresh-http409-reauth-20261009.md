@@ -19,5 +19,5 @@
 
 ## Artifact and acceptance boundary
 
-- Windows unsigned review build `0.2.26` was dispatched from source `14e705d366aa7eac5e95abd321823a6983536906`; workflow: https://github.com/naibarn/SmartSpecPro/actions/runs/37877391451 . The run was queued when this evidence was written.
-- After installing the artifact, click browser reconnect once and approve the Runner to replace the stale/conflicting session. Then verify the UI stops automatic 30-second retries on any remaining 409 and shows the browser reconnect instruction. Windows runtime acceptance is pending.
+- Windows unsigned review build `0.2.26` from source `14e705d366aa7eac5e95abd321823a6983536906` — PASS. GitHub Actions run: https://github.com/naibarn/SmartSpecPro/actions/runs/37877391451 . Artifact: `SmartAIHub Runner_0.2.26_x64-setup.exe`; SHA-256 `b9d3ae520a630458a8dd04b51e037880cc9782b53815f60bff23fa6c9cf52bf0`; signing status `unsigned-review`.
+- Download the artifact from https://github.com/naibarn/SmartSpecPro/actions/runs/37877391451/artifacts/11593701163 . After installing it, click browser reconnect once and approve the Runner to replace the stale/conflicting session. Then verify the UI stops automatic 30-second retries on any remaining 409 and shows the browser reconnect instruction. Windows runtime acceptance is pending.
