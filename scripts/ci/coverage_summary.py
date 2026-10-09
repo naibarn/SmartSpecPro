@@ -74,7 +74,7 @@ def main() -> int:
     ap.add_argument("--python-xml", required=True)
     ap.add_argument("--api-generator", required=True)
     ap.add_argument("--control-plane", required=True)
-    ap.add_argument("--desktop-app", required=True)
+    ap.add_argument("--desktop-app", required=False, default="")
     ap.add_argument("--smartspecweb", required=False, default="")
     ap.add_argument("--out-json", default="coverage_summary.json")
     ap.add_argument("--out-md", default="coverage_summary.md")
@@ -93,13 +93,22 @@ def main() -> int:
     for name, path in [
         ("api-generator", args.api_generator),
         ("control-plane", args.control_plane),
-        ("desktop-app", args.desktop_app),
     ]:
         if os.path.exists(path):
             covs.append(parse_js_coverage_summary(path, name))
         else:
             covs.append(Cov(name, None, source=f"missing:{path}"))
             missing.append(path)
+
+    # The Tauri shell is verified by Rust tests, which do not emit JS coverage.
+    # Keep support for an explicitly supplied desktop coverage file, but do not
+    # fabricate a metric or require a nonexistent legacy apps/desktop artifact.
+    if args.desktop_app:
+        if os.path.exists(args.desktop_app):
+            covs.append(parse_js_coverage_summary(args.desktop_app, "desktop-app"))
+        else:
+            covs.append(Cov("desktop-app", None, source=f"missing:{args.desktop_app}"))
+            missing.append(args.desktop_app)
 
     if args.smartspecweb:
         if os.path.exists(args.smartspecweb):
@@ -120,7 +129,7 @@ def main() -> int:
         md.append(
             f"| {c.name} | {fmt_pct(c.lines_pct)} | {fmt_pct(c.statements_pct)} | {fmt_pct(c.functions_pct)} | {fmt_pct(c.branches_pct)} | {c.source} |\n"
         )
-    md.append("\n> Notes: Coverage thresholds are enforced in each package's test command. This report aggregates outputs.\n")
+    md.append("\n> Notes: Coverage thresholds are enforced in each package's test command. This report aggregates outputs. Tauri shell Rust tests are required but do not produce JavaScript coverage.\n")
     with open(args.out_md, "w", encoding="utf-8") as f:
         f.write("".join(md))
 
