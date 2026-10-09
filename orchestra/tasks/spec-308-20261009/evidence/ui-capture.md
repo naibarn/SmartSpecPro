@@ -1,14 +1,18 @@
 # SPEC-308 UI capture record
 
-Capture date: 2026-10-09. Source commit `a430a747cf4991cbb7fbbdf5351dad984f29231b`. Vite client returned HTTP 200. The server-backed app could not start because `DATABASE_URL` was missing, so the screenshots were captured from the client dev server with a mocked `GET /api/tenant/current` response enabling the SPEC-308 tenant flag. Session is unauthenticated/guest.
+Capture date: 2026-10-09. Source candidate contains the mobile width/breakpoint fixes recorded in QA round 13. Vite client returned HTTP 200. Captures used a mocked `GET /api/tenant/current` response enabling the SPEC-308 tenant flag; the app session was unauthenticated/guest. The deployment visual allow was set to `true` for the local Vite process only.
 
-The global visual allow was set to `true` in the local Vite process only. Screenshot crops hide the unrelated transient system-error toast caused by the unavailable backend; no product CSS/state was changed for capture. These component crops establish size/placement/copy only. They do not establish authenticated Bell behavior, Settings, theme contrast, or full-page runtime acceptance.
+The crops hide the unrelated transient system-error toast caused by the unavailable backend; no product styles were changed to hide it. These captures establish responsive component geometry and generic text only. They do not establish authenticated Bell behavior, Settings, theme contrast, or full-page runtime acceptance.
 
-| Viewport | Launcher bounds | Reminder bounds | Files |
-|---|---:|---:|---|
-| 320×800 | 44×44 at x=16, y=740 | 288×66 at x=16, y=654 | `320x800-launcher-crop.png`, `320x800-balloon-crop.png` |
-| 390×844 | 44×44 at x=16, y=784 | 358×66 at x=16, y=698 | `390x844-launcher-crop.png`, `390x844-balloon-crop.png` |
-| 768×1024 | 165.4×32 at x=586.6, y=976 | 453.8×58 at x=298.2, y=886 | `768x1024-launcher-crop.png`, `768x1024-balloon-crop.png` |
-| 1440×900 | 165.4×32 at x=1258.6, y=852 | 453.8×58 at x=970.2, y=762 | `1440x900-launcher-crop.png`, `1440x900-balloon-crop.png` |
+| Viewport | Launcher bounds | Notification balloon bounds | Onboarding hint | Files |
+|---|---:|---:|---|---|
+| 320×844 | 44×44 at (16, 784) | 216×66 at (16, 698) | 216×66 at (16, 698); CTA opened guest Chat dialog | `320x844-launcher-crop.png`, `320x844-balloon-crop.png`, `320x844-onboarding-crop.png` |
+| 360×844 | 44×44 at (16, 784) | 216×66 at (16, 698) | 216×66 at (16, 698) | `360x844-*` |
+| 375×844 | 44×44 at (16, 784) | 216×66 at (16, 698) | 216×66 at (16, 698) | `375x844-*` |
+| 390×844 | 44×44 at (16, 784) | 216×66 at (16, 698) | 216×66 at (16, 698) | `390x844-*` |
+| 767×844 | 44×44 at (707, 784) | 216×66 at (535, 698) | 216×66 at (535, 698) | `767x844-*` |
+| 768×900 | 165.4×32 at (586.6, 852) | 453.8×58 at (298.2, 762) | hidden | `768x900-launcher-crop.png`, `768x900-balloon-crop.png` |
+| 1024×900 | 165.4×32 at (842.6, 852) | 453.8×58 at (554.2, 762) | hidden | `1024x900-launcher-crop.png`, `1024x900-balloon-crop.png` |
+| 1440×900 | 165.4×32 at (1258.6, 852) | 453.8×58 at (970.2, 762) | hidden | `1440x900-launcher-crop.png`, `1440x900-balloon-crop.png` |
 
-The mobile launcher keeps a 44×44 hit target and compact mascot icon. At 768px and 1440px, `AI Chat & Feedback` is visible. The reminder remains within each captured viewport, including 320px width. The app's own notification toast was not included in these crops; the crop is not a claim that it is absent in a full page.
+At widths below 768px, both reminder surfaces fit within the viewport and remain at or below 216px wide (the selected token-derived limit under the spec's ~220px target). The long launcher label is hidden below 768px and visible at 768px and above, independent of the optional onboarding setting. The onboarding hint appears only for the mobile guest capture and is suppressed when the notification balloon is shown. The app's own notification toast is not represented by these crops.

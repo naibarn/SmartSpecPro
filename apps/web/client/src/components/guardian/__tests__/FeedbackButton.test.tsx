@@ -107,6 +107,7 @@ describe("FeedbackButton placement", () => {
       "dark:bg-white",
       "dark:text-slate-900",
     );
+    expect(screen.getByText("AI Chat & Feedback")).toHaveClass("hidden", "md:inline");
   });
 
   beforeEach(() => {

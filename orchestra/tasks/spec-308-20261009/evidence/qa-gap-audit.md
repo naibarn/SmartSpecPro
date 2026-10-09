@@ -2,7 +2,7 @@
 
 Baseline under review: worktree branch `codex/spec-308-dual-surface-20261009`, reconciled with latest `origin/main` `c7a4fbd1ff09214b462e8660b2626049d87f01c7`. Source commit `a430a747cf4991cbb7fbbdf5351dad984f29231b`; tests rerun at branch merge tip `5ff91647b53d040ea93c59e90e208d27b645b568`: 8 files / 83 tests passed with Happy DOM. Repository typecheck was not run per `AGENTS.md`.
 
-These are twelve separate requirement lenses. They establish focused source/test evidence, not production acceptance.
+These are fourteen separate requirement lenses. They establish focused source/test evidence, not production acceptance.
 
 | Round | QA lens | Finding and action | Retest / evidence | Result |
 |---|---|---|---|---|
@@ -18,6 +18,8 @@ These are twelve separate requirement lenses. They establish focused source/test
 | 10 | Responsive launcher and reminder | Found undefined `--spacing-20`, fixed to existing token multiplication and recaptured. Launcher is 44×44 at 320/390px; label visible at 768/1440px. Balloons stay within all four viewports. | Component crops in `evidence/screenshots/` at 320×800, 390×844, 768×1024, 1440×900. | PASS (component capture only) |
 | 11 | Motion, focus, timers and visibility | Bell animation is single-shot and guarded by user motion preference and OS reduced-motion. Attention deadlines clean up; focus, hidden tab, open dialog and dragging suspend attention. | Reducer timing/focus tests and reduced-motion helper test; CSS/source inspection. | PASS (no assistive-tech/browser interaction run) |
 | 12 | Full focused regression / artifact integrity | Re-ran all changed-surface and legacy bell/launcher suites on merge tip `5ff91647`; validated both locale JSON files. | 8 files / 83 tests pass; `python3 -m json.tool` for EN/TH; scoped `git diff --check` passed before commit. | PASS |
+| 13 | Mobile breakpoint and bounded reminder geometry | Recapture showed the prior “fits viewport” check was weaker than SPEC-308: balloons were 288px at 320px, and long launcher label could be hidden by the onboarding preference. Bounded mobile reminder surfaces to 216px, aligned 640–767px hints with the right-docked launcher, made the desktop/tablet label persistent, and implemented the optional one-time mobile Chat onboarding hint with separate CTA/dismiss targets. | Playwright component captures at 320/360/375/390/767/768/1024/1440px; mobile hint CTA opened the guest Chat dialog; hidden below 768px and shown from 768px. Latest captures in `ui-capture.md`. | PASS (mocked guest runtime) |
+| 14 | Motion and onboarding preference | Added a one-shot mascot greeting only for a visible new notification, guarded by the user motion setting and OS reduced-motion. Renamed the setting to accurately control onboarding; onboarding and notification hints do not stack. | Focused regression 8 files / 83 tests; local Playwright confirmed onboarding and notification balloon are separate surfaces. | PASS (no physical-device assistive-tech run) |
 
 ## Fixes made during the loop
 
@@ -28,6 +30,8 @@ These are twelve separate requirement lenses. They establish focused source/test
 - Added Bell-unavailable fallback and tab visibility reactivation handling.
 - Replaced new settings layout wrappers with Astryx VStack/HStack/Heading/Text/Button primitives and moved the balloon layout to a scoped class using app/Astryx tokens.
 - Responsive browser inspection caught that `--spacing-20` was not defined in the active theme; the balloon offset now uses `--spacing-10 * 2`, and all three viewport positions were recaptured.
+- A second viewport audit caught oversized mobile balloon geometry and the label/onboarding conflation. Mobile hint/balloon width now uses the defined `--spacing-12` token scale, and the desktop/tablet label no longer depends on onboarding preference.
+- The optional mobile onboarding hint is session-scoped per user+tenant (guest hint is generic), dismissible, and opens the existing Chat dialog only after explicit user activation.
 
 ## Gates not established by these rounds
 

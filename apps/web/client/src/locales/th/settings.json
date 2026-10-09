@@ -1127,7 +1127,7 @@
   "assistantAppearance.enabled": "แสดงมาสคอตผู้ช่วย",
   "assistantAppearance.style": "รูปแบบมาสคอต",
   "assistantAppearance.reminders": "แสดงข้อความเตือนการแจ้งเตือนแบบทั่วไป",
-  "assistantAppearance.label": "แสดงป้าย Chat และ Feedback",
+  "assistantAppearance.onboarding": "แสดงคำแนะนำ Chat และ Feedback",
   "assistantAppearance.motion": "การเคลื่อนไหวของมาสคอต",
   "assistantAppearance.off": "ปิด",
   "assistantAppearance.subtle": "เล็กน้อย",
@@ -1135,5 +1135,8 @@
   "assistantAppearance.demo": "ทดลองบอลลูนเตือน",
   "assistantAppearance.reminderCopy": "มีแจ้งเตือนใหม่ อย่าลืมเข้าดู",
   "assistantAppearance.viewNotifications": "ดูแจ้งเตือน",
-  "assistantAppearance.dismissReminder": "ปิดข้อความเตือน"
+  "assistantAppearance.dismissReminder": "ปิดข้อความเตือน",
+  "assistantAppearance.chatHintCopy": "ถาม AI หรือแจ้งปัญหาได้ตรงนี้",
+  "assistantAppearance.openChat": "เปิดแชต",
+  "assistantAppearance.dismissChatHint": "ปิดคำแนะนำ Chat และ Feedback"
 }

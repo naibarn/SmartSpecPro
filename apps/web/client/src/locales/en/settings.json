@@ -1127,7 +1127,7 @@
   "assistantAppearance.enabled": "Show assistant mascot",
   "assistantAppearance.style": "Mascot style",
   "assistantAppearance.reminders": "Show generic notification reminders",
-  "assistantAppearance.label": "Show Chat & Feedback label",
+  "assistantAppearance.onboarding": "Show Chat & Feedback onboarding hint",
   "assistantAppearance.motion": "Mascot motion",
   "assistantAppearance.off": "Off",
   "assistantAppearance.subtle": "Subtle",
@@ -1135,5 +1135,8 @@
   "assistantAppearance.demo": "Demo reminder balloon",
   "assistantAppearance.reminderCopy": "You have a new notification — take a look.",
   "assistantAppearance.viewNotifications": "View notifications",
-  "assistantAppearance.dismissReminder": "Dismiss reminder"
+  "assistantAppearance.dismissReminder": "Dismiss reminder",
+  "assistantAppearance.chatHintCopy": "Ask AI or send feedback here.",
+  "assistantAppearance.openChat": "Open chat",
+  "assistantAppearance.dismissChatHint": "Dismiss Chat & Feedback hint"
 }

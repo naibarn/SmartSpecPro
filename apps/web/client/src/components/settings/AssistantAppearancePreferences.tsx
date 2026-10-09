@@ -83,7 +83,7 @@ export function AssistantAppearancePreferences() {
             <Switch id="assistant-notification-reminders" checked={preferences.notificationReminders} onCheckedChange={checked => update({ notificationReminders: checked })} />
           </HStack>
           <HStack as="div" gap={4} align="center" justify="between">
-            <Label htmlFor="assistant-chat-onboarding">{t("assistantAppearance.label")}</Label>
+            <Label htmlFor="assistant-chat-onboarding">{t("assistantAppearance.onboarding")}</Label>
             <Switch id="assistant-chat-onboarding" checked={preferences.chatOnboarding} onCheckedChange={checked => update({ chatOnboarding: checked })} />
           </HStack>
           <HStack as="div" gap={4} align="center" justify="between">

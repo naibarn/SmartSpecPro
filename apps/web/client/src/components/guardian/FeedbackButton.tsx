@@ -204,6 +204,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   );
   const [mascotPreferences, setMascotPreferences] = useState(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
   const [showMascotDemo, setShowMascotDemo] = useState(false);
+  const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
   const [attention, dispatchAttention] = useReducer(
     reduceNotificationAttention,
     undefined,
@@ -320,6 +321,47 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     const timer = window.setTimeout(() => setShowMascotDemo(false), 5000);
     return () => window.clearTimeout(timer);
   }, [showMascotDemo]);
+
+  const chatHintSessionKey = `assistant-mascot:chat-hint:v1:${mascotIdentity ?? "guest"}`;
+  const dismissChatOnboardingHint = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(chatHintSessionKey, "dismissed");
+    } catch {
+      // Session storage is optional; the in-memory dismissal still applies.
+    }
+    setShowChatOnboardingHint(false);
+  }, [chatHintSessionKey]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.chatOnboarding || viewportWidth >= 768) {
+      setShowChatOnboardingHint(false);
+      return;
+    }
+    if (open || showMascotDemo || attention.status === "BALLOON_VISIBLE") {
+      dismissChatOnboardingHint();
+      return;
+    }
+    if (isButtonDragging || document.visibilityState === "hidden") {
+      setShowChatOnboardingHint(false);
+      return;
+    }
+    try {
+      setShowChatOnboardingHint(window.sessionStorage.getItem(chatHintSessionKey) !== "dismissed");
+    } catch {
+      setShowChatOnboardingHint(true);
+    }
+  }, [
+    attention.status,
+    chatHintSessionKey,
+    dismissChatOnboardingHint,
+    isButtonDragging,
+    mascotEnabled,
+    mascotPreferences.chatOnboarding,
+    mascotPreferences.enabled,
+    open,
+    showMascotDemo,
+    viewportWidth,
+  ]);
 
   const createChatConversationMutation =
     trpc.chat.createConversation.useMutation({
@@ -830,9 +872,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           onClick={handleFeedbackClick}
         >
           {mascotEnabled && mascotPreferences.enabled
-            ? <AssistantMascot style={mascotPreferences.style} size={24} />
+            ? <AssistantMascot
+              style={mascotPreferences.style}
+              size={24}
+              className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? "assistant-mascot-greeting" : undefined}
+            />
             : <MessageSquarePlus className="h-4 w-4" />}
-          <span className={mascotEnabled && !mascotPreferences.chatOnboarding ? "hidden" : "hidden md:inline"}>AI Chat &amp; Feedback</span>
+          <span className="hidden md:inline">AI Chat &amp; Feedback</span>
         </Button>
       </DialogTrigger>
       {showMascotDemo && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
@@ -840,6 +886,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => setShowMascotDemo(false)}>×</Button>
+        </HStack>
+      )}
+      {showChatOnboardingHint && !showMascotDemo && attention.status !== "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding && (
+        <HStack as="aside" gap={2} align="start" className="assistant-chat-onboarding-hint" role="note">
+          <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.chatHintCopy")}</Text>
+          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dismissChatOnboardingHint(); setActivePanel("chat"); setOpen(true); }}>{settingsT("assistantAppearance.openChat")}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissChatHint")} onClick={dismissChatOnboardingHint}>×</Button>
         </HStack>
       )}
       {attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
