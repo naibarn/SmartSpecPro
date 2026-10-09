@@ -321,6 +321,67 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
                 environment_scope="isolated-non-production",
             )
+            from app.models.approval import ApprovalRequest, ApprovalResponse, ApprovalStatus
+            from app.models.audit_log import AuditLog
+            from sqlalchemy import select
+
+            request_row = (await session.execute(
+                select(ApprovalRequest).where(ApprovalRequest.id == grant_id)
+            )).scalar_one()
+            request_row.status = ApprovalStatus.REJECTED
+            await session.commit()
+            invalid_approval = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256="b" * 64, workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
+            assert invalid_approval["result"] == "INVALID_AUTHORITY"
+            request_row.status = ApprovalStatus.APPROVED
+            response_row = (await session.execute(
+                select(ApprovalResponse).where(ApprovalResponse.request_id == grant_id)
+            )).scalar_one()
+            await session.delete(response_row)
+            await session.commit()
+            invalid_response = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256="b" * 64, workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
+            assert invalid_response["result"] == "INVALID_AUTHORITY"
+            session.add(ApprovalResponse(
+                id=str(uuid.uuid4()), request_id=grant_id, approver_id=owner_id,
+                decision="approved", comment="Restore canonical test approval",
+            ))
+            await session.commit()
+            audit_row = (await session.execute(
+                select(AuditLog).where(
+                    AuditLog.resource_id == grant_id,
+                    AuditLog.action == "spec224.recovery_grant.issued",
+                )
+            )).scalar_one()
+            audit_row.details = {"tenantId": tenant_id, "scopeDigest": "0" * 64}
+            await session.commit()
+            invalid_audit = await service.validate_spec224_recovery_grant_contract(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256="b" * 64, workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
+            assert invalid_audit["result"] == "INVALID_AUDIT"
+            audit_row.details = {
+                "tenantId": tenant_id,
+                "scopeDigest": grant["scopeDigest"],
+                "eventDigest": grant["auditEvents"][0]["eventDigest"],
+            }
+            await session.commit()
+            assert await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,
+                source_sha256="b" * 64, workpackage_id="WP-RECOVERY-04",
+                operation="modify_owned_paths", path="python-backend/app/services/approval_db_service.py",
+                runtime_scope="python-approval", environment_scope="isolated-non-production",
+            )
             assert not await service.validate_spec224_recovery_grant(
                 grant_id=grant_id, tenant_id=tenant_id, source_commit="d" * 40, source_sha256="b" * 64,
                 workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
@@ -348,10 +409,6 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
             ) == revoked
 
         async with sessions() as session:
-            from app.models.approval import ApprovalRequest, ApprovalResponse
-            from app.models.audit_log import AuditLog
-            from sqlalchemy import select
-
             row = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id))).scalar_one()
             grant = row.extra_data["spec224RecoveryGrantV1"]
             assert grant["state"] == "revoked"
