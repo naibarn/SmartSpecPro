@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import "@testing-library/jest-dom/vitest";
@@ -8,6 +8,7 @@ import {
   AssistantMascot,
   type AssistantMascotExpression,
 } from "./AssistantMascot";
+import { AssistantMascotErrorBoundary } from "./AssistantMascotErrorBoundary";
 
 describe("AssistantMascot", () => {
   it("renders all five stable styles with distinct silhouettes", () => {
@@ -114,5 +115,21 @@ describe("AssistantMascot", () => {
     expect(svg.textContent).toBe("");
     expect(screen.queryByRole("img")).toBeNull();
     expect(container.innerHTML).not.toMatch(/https?:|data:/i);
+  });
+
+  it("keeps the launcher fallback available when the mascot renderer throws", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    function BrokenMascot(): never {
+      throw new Error("mascot render failure");
+    }
+
+    render(
+      <AssistantMascotErrorBoundary fallback={<button type="button">Open Chat</button>}>
+        <BrokenMascot />
+      </AssistantMascotErrorBoundary>,
+    );
+
+    expect(screen.getByRole("button", { name: "Open Chat" })).toBeInTheDocument();
+    consoleError.mockRestore();
   });
 });

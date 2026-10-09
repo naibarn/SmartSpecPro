@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { MessageSquarePlus } from "lucide-react";
 import { Button as AstryxButton } from "@astryxdesign/core/Button";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { AssistantMascot, ASSISTANT_MASCOT_STYLES } from "@/components/assistant-mascot/AssistantMascot";
+import { AssistantMascotErrorBoundary } from "@/components/assistant-mascot/AssistantMascotErrorBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
@@ -124,7 +126,9 @@ export function AssistantAppearancePreferences() {
                     value={style}
                     aria-label={t(`assistantAppearance.styles.${style}`)}
                   />
-                  <AssistantMascot style={style} size={32} />
+                  <AssistantMascotErrorBoundary fallback={<MessageSquarePlus aria-hidden="true" size={32} />}>
+                    <AssistantMascot style={style} size={32} />
+                  </AssistantMascotErrorBoundary>
                   <Text>{t(`assistantAppearance.styles.${style}`)}</Text>
                 </Label>
               ))}

@@ -47,6 +47,7 @@ import { EMERGENCY_MAP_CHAT_EVENT, parseEmergencyMapChatRequest } from "@/compon
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
 import { ASSISTANT_MASCOT_GLOBAL_ALLOW, isAssistantMascotEnabled } from "@/lib/assistantMascotFeatureGate";
 import { AssistantMascot } from "@/components/assistant-mascot/AssistantMascot";
+import { AssistantMascotErrorBoundary } from "@/components/assistant-mascot/AssistantMascotErrorBoundary";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Text } from "@astryxdesign/core/Text";
 import { loadAssistantMascotPreferences, assistantMascotStorageKey, DEFAULT_ASSISTANT_MASCOT_PREFERENCES } from "@/lib/assistantMascotPreferences";
@@ -1117,11 +1118,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           onClick={handleFeedbackClick}
         >
           {mascotEnabled && mascotPreferences.enabled
-            ? <AssistantMascot
-              style={mascotPreferences.style}
-              size={24}
-              className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? `assistant-mascot-greeting-${mascotPreferences.motion}` : undefined}
-            />
+            ? <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-4 w-4" />}>
+              <AssistantMascot
+                style={mascotPreferences.style}
+                size={24}
+                className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? `assistant-mascot-greeting-${mascotPreferences.motion}` : undefined}
+              />
+            </AssistantMascotErrorBoundary>
             : <MessageSquarePlus className="h-4 w-4" />}
           <span className="hidden md:inline">{settingsT("assistantAppearance.launcherLabel")}</span>
         </Button>

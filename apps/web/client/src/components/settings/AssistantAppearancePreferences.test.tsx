@@ -24,10 +24,9 @@ describe("AssistantAppearancePreferences", () => {
     render(<AssistantAppearancePreferences />);
 
     for (const style of ["droplet", "star", "shield", "chat", "orbit"]) {
-      expect(screen.getByTestId(`assistant-mascot-style-${style}`)).toBeTruthy();
       expect(screen.getByRole("radio", { name: `assistantAppearance.styles.${style}` })).toBeTruthy();
     }
-    fireEvent.click(screen.getByTestId("assistant-mascot-style-star"));
+    fireEvent.click(screen.getByRole("radio", { name: "assistantAppearance.styles.star" }));
     expect(JSON.parse(localStorage.getItem("assistant-mascot:v2:tenant-3:user-7")!).style).toBe("star");
     expect(screen.getByRole("radio", { name: "assistantAppearance.styles.star" }).getAttribute("aria-checked")).toBe("true");
   });
@@ -47,6 +46,14 @@ describe("AssistantAppearancePreferences", () => {
   });
 
   it("rejects an unsupported motion value instead of persisting it", () => {
+    localStorage.setItem("assistant-mascot:v2:tenant-3:user-7", JSON.stringify({
+      version: 2,
+      enabled: true,
+      style: "droplet",
+      motion: "subtle",
+      notificationReminders: true,
+      chatOnboarding: true,
+    }));
     render(<AssistantAppearancePreferences />);
     fireEvent.change(screen.getByLabelText("assistantAppearance.motion"), { target: { value: "continuous" } });
     const saved = JSON.parse(localStorage.getItem("assistant-mascot:v2:tenant-3:user-7")!);

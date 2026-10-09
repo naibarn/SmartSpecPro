@@ -1142,5 +1142,12 @@
   "admin.skillsPage.legacyRunDetail.headers.state": "สถานะ",
   "admin.skillsPage.legacyRunDetail.headers.task": "Task",
   "admin.skillsPage.legacyRunDetail.headers.error": "ข้อผิดพลาด",
-  "admin.skillsPage.legacyRunDetail.headers.actions": "การทำงาน"
+  "admin.skillsPage.legacyRunDetail.headers.actions": "การทำงาน",
+  "admin.notificationBell.unread_other": "มีการแจ้งเตือนที่ยังไม่อ่าน {{count}} รายการ",
+  "admin.notificationBell.recentHistory_other": "ไม่มีการแจ้งเตือนที่ยังไม่อ่าน แต่มีรายการล่าสุด {{count}} รายการ",
+  "admin.notificationBell.none": "ยังไม่มีการแจ้งเตือน",
+  "admin.notificationBell.recent": "ล่าสุด",
+  "admin.notificationBell.title": "การแจ้งเตือน",
+  "admin.notificationBell.titleCount": "การแจ้งเตือน ({{count}})",
+  "admin.notificationBell.close": "ปิดการแจ้งเตือน"
 }

@@ -35,6 +35,7 @@ vi.mock("@/lib/trpc", () => ({
           mutateAsync: feedbackMocks.createChat,
           isPending: false,
           error: null,
+          reset: vi.fn(),
         }),
       },
     },

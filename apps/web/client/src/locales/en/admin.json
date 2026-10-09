@@ -1142,5 +1142,14 @@
   "admin.skillsPage.legacyRunDetail.headers.state": "State",
   "admin.skillsPage.legacyRunDetail.headers.task": "Task",
   "admin.skillsPage.legacyRunDetail.headers.error": "Error",
-  "admin.skillsPage.legacyRunDetail.headers.actions": "Actions"
+  "admin.skillsPage.legacyRunDetail.headers.actions": "Actions",
+  "admin.notificationBell.unread_one": "{{count}} unread notification",
+  "admin.notificationBell.unread_other": "{{count}} unread notifications",
+  "admin.notificationBell.recentHistory_one": "No unread alerts, but {{count}} recent item available",
+  "admin.notificationBell.recentHistory_other": "No unread alerts, but {{count}} recent items available",
+  "admin.notificationBell.none": "No notifications yet",
+  "admin.notificationBell.recent": "Recent",
+  "admin.notificationBell.title": "Notifications",
+  "admin.notificationBell.titleCount": "Notifications ({{count}})",
+  "admin.notificationBell.close": "Close notifications"
 }

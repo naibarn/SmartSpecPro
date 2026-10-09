@@ -169,6 +169,30 @@ test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback
   expect(size.width).toBeLessThanOrEqual(size.viewport + 1);
 });
 
+test("SPEC-308 notification popover stays inside a narrow viewport and restores keyboard focus", async ({ page }) => {
+  await initializeAuthenticatedBrowser(page, 320, 720);
+  await installMockEventSource(page);
+  await page.goto("/dashboard");
+
+  const bell = page.getByTestId("global-notification-bell").getByRole("button");
+  await expect(bell).toBeVisible();
+  await bell.click();
+  const popover = page.getByRole("dialog");
+  await expect(popover).toBeVisible();
+  const bounds = await popover.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+  });
+  expect(bounds.left).toBeGreaterThanOrEqual(0);
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.right).toBeLessThanOrEqual(320);
+  expect(bounds.bottom).toBeLessThanOrEqual(720);
+
+  await page.keyboard.press("Escape");
+  await expect(popover).toHaveCount(0);
+  await expect(bell).toBeFocused();
+});
+
 test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and actions", async ({ page }) => {
   const procedures: string[] = [];
   const tenantFlagResponses: boolean[] = [];

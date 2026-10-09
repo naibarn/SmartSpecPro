@@ -33,6 +33,15 @@ const BELL_MARGIN = 12;
 const BELL_DEFAULT_WIDTH = 60;
 const BELL_DEFAULT_HEIGHT = 44;
 const BELL_DRAG_THRESHOLD = 4;
+const BELL_POPOVER_WIDTH = 360;
+const BELL_POPOVER_MAX_HEIGHT = 480;
+
+type BellPopoverPosition = {
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+};
 
 type BellPosition = {
   x: number;
@@ -58,6 +67,34 @@ type UrgentSurface = "message" | "reminder";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function getBellPopoverPosition(
+  anchor: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  viewport: { left: number; top: number; width: number; height: number },
+): BellPopoverPosition {
+  const margin = BELL_MARGIN;
+  const gap = 8;
+  const width = Math.max(1, Math.min(BELL_POPOVER_WIDTH, viewport.width - margin * 2));
+  const availableHeight = Math.max(1, viewport.height - margin * 2);
+  const maxHeight = Math.min(BELL_POPOVER_MAX_HEIGHT, availableHeight);
+  const belowTop = anchor.bottom + gap;
+  const belowHeight = viewport.top + viewport.height - margin - belowTop;
+  const aboveHeight = anchor.top - gap - (viewport.top + margin);
+  const opensBelow = belowHeight >= Math.min(220, maxHeight) || aboveHeight < Math.min(220, maxHeight);
+  const top = opensBelow
+    ? clamp(belowTop, viewport.top + margin, viewport.top + viewport.height - margin - 1)
+    : Math.max(viewport.top + margin, anchor.top - gap - maxHeight);
+  const verticalSpace = opensBelow
+    ? viewport.top + viewport.height - margin - top
+    : anchor.top - gap - top;
+  const left = clamp(
+    anchor.right - width,
+    viewport.left + margin,
+    viewport.left + viewport.width - width - margin,
+  );
+
+  return { left, top, width, maxHeight: Math.max(1, Math.min(maxHeight, verticalSpace)) };
 }
 
 function getDockedBellPosition(
@@ -1396,6 +1433,7 @@ function GlobalNotificationBellGate() {
 
 function GlobalNotificationBell() {
   const { user } = useAuth();
+  const { t } = useScopedTranslation("admin");
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -1403,6 +1441,9 @@ function GlobalNotificationBell() {
   const [detailNotification, setDetailNotification] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const bellRootRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<BellPopoverPosition | null>(null);
   const dragStateRef = useRef<BellDragState | null>(null);
   const suppressNextClickRef = useRef(false);
   const shownJobCompletionToastKeysRef = useRef<Set<string>>(new Set());
@@ -1413,6 +1454,18 @@ function GlobalNotificationBell() {
     : null;
   const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
+
+  const updateDropdownPosition = useCallback(() => {
+    const anchor = bellButtonRef.current?.getBoundingClientRect();
+    if (!anchor || typeof window === "undefined") return;
+    const visualViewport = window.visualViewport;
+    setDropdownPosition(getBellPopoverPosition(anchor, {
+      left: visualViewport?.offsetLeft ?? 0,
+      top: visualViewport?.offsetTop ?? 0,
+      width: visualViewport?.width ?? window.innerWidth,
+      height: visualViewport?.height ?? window.innerHeight,
+    }));
+  }, []);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -1564,10 +1617,10 @@ function GlobalNotificationBell() {
   const recentCount = recentNotifications?.length ?? 0;
   const hasRecentHistory = recentCount > 0;
   const statusSummary = hasUnread
-    ? `${count} unread notification${count !== 1 ? "s" : ""}`
+    ? t("admin.notificationBell.unread", { count })
     : hasRecentHistory
-      ? `No unread alerts, but ${recentCount} recent item${recentCount !== 1 ? "s" : ""} available`
-      : "No notifications yet";
+      ? t("admin.notificationBell.recentHistory", { count: recentCount })
+      : t("admin.notificationBell.none");
 
   const showJobCompletionToast = useCallback((notification: JobCompletionNotification) => {
     if (!isJobCompletionNotification(notification)) return;
@@ -1643,6 +1696,37 @@ function GlobalNotificationBell() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (!showDropdown) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const reposition = () => updateDropdownPosition();
+    reposition();
+    window.addEventListener("resize", reposition);
+    window.visualViewport?.addEventListener("resize", reposition);
+    window.visualViewport?.addEventListener("scroll", reposition);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("resize", reposition);
+      window.visualViewport?.removeEventListener("scroll", reposition);
+    };
+  }, [bellPlacement, showDropdown, updateDropdownPosition]);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    dropdownPanelRef.current?.focus({ preventScroll: true });
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setShowDropdown(false);
+      bellButtonRef.current?.focus({ preventScroll: true });
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [showDropdown]);
 
   useEffect(() => {
@@ -1748,8 +1832,8 @@ function GlobalNotificationBell() {
       top: `${bellPlacement.y}px`,
     }
     : {
-      right: `${BELL_MARGIN}px`,
-      top: `${BELL_MARGIN}px`,
+      right: `max(${BELL_MARGIN}px, env(safe-area-inset-right, 0px))`,
+      top: `max(${BELL_MARGIN}px, env(safe-area-inset-top, 0px))`,
     };
 
   return (
@@ -1766,18 +1850,14 @@ function GlobalNotificationBell() {
       }}
     >
       <button
+        ref={bellButtonRef}
         onClick={handleBellClick}
         onPointerDown={handleBellPointerDown}
-        title={
-          hasUnread
-            ? statusSummary
-            : "No unread notifications, recent history available. Drag to move."
-        }
-        aria-label={
-          hasUnread
-            ? statusSummary
-            : "0 unread notifications, recent history available"
-        }
+        title={statusSummary}
+        aria-label={statusSummary}
+        aria-expanded={showDropdown}
+        aria-controls="global-notification-popover"
+        aria-haspopup="dialog"
         style={{
           background: "var(--background, #1e1e1e)",
           border: "1px solid var(--border, #333)",
@@ -1817,7 +1897,7 @@ function GlobalNotificationBell() {
           >
             {count > 9 ? "9+" : count}
           </span>
-        ) : (
+        ) : hasRecentHistory ? (
           <span
             style={{
               display: "inline-flex",
@@ -1834,19 +1914,26 @@ function GlobalNotificationBell() {
             }}
           >
             <Clock3 style={{ width: 10, height: 10 }} />
-            Recent
+            {t("admin.notificationBell.recent")}
           </span>
-        )}
+        ) : null}
       </button>
 
       {showDropdown && (
         <div
+          id="global-notification-popover"
+          ref={dropdownPanelRef}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="global-notification-heading"
+          tabIndex={-1}
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
-            width: "360px",
-            maxHeight: "480px",
+            position: "fixed",
+            top: dropdownPosition?.top ?? BELL_MARGIN,
+            left: dropdownPosition?.left ?? BELL_MARGIN,
+            width: dropdownPosition?.width ?? `min(${BELL_POPOVER_WIDTH}px, calc(100vw - ${BELL_MARGIN * 2}px))`,
+            maxWidth: `calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - ${BELL_MARGIN * 2}px)`,
+            maxHeight: dropdownPosition?.maxHeight ?? `calc(100vh - ${BELL_MARGIN * 2}px)`,
             background: "var(--background, #1e1e1e)",
             border: "1px solid var(--border, #333)",
             borderRadius: "10px",
@@ -1866,8 +1953,10 @@ function GlobalNotificationBell() {
               justifyContent: "space-between",
             }}
           >
-            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--foreground, #e0e0e0)" }}>
-              Notifications {count > 0 && `(${count})`}
+            <span id="global-notification-heading" tabIndex={-1} style={{ fontSize: "14px", fontWeight: 600, color: "var(--foreground, #e0e0e0)" }}>
+              {hasUnread
+                ? t("admin.notificationBell.titleCount", { count })
+                : t("admin.notificationBell.title")}
             </span>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               {count > 0 && (
@@ -1888,7 +1977,12 @@ function GlobalNotificationBell() {
                 </button>
               )}
               <button
-                onClick={() => setShowDropdown(false)}
+                onClick={() => {
+                  setShowDropdown(false);
+                  bellButtonRef.current?.focus({ preventScroll: true });
+                }}
+                aria-label={t("admin.notificationBell.close")}
+                title={t("admin.notificationBell.close")}
                 style={{
                   background: "none",
                   border: "none",
