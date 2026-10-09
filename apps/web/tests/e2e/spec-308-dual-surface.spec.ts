@@ -9,6 +9,8 @@ const TEST_IDENTITY = {
   credits: 100,
 };
 
+type TenantFlagFixture = { enabled: boolean };
+
 function trpcData(data: unknown) {
   return JSON.stringify({ result: { data: { json: data } } });
 }
@@ -17,11 +19,16 @@ function procedureName(url: string): string {
   return new URL(url).pathname.replace(/^\/trpc\//, "").split(",")[0] ?? "";
 }
 
-async function mockAuthenticatedApi(page: Page, identity = TEST_IDENTITY, procedureLog: string[] = []) {
+async function mockAuthenticatedApi(
+  page: Page,
+  identity = TEST_IDENTITY,
+  procedureLog: string[] = [],
+  tenantFlag: TenantFlagFixture = { enabled: true },
+) {
   await page.route("**/api/tenant/current", route => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ tenant: { id: identity.currentTenantId, featureFlags: { livingMascotDualSurface: true } } }),
+    body: JSON.stringify({ tenant: { id: identity.currentTenantId, featureFlags: { livingMascotDualSurface: tenantFlag.enabled } } }),
   }));
   await page.route("**/trpc/**", async route => {
     const procedure = procedureName(route.request().url());
@@ -29,9 +36,9 @@ async function mockAuthenticatedApi(page: Page, identity = TEST_IDENTITY, proced
     let data: unknown = null;
     if (procedure === "auth.me") data = identity;
     else if (procedure === "tenant.current") {
-      data = { tenant: { id: identity.currentTenantId, featureFlags: { livingMascotDualSurface: true } } };
+      data = { tenant: { id: identity.currentTenantId, featureFlags: { livingMascotDualSurface: tenantFlag.enabled } } };
     } else if (procedure === "tenantFeatureFlags.getFeatureFlags") {
-      data = { livingMascotDualSurface: true };
+      data = { livingMascotDualSurface: tenantFlag.enabled };
     } else if (procedure === "chat.listConversations" || procedure === "chat.listTrashedConversations") {
       data = { conversations: [] };
     } else if (procedure === "chat.createConversation") {
@@ -47,13 +54,19 @@ async function mockAuthenticatedApi(page: Page, identity = TEST_IDENTITY, proced
   });
 }
 
-async function initializeAuthenticatedBrowser(page: Page, width: number, height: number, identity = TEST_IDENTITY) {
+async function initializeAuthenticatedBrowser(
+  page: Page,
+  width: number,
+  height: number,
+  identity = TEST_IDENTITY,
+  tenantFlag: TenantFlagFixture = { enabled: true },
+) {
   await page.setViewportSize({ width, height });
   await page.addInitScript(() => {
     localStorage.setItem("smartspec_locale", "en");
     localStorage.setItem("smartspec_locale_chosen", "true");
   });
-  await mockAuthenticatedApi(page, identity);
+  await mockAuthenticatedApi(page, identity, [], tenantFlag);
 }
 
 test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback and draft preservation", async ({ page }) => {
@@ -88,6 +101,64 @@ test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback
   await page.getByRole("tab", { name: "AI Chat" }).click();
   const size = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
   expect(size.width).toBeLessThanOrEqual(size.viewport + 1);
+});
+
+test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and actions", async ({ page }) => {
+  const procedures: string[] = [];
+  const tenantFlag = { enabled: true };
+  await page.clock.install();
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  await mockAuthenticatedApi(page, TEST_IDENTITY, procedures, tenantFlag);
+  await page.goto("/chat");
+
+  const launcher = page.getByRole("button", { name: "Open AI Chat and Feedback" });
+  await expect(launcher).toBeVisible();
+  await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
+  await launcher.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "AI Chat & Feedback" })).toBeVisible();
+
+  const chatDraft = "keep this chat draft through rollback";
+  const feedbackTitle = "keep this feedback title through rollback";
+  const feedbackDescription = "keep this feedback description through rollback";
+  await page.getByPlaceholder("Type a message or / for skills...").fill(chatDraft);
+  await page.getByRole("tab", { name: "Feedback" }).click();
+  await page.getByPlaceholder("Title").fill(feedbackTitle);
+  await page.getByPlaceholder("Describe in detail...").fill(feedbackDescription);
+  await expect(page.getByRole("button", { name: "Submit Feedback" })).toBeEnabled();
+
+  // Re-resolve only the mock tenant flag as the application does after focus
+  // returns to a stale tenant/current query. Advancing fixed wall time does not
+  // run notification polling intervals or discard the in-memory dialog state.
+  page.clock.setFixedTime(new Date(Date.now() + 61_000));
+  tenantFlag.enabled = false;
+  const mutationCallsBeforeRefresh = [...procedures].filter(procedure =>
+    /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
+  );
+  await page.context().setOffline(true);
+  await page.context().setOffline(false);
+  await expect.poll(() => page.getByRole("button", { name: "Open AI Chat and Feedback" }).locator("[data-mascot-style]").count()).toBe(0);
+
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Feedback" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByPlaceholder("Title")).toHaveValue(feedbackTitle);
+  await expect(page.getByPlaceholder("Describe in detail...")).toHaveValue(feedbackDescription);
+  await expect(page.getByRole("button", { name: "Submit Feedback" })).toBeEnabled();
+
+  await page.getByRole("tab", { name: "AI Chat" }).click();
+  await expect(page.getByPlaceholder("Type a message or / for skills...")).toHaveValue(chatDraft);
+  await expect(page.getByRole("tab", { name: "Task Control" })).toBeVisible();
+  await expect(launcher.locator("svg")).toBeVisible();
+  expect(procedures.filter(procedure =>
+    /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
+  )).toEqual(mutationCallsBeforeRefresh);
+  // This is a deterministic mock API simulation. Focus refresh may re-read
+  // queries; it must not create a conversation, submit feedback, or mark a
+  // notification read as a side effect of the tenant presentation rollback.
 });
 
 for (const width of [320, 360, 390, 767, 768, 1440]) {
