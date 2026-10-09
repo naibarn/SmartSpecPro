@@ -1,4 +1,4 @@
-import { and, count, eq, gte, lte, sql, desc, inArray } from "drizzle-orm";
+import { and, count, eq, gte, lte, sql, desc, inArray, max } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -69,6 +69,22 @@ export type FunnelStage = keyof typeof STAGE_PRESETS;
 export interface FunnelScope {
   tenantId: string;
   domain: string | null;
+}
+
+function buildQueryProvenance(latestObservedEventAt: Date | null) {
+  return {
+    freshnessState: "unknown" as const,
+    watermarkAvailable: false as const,
+    latestObservedEventAt: latestObservedEventAt?.toISOString() ?? null,
+    computedAt: new Date().toISOString(),
+  };
+}
+
+export function findLatestObservedEventAt(values: Array<Date | null>): Date | null {
+  return values.reduce<Date | null>(
+    (latest, value) => (value && (!latest || value > latest) ? value : latest),
+    null,
+  );
 }
 
 type Bucket = "day" | "week" | "month";
@@ -288,7 +304,12 @@ export const funnelAnalyticsRouter = router({
       await checkFunnelEnabled(ctx.user.role);
 
       const db = await getDb();
-      if (!db) return { stages: [], rangeClamped: false, cached: false };
+      if (!db) {
+        return {
+          stages: [], rangeClamped: false, cached: false,
+          provenance: buildQueryProvenance(null),
+        };
+      }
 
       const scope = resolveScope(ctx);
       const range = clampDateRange(input.from, input.to);
@@ -313,6 +334,7 @@ export const funnelAnalyticsRouter = router({
               total: count(funnelEvents.id).as("total"),
               uniqueUsers:
                 sql<number>`COUNT(DISTINCT "userId")`.as("unique_users"),
+              latestObservedEventAt: max(funnelEvents.eventTime),
             })
             .from(funnelEvents)
             .where(and(...conditions))
@@ -328,7 +350,15 @@ export const funnelAnalyticsRouter = router({
         { bypass: input.bypassCache },
       );
 
-      return { stages: data, rangeClamped: range.clamped, cached };
+      const latestObservedEventAt = findLatestObservedEventAt(
+        data.map((row) => row.latestObservedEventAt),
+      );
+      return {
+        stages: data.map(({ latestObservedEventAt: _latest, ...row }) => row),
+        rangeClamped: range.clamped,
+        cached,
+        provenance: buildQueryProvenance(latestObservedEventAt),
+      };
     }),
 
   timeSeries: domainAdminProcedure
@@ -338,7 +368,12 @@ export const funnelAnalyticsRouter = router({
       await checkFunnelEnabled(ctx.user.role);
 
       const db = await getDb();
-      if (!db) return { series: [], rangeClamped: false, cached: false };
+      if (!db) {
+        return {
+          series: [], rangeClamped: false, cached: false,
+          provenance: buildQueryProvenance(null),
+        };
+      }
 
       const scope = resolveScope(ctx);
       const range = clampDateRange(input.from, input.to);
@@ -363,6 +398,7 @@ export const funnelAnalyticsRouter = router({
               bucket: sql<string>`${sql.raw(bucketSqlStr)}`.as("bucket"),
               eventName: funnelEvents.eventName,
               total: count(funnelEvents.id).as("total"),
+              latestObservedEventAt: max(funnelEvents.eventTime),
             })
             .from(funnelEvents)
             .where(and(...conditions))
@@ -378,7 +414,15 @@ export const funnelAnalyticsRouter = router({
         { bypass: input.bypassCache },
       );
 
-      return { series: data, rangeClamped: range.clamped, cached };
+      const latestObservedEventAt = findLatestObservedEventAt(
+        data.map((row) => row.latestObservedEventAt),
+      );
+      return {
+        series: data.map(({ latestObservedEventAt: _latest, ...row }) => row),
+        rangeClamped: range.clamped,
+        cached,
+        provenance: buildQueryProvenance(latestObservedEventAt),
+      };
     }),
 
   rawEvents: rateLimitedDomainAdminProcedure

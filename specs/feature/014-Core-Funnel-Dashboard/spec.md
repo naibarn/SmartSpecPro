@@ -1506,3 +1506,27 @@ After deployment, the dashboard itself should help track:
 | 4 | Should funnel events be sent to PostHog AND stored in DB? | Data consistency | Yes — DB for SQL queries, PostHog for their dashboards |
 | 5 | Multi-tenant isolation for domain_admin? | Access control | Yes — filter by tenantId for domain_admin role |
 | 6 | Should we partition funnel_events table from day 1? | Scalability | No — add partitioning in Phase 3 if > 5M rows |
+
+## 17. UABIF R1.2 Dashboard Alignment — 2026-10-09
+
+Feature 014 remains the owner of the existing `/admin/funnel` dashboard,
+funnel-event pipeline, its metric definitions, and compatible exports. This
+alignment does not authorize a replacement dashboard, event store, or second
+analytics runtime. The current `funnel_events` schema and migration in the
+repository are authoritative for implementation; the early illustrative DDL
+above is historical and MUST NOT be replayed as a migration.
+
+The current event source has no completeness watermark. Dashboard responses
+MUST expose query `computedAt`, the latest event observed within the selected
+result, and `freshnessState: unknown` / `watermarkAvailable: false`. The latest
+observed event is evidence of an event in the result, not proof that the source
+is complete through that time. UTC is the current aggregation timezone and
+MUST be disclosed with the selected period. A future source watermark can only
+be shown when its owning source contract provides it. Stale or failed data
+MUST NOT be presented as current.
+
+Feature 014 does not own a general semantic query planner, cross-domain metric
+catalog, saved-dashboard service, or BI provider adapter. Mapping its existing
+funnel definitions to a future analytical semantic contract requires measured
+parity, tenant-scoped reads, reversible rollout, and a verified rollback path;
+no production migration or route replacement is implied by this alignment.

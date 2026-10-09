@@ -119,6 +119,12 @@ describe("funnelAnalytics RBAC", () => {
       expect(result).toHaveProperty("stages");
       expect(result).toHaveProperty("rangeClamped");
       expect(result).toHaveProperty("cached");
+      expect(result.provenance).toMatchObject({
+        freshnessState: "unknown",
+        watermarkAvailable: false,
+        latestObservedEventAt: null,
+      });
+      expect(Number.isNaN(Date.parse(result.provenance.computedAt))).toBe(false);
     });
 
     it("allows domain_admin role to access summary", async () => {
@@ -129,6 +135,7 @@ describe("funnelAnalytics RBAC", () => {
       expect(result).toHaveProperty("stages");
       expect(result).toHaveProperty("rangeClamped");
       expect(result).toHaveProperty("cached");
+      expect(result.provenance.freshnessState).toBe("unknown");
     });
 
     it("allows admin role to access export", async () => {

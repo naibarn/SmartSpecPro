@@ -225,6 +225,25 @@ export default function AdminFunnelDashboard() {
         </p>
       )}
 
+      {summaryQuery.data?.provenance && (
+        <section
+          aria-label="Data freshness and query provenance"
+          className="rounded-md border bg-muted/30 px-4 py-3 text-sm"
+        >
+          <p className="font-medium">Data freshness: unknown</p>
+          <p className="text-muted-foreground">
+            This event source does not publish a completeness watermark. Latest
+            event observed in this result: {summaryQuery.data.provenance.latestObservedEventAt ?? "none"}.
+          </p>
+          <p className="text-muted-foreground">
+            Query computed at: {summaryQuery.data.provenance.computedAt} (UTC)
+          </p>
+          <p className="text-muted-foreground">
+            Selected periods and aggregation buckets use UTC.
+          </p>
+        </section>
+      )}
+
       {/* Filters */}
       <DashboardCard title="Filters & Settings">
         <div className="space-y-4">
@@ -404,6 +423,12 @@ interface FunnelSummaryPanelProps {
     stages: Array<{ eventName: string; total: number; uniqueUsers: number }>;
     rangeClamped: boolean;
     cached: boolean;
+    provenance: {
+      freshnessState: "unknown";
+      watermarkAvailable: false;
+      latestObservedEventAt: string | null;
+      computedAt: string;
+    };
   };
   isLoading: boolean;
   error: any;
@@ -481,6 +506,12 @@ interface FunnelTimeSeriesPanelProps {
     series: Array<{ bucket: string; eventName: string; total: number }>;
     rangeClamped: boolean;
     cached: boolean;
+    provenance: {
+      freshnessState: "unknown";
+      watermarkAvailable: false;
+      latestObservedEventAt: string | null;
+      computedAt: string;
+    };
   };
   isLoading: boolean;
   error: any;
