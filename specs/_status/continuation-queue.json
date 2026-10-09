@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
+      "next_action": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4938,7 +4938,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
+      "rationale": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },

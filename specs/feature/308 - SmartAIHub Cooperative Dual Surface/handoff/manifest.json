@@ -27,26 +27,32 @@
     {
       "class": "AUTHENTICATED_RUNTIME",
       "id": "SPEC308_NONPROD_APP_RUNTIME",
-      "next_action": "Project owner must provision or identify an approved non-production app endpoint with isolated DB/control-plane configuration and an authorized test user/tenant through approved secret management.",
-      "root_cause": "No approved non-production runtime or authorized persistent identity is available in this worktree; primary-checkout services were not used."
+      "next_action": "Project/runtime owner provisions an isolated non-production endpoint and authorizes a test tenant/user through approved secret management.",
+      "root_cause": "No approved non-production SmartAIHub endpoint and authorized persistent test identity are available in this worktree."
     },
     {
       "class": "LIVE_CONTRACT_AUTHORITY",
       "id": "SPEC308_MCP_LIVE_CI",
-      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN in GitHub Actions secrets, then reruns the live-contract-evidence gate.",
-      "root_cause": "The workflow intentionally fails closed when the authorized live MCP endpoint and token are unavailable."
+      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN through approved GitHub secret management, then runs the required live gate.",
+      "root_cause": "The live-contract workflow fails closed without its authorized endpoint and token."
     },
     {
       "class": "BASELINE_CI_FAILURE",
       "id": "MCP_CONTRACT_TEST_FIXTURES",
-      "next_action": "Review and integrate PR #403 after its required contract-and-security check passes; then rerun #399 against the updated base.",
-      "root_cause": "The baseline workflow and protocol fixtures expected the wrong package setup/session persistence owner. The repair is isolated in PR #403 and is not yet integrated."
+      "next_action": "Reconcile PR #403 with current origin/main and complete the consolidated MCP verification without restoring the retired service.",
+      "root_cause": "PR #399 MCP CI still reports missing DATABASE_URL and imports of retired agencyMcpService; PR #403 contains the fixture correction but is not integrated and has no current-head verification."
     },
     {
       "class": "SECURITY_GATE_BASELINE",
       "id": "SPEC308_PRODUCTION_DEPENDENCY_AUDIT",
-      "next_action": "Dependency/security owners triage the high and critical advisories and approve compatible patched versions in a separate dependency remediation PR; rerun the unchanged mandatory audit without suppressing or lowering it.",
-      "root_cause": "The mandatory CI production dependency audit reports 85 advisories (9 low, 37 moderate, 38 high, 1 critical) on the unchanged baseline dependency tree. The workflow and package manifests/lockfile were not altered by SPEC-308 or PR #403. Automatic pnpm audit fix proposed 66 overrides, including cross-major constraints, and was not applied without compatibility review."
+      "next_action": "Security Owner approves a compatible remediation or scoped expiring risk disposition; Runtime Owner approves any ONNX/WSL2 compatibility test. Do not suppress or weaken the audit.",
+      "root_cause": "PR #405 resolves prior Critical/High advisories but mandatory production audit retains Moderate sprintf-js@1.1.3 through hyperframes → onnxruntime-node → global-agent → roarr; audit remains blocking."
+    },
+    {
+      "class": "FEATURE_AUTHORITY",
+      "id": "SPEC308_FEATURE049_NOTIFICATION_TENANT_REVISION",
+      "next_action": "Feature-049 notification owner confirms tenant-scoped source authorization and monotonic grouped-occurrence revision in an existing authorized query/stream; until then keep cosmetic live attention static.",
+      "root_cause": "Existing authenticated notification query/SSE are user-wide and do not expose proof that a grouped parent-row event is a distinct authorized occurrence for the active tenant."
     }
   ],
   "concurrency": {
@@ -54,10 +60,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Implementation-first pass is committed to PR #399 at 9432a1ec4dbb4412c06d8cb49d6da426831d1ada, including deterministic coverage for disabling the tenant flag while Chat and Feedback drafts remain open. Do not close any of the 66 requirements before the consolidated exact-SHA verification. PR #405 compatibility fixes and api-generator lockfile alignment are in place, but the mandatory audit remains blocked on sprintf-js@1.1.3 Moderate and needs Security Owner disposition; ONNX/WSL2 testing needs Runtime Owner approval. PR #403 still needs its approved live MCP endpoint/token. Once implementation is frozen, run one consolidated verification round on current exact heads, then obtain approved non-production app runtime and authorized identity for live SPEC-308 acceptance. Keep production flags off and do not deploy.",
+    "next_action": "Finish the implementation-only sweep, then run one consolidated verification round on exact reconciled PR heads. Reconcile PR #403 and #405 with current origin/main through normal protected workflows; keep the mandatory sprintf-js audit and live MCP gate fail-closed. Obtain Feature-049 tenant/revision authority before enabling cosmetic notification arrivals. After those gates, run isolated browser simulation and seek approved non-production authenticated SPEC-308 acceptance. Keep production flags OFF and do not deploy.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
-    "reactivation_predicate": "Security Owner approves compatible sprintf-js remediation or scoped expiring risk acceptance and mandatory audit passes; Runtime Owner approves any disposable non-production ONNX/WSL2 test; PR #403 mandatory focused gates pass and approved MCP endpoint/token are configured; the consolidated exact-head verification has been completed; approved non-production SmartSpecPro runtime and authorized test tenant/user are available for authenticated SPEC-308 acceptance.",
-    "resume_point": "Canonical origin/main is df776f6fca6dde82afde3ed88a54fd80f4a68d27. PR #399 head is 9432a1ec4dbb4412c06d8cb49d6da426831d1ada. New test-only coverage makes the mocked tenant feature flag controllable, triggers a TanStack stale-query refetch by returning browser focus, confirms the flag is actually false and legacy launcher is rendered while the dialog, Chat draft, Feedback title/description, submit action and Task Control remain. It also asserts no extra chat create/send, feedback submit, or notification read mutations. `git diff --check` passed; tests/CI were not run locally. PR #403 head 1f6a05c8478a790d4a99c210cf9acc9a073ae663: install, schema build and focused MCP tests passed in automatic CI; live gate fails closed without approved endpoint/token, remaining CI jobs are pending. PR #405 head ec94f99f432ba37ab3cce8637994b24d9f7deac5: compatibility regressions pass; mandatory production audit fails on the single Moderate sprintf-js@1.1.3 via hyperframes → onnxruntime-node → global-agent → roarr. All 66 ledger rows remain OPEN/UNVERIFIED; authenticated acceptance and tenant authorization remain unverified. No deployment.",
+    "reactivation_predicate": "Implementation sweep is frozen and one consolidated exact-head test round has completed; required PR #403 focused/security/audit gates and approved live MCP authority are satisfied; PR #405 mandatory audit passes with Security Owner disposition and any required Runtime Owner approval; Feature-049 tenant/revision authorization contract is confirmed; approved non-production SmartAIHub endpoint and authorized test identity are available for live acceptance.",
+    "resume_point": "PR #399 local implementation checkpoint fcbda4737fa3ce899c9d7f81924917c2fb901447 is based on 002265277a4a8846167abc7aaa178d5911d3020d; origin/main advanced to 6dcd7934332db7929904f8da642915751a6bb79d after this commit, so reconcile before push/integration. Added fail-closed notification attention: existing SSE keeps invalidation/job toast but emits no cosmetic arrival; coordinator baseline is empty until Feature-049 proves tenant ownership and grouped revision. Settings now discloses browser/device-local preferences and rejects oversized storage before parse. Consolidated tests intentionally pending. PR #399 remote head 38945eef14f405e3606a068f457efb1820269254; PR #403 74a482e8fe38a131bdbe41bfee0e53ad90347e4c; PR #405 868a5600ff770be91885666b7f584835e03fc690. All 66 requirements remain OPEN/UNVERIFIED. No production deployment or feature-flag enablement.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -73,12 +79,15 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
-    "rationale": "The PR head now includes a deterministic test case for tenant flag rollback without dialog unmount, but this and all current-source checks remain unexecuted. Security, live MCP, approved authenticated runtime, and tenant authorization are still true blockers. The Spec remains partial.",
+    "next_action": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
+    "rationale": "Fail-closed attention and safe local-preference requirements have been implemented. The consolidated verification is intentionally pending; Feature-049 authorization, mandatory security/live MCP gates, and live authenticated acceptance still have true external authority dependencies.",
     "residual_requirements": [
-      "All 66 canonical requirement rows remain OPEN/UNVERIFIED until row-level evidence is produced on the current integrated SHA.",
-      "The new tenant-flag rollback test is simulated coverage design and remains unexecuted; live authenticated Bell, Settings, tenant isolation, accessibility, performance, rollback and acceptance remain open.",
-      "External decisions remain required for the sprintf-js residual, live MCP authority, and approved non-production authenticated runtime/identity."
+      "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
+      "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
+      "PR #403 live MCP endpoint/token and PR #405 sprintf-js Security/Runtime Owner decisions remain external blockers.",
+      "Feature-049 owner confirmation of tenant-scoped authorization and monotonic grouped occurrence revision is needed before live cosmetic notification arrivals can be enabled.",
+      "Approved non-production app runtime and authorized tenant/user remain necessary for live SPEC-308 acceptance.",
+      "No production deployment or feature-flag enablement is authorized by this checkpoint."
     ]
   },
   "dependencies": {
@@ -111,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 21,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -129,31 +138,46 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "9432a1ec4dbb4412c06d8cb49d6da426831d1ada"
+      "9432a1ec4dbb4412c06d8cb49d6da426831d1ada",
+      "cfaf435a87f528ca3360a4be99405641b8059ccf",
+      "fcbda4737fa3ce899c9d7f81924917c2fb901447"
     ],
     "mapping": [
       {
-        "coverage": "PARTIAL; implementation and deterministic browser coverage are committed to the PR branch but the new test has not been executed or integrated.",
-        "scope": "Fail-closed dual surface, five mascot renderer and settings, generic row-ID notification attention and bell animation, responsive hints, route/overlay suppression, and deterministic feature-flag rollback coverage preserving open Chat and Feedback drafts/actions.",
+        "coverage": "PARTIAL; identity scope, localization, motion-off and browser-readiness fixes are implemented; unverified SSE cosmetic attention fails closed; oversized local preferences are rejected. Consolidated exact-source verification and authenticated acceptance remain pending.",
+        "scope": "Fail-closed dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until authorized tenant/revision proof, localized hints, responsive placement, and preserved Chat/Feedback/Task Control flows.",
         "source_paths": [
           "apps/web/client/src/components/GlobalAlerts.tsx",
           "apps/web/client/src/components/guardian/FeedbackButton.tsx",
           "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.test.tsx",
           "apps/web/client/src/lib/notificationAttention.ts",
+          "apps/web/client/src/lib/notificationAttention.test.ts",
           "apps/web/client/src/lib/assistantMascotPreferences.ts",
+          "apps/web/client/src/lib/assistantMascotPreferences.test.ts",
+          "apps/web/client/src/index.css",
+          "apps/web/client/src/locales/en/settings.json",
+          "apps/web/client/src/locales/th/settings.json",
           "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
         ],
-        "source_sha": "9432a1ec4dbb4412c06d8cb49d6da426831d1ada"
+        "source_sha": "fcbda4737fa3ce899c9d7f81924917c2fb901447"
       }
     ],
     "source_paths": [
       "apps/web/client/src/components/GlobalAlerts.tsx",
       "apps/web/client/src/components/guardian/FeedbackButton.tsx",
       "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+      "apps/web/client/src/components/settings/AssistantAppearancePreferences.test.tsx",
       "apps/web/client/src/lib/notificationAttention.ts",
+      "apps/web/client/src/lib/notificationAttention.test.ts",
       "apps/web/client/src/lib/assistantMascotPreferences.ts",
+      "apps/web/client/src/lib/assistantMascotPreferences.test.ts",
+      "apps/web/client/src/index.css",
+      "apps/web/client/src/locales/en/settings.json",
+      "apps/web/client/src/locales/th/settings.json",
       "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
     ],
+    "source_sha": "fcbda4737fa3ce899c9d7f81924917c2fb901447",
     "started": true,
     "status": "PARTIAL"
   },
@@ -205,12 +229,15 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
-      "rationale": "The PR head now includes a deterministic test case for tenant flag rollback without dialog unmount, but this and all current-source checks remain unexecuted. Security, live MCP, approved authenticated runtime, and tenant authorization are still true blockers. The Spec remains partial.",
+      "next_action": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
+      "rationale": "Fail-closed attention and safe local-preference requirements have been implemented. The consolidated verification is intentionally pending; Feature-049 authorization, mandatory security/live MCP gates, and live authenticated acceptance still have true external authority dependencies.",
       "residual_requirements": [
-        "All 66 canonical requirement rows remain OPEN/UNVERIFIED until row-level evidence is produced on the current integrated SHA.",
-        "The new tenant-flag rollback test is simulated coverage design and remains unexecuted; live authenticated Bell, Settings, tenant isolation, accessibility, performance, rollback and acceptance remain open.",
-        "External decisions remain required for the sprintf-js residual, live MCP authority, and approved non-production authenticated runtime/identity."
+        "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
+        "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
+        "PR #403 live MCP endpoint/token and PR #405 sprintf-js Security/Runtime Owner decisions remain external blockers.",
+        "Feature-049 owner confirmation of tenant-scoped authorization and monotonic grouped occurrence revision is needed before live cosmetic notification arrivals can be enabled.",
+        "Approved non-production app runtime and authorized tenant/user remain necessary for live SPEC-308 acceptance.",
+        "No production deployment or feature-flag enablement is authorized by this checkpoint."
       ]
     },
     "disposition": {
@@ -315,7 +342,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T17:06:32.014938Z",
+  "updated_at": "2026-10-09T18:32:20.621548Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -324,19 +351,17 @@
       "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
       "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
       "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261009.md",
-      "orchestra/tasks/spec-308-20261009/test-design.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897928261.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897633316.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37898459191.json",
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-continuation-20261010.md"
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-continuation-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/attention-authority-fail-closed-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971044599.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json"
     ],
-    "freshness": "STALE",
+    "freshness": "PENDING_CONSOLIDATED_ROUND",
     "required_profiles": [
       "quick"
     ],
-    "sha": "02fe8ea64145b1222f68e87801ce32efa2ece5aa",
+    "sha": "fcbda4737fa3ce899c9d7f81924917c2fb901447",
     "status": "PARTIAL",
     "task_regressions": []
   }

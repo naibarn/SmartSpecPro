@@ -101716,7 +101716,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "fb166fde1c364d24b5b70e85ec4eabe896215e7a",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -101804,9 +101804,9 @@
         "requirement REQ-8F6342670657 is OPEN",
         "requirement REQ-6EE519C1B13B is OPEN",
         "requirement REQ-CEACEE580AE9 is OPEN",
-        "requirement REQ-7B69F6E62344 is OPEN",
+        "requirement REQ-7B69F6E62344 is PARTIAL",
         "requirement REQ-1469D9D44215 is OPEN",
-        "requirement REQ-CC6F899DD48F is OPEN",
+        "requirement REQ-CC6F899DD48F is PARTIAL",
         "requirement REQ-99CFEF66B856 is OPEN",
         "requirement REQ-85C5709C4AE3 is OPEN",
         "requirement REQ-EDADA7E9DB8E is OPEN",
@@ -101971,8 +101971,7 @@
         "requirement REQ-CABED85A91E7 is OPEN",
         "requirement REQ-FB15FD17397D is OPEN",
         "requirement REQ-77CC51AB1B60 is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
@@ -116365,17 +116364,17 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "STALE",
+      "evidence_freshness": "PENDING_CONSOLIDATED_ROUND",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.",
+      "next_action": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
         "id": "SPEC308_NONPROD_APP_RUNTIME",
-        "next_action": "Project owner must provision or identify an approved non-production app endpoint with isolated DB/control-plane configuration and an authorized test user/tenant through approved secret management.",
-        "root_cause": "No approved non-production runtime or authorized persistent identity is available in this worktree; primary-checkout services were not used."
+        "next_action": "Project/runtime owner provisions an isolated non-production endpoint and authorizes a test tenant/user through approved secret management.",
+        "root_cause": "No approved non-production SmartAIHub endpoint and authorized persistent test identity are available in this worktree."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",

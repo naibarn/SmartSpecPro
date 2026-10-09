@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Continue after the single consolidated verification round; resolve the sprintf-js and live runtime gates only with the named external owners.
-- Manifest generation: 21
+- Next action: Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.
+- Manifest generation: 23
 
 ## Source-declared status and relationship claims
 
