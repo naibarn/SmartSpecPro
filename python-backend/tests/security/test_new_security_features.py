@@ -7,39 +7,39 @@
 '''
 
 import pytest
+import base64
+import json
 from datetime import datetime, timedelta
-from itsdangerous import URLSafeTimedSerializer
-
 from app.core.security import (
     create_access_token,
     decode_token,
     get_password_hash,
     verify_password,
-    JWT_ALGORITHM,
-    JWT_PUBLIC_KEY,
-    JWT_PRIVATE_KEY
 )
 from app.services.oauth_service import state_serializer
 from app.models.password_reset import PasswordResetToken
 
 
-# --- R8: Test RS256 JWT --- #
+# --- JWT signing and verification --- #
 
-def test_jwt_rs256_signature():
-    """Tests that tokens are created with RS256 and can be decoded."""
-    user_id = "testuser123"
+def test_jwt_round_trip_and_tamper_rejection():
+    """Tokens use the configured JWT manager and reject tampered payloads."""
+    user_id = 12345
     token = create_access_token(data={"user_id": user_id})
-    
-    # Decode with the public key
     payload = decode_token(token)
-    
+
     assert payload is not None
-    assert payload["user_id"] == user_id
-    
-    # Try to decode with the wrong key (should fail)
-    with pytest.raises(Exception):
-        # A simple symmetric key should not work
-        decode_token(token, key="wrong_key")
+    assert payload["sub"] == str(user_id)
+
+    header, body, signature = token.split(".")
+    payload_bytes = base64.urlsafe_b64decode(body + "=" * (-len(body) % 4))
+    tampered_payload = json.loads(payload_bytes)
+    tampered_payload["sub"] = "attacker"
+    tampered_body = base64.urlsafe_b64encode(
+        json.dumps(tampered_payload, separators=(",", ":")).encode()
+    ).rstrip(b"=").decode()
+    tampered = f"{header}.{tampered_body}.{signature}"
+    assert decode_token(tampered) is None
 
 # --- R11: Test OAuth State (CSRF Protection) --- #
 

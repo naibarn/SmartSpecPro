@@ -1,18 +1,15 @@
-"""Tests for browser and sandbox MCP tool registration and dispatch."""
+"""Tests for supported browser MCP tool registration and dispatch."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
 from app.mcp.browser_tools_mcp import (
-    ALLOWED_COMMANDS,
     BROWSER_TOOLS,
-    MAX_EXEC_TIMEOUT,
     TOOL_HANDLERS,
     handle_browser_execute_actions,
-    handle_sandbox_exec_command,
 )
 from app.mcp.google_drive_mcp import ToolError
 
@@ -24,10 +21,6 @@ class TestToolRegistration:
     def test_browser_execute_actions_in_tools(self):
         names = [t["name"] for t in BROWSER_TOOLS]
         assert "browser.execute_actions" in names
-
-    def test_sandbox_exec_command_in_tools(self):
-        names = [t["name"] for t in BROWSER_TOOLS]
-        assert "sandbox.exec_command" in names
 
     def test_browser_tool_schema_properties(self):
         tool = next(t for t in BROWSER_TOOLS if t["name"] == "browser.execute_actions")
@@ -41,20 +34,9 @@ class TestToolRegistration:
         tool = next(t for t in BROWSER_TOOLS if t["name"] == "browser.execute_actions")
         assert set(tool["inputSchema"]["required"]) == {"allowed_domains", "actions"}
 
-    def test_sandbox_tool_schema_properties(self):
-        tool = next(t for t in BROWSER_TOOLS if t["name"] == "sandbox.exec_command")
-        props = tool["inputSchema"]["properties"]
-        assert "command" in props
-        assert "working_dir" in props
-        assert "timeout_seconds" in props
-
-    def test_sandbox_tool_required_fields(self):
-        tool = next(t for t in BROWSER_TOOLS if t["name"] == "sandbox.exec_command")
-        assert tool["inputSchema"]["required"] == ["command"]
-
     def test_handlers_registered(self):
         assert "browser.execute_actions" in TOOL_HANDLERS
-        assert "sandbox.exec_command" in TOOL_HANDLERS
+        assert set(TOOL_HANDLERS) == {"browser.execute_actions"}
 
 
 # ── browser.execute_actions dispatch ───────────────────────────────────────
@@ -273,131 +255,10 @@ class TestBrowserExecuteActions:
             assert body["sessionId"] == "my-session-123"
 
 
-# ── sandbox.exec_command hardening ─────────────────────────────────────────
+# ── Browser prompt-injection boundary ──────────────────────────────────────
 
 
-def _sandbox_patches():
-    """Context manager helper for sandbox dispatch tests."""
-    mock_dispatcher = AsyncMock()
-    mock_dispatcher.dispatch.return_value = "job-123"
-
-    mock_db_ctx = MagicMock()
-    mock_db_ctx.__aenter__ = AsyncMock(return_value=MagicMock())
-    mock_db_ctx.__aexit__ = AsyncMock(return_value=False)
-
-    return mock_dispatcher, mock_db_ctx
-
-
-class TestSandboxExecCommand:
-    @pytest.mark.asyncio
-    async def test_allowed_command_dispatches(self):
-        mock_dispatcher, mock_db_ctx = _sandbox_patches()
-
-        with patch("app.core.database.get_db_context", return_value=mock_db_ctx), \
-             patch("app.services.sandbox_dispatcher.SandboxDispatcher", return_value=mock_dispatcher):
-            result = await handle_sandbox_exec_command(
-                command="python script.py",
-                user_id=1,
-                tenant_id="t1",
-            )
-
-        assert result["job_id"] == "job-123"
-        assert result["status"] == "dispatched"
-        mock_dispatcher.dispatch.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_disallowed_command_rm_rejected(self):
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                command="rm -rf /",
-                user_id=1,
-                tenant_id="t1",
-            )
-        assert exc_info.value.code == "command_not_allowed"
-
-    @pytest.mark.asyncio
-    async def test_disallowed_command_curl_rejected(self):
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                command="curl http://evil.com",
-                user_id=1,
-                tenant_id="t1",
-            )
-        assert exc_info.value.code == "command_not_allowed"
-
-    @pytest.mark.asyncio
-    async def test_timeout_clamped_to_max(self):
-        mock_dispatcher, mock_db_ctx = _sandbox_patches()
-
-        with patch("app.core.database.get_db_context", return_value=mock_db_ctx), \
-             patch("app.services.sandbox_dispatcher.SandboxDispatcher", return_value=mock_dispatcher):
-            await handle_sandbox_exec_command(
-                command="python script.py",
-                user_id=1,
-                tenant_id="t1",
-                timeout_seconds=999,
-            )
-
-        call_inputs = mock_dispatcher.dispatch.call_args.kwargs["inputs"]
-        assert call_inputs["timeout"] == MAX_EXEC_TIMEOUT
-
-    @pytest.mark.asyncio
-    async def test_capability_required_without_flag(self):
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                command="python script.py",
-                user_id=1,
-                tenant_id="t1",
-                node_config={"capabilities": {"sandbox_command": False}},
-            )
-        assert exc_info.value.code == "capability_required"
-
-    @pytest.mark.asyncio
-    async def test_capability_check_passes_with_flag(self):
-        mock_dispatcher, mock_db_ctx = _sandbox_patches()
-
-        with patch("app.core.database.get_db_context", return_value=mock_db_ctx), \
-             patch("app.services.sandbox_dispatcher.SandboxDispatcher", return_value=mock_dispatcher):
-            result = await handle_sandbox_exec_command(
-                command="python script.py",
-                user_id=1,
-                tenant_id="t1",
-                node_config={"capabilities": {"sandbox_command": True}},
-            )
-
-        assert result["status"] == "dispatched"
-
-    @pytest.mark.asyncio
-    async def test_no_node_config_skips_capability_check(self):
-        """When node_config is None, capability check is skipped."""
-        mock_dispatcher, mock_db_ctx = _sandbox_patches()
-
-        with patch("app.core.database.get_db_context", return_value=mock_db_ctx), \
-             patch("app.services.sandbox_dispatcher.SandboxDispatcher", return_value=mock_dispatcher):
-            result = await handle_sandbox_exec_command(
-                command="node index.js",
-                user_id=1,
-                tenant_id="t1",
-                node_config=None,
-            )
-
-        assert result["status"] == "dispatched"
-
-    @pytest.mark.asyncio
-    async def test_empty_command_rejected(self):
-        with pytest.raises(ToolError) as exc_info:
-            await handle_sandbox_exec_command(
-                command="   ",
-                user_id=1,
-                tenant_id="t1",
-            )
-        assert exc_info.value.code == "command_not_allowed"
-
-
-# ── Agency integration ─────────────────────────────────────────────────────
-
-
-class TestAgencyIntegration:
+class TestBrowserPromptInjectionBoundary:
     @pytest.mark.asyncio
     async def test_injection_strings_passed_as_data(self):
         """Actions with injection-like strings are passed through as data, not interpreted."""
