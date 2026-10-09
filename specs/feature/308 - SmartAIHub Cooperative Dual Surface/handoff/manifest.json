@@ -60,10 +60,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Publish the source repair at 0287181e, reconcile current PR head, and run one post-fix exact-SHA CI round; then continue PR #403/#405 normal workflow and external acceptance gates. Preserve mandatory security/live gates and keep production flags OFF.",
+    "next_action": "Publish d2ad4f24 and collect a fresh exact-head browser round. Reconcile #403/#405 only through their normal paths without touching active worktrees; keep external MCP, sprintf-js, Feature-049, and non-production runtime authorities blocking their respective gates.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Implementation sweep is frozen and one consolidated exact-head test round has completed; required PR #403 focused/security/audit gates and approved live MCP authority are satisfied; PR #405 mandatory audit passes with Security Owner disposition and any required Runtime Owner approval; Feature-049 tenant/revision authorization contract is confirmed; approved non-production SmartAIHub endpoint and authorized test identity are available for live acceptance.",
-    "resume_point": "PR #399 CI run 37974426321 tested SHA 3dd9bd064a91bca5fd10fa8ef29bfcc31e128b28 against base 6dcd7934332db7929904f8da642915751a6bb79d: browser setup passed, 15/17 Playwright passed, with the demo timeout boundary and drag anchor assertions failing. Both were repaired locally in 0287181e53accb9303151a2ad0d42f890a22064a; this repair is not yet on the remote PR head. MCP run 37974426476 reconfirmed missing DATABASE_URL/obsolete agencyMcpService tests and missing approved live MCP URL/token; later security/audit jobs skipped. Next push this repair and run the next consolidated exact-head CI. All 66 requirements OPEN/UNVERIFIED; no deployment/feature-flag enablement.",
+    "resume_point": "Run 37974426321 tested PR SHA 3dd9bd064a91bca5fd10fa8ef29bfcc31e128b28 and found 15/17 Playwright passing; both timing/drag gaps were repaired. Follow-up run 37975172614 tested a3df3cbb703c45562705d45f01fa9e11ba419887: 16/17 passed, with the only failure being a demo event dispatched before the notification-baseline/feature setup was ready. Added `waitForNotificationBaseline(page)` before that event in local source commit d2ad4f240e8853c717583481e6c0b95d9ba7df3f. MCP tests/live gate still fail on missing DATABASE_URL, retired test import, and absent approved URL/token; downstream security/audit jobs skipped after focus tests. Next publish d2ad4f24 and run fresh exact-head CI. PR #403/#405 active worktrees remain untouched. All 66 requirements OPEN/UNVERIFIED; no production enablement or deployment.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -79,7 +79,7 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Push the source repair and obtain fresh exact-head browser evidence; reconcile independent MCP/security PRs without touching their active worktrees, then continue the external authority-gated WorkUnits.",
+    "next_action": "Push the demo readiness fix and obtain fresh exact-head CI. Then reconcile independent security/MCP PRs while preserving their active worktrees, and continue external authority-gated acceptance.",
     "rationale": "The first consolidated run exposed two browser gaps, now repaired in source but not yet verified. MCP failures remain an independent existing fixture/environment blocker and live endpoint authority is missing. No mandatory gate was skipped or weakened.",
     "residual_requirements": [
       "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
@@ -120,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 25,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -142,11 +142,12 @@
       "cfaf435a87f528ca3360a4be99405641b8059ccf",
       "fcbda4737fa3ce899c9d7f81924917c2fb901447",
       "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
-      "0287181e53accb9303151a2ad0d42f890a22064a"
+      "0287181e53accb9303151a2ad0d42f890a22064a",
+      "d2ad4f240e8853c717583481e6c0b95d9ba7df3f"
     ],
     "mapping": [
       {
-        "coverage": "PARTIAL; existing implementation fixes and fail-closed attention are in place; 3dd9bd06 browser simulation passed 15/17 with two issues repaired in 0287181e. New exact-source verification is pending. External notification, security, MCP, and live runtime authorities remain unresolved.",
+        "coverage": "PARTIAL; 3dd9bd06 exposed two browser gaps repaired in 0287181e; follow-up 379751 on a3df3cbb passed those two and exposed one demo-readiness race, now guarded in d2ad4f24. Final exact-source verification is pending.",
         "scope": "Gated dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until tenant/revision proof, localized hints, responsive placement, draft-safe Chat/Feedback/Task Control, and bounded local preferences.",
         "source_paths": [
           "apps/web/client/src/components/GlobalAlerts.tsx",
@@ -162,7 +163,7 @@
           "apps/web/client/src/locales/th/settings.json",
           "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
         ],
-        "source_sha": "0287181e53accb9303151a2ad0d42f890a22064a"
+        "source_sha": "d2ad4f240e8853c717583481e6c0b95d9ba7df3f"
       }
     ],
     "source_paths": [
@@ -179,7 +180,7 @@
       "apps/web/client/src/locales/th/settings.json",
       "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
     ],
-    "source_sha": "0287181e53accb9303151a2ad0d42f890a22064a",
+    "source_sha": "d2ad4f240e8853c717583481e6c0b95d9ba7df3f",
     "started": true,
     "status": "PARTIAL"
   },
@@ -231,7 +232,7 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Push the source repair and obtain fresh exact-head browser evidence; reconcile independent MCP/security PRs without touching their active worktrees, then continue the external authority-gated WorkUnits.",
+      "next_action": "Push the demo readiness fix and obtain fresh exact-head CI. Then reconcile independent security/MCP PRs while preserving their active worktrees, and continue external authority-gated acceptance.",
       "rationale": "The first consolidated run exposed two browser gaps, now repaired in source but not yet verified. MCP failures remain an independent existing fixture/environment blocker and live endpoint authority is missing. No mandatory gate was skipped or weakened.",
       "residual_requirements": [
         "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
@@ -344,7 +345,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T18:41:56.847400Z",
+  "updated_at": "2026-10-09T18:46:59.959233Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -359,6 +360,8 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-399-ci-failure-379744-20261010.md",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426321.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426476.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172614.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172582.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971044599.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json"
     ],
@@ -366,7 +369,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "3dd9bd064a91bca5fd10fa8ef29bfcc31e128b28",
+    "sha": "a3df3cbb703c45562705d45f01fa9e11ba419887",
     "status": "PARTIAL",
     "task_regressions": []
   }
