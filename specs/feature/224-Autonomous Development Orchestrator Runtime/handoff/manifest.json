@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "expected_canonical_sha": "fad61d4be74557872d03cbbfcd09986c621eb3fd",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "Obtain the authenticated owner decision and exact existing non-production issuer, signing operation/key identity, evidence account/bucket/prefix, separate writer/verifier permissions, scope and policy; verify them read-only before adapters. Independently, install Windows Runner review build 0.2.26 (source 14e705d366aa7eac5e95abd321823a6983536906; SHA-256 b9d3ae520a630458a8dd04b51e037880cc9782b53815f60bff23fa6c9cf52bf0), reconnect once through the browser, approve replacement session, and capture a fresh authenticated capability/Codex readiness snapshot.",
-    "next_ready_workunit": "SPEC224_REMOTE_SOURCE_TRUST_AUTHORITY_APPROVAL_AND_WINDOWS_REAUTH_ACCEPTANCE",
+    "next_action": "Design and verify an authority-owned bounded validation-proof contract that allows Python validation before the protected transaction while preserving a single Python authorization engine and complete commit-time binding/revocation checks. Reuse already approved signing authority if present; otherwise retain in-transaction HTTP and identify the exact missing authority.",
+    "next_ready_workunit": "SPEC224_VALIDATOR_LATENCY_REDUCTION_CONTRACT",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "Canonical source is ccd4cd11c664cf81cc54fe1287c60ce7f5c36978. PR #392 restored the protected P-RECOVERY validation API contract; the bounded Python validator HTTP call still executes while admission holds its Postgres transaction/fence and needs safe lock-duration resolution before live dispatch. PR #397's merged Runner source includes HTTP 409 browser-reauth handling; unsigned Windows review artifact 0.2.26 is available in specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md but Windows runtime acceptance is pending operator installation and reconnect. This session has no authenticated Control Plane or Cloudflare inventory interface. Keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied; no P-RECOVERY grant, economic authority, dispatch, deployment, or UAT is evidenced.",
+    "resume_point": "origin/main is fad61d4be74557872d03cbbfcd09986c621eb3fd. PR #406 integrated commit-time canonical grant row locking and Python request/response/issuance-audit checks. Disposable PostgreSQL 15.17 evidence includes actual Node-to-Python HTTP, approval/user/tenant mutation waits, protected-start row-lock race, Python approval/audit tamper denial, validator timeout denial, and 23 focused Node unit tests. HTTP remains inside the protected transaction; do not move it until SPEC224_VALIDATOR_LATENCY_REDUCTION_CONTRACT establishes a safe authority-owned proof. Keep REMOTE_TEST_TRUSTED/PRODUCTION_TRUSTED denied; Windows/Linux physical Runner readiness and live dispatch remain separate.",
     "waiting_predicate": "Reactivate trust-adapter work only when an authenticated owner decision names exact existing issuer principal, approved signing operation/key, storage account/bucket/prefix, distinct writer/verifier identities and permissions, tenant/project/environment/profile scope, freshness/revocation/retention policy, and durable approval reference. Reactivate Windows acceptance when the 0.2.26 review build is installed, browser reconnect/replacement is approved, and a fresh Control Plane session/capability snapshot plus Codex execution readiness is captured."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 20,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,9 +1123,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+    "canonical_sha": "fad61d4be74557872d03cbbfcd09986c621eb3fd",
     "integrated": true,
-    "integrated_at": "2026-10-09T03:18:53Z"
+    "integrated_at": "2026-10-09T08:39:56Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -1133,7 +1133,9 @@
     "state_evidence": [
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/authority-design.md#Read-only infrastructure inventory",
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint",
-      "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23"
+      "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23",
+      "PR #406 merged at fad61d4be74557872d03cbbfcd09986c621eb3fd; SPEC224_COMMIT_TIME_CANONICAL_GRANT_REVALIDATION verified on disposable PostgreSQL",
+      "orchestra/tasks/spec224-commit-time-revalidation-20261009/implementation-handoff.md#Verification"
     ],
     "updated_at": "2026-10-08T02:06:09.264229Z"
   },
@@ -1144,7 +1146,9 @@
       "state_evidence": [
         "orchestra/tasks/spec224-remote-source-trust-authority-20261009/authority-design.md#Read-only infrastructure inventory",
         "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint",
-        "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23"
+        "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23",
+        "PR #406 merged at fad61d4be74557872d03cbbfcd09986c621eb3fd; SPEC224_COMMIT_TIME_CANONICAL_GRANT_REVALIDATION verified on disposable PostgreSQL",
+        "orchestra/tasks/spec224-commit-time-revalidation-20261009/implementation-handoff.md#Verification"
       ],
       "updated_at": "2026-10-08T02:06:09.264229Z"
     }
@@ -3086,7 +3090,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:09:16.732789Z",
+  "updated_at": "2026-10-09T08:42:31.511172Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
