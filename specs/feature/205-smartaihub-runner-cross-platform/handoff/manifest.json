@@ -124,20 +124,20 @@
     {
       "class": "DEPLOYMENT",
       "id": "WINDOWS_REFRESH_LIVE_VERIFICATION_PENDING",
-      "next_action": "Deploy the integrated backend repair through the normal release path, then verify automatic refresh and Control Plane acknowledgement on the Windows Runner. If it still fails, capture the sanitized HTTP status/error code and server correlation evidence.",
-      "root_cause": "The refresh endpoint's preflight rejected a revoked refresh token before the existing bounded replay grace handler could recover a token set after a lost response. The source defect is fixed, but the screenshot's generic RUNNER_CONNECT_REQUEST_FAILED does not prove that this exact branch was triggered."
+      "next_action": "Verify PR #412 in the normally deployed Control Plane, complete browser reauthorization on Windows, and capture fresh authenticated session/capability/Codex/workspace evidence. If refresh still fails, capture the sanitized status/error code and server correlation record.",
+      "root_cause": "The user screenshot shows RUNNER_CONNECT_REQUEST_REJECTED_400 but no response body, request ID, or deployed SHA. At source 19b5a890b41b95172bcd97a12fcccaa32d9984af, the refresh route mapped unexpected exceptions to generic HTTP 400; PR #412 merged at 1df17e691f710df466737c586838c37f7c90ff6a changes that fallback to sanitized HTTP 500. The screenshot does not establish that this branch caused the observed response, and the backend deployment remains unverified."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+    "expected_canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "On the authorized Windows host, the Runner owner should review and approve installation of the exact 0.2.27 unsigned review artifact recorded in handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md. Then perform one supported browser reconnect if needed and capture fresh status, doctor, capabilities, explicit rescan, session continuity, authenticated Control Plane acknowledgement, Codex readiness, and workspace/source binding. Do not dispatch a protected task.",
+    "next_action": "On the authorized Windows host, after the normal Control Plane release containing PR #412 is verified, click Connect via browser and approve the Runner again. Then capture status, doctor, capabilities, explicit rescan, session continuity, authenticated Control Plane acknowledgement, Codex readiness, and workspace/source binding. Capture exact installed version/source SHA; the screenshot does not prove binary provenance. Do not dispatch a protected task.",
     "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Windows review build 0.2.27 completed successfully from canonical source a709ec4084243386848785bd276f53445c7d36b8. Artifact 11612928361 has installer SHA-256 0ca9ea4af942ff3e0f1f162e4033f659493f3b67f1a2a313281123577a1f2755 and is unsigned-review only; the build uploaded an Actions artifact and did not publish a trusted release. Source includes HTTP 409 reconnect handling, session refresh/continuity repair, manual refresh retry, and PR #401 Codex login-status probe. Host installation, owner acceptance, browser reconnect, live session continuity, authenticated Control Plane acknowledgement, fresh capability snapshot, Codex policy readiness, and workspace/source binding remain unverified. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md.",
-    "waiting_predicate": "Reactivate Windows acceptance when the authorized owner accepts and installs review artifact 11612928361 from source a709ec4084243386848785bd276f53445c7d36b8 and provides fresh authenticated evidence for the installed build, browser reconnect/session continuity, heartbeat, Control Plane acknowledgement, capability snapshot, Codex auth/health/policy, and workspace/source binding."
+    "resume_point": "Windows review build 0.2.27 completed successfully from canonical source a709ec4084243386848785bd276f53445c7d36b8. Artifact 11612928361 has installer SHA-256 0ca9ea4af942ff3e0f1f162e4033f659493f3b67f1a2a313281123577a1f2755 and is unsigned-review only; the build uploaded an Actions artifact and did not publish a trusted release. Source includes HTTP 409 reconnect handling, session refresh/continuity repair, manual refresh retry, and PR #401 Codex login-status probe. Host installation, owner acceptance, browser reconnect, live session continuity, authenticated Control Plane acknowledgement, fresh capability snapshot, Codex policy readiness, and workspace/source binding remain unverified. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md. Windows review build 0.2.27 completed from source a709ec4084243386848785bd276f53445c7d36b8; artifact 11612928361 is unsigned-review only (see runner-desktop-review-build-0.2.27-20261009.md). The user screenshot shows the Runner stopped and automatic refresh rejected with HTTP 400; its clipped version line and absent response body do not prove installed source or backend SHA. PR #412 merged at 1df17e691f710df466737c586838c37f7c90ff6a corrects unexpected refresh exception classification to sanitized HTTP 500; route tests passed 24/24. Deployment, browser reconnection, session/capability acknowledgement, Codex policy, and workspace/source binding remain unverified. Evidence: specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md.",
+    "waiting_predicate": "Reactivate after the authorized owner verifies the normal Control Plane release containing PR #412, completes Windows browser reconnection, and supplies fresh authenticated session/capability/Codex/workspace-source evidence. SPEC-224 dispatch remains separately gated by remote-trust approval, tenant-owner P-RECOVERY, economics, and persisted proof."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -369,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 24,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -401,7 +401,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+    "canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
     "integrated": true,
     "integrated_at": "2026-10-09T04:20:31Z"
   },
@@ -1305,7 +1305,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T11:35:11.207980Z",
+  "updated_at": "2026-10-09T12:19:38.471134Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1314,11 +1314,12 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-manual-refresh-button-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+    "sha": "1df17e691f710df466737c586838c37f7c90ff6a",
     "status": "PENDING",
     "task_regressions": []
   }

@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 162 unresolved of 162
 - Next action: Windows owner acceptance of review artifact 11612928361 followed by fresh authenticated session/capability/Codex and workspace/source readback.
-- Manifest generation: 24
+- Manifest generation: 25
 
 ## Source-declared status and relationship claims
 
