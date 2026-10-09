@@ -647,20 +647,113 @@ fn run_version_probe(
     if !status.success() {
         return Err("RUNNER_ADAPTER_PROBE_EXITED_NONZERO".into());
     }
+    let mut authenticated = deterministic;
+    let mut reason_codes = if deterministic {
+        vec![
+            "version_probe_ok".into(),
+            "deterministic_certification_adapter".into(),
+        ]
+    } else {
+        vec!["version_probe_ok".into(), "auth_probe_required".into()]
+    };
+
+    if !deterministic && candidate.adapter_id.as_deref() == Some("codex.v1") {
+        match run_codex_login_status(program, timeout) {
+            Ok(true) => {
+                authenticated = true;
+                reason_codes = vec!["version_probe_ok".into(), "auth_status_ok".into()];
+            }
+            Ok(false) => {
+                let auth_reason = if codex_wif_is_configured() {
+                    "auth_probe_deferred"
+                } else {
+                    "auth_probe_required"
+                };
+                reason_codes = vec!["version_probe_ok".into(), auth_reason.into()];
+            }
+            Err(_) => reason_codes = vec!["version_probe_ok".into(), "auth_probe_failed".into()],
+        }
+    }
+
     Ok(AdapterProbeResult {
         version,
-        authenticated: deterministic,
+        authenticated,
         healthy: true,
         available: true,
-        reason_codes: if deterministic {
-            vec![
-                "version_probe_ok".into(),
-                "deterministic_certification_adapter".into(),
-            ]
-        } else {
-            vec!["version_probe_ok".into(), "auth_probe_required".into()]
-        },
+        reason_codes,
     })
+}
+
+/// Reads Codex's local login state without executing a prompt. WIF checks can
+/// consume a one-time assertion, so automatic Runner probes must defer when a
+/// WIF environment is present.
+fn run_codex_login_status(program: &Path, timeout: Duration) -> Result<bool, String> {
+    if codex_wif_is_configured() {
+        return Ok(false);
+    }
+    if timeout.is_zero() || timeout > Duration::from_secs(10) {
+        return Err("RUNNER_ADAPTER_PROBE_TIMEOUT_INVALID".into());
+    }
+    let mut command = command_for_cli(program, &["login".into(), "status".into()])?;
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    hide_console_window(&mut command);
+    let mut child = command.spawn().map_err(probe_spawn_error)?;
+    let stdout = child
+        .stdout
+        .take()
+        .map(|stream| std::thread::spawn(move || read_probe_output(stream)));
+    let stderr = child
+        .stderr
+        .take()
+        .map(|stream| std::thread::spawn(move || read_probe_output(stream)));
+    let deadline = Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("RUNNER_ADAPTER_PROBE_TIMEOUT".into());
+            }
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("RUNNER_ADAPTER_PROBE_STATUS_FAILED".into());
+            }
+        }
+    };
+    let mut output = stdout
+        .and_then(|thread| thread.join().ok())
+        .unwrap_or_default();
+    output.extend(
+        stderr
+            .and_then(|thread| thread.join().ok())
+            .unwrap_or_default(),
+    );
+    Ok(status.success() && codex_login_status_authenticated(&output))
+}
+
+fn codex_login_status_authenticated(output: &[u8]) -> bool {
+    let Ok(output) = std::str::from_utf8(output) else {
+        return false;
+    };
+    output.lines().any(|line| {
+        matches!(
+            line.trim(),
+            "Logged in using ChatGPT" | "Logged in using API key"
+        )
+    })
+}
+
+fn codex_wif_is_configured() -> bool {
+    std::env::var_os("OPENAI_FEDERATION_RULE_ID").is_some()
+        || std::env::var_os("OPENAI_IDENTITY_TOKEN_FILE").is_some()
 }
 
 /// Whether this discovered command has a documented, non-interactive prompt
@@ -2126,5 +2219,56 @@ mod tests {
             .iter()
             .any(|code| code == "auth_probe_required"));
         assert!(!result.authenticated);
+    }
+
+    #[test]
+    fn codex_login_status_requires_an_exact_known_success_line() {
+        assert!(codex_login_status_authenticated(
+            b"Logged in using ChatGPT\n"
+        ));
+        assert!(codex_login_status_authenticated(
+            b"Logged in using API key\n"
+        ));
+        assert!(!codex_login_status_authenticated(b"not logged in\n"));
+        assert!(!codex_login_status_authenticated(
+            b"Logged in using ChatGPT; token=secret\n"
+        ));
+        assert!(!codex_login_status_authenticated(b"\xff"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn codex_adapter_probe_uses_bounded_local_login_status_without_exposing_output() {
+        use std::os::unix::fs::PermissionsExt;
+
+        if codex_wif_is_configured() {
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let executable = temp.path().join("codex");
+        std::fs::write(
+            &executable,
+            b"#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then printf 'codex 0.162.0\\n'; exit 0; fi\nif [ \"$1\" = \"login\" ] && [ \"$2\" = \"status\" ]; then printf 'Logged in using ChatGPT\\n'; exit 0; fi\nexit 1\n",
+        )
+        .unwrap();
+        let mut permissions = std::fs::metadata(&executable).unwrap().permissions();
+        permissions.set_mode(0o700);
+        std::fs::set_permissions(&executable, permissions).unwrap();
+        let candidate = crate::discovery::scan_path_entries(
+            crate::config::RunnerProfile::LocalDevice,
+            &[temp.path().to_path_buf()],
+        )
+        .into_iter()
+        .find(|tool| tool.tool_id == "codex")
+        .unwrap();
+
+        let result = probe_candidate(&candidate, Duration::from_secs(1)).unwrap();
+        assert_eq!(result.version, "codex 0.162.0");
+        assert!(result.authenticated);
+        assert!(result
+            .reason_codes
+            .iter()
+            .any(|code| code == "auth_status_ok"));
+        assert!(!format!("{result:?}").contains("Logged in using"));
     }
 }
