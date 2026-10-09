@@ -65,5 +65,6 @@ Loop policy:
 - PR #399 head `0bc15b68fa2c0ddc8a6b3bd182c14f4b6050887d`; configured `origin/main` remains `c7a4fbd1ff09214b462e8660b2626049d87f01c7`.
 - Repaired MCP workflow's duplicated pnpm version. CI then reached focused tests and exposed a second baseline workflow issue: tests import `@smartspec/remotion-render/render-video-schema`, but CI did not build that workspace package. Added its explicit package build before those tests; CI rerun is pending on the next push.
 - MCP live-contract CI fails closed because `MCP_SMOKE_URL` and `MCP_SMOKE_TOKEN` are absent. No credentials or substitute endpoint were invented.
-- Immediate next: commit/push this workflow repair and current handoff update, inspect the new CI run; then continue only when authenticated non-production app/runtime and authorized test identity are available.
+- CI evidence at `evidence/pr-ci-37884628652.json`: pnpm setup, install, and workspace schema build pass; MCP tests still fail in existing server suites without `DATABASE_URL`, with one stale test import. Live contract fails closed because the endpoint/token are not configured.
+- Immediate next: repair the pre-existing MCP test fixture/import without weakening the security gate; configure the live endpoint through secure CI settings; provision the approved non-production app runtime and authorized test identity for browser acceptance.
 - The unrelated manual migration workflow run reports failure with zero jobs and no check rollup entry; it is not part of this PR's required checks and was not modified.

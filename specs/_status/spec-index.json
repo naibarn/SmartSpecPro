@@ -135421,7 +135421,12 @@
       "lifecycle": "WAITING_DEPENDENCY",
       "next_action": "First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "class": "AUTHENTICATED_RUNTIME",
+        "id": "SPEC308_NONPROD_APP_RUNTIME",
+        "next_action": "Provide access to an approved non-production runtime and authorized test identity through the project secret/runtime management path; do not send secret values in chat.",
+        "root_cause": "No authorized non-production DATABASE_URL, CONTROL_PLANE_API_KEY, or authenticated test user/tenant fixture is available to exercise the signed-in Notification, Settings, Chat, Task Control, and Feedback flows."
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "record_kind": "CANONICAL_SPEC",
