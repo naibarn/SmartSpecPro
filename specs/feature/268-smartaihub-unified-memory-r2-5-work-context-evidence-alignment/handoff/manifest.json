@@ -32,9 +32,9 @@
   "blockers": [
     {
       "class": "IMPLEMENTATION",
-      "id": "SPEC268_RUNTIME_ACCEPTANCE",
-      "next_action": "Implement and test additive runtime integration.",
-      "root_cause": "R2.6 defines contract but does not implement runtime resolver/context binding or direct acceptance suite."
+      "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
+      "next_action": "Bind legacy team-room project identity to the canonical project authority and prove source-level memory provenance before re-enabling persistent team-room memory.",
+      "root_cause": "The existing team-room project field is an integer and entity-memory records have no project filter/provenance; this checkpoint therefore fails closed by disabling persistent team-room memory."
     },
     {
       "class": "NOT_STARTED",
@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "1d970c5a3925bf8f8f32516005d2a9be7bb67ae8",
+    "expected_canonical_sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Implement a canonical room-to-project binding and provenance-aware team memory retrieval, or keep the existing fail-closed memory suppression if the authoritative identity path is unavailable.",
+    "next_ready_workunit": "SPEC268_PROJECT_IDENTITY_AND_MEMORY_PROVENANCE",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Inspect existing SPEC-302 canonical project identity and memory provenance contracts; do not change the reserved SPEC-269 promptComposer paths.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -64,13 +64,14 @@
         "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
       }
     ],
-    "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+    "next_action": "Continue with canonical room-to-project identity and source-level memory provenance; retain team-room memory suppression until focused isolation tests pass.",
     "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
     "residual_requirements": [
-      "R2.6 runtime MemoryContext integration",
-      "Project resolution receipt/state integration with SPEC-302",
+      "Canonical room-to-project identity and resolution-receipt integration",
+      "Source-level tenant/project provenance for persistent team-room memory",
       "Cross-App/Project isolation acceptance",
-      "Legacy Chat memory migration evidence"
+      "Legacy Chat memory migration evidence",
+      "Production migration and cutover under SPEC-295 authority"
     ]
   },
   "dependencies": {
@@ -146,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 10,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -163,17 +164,29 @@
     "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
+      "3c1671e2cba1984ebe649f1d975e283949f72185"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/services/teamProjectProviderAuthorization.ts",
+      "apps/web/server/services/executors/contextBuilder.ts",
+      "apps/web/server/services/contextEngineAdapter.ts",
+      "apps/web/server/services/unifiedOrchestrator.ts",
+      "apps/web/server/services/__tests__/teamProjectProviderAuthorization.test.ts",
+      "apps/web/server/services/__tests__/contextBuilder.test.ts",
+      "apps/web/server/services/__tests__/contextEngineAdapter.test.ts",
+      "apps/web/server/services/__tests__/unifiedOrchestrator.test.ts"
+    ],
+    "started": true,
+    "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1d970c5a3925bf8f8f32516005d2a9be7bb67ae8",
+    "canonical_sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
     "integrated": true,
-    "integrated_at": "2026-10-09T18:15:13Z"
+    "integrated_at": "2026-10-09T23:41:59Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -217,13 +230,14 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
         }
       ],
-      "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "next_action": "Continue with canonical room-to-project identity and source-level memory provenance; retain team-room memory suppression until focused isolation tests pass.",
       "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
       "residual_requirements": [
-        "R2.6 runtime MemoryContext integration",
-        "Project resolution receipt/state integration with SPEC-302",
+        "Canonical room-to-project identity and resolution-receipt integration",
+        "Source-level tenant/project provenance for persistent team-room memory",
         "Cross-App/Project isolation acceptance",
-        "Legacy Chat memory migration evidence"
+        "Legacy Chat memory migration evidence",
+        "Production migration and cutover under SPEC-295 authority"
       ]
     },
     "disposition": {
@@ -351,14 +365,18 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T18:16:49.163879Z",
+  "updated_at": "2026-10-09T23:45:02.537450Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/evidence/provider-boundary-context-3c1671e.json"
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "quick"
+    ],
+    "sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
+    "status": "PASS",
     "task_regressions": []
   }
 }
