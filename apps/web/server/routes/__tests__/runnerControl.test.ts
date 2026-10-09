@@ -5,11 +5,12 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 
-const { recordRunnerSessionInventory, revokedJtis, ephemeralValues } = vi.hoisted(() => ({
-  recordRunnerSessionInventory: vi.fn(),
-  revokedJtis: new Set<string>(),
-  ephemeralValues: new Map<string, unknown>(),
-}));
+const { recordRunnerSessionInventory, revokedJtis, ephemeralValues } =
+  vi.hoisted(() => ({
+    recordRunnerSessionInventory: vi.fn(),
+    revokedJtis: new Set<string>(),
+    ephemeralValues: new Map<string, unknown>(),
+  }));
 
 vi.mock("../../services/runnerExecutionSessionService", () => ({
   recordRunnerSessionInventory,
@@ -30,13 +31,18 @@ vi.mock("../../_core/revocation", () => {
 });
 
 vi.mock("../../services/postgresEphemeralStore", () => ({
-  readEphemeralValue: vi.fn(async (namespace: string, key: string) => ephemeralValues.get(`${namespace}:${key}`) ?? null),
-  putEphemeralValueIfAbsent: vi.fn(async (namespace: string, key: string, value: unknown) => {
-    const storageKey = `${namespace}:${key}`;
-    if (ephemeralValues.has(storageKey)) return false;
-    ephemeralValues.set(storageKey, value);
-    return true;
-  }),
+  readEphemeralValue: vi.fn(
+    async (namespace: string, key: string) =>
+      ephemeralValues.get(`${namespace}:${key}`) ?? null
+  ),
+  putEphemeralValueIfAbsent: vi.fn(
+    async (namespace: string, key: string, value: unknown) => {
+      const storageKey = `${namespace}:${key}`;
+      if (ephemeralValues.has(storageKey)) return false;
+      ephemeralValues.set(storageKey, value);
+      return true;
+    }
+  ),
 }));
 
 vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
@@ -70,6 +76,7 @@ import {
   RunnerGateway,
 } from "../../services/runnerGateway";
 import { auditLogger } from "../../services/auditLogger";
+import { RunnerSessionError } from "../../services/runnerSessionContracts";
 import {
   handleRunnerSocketMessage,
   handleRunnerUpgrade,
@@ -1138,11 +1145,31 @@ describe("Runner control transport routes", () => {
       tenantId: "tenant-http",
       profile: "shared_container",
       nodeKind: "managed_container",
+      runnerSessionId: "runner-credentials-session",
     });
+    runnerSessionController.restoreAuthorized({
+      runnerSessionId: "runner-credentials-session",
+      runnerId,
+      tenantId: "tenant-http",
+      deviceId: runnerId,
+      ownerUserId: null,
+      ttlMs: 1,
+    });
+    await new Promise(resolve => setTimeout(resolve, 5));
+    expect(() =>
+      runnerSessionController.assertAuthorized("runner-credentials-session")
+    ).toThrowError(new RunnerSessionError("SESSION_EXPIRED"));
     const refreshed = await request(app)
       .post(`/api/runners/${runnerId}/access/refresh`)
       .set("Authorization", `Bearer ${refresh.refreshToken}`)
       .expect(200);
+    expect(
+      runnerSessionController.assertAuthorized("runner-credentials-session")
+    ).toMatchObject({
+      state: "authorized",
+      runnerId,
+      tenantId: "tenant-http",
+    });
     expect(refreshed.body).toMatchObject({
       executionToken: expect.any(String),
       uploadToken: expect.any(String),

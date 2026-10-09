@@ -432,7 +432,8 @@ async function authorizeRunnerSession(
   } catch (error) {
     if (
       error instanceof RunnerSessionError &&
-      error.code === "CHALLENGE_INVALID" &&
+      (error.code === "CHALLENGE_INVALID" ||
+        error.code === "SESSION_EXPIRED") &&
       identity
     ) {
       runnerSessionController.restoreAuthorized({
@@ -812,7 +813,8 @@ export async function dispatchRunnerJobCommand(
   let dispatchAttempted = false;
   const dispatch = async () => {
     dispatchAttempted = true;
-    if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
+    if (pendingInputGrant)
+      await deliverSpec224RunnerInputGrant(pendingInputGrant);
     await sendRunnerSocketAndWait(
       channel.ws,
       envelope,
@@ -846,7 +848,8 @@ export async function dispatchRunnerJobCommand(
         fingerprint,
         state: "sent",
       });
-      if (pendingInputGrant) pendingSpec224InputGrants.delete(command.commandId);
+      if (pendingInputGrant)
+        pendingSpec224InputGrants.delete(command.commandId);
     } catch (error) {
       const cachedCommand = channel.sentCommands.get(command.commandId);
       if (cachedCommand?.state === "dispatching") {
@@ -868,13 +871,15 @@ export async function dispatchRunnerJobCommand(
       persistedStartProofValid: false,
     });
     try {
-      if (pendingInputGrant) await deliverSpec224RunnerInputGrant(pendingInputGrant);
+      if (pendingInputGrant)
+        await deliverSpec224RunnerInputGrant(pendingInputGrant);
       sendRunnerSocket(channel.ws, envelope);
       channel.sentCommands.set(command.commandId, {
         fingerprint,
         state: "sent",
       });
-      if (pendingInputGrant) pendingSpec224InputGrants.delete(command.commandId);
+      if (pendingInputGrant)
+        pendingSpec224InputGrants.delete(command.commandId);
     } catch (error) {
       channel.sentCommands.set(command.commandId, {
         fingerprint,
@@ -908,9 +913,17 @@ export async function deliverSpec224RunnerInputGrant(input: {
   inputFetchGrant: string;
 }): Promise<void> {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/.test(input.inputRef))
-    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_REF_INVALID", 400, "Input reference is invalid");
+    throw new RunnerAuthError(
+      "SPEC224_RUNNER_INPUT_REF_INVALID",
+      400,
+      "Input reference is invalid"
+    );
   if (!/^[A-Za-z0-9_-]{40,96}$/.test(input.inputFetchGrant))
-    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_INVALID", 400, "Input grant is invalid");
+    throw new RunnerAuthError(
+      "SPEC224_RUNNER_INPUT_GRANT_INVALID",
+      400,
+      "Input grant is invalid"
+    );
   const channel = activeRunnerChannels.get(input.runnerId);
   if (
     !channel ||
@@ -918,7 +931,11 @@ export async function deliverSpec224RunnerInputGrant(input: {
     channel.tenantId !== input.tenantId ||
     channel.runnerSessionId !== input.runnerSessionId
   )
-    throw new RunnerAuthError("runner_session_mismatch", 409, "Runner input grant targets a stale session");
+    throw new RunnerAuthError(
+      "runner_session_mismatch",
+      409,
+      "Runner input grant targets a stale session"
+    );
   const auth = await verifyRunnerControlToken(channel.token, {
     runnerId: input.runnerId,
     tenantId: input.tenantId,
@@ -926,26 +943,30 @@ export async function deliverSpec224RunnerInputGrant(input: {
     requiredScopes: ["runner:status"],
   });
   const sequence = channel.nextServerSequence++;
-  await sendRunnerSocketAndWait(channel.ws, {
-    protocolVersion: RUNNER_CONTRACT_VERSION,
-    profile: auth.profile,
-    nodeKind: auth.nodeKind,
-    runnerId: input.runnerId,
-    nodeId: input.runnerId,
-    jobId: input.jobId,
-    attemptId: null,
-    leaseId: input.leaseId,
-    fencingVersion: input.fencingToken,
-    correlationId: `spec224-input:${input.inputRef}`,
-    sequence,
-    idempotencyKey: `spec224-input-grant:${input.inputRef}:${input.fencingToken}`,
-    payload: {
-      type: "runner.spec224.input-grant",
-      inputRef: input.inputRef,
-      inputFetchGrant: input.inputFetchGrant,
-      runnerSessionId: input.runnerSessionId,
+  await sendRunnerSocketAndWait(
+    channel.ws,
+    {
+      protocolVersion: RUNNER_CONTRACT_VERSION,
+      profile: auth.profile,
+      nodeKind: auth.nodeKind,
+      runnerId: input.runnerId,
+      nodeId: input.runnerId,
+      jobId: input.jobId,
+      attemptId: null,
+      leaseId: input.leaseId,
+      fencingVersion: input.fencingToken,
+      correlationId: `spec224-input:${input.inputRef}`,
+      sequence,
+      idempotencyKey: `spec224-input-grant:${input.inputRef}:${input.fencingToken}`,
+      payload: {
+        type: "runner.spec224.input-grant",
+        inputRef: input.inputRef,
+        inputFetchGrant: input.inputFetchGrant,
+        runnerSessionId: input.runnerSessionId,
+      },
     },
-  }, PROTECTED_RUNNER_SEND_TIMEOUT_MS);
+    PROTECTED_RUNNER_SEND_TIMEOUT_MS
+  );
 }
 
 export function registerSpec224RunnerInputGrant(input: {
@@ -961,17 +982,29 @@ export function registerSpec224RunnerInputGrant(input: {
   inputFetchGrant: string;
 }): void {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/.test(input.commandId))
-    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_COMMAND_INVALID", 400, "Command is invalid");
+    throw new RunnerAuthError(
+      "SPEC224_RUNNER_INPUT_COMMAND_INVALID",
+      400,
+      "Command is invalid"
+    );
   const candidate: PendingSpec224InputGrant = {
-    runnerId: input.runnerId, tenantId: input.tenantId,
-    runnerSessionId: input.runnerSessionId, jobId: input.jobId,
-    attempt: input.attempt, leaseId: input.leaseId,
-    fencingToken: input.fencingToken, inputRef: input.inputRef,
+    runnerId: input.runnerId,
+    tenantId: input.tenantId,
+    runnerSessionId: input.runnerSessionId,
+    jobId: input.jobId,
+    attempt: input.attempt,
+    leaseId: input.leaseId,
+    fencingToken: input.fencingToken,
+    inputRef: input.inputRef,
     inputFetchGrant: input.inputFetchGrant,
   };
   const existing = pendingSpec224InputGrants.get(input.commandId);
   if (existing && JSON.stringify(existing) !== JSON.stringify(candidate))
-    throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_CONFLICT", 409, "Input grant conflicts with pending command");
+    throw new RunnerAuthError(
+      "SPEC224_RUNNER_INPUT_GRANT_CONFLICT",
+      409,
+      "Input grant conflicts with pending command"
+    );
   pendingSpec224InputGrants.set(input.commandId, candidate);
 }
 
@@ -1194,8 +1227,7 @@ export async function handleRunnerSocketMessage(
             runnerId: auth.runnerId,
             tenantId: auth.tenantId,
             reason:
-              error instanceof Error &&
-              /^[A-Z0-9_]{1,100}$/.test(error.message)
+              error instanceof Error && /^[A-Z0-9_]{1,100}$/.test(error.message)
                 ? error.message
                 : "RUNNER_SESSION_PROJECTION_FAILED",
           });
@@ -1677,7 +1709,11 @@ export function registerRunnerControlRoutes(
         const command = validateRunnerJobCommand(rawCommand);
         if (command.inputRef.startsWith("spec224-input:")) {
           if (typeof inputFetchGrant !== "string")
-            throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_REQUIRED", 400, "Input fetch grant is required");
+            throw new RunnerAuthError(
+              "SPEC224_RUNNER_INPUT_GRANT_REQUIRED",
+              400,
+              "Input fetch grant is required"
+            );
           registerSpec224RunnerInputGrant({
             commandId: command.commandId,
             runnerId: command.runnerId,
@@ -1692,13 +1728,14 @@ export function registerRunnerControlRoutes(
           });
           registeredInputCommandId = command.commandId;
         } else if (inputFetchGrant !== undefined) {
-          throw new RunnerAuthError("SPEC224_RUNNER_INPUT_GRANT_UNEXPECTED", 400, "Input fetch grant is not valid for this command");
+          throw new RunnerAuthError(
+            "SPEC224_RUNNER_INPUT_GRANT_UNEXPECTED",
+            400,
+            "Input fetch grant is not valid for this command"
+          );
         }
         validateRunnerCommandControlPlaneOrigin(command.controlPlaneOrigin);
-        const result = await dispatchRunnerJobCommand(
-          command,
-          gateway
-        );
+        const result = await dispatchRunnerJobCommand(command, gateway);
         return res.json(result);
       } catch (error) {
         return sendError(res, error);
@@ -1713,20 +1750,26 @@ export function registerRunnerControlRoutes(
     "/api/runners/:runnerId/spec224-inputs/:inputRef",
     async (req, res) => {
       const inputFetchGrant = String(req.header("x-spec224-input-grant") ?? "");
-      const runnerSessionId = String(req.header("x-spec224-runner-session-id") ?? "");
-      const authorizationGrantRef = String(req.header("x-spec224-authorization-grant-ref") ?? "");
+      const runnerSessionId = String(
+        req.header("x-spec224-runner-session-id") ?? ""
+      );
+      const authorizationGrantRef = String(
+        req.header("x-spec224-authorization-grant-ref") ?? ""
+      );
       try {
         const staged =
-          await defaultSpec224RunnerInputStagingService.getRunnerInputForMaterialization({
-            inputRef: req.params.inputRef,
-            runnerId: req.params.runnerId,
-            runnerSessionId,
-            authorizationGrantRef,
-            inputFetchGrant,
-            // The opaque grant was delivered only over the authenticated WSS
-            // session; tenant identity remains server-side on the staged row.
-            tenantId: String(req.header("x-spec224-tenant-id") ?? ""),
-          });
+          await defaultSpec224RunnerInputStagingService.getRunnerInputForMaterialization(
+            {
+              inputRef: req.params.inputRef,
+              runnerId: req.params.runnerId,
+              runnerSessionId,
+              authorizationGrantRef,
+              inputFetchGrant,
+              // The opaque grant was delivered only over the authenticated WSS
+              // session; tenant identity remains server-side on the staged row.
+              tenantId: String(req.header("x-spec224-tenant-id") ?? ""),
+            }
+          );
         res.setHeader("cache-control", "no-store");
         return res.json({
           inputRef: staged.inputRef,
@@ -1790,7 +1833,8 @@ export function registerRunnerControlRoutes(
             runnerId: row.runnerId,
             deviceId: row.deviceId,
             machineFingerprintHash:
-              typeof row.currentSnapshotJson?._machineFingerprintHash === "string"
+              typeof row.currentSnapshotJson?._machineFingerprintHash ===
+              "string"
                 ? row.currentSnapshotJson._machineFingerprintHash
                 : null,
             displayName: row.displayName,
@@ -1805,14 +1849,31 @@ export function registerRunnerControlRoutes(
                 : null,
             platform: row.currentSnapshotJson?.platform ?? null,
             toolInventory: toolInventory.map(item => {
-              const tool = item && typeof item === "object" ? item as Record<string, unknown> : {};
+              const tool =
+                item && typeof item === "object"
+                  ? (item as Record<string, unknown>)
+                  : {};
               return {
-                toolId: typeof tool.toolId === "string" ? tool.toolId : "unknown",
-                displayName: typeof tool.displayName === "string" ? tool.displayName : String(tool.toolId ?? "Unknown tool"),
+                toolId:
+                  typeof tool.toolId === "string" ? tool.toolId : "unknown",
+                displayName:
+                  typeof tool.displayName === "string"
+                    ? tool.displayName
+                    : String(tool.toolId ?? "Unknown tool"),
                 version: typeof tool.version === "string" ? tool.version : null,
-                availabilityState: typeof tool.availabilityState === "string" ? tool.availabilityState : "unknown",
-                trustState: typeof tool.trustState === "string" ? tool.trustState : "unknown",
-                reasonCodes: Array.isArray(tool.reasonCodes) ? tool.reasonCodes.filter((code): code is string => typeof code === "string") : [],
+                availabilityState:
+                  typeof tool.availabilityState === "string"
+                    ? tool.availabilityState
+                    : "unknown",
+                trustState:
+                  typeof tool.trustState === "string"
+                    ? tool.trustState
+                    : "unknown",
+                reasonCodes: Array.isArray(tool.reasonCodes)
+                  ? tool.reasonCodes.filter(
+                      (code): code is string => typeof code === "string"
+                    )
+                  : [],
               };
             }),
             toolCount: toolInventory.length,
@@ -1820,8 +1881,11 @@ export function registerRunnerControlRoutes(
               item =>
                 item &&
                 typeof item === "object" &&
-                String((item as Record<string, unknown>).trustState ?? "") === "ready" &&
-                String((item as Record<string, unknown>).availabilityState ?? "") === "available"
+                String((item as Record<string, unknown>).trustState ?? "") ===
+                  "ready" &&
+                String(
+                  (item as Record<string, unknown>).availabilityState ?? ""
+                ) === "available"
             ).length,
             capabilityCount: capabilityInventory.length,
             readyCapabilityCount: capabilityInventory.filter(
@@ -2273,6 +2337,15 @@ export function registerRunnerControlRoutes(
       const node = await gateway.getStatus(auth);
       if (node.revokedAt || node.trustState === "revoked")
         throw new RunnerAuthError("runner_revoked", 403, "Runner is revoked");
+      if (auth.runnerSessionId) {
+        runnerSessionController.restoreAuthorized({
+          runnerSessionId: auth.runnerSessionId,
+          runnerId: auth.runnerId,
+          tenantId: auth.tenantId,
+          deviceId: auth.deviceId ?? auth.runnerId,
+          ownerUserId: auth.ownerUserId,
+        });
+      }
       const tokens = await refreshRunnerAccessTokens(token, {
         runnerId: req.params.runnerId,
       });
