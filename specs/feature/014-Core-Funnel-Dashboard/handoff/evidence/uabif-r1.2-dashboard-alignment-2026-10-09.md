@@ -29,7 +29,7 @@
 | 7. Lifecycle and portability | SPEC-240 persistent/ephemeral surface rules; SPEC-287 Mini App lifecycle; SPEC-261/281 references in source | No saved BI dashboard or portable semantic-query package is proven in current implementation. Those capabilities remain unclaimed and unresolved; no portability workaround was added. |
 | 8. Performance, cost and failure | 90-day `MAX_RANGE_DAYS`, server-side aggregate queries, export row cap; current cache helper | The provenance uses existing aggregate query results and adds no table, query round-trip, provider call, job, cache, or charge. Missing DB responses report unknown freshness and computation time. |
 | 9. UX and operator conformance | AdminFunnelDashboard existing loading/error states; SPEC-270 AC-270-070; SPEC-287 responsive/accessibility evidence contract | Added accessible labeled transparency section; keeps source freshness distinct from computation time. Browser/device conformance beyond the focused component test remains pending. |
-| 10. Integration and evidence truth | Changed-scope diff, focused test commands, handoff validation and canonical integration evidence to be appended after execution | No migration/production action. PR/merge SHA and generator-produced handoff state remain pending until integration. BI end-to-end acceptance is not claimed. |
+| 10. Integration and evidence truth | PR #395 implementation merge and PR #396 generator-produced handoff merge; exact SHAs and `spec_handoff` validation below | PR #395 merged at `9bf489a70d966968ebf24260b70d35f9189ddfb2`; PR #396 merged at `b3ee072f3fa4656b303aee208832336ba8a3e22d`. Preview checks were `SKIPPED`, not passed. No migration/production action or BI end-to-end acceptance is claimed. |
 
 ## Owner reconciliation
 
