@@ -57,7 +57,7 @@
     "next_action": "Dependency/security owners triage the 85 production audit advisories (including 38 high and 1 critical) and approve compatible patched versions in a separate PR; preserve the mandatory audit gate. After the audit passes, complete PR #403 review/integration, rerun #399 on the updated canonical base, and resume authenticated non-production acceptance once the app runtime, authorized identity, and MCP smoke endpoint/token are provisioned.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Compatible high/critical dependency remediations are integrated and the mandatory production audit passes; PR #403 contract/security checks including live MCP authority pass and it is integrated; approved non-production runtime and authorized test identity are available.",
-    "resume_point": "PR #399 latest head bbb842acdb0cab27f6dac99e0f42faa92dcd2977 is docs/evidence-only after implementation/browser source SHA 02fe8ea64145b1222f68e87801ce32efa2ece5aa; the full 10-test isolated Chromium suite passed at the exact implementation SHA. Latest #399 CI run 37897928261 failed on unchanged MCP baseline fixtures (44 failed / 76 passed) because PR #403 is not integrated; live MCP smoke is still fail-closed for missing authorized endpoint/token. PR #403 current head 779532c22af916f5da0ba47f44c19e1a051c4bf5 has 118 focused tests passed and targeted type-check pending; its live smoke is blocked by external CI authority. All 66 requirement rows remain OPEN. Next: finish #403 gates/review, then normal integration and rerun #399; resume authenticated runtime only when approved non-production endpoint and test identity exist. Do not deploy.",
+    "resume_point": "PR #399 latest head 2686a8e6abaafa210d952410f9daeb43b514fad5 (source implementation/browser SHA 02fe8ea64145b1222f68e87801ce32efa2ece5aa). Full isolated Chromium simulation passed 10/10 on the exact implementation SHA. Latest #399 CI run 37898459191 failed on unchanged baseline MCP fixtures (44 failed / 76 passed) while PR #403 remains unintegrated; live smoke fails closed for missing authorized endpoint/token. PR #403 head 779532c22af916f5da0ba47f44c19e1a051c4bf5 passes 118 MCP tests, check:mcp146, and security:mcp146, but fails mandatory dependency audit on 85 baseline advisories (38 high, 1 critical); live smoke also requires external authority. All 66 requirement rows remain OPEN. Next: dependency/security owner triages compatible updates for baseline high/critical advisories, then complete #403 required gates/review. Resume authenticated non-production acceptance only when approved runtime and identity are provisioned. Do not deploy.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -110,7 +110,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 14,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -311,7 +311,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T07:19:35.135153Z",
+  "updated_at": "2026-10-09T07:22:09.906619Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -322,7 +322,8 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897928261.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897633316.json"
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897633316.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37898459191.json"
     ],
     "freshness": "CURRENT",
     "required_profiles": [
