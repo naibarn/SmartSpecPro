@@ -488,6 +488,7 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
   const balloon = page.locator(".assistant-reminder-balloon");
   await expect(launcher).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
+  await waitForNotificationBaseline(page);
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   await expect(balloon).toBeVisible();
   const initialLauncher = await launcher.boundingBox();
