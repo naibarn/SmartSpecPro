@@ -64,4 +64,12 @@ These tests prove helper/API empty-database response shape, RBAC denial and scop
 
 Each item remains open; none is represented as completed by this documentation or focused test run.
 
+## Integration receipt
+
+- PR [#395](https://github.com/naibarn/SmartSpecPro/pull/395) merged normally on 2026-10-09 at `9bf489a70d966968ebf24260b70d35f9189ddfb2`; the original implementation commit `0fc1cb2dc1da65e9377b06a446e8444976904be0` is an ancestor of `origin/main`.
+- Focused tests ran at `0fc1cb2dc1da65e9377b06a446e8444976904be0`. Its tree SHA and the merged canonical SHA's tree SHA are both `584b0ad72d2519bc934630673394e1e4afa542c2`.
+- PR preview check `build-preview` was `SKIPPED`; the repository reported `main` unprotected with no required status checks. This is not a CI pass and is not represented as one.
+- The registered primary workspace `/home/dev/projects/SmartSpecPro` was dirty at `51d2e57490e1fe115aeec9188c84e765e9f33fe3`, with unrelated SPEC-205 Runner handoff changes. Workspace resolver returned `DIRTY_WORK_PRESERVED` and `CONVERGENCE_PENDING`; those files were left untouched. Canonical checkout sync remains pending until that checkout's owner reconciles its changes.
+- No production deployment, database migration, live tenant read, or acceptance evidence was produced.
+
 No repository-wide typecheck, production migration, live tenant query, deployment, or acceptance is implied.
