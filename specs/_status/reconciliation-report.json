@@ -87320,7 +87320,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+      "canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -87712,8 +87712,8 @@
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.102236Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
+      "lifecycle": "VALIDATION_PENDING",
+      "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "primary_blocker": {
         "class": "ACCEPTANCE",
@@ -102097,7 +102097,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
+      "canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -103386,11 +103386,11 @@
       "deployment": "UNKNOWN",
       "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-08T02:06:09.264229Z",
       "lifecycle": "WAITING_APPROVAL",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": null,
       "problem": null,
@@ -105458,7 +105458,7 @@
       "successors": [],
       "title": "Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime",
       "true_blockers": 0,
-      "verification": "NOT_RUN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
@@ -143925,7 +143925,7 @@
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "CURRENT",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-09T04:04:01.301528Z",
+      "last_reconciled": "2026-10-09T16:40:42.914718Z",
       "lifecycle": "WAITING_DEPENDENCY",
       "next_action": "Integrate the independent MCP CI repair after required checks/review, then rerun SPEC-308 checks on the updated base. Resume authenticated acceptance when an approved non-production runtime and authorized identity are provisioned; configure the separate live MCP endpoint/token through repository secrets. Keep rollout flags off until mandatory gates pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -143983,9 +143983,9 @@
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "308 - SmartAIHub Cooperative Dual Surface",
-      "spec_created_at": null,
+      "spec_created_at": "2026-10-09T11:06:48+07:00",
       "spec_id": "308",
-      "spec_last_changed_at": null,
+      "spec_last_changed_at": "2026-10-09T11:06:48+07:00",
       "spec_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
       "successors": [],
       "title": "SmartAIHub Cooperative Dual Surface — Living Chat Mascot, Notification Bell & Reminder Balloon",

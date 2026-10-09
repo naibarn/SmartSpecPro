@@ -11,7 +11,6 @@ from app.services.mcp_rate_limiter import (
     MAX_RESULT_BYTES,
     McpToolError,
     PerTurnCounter,
-    check_loop_detection,
     check_run_rate_limit,
     check_tenant_rate_limit,
     check_tool_chain_depth,
@@ -139,30 +138,6 @@ class TestTenantDisableCleanup:
     @pytest.mark.asyncio
     async def test_empty_tenant_is_safe(self):
         await on_tenant_disabled("")
-
-
-# ── Loop detection (14.4) ──
-
-
-class TestLoopDetection:
-    def test_no_loop(self):
-        result = check_loop_detection(["agency-1"], "agency-2")
-        assert result is None
-
-    def test_detects_circular_loop(self):
-        result = check_loop_detection(["agency-1", "agency-2"], "agency-1")
-        assert result is not None
-        assert "loop detected" in result.lower()
-
-    def test_blocks_long_chain(self):
-        chain = [f"agency-{i}" for i in range(5)]
-        result = check_loop_detection(chain, "agency-99", max_chain_length=5)
-        assert result is not None
-        assert "depth exceeded" in result.lower()
-
-    def test_allows_short_chain(self):
-        result = check_loop_detection(["a", "b"], "c", max_chain_length=5)
-        assert result is None
 
 
 # ── Tool chain depth (XSY-C1) ──

@@ -17,8 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.3
@@ -46,8 +44,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.3
@@ -93,7 +89,7 @@ jobs:
             $ffprobe = (Get-ChildItem -Path $ffmpegRoot -Filter ffprobe.exe -Recurse -File | Select-Object -First 1).FullName
           }
           if (-not $ffmpeg -or -not $ffprobe) { throw 'ffmpeg and ffprobe were not installed' }
-          npx --yes @puppeteer/browsers install chrome@stable --path "$env:RUNNER_TEMP\smartaihub-chrome"
+          npm exec --yes --package=@puppeteer/browsers@3.2.4 -- browsers install chrome@stable --path "$env:RUNNER_TEMP\smartaihub-chrome"
           $chrome = Get-ChildItem -Path "$env:RUNNER_TEMP\smartaihub-chrome" -Filter chrome.exe -Recurse -File | Select-Object -First 1
           if (-not $chrome) { throw "chrome.exe was not installed" }
           "REMOTION_EXECUTOR_FFMPEG_PATH=$ffmpeg" >> $env:GITHUB_ENV
@@ -105,7 +101,7 @@ jobs:
         shell: bash
         run: |
           brew install ffmpeg
-          npx --yes @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/smartaihub-chrome"
+          npm exec --yes --package=@puppeteer/browsers@3.2.4 -- browsers install chrome@stable --path "$RUNNER_TEMP/smartaihub-chrome"
           chrome_path="$(find "$RUNNER_TEMP/smartaihub-chrome" -type f -path '*/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing' -print -quit)"
           test -n "$chrome_path"
           echo "REMOTION_EXECUTOR_FFMPEG_PATH=$(command -v ffmpeg)" >> "$GITHUB_ENV"

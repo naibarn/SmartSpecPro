@@ -2,11 +2,11 @@
 # 205 — Spec 205 — SmartAIHub Runner Cross-Platform Runtime
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 162 unresolved of 162
-- Next action: For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.
-- Manifest generation: 22
+- Next action: Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.
+- Manifest generation: 27
 
 ## Source-declared status and relationship claims
 

@@ -11,11 +11,19 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFile } from "node:fs/promises";
+import { access, readFile, rm, writeFile } from "node:fs/promises";
 import postgres from "postgres";
+import {
+  assertSpec224DisposableDatabaseUrl,
+  assertSpec224OwnedPostgresContainer,
+  getSpec224DisposablePostgresTarget,
+} from "./support/spec224DisposablePostgres";
 import { db } from "../../db";
 import { bindSpec224RecoveryGrant } from "../spec224RecoveryGrantBinding";
-import { acquireSpec224RecoveryGrantFence } from "../spec224RecoveryGrantFence";
+import {
+  acquireSpec224RecoveryGrantFence,
+  spec224RecoveryGrantFenceIdentity,
+} from "../spec224RecoveryGrantFence";
 import { checkSpec224RuntimeAdmission } from "../spec224RuntimeAdmission";
 import { validateSpec224RecoveryGrant } from "../spec224RecoveryGrantValidator";
 
@@ -31,11 +39,21 @@ const python = process.env.SPEC224_TEST_PYTHON;
 const validatorUrl = process.env.PYTHON_BACKEND_URL ?? "";
 const validatorPath =
   "/api/v1/approvals/internal/spec224-recovery-grants/validate";
-const identity =
-  "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17";
 const grantHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_grant_process_helper.py"
+);
+const validatorDelayDirectory = process.env.SPEC224_TEST_PGDATA
+  ? dirname(process.env.SPEC224_TEST_PGDATA)
+  : "/tmp";
+const validatorDelayFile = resolve(validatorDelayDirectory, "validator-delay");
+const validatorDelayObservedFile = resolve(
+  validatorDelayDirectory,
+  "validator-delay-observed"
+);
+const validatorTimingFile = resolve(
+  validatorDelayDirectory,
+  "validator-timing"
 );
 const serverHelper = resolve(
   repositoryRoot,
@@ -75,7 +93,17 @@ function helperEnv(input: Record<string, unknown>) {
     DATABASE_URL: process.env.DATABASE_URL,
     PYTHONUNBUFFERED: "1",
     DEBUG: "false",
-    SPEC224_TEST_DATABASE_IDENTITY: identity,
+    SPEC224_TEST_DATABASE_IDENTITY:
+      getSpec224DisposablePostgresTarget().identity,
+    SPEC224_TEST_RUN_ID: process.env.SPEC224_TEST_RUN_ID,
+    SPEC224_TEST_PG_PORT: process.env.SPEC224_TEST_PG_PORT,
+    SPEC224_TEST_PG_CONTAINER: process.env.SPEC224_TEST_PG_CONTAINER,
+    SPEC224_TEST_PG_NETWORK: process.env.SPEC224_TEST_PG_NETWORK,
+    SPEC224_TEST_PGDATA: process.env.SPEC224_TEST_PGDATA,
+    SPEC224_TEST_PG_PROXY_PID: process.env.SPEC224_TEST_PG_PROXY_PID,
+    SPEC224_VALIDATOR_DELAY_FILE: validatorDelayFile,
+    SPEC224_VALIDATOR_DELAY_OBSERVED_FILE: validatorDelayObservedFile,
+    SPEC224_VALIDATOR_TIMING_FILE: validatorTimingFile,
     PYTHONPATH: resolve(repositoryRoot, "python-backend"),
     SMARTSPEC_WEB_GATEWAY_TOKEN: process.env.SMARTSPEC_WEB_GATEWAY_TOKEN,
     SMARTSPEC_PROXY_TOKEN: "proxy-only-test-credential",
@@ -125,6 +153,42 @@ function spawnRevoke(input: Record<string, unknown>) {
   return { child, result };
 }
 
+function spawnGrantIssue(input: Record<string, unknown>) {
+  if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
+  const child = spawn(python, [grantHelper, "issue"], {
+    cwd: pythonProcessCwd,
+    env: helperEnv(input),
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", chunk => {
+    stdout += chunk;
+  });
+  child.stderr.setEncoding("utf8").on("data", chunk => {
+    stderr += chunk;
+  });
+  const result = new Promise<Record<string, unknown>>(
+    (resolveResult, rejectResult) => {
+      child.once("error", rejectResult);
+      child.once("close", code => {
+        if (code !== 0) {
+          rejectResult(
+            new Error(`SPEC224_TEST_ISSUE_FAILED:${code}:${stderr}`)
+          );
+          return;
+        }
+        try {
+          resolveResult(JSON.parse(stdout.trim().split("\n").at(-1) ?? "{}"));
+        } catch (error) {
+          rejectResult(error);
+        }
+      });
+    }
+  );
+  return { child, result };
+}
+
 async function stopHelperProcess(child: ChildProcess, timeoutMs = 2_000) {
   if (child.exitCode !== null || child.signalCode !== null) return;
   const waitForClose = () =>
@@ -162,6 +226,96 @@ async function waitForGrantFenceWaiter() {
     await new Promise(resolveWait => setTimeout(resolveWait, 10));
   }
   throw new Error("SPEC224_PYTHON_REVOKER_DID_NOT_WAIT_ON_SHARED_FENCE");
+}
+
+async function waitForValidatorDelayObservation() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    try {
+      await access(validatorDelayObservedFile);
+      return;
+    } catch {
+      // The loopback FastAPI middleware has not received the request yet.
+    }
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error("SPEC224_VALIDATOR_HTTP_DELAY_NOT_OBSERVED");
+}
+
+async function waitForBlockedMutation(queryMarker: string) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql`
+      SELECT pid FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND query LIKE ${`%${queryMarker}%`}
+      LIMIT 1
+    `;
+    if (row) return;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error(`SPEC224_CANONICAL_MUTATION_NOT_BLOCKED:${queryMarker}`);
+}
+
+async function waitForIdleAdmissionTransaction() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql<
+      {
+        pid: number;
+        xact_start: Date;
+        observed_at: Date;
+        query: string;
+      }[]
+    >`
+      SELECT pid, xact_start, clock_timestamp() AS observed_at, query
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND pid <> pg_backend_pid()
+        AND xact_start IS NOT NULL
+        AND state = 'idle in transaction'
+        AND query ILIKE '%FOR SHARE%'
+      ORDER BY xact_start
+      LIMIT 1
+    `;
+    if (row) return row;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error(
+    "SPEC224_ADMISSION_TRANSACTION_NOT_OBSERVED_IDLE_IN_TRANSACTION"
+  );
+}
+
+async function waitForTransactionRelease(pid: number) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql<{ xact_start: Date | null; observed_at: Date }[]>`
+      SELECT xact_start, clock_timestamp() AS observed_at
+      FROM pg_stat_activity
+      WHERE pid = ${pid}
+    `;
+    if (!row || row.xact_start === null) return row?.observed_at ?? new Date();
+    await new Promise(resolveWait => setTimeout(resolveWait, 5));
+  }
+  throw new Error("SPEC224_ADMISSION_TRANSACTION_RELEASE_NOT_OBSERVED");
+}
+
+async function grantFenceHolderCount() {
+  const [grantFence] = await sql`
+    SELECT hashtextextended(
+      ${spec224RecoveryGrantFenceIdentity({ tenantId, grantId })}, 224
+    )::text AS key
+  `;
+  const unsigned = BigInt.asUintN(64, BigInt(grantFence.key));
+  const classId = Number((unsigned >> 32n) & 0xffffffffn);
+  const objectId = Number(unsigned & 0xffffffffn);
+  const [row] = await sql`
+    SELECT count(*)::int AS count FROM pg_locks
+    WHERE locktype = 'advisory' AND granted = true AND objsubid = 1
+      AND classid = ${classId}::oid AND objid = ${objectId}::oid
+  `;
+  return row.count as number;
 }
 
 const baseRequest = () => ({
@@ -226,15 +380,8 @@ describeDb(
     }, 20_000);
 
     beforeEach(async () => {
-      const parsed = new URL(connectionString);
-      if (
-        parsed.hostname !== "127.0.0.1" ||
-        parsed.port !== "55493" ||
-        parsed.pathname !== "/spec224_d385_test" ||
-        decodeURIComponent(parsed.username) !== "spec224_d385_runtime"
-      ) {
-        throw new Error("SPEC224_TEST_DATABASE_URL_FORBIDDEN");
-      }
+      assertSpec224DisposableDatabaseUrl(connectionString);
+      assertSpec224OwnedPostgresContainer();
       sql = postgres(connectionString, { max: 5, connect_timeout: 5 });
       const [dbIdentity] = await sql`
       SELECT current_database() AS db, current_user AS role, r.rolsuper AS superuser, version()
@@ -392,14 +539,22 @@ describeDb(
       const scope = {
         sourceCommit,
         sourceSha256,
-        sourceFiles: [{ path: sourcePath, sha256: createHash("sha256")
-          .update(await readFile(resolve(repositoryRoot, sourcePath)))
-          .digest("hex") }],
+        sourceFiles: [
+          {
+            path: sourcePath,
+            sha256: createHash("sha256")
+              .update(await readFile(resolve(repositoryRoot, sourcePath)))
+              .digest("hex"),
+          },
+        ],
         workpackageId: "WP-RECOVERY-04",
         allowedWriteSet: [sourcePath],
         allowedOperations: ["protected_dispatch"],
         forbiddenOperations: [
-          "production", "paid_provider", "cloudflare_migration", "shared_worktree",
+          "production",
+          "paid_provider",
+          "cloudflare_migration",
+          "shared_worktree",
         ],
         runtimeScope: "node-control-plane",
         environmentScope: "isolated-non-production",
@@ -561,7 +716,7 @@ describeDb(
       ).resolves.toMatchObject({ result: "INVALID_TENANT" });
     });
 
-    it("loads canonical run/job/Runner state, validates through Python under the fence, then denies local-only trust", async () => {
+    it("measures the real validator transaction and probes approval/audit insert races", async () => {
       const runId = randomUUID();
       fixtureJobId = randomUUID();
       const attemptId = randomUUID();
@@ -713,28 +868,278 @@ describeDb(
         operation,
         path: sourcePath,
       });
-      const decision = await checkSpec224RuntimeAdmission({
-        tenantId,
-        workerJobId: fixtureJobId,
-        lease: {
-          jobId: fixtureJobId,
-          attemptId,
-          leaseToken,
-          fencingVersion: 4,
-          expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
-        },
-      });
-      expect(decision).toEqual({
-        decision: "DENY",
-        reason: "DENIED_LOCAL_ONLY_ATTESTATION",
-      });
+      const approvalWriter = postgres(connectionString, { max: 1 });
+      const ownerWriter = postgres(connectionString, { max: 1 });
+      const tenantWriter = postgres(connectionString, { max: 1 });
+      const responseWriter = postgres(connectionString, { max: 1 });
+      const auditWriter = postgres(connectionString, { max: 1 });
+      let phantomResponseId: string | undefined;
+      let phantomAuditId: string | undefined;
+      let issueAttempt: ReturnType<typeof spawnGrantIssue> | undefined;
+      try {
+        await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
+        await writeFile(validatorDelayFile, "1200", { encoding: "ascii" });
+        const admission = checkSpec224RuntimeAdmission({
+          tenantId,
+          workerJobId: fixtureJobId,
+          lease: {
+            jobId: fixtureJobId,
+            attemptId,
+            leaseToken,
+            fencingVersion: 4,
+            expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          },
+        });
+        await waitForValidatorDelayObservation();
+        expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+        const heldTransaction = await waitForIdleAdmissionTransaction();
+        phantomResponseId = randomUUID();
+        const responseInsertStartedAt = Date.now();
+        await responseWriter.begin(async tx => {
+          await tx`SET LOCAL lock_timeout = '300ms'`;
+          await tx`
+            INSERT INTO approval_responses (id, request_id, approver_id, decision, comment, created_at)
+            VALUES (${phantomResponseId}, ${grantId}, ${userId}, 'approved', 'FK key-share insert probe', NOW())
+          `;
+        });
+        const responseInsertMs = Date.now() - responseInsertStartedAt;
+        const approvalMutation = approvalWriter
+          .begin(async tx => {
+            await tx`UPDATE /* spec224_approval_mutation */ approval_requests
+            SET status = 'REJECTED' WHERE id = ${grantId}`;
+            throw new Error("ROLLBACK_APPROVAL_RACE_FIXTURE");
+          })
+          .catch(error => {
+            if (String(error).includes("ROLLBACK_APPROVAL_RACE_FIXTURE"))
+              return;
+            throw error;
+          });
+        const ownerMutation = ownerWriter
+          .begin(async tx => {
+            await tx`UPDATE /* spec224_owner_mutation */ users
+              SET "isDisabled" = true WHERE id = ${userId}`;
+            throw new Error("ROLLBACK_OWNER_RACE_FIXTURE");
+          })
+          .catch(error => {
+            if (String(error).includes("ROLLBACK_OWNER_RACE_FIXTURE")) return;
+            throw error;
+          });
+        const tenantOwnerMutation = tenantWriter
+          .begin(async tx => {
+            await tx`UPDATE /* spec224_tenant_owner_mutation */ tenants
+              SET "ownerId" = "ownerId" WHERE id = ${tenantId}`;
+            throw new Error("ROLLBACK_TENANT_OWNER_RACE_FIXTURE");
+          })
+          .catch(error => {
+            if (String(error).includes("ROLLBACK_TENANT_OWNER_RACE_FIXTURE"))
+              return;
+            throw error;
+          });
+        await Promise.all([
+          waitForBlockedMutation("spec224_approval_mutation"),
+          waitForBlockedMutation("spec224_owner_mutation"),
+          waitForBlockedMutation("spec224_tenant_owner_mutation"),
+        ]);
+        issueAttempt = spawnGrantIssue({
+          tenantId,
+          ownerId: userId,
+          idempotencyKey: `spec224-issue-race-${randomUUID()}`,
+          scope,
+        });
+        await waitForBlockedMutation("FROM tenants");
+        expect(issueAttempt.child.exitCode).toBeNull();
+        await expect(admission).resolves.toMatchObject({ decision: "ALLOW" });
+        const transactionEndedAt = await waitForTransactionRelease(
+          heldTransaction.pid
+        );
+        const [timingStartNs, timingEndNs] = (
+          await readFile(validatorTimingFile, "ascii")
+        )
+          .trim()
+          .split("\n");
+        const validatorHttpMs = Number(
+          (BigInt(timingEndNs) - BigInt(timingStartNs)) / 1_000_000n
+        );
+        const transactionMs =
+          transactionEndedAt.getTime() - heldTransaction.xact_start.getTime();
+        expect(validatorHttpMs).toBeGreaterThanOrEqual(1_000);
+        expect(transactionMs).toBeGreaterThanOrEqual(validatorHttpMs);
+        expect(responseInsertMs).toBeLessThan(300);
+        console.info(
+          "SPEC224_LATENCY_EVIDENCE",
+          JSON.stringify({
+            databaseIdentity: getSpec224DisposablePostgresTarget().identity,
+            configuredDelayMs: 1200,
+            validatorHttpMs,
+            admissionTransactionMs: transactionMs,
+            approvalResponseFkInsertMs: responseInsertMs,
+            approvalResponseInsertBlocked: false,
+            officialIssueWriterBlockedOnTenant: true,
+          })
+        );
+        const issuedAfterCommit = await issueAttempt.result;
+        expect(typeof issuedAfterCommit.grantId).toBe("string");
+        issuedGrantIds.push(String(issuedAfterCommit.grantId));
+        const [issuedRowCounts] = await sql`
+          SELECT
+            (SELECT count(*)::int FROM approval_responses WHERE request_id = ${String(issuedAfterCommit.grantId)}) AS response_count,
+            (SELECT count(*)::int FROM audit_logs WHERE resource_id = ${String(issuedAfterCommit.grantId)} AND action = 'spec224.recovery_grant.issued') AS audit_count
+        `;
+        expect(issuedRowCounts).toMatchObject({
+          response_count: 1,
+          audit_count: 1,
+        });
+        await Promise.all([
+          approvalMutation,
+          ownerMutation,
+          tenantOwnerMutation,
+        ]);
+        expect(await grantFenceHolderCount()).toBe(0);
+        const successfulValidation = await sql`
+          SELECT "payloadJson", "workerJobAttempt", "leaseFencingVersion"
+          FROM worker_job_events
+          WHERE "workerJobId"=${fixtureJobId}
+            AND "eventType"='SPEC224_RECOVERY_GRANT_VALIDATED'
+        `;
+        expect(
+          successfulValidation.some(row => row.payloadJson?.result === "VALID")
+        ).toBe(true);
+        expect(successfulValidation[0]).toMatchObject({
+          workerJobAttempt: 1,
+          leaseFencingVersion: "4",
+        });
+
+        const [responseApproverCount] = await sql`
+          SELECT count(DISTINCT approver_id)::int AS count
+          FROM approval_responses
+          WHERE request_id = ${grantId} AND decision = 'approved'
+        `;
+        expect(responseApproverCount.count).toBe(1);
+        await sql`DELETE FROM approval_responses WHERE id = ${phantomResponseId}`;
+        phantomResponseId = undefined;
+
+        await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
+        await writeFile(validatorDelayFile, "1200", { encoding: "ascii" });
+        const duplicateAuditAdmission = checkSpec224RuntimeAdmission({
+          tenantId,
+          workerJobId: fixtureJobId,
+          lease: {
+            jobId: fixtureJobId,
+            attemptId,
+            leaseToken,
+            fencingVersion: 4,
+            expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          },
+        });
+        await waitForValidatorDelayObservation();
+        await waitForIdleAdmissionTransaction();
+        phantomAuditId = randomUUID();
+        const auditInsertStartedAt = Date.now();
+        await auditWriter.begin(async tx => {
+          await tx`SET LOCAL lock_timeout = '300ms'`;
+          await tx`
+            INSERT INTO audit_logs (id, user_id, user_role, action, resource_type, resource_id, details)
+            SELECT ${phantomAuditId}, user_id, user_role, action, resource_type, resource_id, details
+            FROM audit_logs
+            WHERE resource_id = ${grantId}
+              AND resource_type = 'spec224_recovery_grant'
+              AND action = 'spec224.recovery_grant.issued'
+            LIMIT 1
+          `;
+        });
+        const auditInsertMs = Date.now() - auditInsertStartedAt;
+        expect(auditInsertMs).toBeLessThan(300);
+        await expect(duplicateAuditAdmission).resolves.toEqual({
+          decision: "DENY",
+          reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+        });
+        console.info(
+          "SPEC224_PHANTOM_INSERT_EVIDENCE",
+          JSON.stringify({
+            approvalResponseInsert: "FK_KEY_SHARE_COMPATIBLE_WITH_FOR_SHARE",
+            approvalDecisionEffect: "NO_CHANGE_OWNER_APPROVER_DISTINCT_SET",
+            issuanceAuditInsert: "UNBLOCKED_NO_GAP_LOCK",
+            duplicateIssuanceAuditEffect: "PYTHON_QUERY_FAILURE_FAIL_CLOSED",
+            auditInsertMs,
+          })
+        );
+        await sql`DELETE FROM audit_logs WHERE id = ${phantomAuditId}`;
+        phantomAuditId = undefined;
+
+        await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
+        await writeFile(validatorDelayFile, "6500", { encoding: "ascii" });
+        const startedAt = Date.now();
+        const timeoutAdmission = checkSpec224RuntimeAdmission({
+          tenantId,
+          workerJobId: fixtureJobId,
+          lease: {
+            jobId: fixtureJobId,
+            attemptId,
+            leaseToken,
+            fencingVersion: 4,
+            expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          },
+        });
+        await waitForValidatorDelayObservation();
+        expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+        const timeoutTransaction = await waitForIdleAdmissionTransaction();
+        const timeoutRequestObservedAt = Date.now();
+        await expect(timeoutAdmission).resolves.toEqual({
+          decision: "DENY",
+          reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+        });
+        const timeoutElapsedMs = Date.now() - timeoutRequestObservedAt;
+        const timeoutTransactionEndedAt = await waitForTransactionRelease(
+          timeoutTransaction.pid
+        );
+        const timeoutTransactionMs =
+          timeoutTransactionEndedAt.getTime() -
+          timeoutTransaction.xact_start.getTime();
+        expect(Date.now() - startedAt).toBeGreaterThanOrEqual(4_500);
+        expect(timeoutTransactionMs).toBeGreaterThanOrEqual(4_500);
+        expect(await grantFenceHolderCount()).toBe(0);
+        console.info(
+          "SPEC224_TIMEOUT_LATENCY_EVIDENCE",
+          JSON.stringify({
+            configuredValidatorDelayMs: 6500,
+            clientTimeoutMs: timeoutElapsedMs,
+            admissionTransactionMs: timeoutTransactionMs,
+            grantFenceReleased: true,
+          })
+        );
+        await rm(validatorDelayFile, { force: true });
+      } finally {
+        await rm(validatorDelayFile, { force: true });
+        await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
+        if (phantomResponseId) {
+          await sql`DELETE FROM approval_responses WHERE id = ${phantomResponseId}`;
+        }
+        if (phantomAuditId) {
+          await sql`DELETE FROM audit_logs WHERE id = ${phantomAuditId}`;
+        }
+        if (issueAttempt?.child.exitCode === null) {
+          issueAttempt.child.kill("SIGTERM");
+          await issueAttempt.result.catch(() => undefined);
+        }
+        await Promise.all([
+          approvalWriter.end({ timeout: 5 }),
+          ownerWriter.end({ timeout: 5 }),
+          tenantWriter.end({ timeout: 5 }),
+          responseWriter.end({ timeout: 5 }),
+          auditWriter.end({ timeout: 5 }),
+        ]);
+      }
       const validations = await sql`
         SELECT "payloadJson" FROM worker_job_events
         WHERE "workerJobId"=${fixtureJobId} AND "eventType"='SPEC224_RECOVERY_GRANT_VALIDATED'
       `;
-      expect(validations.some(row => row.payloadJson?.result === "VALID")).toBe(
-        true
-      );
-    });
+      expect(
+        validations.some(row => row.payloadJson?.result === "UNKNOWN")
+      ).toBe(true);
+    }, 15_000);
   }
 );
