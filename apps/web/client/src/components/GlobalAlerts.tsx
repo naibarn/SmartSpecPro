@@ -1530,7 +1530,7 @@ function GlobalNotificationBell() {
 
   useEffect(() => {
     const handleResize = () => {
-      const rect = bellRootRef.current?.getBoundingClientRect();
+      const rect = bellButtonRef.current?.getBoundingClientRect();
       setBellPlacement((current) => {
         if (current.mode !== "custom") {
           return current;
@@ -1771,7 +1771,7 @@ function GlobalNotificationBell() {
 
     suppressNextClickRef.current = false;
     setIsBellDragging(true);
-    const rect = bellRootRef.current?.getBoundingClientRect();
+    const rect = bellButtonRef.current?.getBoundingClientRect();
     const fallbackPosition = bellPlacement.mode === "custom"
       ? { x: bellPlacement.x, y: bellPlacement.y }
       : getDockedBellPosition(window.innerWidth, window.innerHeight, {
@@ -1830,10 +1830,14 @@ function GlobalNotificationBell() {
     ? {
       left: `${bellPlacement.x}px`,
       top: `${bellPlacement.y}px`,
+      paddingRight: 0,
+      paddingTop: 0,
     }
     : {
-      right: `max(${BELL_MARGIN}px, env(safe-area-inset-right, 0px))`,
-      top: `max(${BELL_MARGIN}px, env(safe-area-inset-top, 0px))`,
+      right: `${BELL_MARGIN}px`,
+      top: `${BELL_MARGIN}px`,
+      paddingRight: `max(0px, calc(env(safe-area-inset-right, 0px) - ${BELL_MARGIN}px))`,
+      paddingTop: `max(0px, calc(env(safe-area-inset-top, 0px) - ${BELL_MARGIN}px))`,
     };
 
   return (

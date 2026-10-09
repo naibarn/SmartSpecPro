@@ -44,7 +44,19 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("@/i18n/useScopedTranslation", () => ({
   useScopedTranslation: () => ({
     locale: mockLocale,
-    t: (key: string) => key,
+    t: (key: string, options?: { count?: number }) => {
+      const count = options?.count ?? 0;
+      const messages: Record<string, string> = {
+        "admin.notificationBell.unread": `${count} unread notification${count === 1 ? "" : "s"}`,
+        "admin.notificationBell.recentHistory": `No unread alerts, but ${count} recent item${count === 1 ? "" : "s"} available`,
+        "admin.notificationBell.none": "No notifications yet",
+        "admin.notificationBell.recent": "Recent",
+        "admin.notificationBell.title": "Notifications",
+        "admin.notificationBell.titleCount": `Notifications (${count})`,
+        "admin.notificationBell.close": "Close notifications",
+      };
+      return messages[key] ?? key;
+    },
   }),
 }));
 
@@ -244,7 +256,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     render(<GlobalAlerts />);
 
-    expect(screen.getByLabelText("admin.notificationBell.none")).toBeTruthy();
+    expect(screen.getByLabelText("No notifications yet")).toBeTruthy();
   });
 
   it("hides the bell on non-dashboard pages when unread count is zero", () => {
@@ -271,7 +283,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     const { rerender } = render(<GlobalAlerts />);
 
-    expect(screen.getByLabelText("admin.notificationBell.none")).toBeTruthy();
+    expect(screen.getByLabelText("No notifications yet")).toBeTruthy();
 
     currentLocation = "/chat";
 
@@ -298,11 +310,11 @@ describe("GlobalNotificationBell occurrence badge", () => {
     render(<GlobalAlerts />);
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("admin.notificationBell.recentHistory"));
+      fireEvent.click(screen.getByLabelText("No unread alerts, but 1 recent item available"));
     });
 
     expect(
-      screen.getByText("admin.notificationBell.recentHistory")
+      screen.getByText("No unread alerts, but 1 recent item available")
     ).toBeTruthy();
     expect(screen.getByText("ดูย้อนหลัง")).toBeTruthy();
   });
@@ -316,10 +328,10 @@ describe("GlobalNotificationBell occurrence badge", () => {
     render(<GlobalAlerts />);
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("admin.notificationBell.none"));
+      fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
-    expect(screen.getByText("admin.notificationBell.none")).toBeTruthy();
+    expect(screen.getByText("No notifications yet")).toBeTruthy();
   });
 
   it("uses recent polling data in the bell summary before the dropdown query loads", () => {
@@ -339,7 +351,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     render(<GlobalAlerts />);
 
-    expect(screen.getByLabelText("admin.notificationBell.recentHistory")).toBeTruthy();
+    expect(screen.getByLabelText("No unread alerts, but 1 recent item available")).toBeTruthy();
   });
 
   it("keeps the empty Bell label truthful and returns focus after closing its popover", async () => {
@@ -349,11 +361,11 @@ describe("GlobalNotificationBell occurrence badge", () => {
     recentNotificationsData = [];
 
     render(<GlobalAlerts />);
-    const bell = screen.getByRole("button", { name: "admin.notificationBell.none" });
-    expect(screen.queryByText("admin.notificationBell.recent")).toBeNull();
+    const bell = screen.getByRole("button", { name: "No notifications yet" });
+    expect(screen.queryByText("Recent")).toBeNull();
 
     await act(async () => fireEvent.click(bell));
-    expect(screen.getByRole("dialog", { name: "admin.notificationBell.title" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Notifications" })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole("dialog"));
 
     await act(async () => fireEvent.keyDown(document, { key: "Escape" }));
@@ -371,7 +383,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
       window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT));
     });
 
-    expect(screen.getByText("admin.notificationBell.none")).toBeTruthy();
+    expect(screen.getByText("No notifications yet")).toBeTruthy();
   });
 
   it("uses the existing Notification Center route when the bell is unavailable", async () => {
@@ -1057,7 +1069,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     render(<GlobalAlerts />);
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("admin.notificationBell.none"));
+      fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
     fireEvent.click(screen.getByText("ดูย้อนหลัง"));
