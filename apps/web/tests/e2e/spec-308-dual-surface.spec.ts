@@ -169,9 +169,9 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
   await expect(dialog).toHaveCount(0);
   await expect(launcher.locator("svg.lucide-message-square-plus")).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toHaveCount(0);
-  // This is a deterministic mock API simulation. Focus refresh may re-read
-  // queries; it must not create a conversation, submit feedback, or mark a
-  // notification read as a side effect of the tenant presentation rollback.
+  // This is a deterministic mock API simulation. The route transition may
+  // re-read queries; it must not create a conversation, submit feedback, or
+  // mark a notification read as a side effect of the tenant presentation rollback.
 });
 
 for (const width of [320, 360, 390, 767, 768, 1440]) {
