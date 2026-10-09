@@ -28,3 +28,4 @@ No approval is recorded in the repository or CI, so neither option is treated as
 - Exact candidate audit JSON: `audit-current.json`.
 - Baseline package/advisory/path ledger: `advisory-ledger.md`, `advisories.json`.
 - Advisory: [GitHub GHSA-hp3w-g68c-fv3c](https://github.com/advisories/GHSA-hp3w-g68c-fv3c).
+- Reachability evidence and the approval-gated ONNX/WSL2 validation sequence are in `onnx-wsl2-compatibility-plan.md`.
