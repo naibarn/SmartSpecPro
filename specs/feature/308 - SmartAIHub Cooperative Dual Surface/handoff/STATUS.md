@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Push the demo readiness fix and obtain fresh exact-head CI. Then reconcile independent security/MCP PRs while preserving their active worktrees, and continue external authority-gated acceptance.
-- Manifest generation: 26
+- Next action: Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.
+- Manifest generation: 28
 
 ## Source-declared status and relationship claims
 

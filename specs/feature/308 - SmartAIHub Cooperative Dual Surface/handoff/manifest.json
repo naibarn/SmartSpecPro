@@ -60,10 +60,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Publish d2ad4f24 and collect a fresh exact-head browser round. Reconcile #403/#405 only through their normal paths without touching active worktrees; keep external MCP, sprintf-js, Feature-049, and non-production runtime authorities blocking their respective gates.",
+    "next_action": "Push the SPEC-308 implementation checkpoint to PR #399 and collect one consolidated exact-head verification round; then reconcile PR #403/#405 in security order and continue external-authority-gated acceptance.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Implementation sweep is frozen and one consolidated exact-head test round has completed; required PR #403 focused/security/audit gates and approved live MCP authority are satisfied; PR #405 mandatory audit passes with Security Owner disposition and any required Runtime Owner approval; Feature-049 tenant/revision authorization contract is confirmed; approved non-production SmartAIHub endpoint and authorized test identity are available for live acceptance.",
-    "resume_point": "Run 37974426321 tested PR SHA 3dd9bd064a91bca5fd10fa8ef29bfcc31e128b28 and found 15/17 Playwright passing; both timing/drag gaps were repaired. Follow-up run 37975172614 tested a3df3cbb703c45562705d45f01fa9e11ba419887: 16/17 passed, with the only failure being a demo event dispatched before the notification-baseline/feature setup was ready. Added `waitForNotificationBaseline(page)` before that event in local source commit d2ad4f240e8853c717583481e6c0b95d9ba7df3f. MCP tests/live gate still fail on missing DATABASE_URL, retired test import, and absent approved URL/token; downstream security/audit jobs skipped after focus tests. Next publish d2ad4f24 and run fresh exact-head CI. PR #403/#405 active worktrees remain untouched. All 66 requirements OPEN/UNVERIFIED; no production enablement or deployment.",
+    "resume_point": "PR #399 source checkpoint dd6a42f82ba1452dcc7a58a7626455b31970ee4d adds authenticated user+tenant conversation fencing and localizes launcher-owned states. CI 37975735432 on 596fcdbfc656f62c7a3b9205c44d252849f5e859 passed 16/17 browser cases; the only failure was demo dispatch before baseline readiness, now guarded in the fixture. Local tests/typecheck remain deferred for the consolidated round. PR #403/#405 active worktrees were not touched. All 66 requirements remain OPEN/UNVERIFIED; production flags remain OFF.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -79,8 +79,8 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Push the demo readiness fix and obtain fresh exact-head CI. Then reconcile independent security/MCP PRs while preserving their active worktrees, and continue external authority-gated acceptance.",
-    "rationale": "The first consolidated run exposed two browser gaps, now repaired in source but not yet verified. MCP failures remain an independent existing fixture/environment blocker and live endpoint authority is missing. No mandatory gate was skipped or weakened.",
+    "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
+    "rationale": "This source checkpoint closes safe identity-boundary and localized fallback gaps. The latest browser failure was a deterministic fixture readiness race and is patched but awaits a fresh exact-head run. Mandatory dependency/MCP and live acceptance blockers remain open.",
     "residual_requirements": [
       "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
       "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
@@ -120,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 26,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -143,11 +143,12 @@
       "fcbda4737fa3ce899c9d7f81924917c2fb901447",
       "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
       "0287181e53accb9303151a2ad0d42f890a22064a",
-      "d2ad4f240e8853c717583481e6c0b95d9ba7df3f"
+      "d2ad4f240e8853c717583481e6c0b95d9ba7df3f",
+      "dd6a42f82ba1452dcc7a58a7626455b31970ee4d"
     ],
     "mapping": [
       {
-        "coverage": "PARTIAL; 3dd9bd06 exposed two browser gaps repaired in 0287181e; follow-up 379751 on a3df3cbb passed those two and exposed one demo-readiness race, now guarded in d2ad4f24. Final exact-source verification is pending.",
+        "coverage": "PARTIAL; prior exact-head CI exposed browser readiness race (37975735432); fixture now waits for baseline. Added user+tenant conversation fencing, stale Task Control suppression, and localized launcher error/status copy. Consolidated exact-head verification remains pending.",
         "scope": "Gated dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until tenant/revision proof, localized hints, responsive placement, draft-safe Chat/Feedback/Task Control, and bounded local preferences.",
         "source_paths": [
           "apps/web/client/src/components/GlobalAlerts.tsx",
@@ -161,9 +162,11 @@
           "apps/web/client/src/index.css",
           "apps/web/client/src/locales/en/settings.json",
           "apps/web/client/src/locales/th/settings.json",
-          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts",
+          "apps/web/client/src/locales/en/chat.json",
+          "apps/web/client/src/locales/th/chat.json"
         ],
-        "source_sha": "d2ad4f240e8853c717583481e6c0b95d9ba7df3f"
+        "source_sha": "dd6a42f82ba1452dcc7a58a7626455b31970ee4d"
       }
     ],
     "source_paths": [
@@ -178,9 +181,11 @@
       "apps/web/client/src/index.css",
       "apps/web/client/src/locales/en/settings.json",
       "apps/web/client/src/locales/th/settings.json",
-      "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
+      "apps/web/tests/e2e/spec-308-dual-surface.spec.ts",
+      "apps/web/client/src/locales/en/chat.json",
+      "apps/web/client/src/locales/th/chat.json"
     ],
-    "source_sha": "d2ad4f240e8853c717583481e6c0b95d9ba7df3f",
+    "source_sha": "dd6a42f82ba1452dcc7a58a7626455b31970ee4d",
     "started": true,
     "status": "PARTIAL"
   },
@@ -232,8 +237,8 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Push the demo readiness fix and obtain fresh exact-head CI. Then reconcile independent security/MCP PRs while preserving their active worktrees, and continue external authority-gated acceptance.",
-      "rationale": "The first consolidated run exposed two browser gaps, now repaired in source but not yet verified. MCP failures remain an independent existing fixture/environment blocker and live endpoint authority is missing. No mandatory gate was skipped or weakened.",
+      "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
+      "rationale": "This source checkpoint closes safe identity-boundary and localized fallback gaps. The latest browser failure was a deterministic fixture readiness race and is patched but awaits a fresh exact-head run. Mandatory dependency/MCP and live acceptance blockers remain open.",
       "residual_requirements": [
         "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
         "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
@@ -345,7 +350,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T18:46:59.959233Z",
+  "updated_at": "2026-10-09T19:02:59.082459Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -363,13 +368,14 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172614.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172582.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971044599.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json"
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave2.md"
     ],
     "freshness": "PENDING_CONSOLIDATED_ROUND",
     "required_profiles": [
       "quick"
     ],
-    "sha": "a3df3cbb703c45562705d45f01fa9e11ba419887",
+    "sha": "596fcdbfc656f62c7a3b9205c44d252849f5e859",
     "status": "PARTIAL",
     "task_regressions": []
   }

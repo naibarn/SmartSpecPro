@@ -2,23 +2,25 @@
 
 Goal: deliver SPEC-308 R1.2 with existing notification/chat/task/feedback authority preserved.
 Scope/risk: large/high.
-Current stage: PLANNING
-Resume from: PLANNING
-Stop reason: active
+Current stage: IMPLEMENT
+Resume from: IMPLEMENT
+Stop reason: implementation checkpoint recorded; consolidated verification intentionally pending
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
   - stage: PLANNING
-    status: IN_PROGRESS
+    status: COMPLETE
     entry_evidence: fresh origin/main + registry/source audit, plan.md
     exit_evidence: pending Work Package contracts and test design
     attempt: 1
     stale: false
     next_action: integrate WP0 checkpoint and finalize task design
   - stage: TDD_DESIGN
-    status: PENDING
+    status: COMPLETE
   - stage: IMPLEMENT
-    status: PENDING
+    status: IN_PROGRESS
+    exit_evidence: safe source checkpoint dd6a42f82; see evidence/implementation-gap-update-20261010-wave2.md
+    next_action: finish source gap sweep, then publish one checkpoint for consolidated exact-head verification
   - stage: VERIFY
     status: PENDING
   - stage: DEBUG_FIX
@@ -65,6 +67,24 @@ Gap ledger:
     decision_class: SUBSTITUTE
     attempted_strategies: [use new distinct notification row ID only]
     prohibited_retries: [infer new occurrence from count/title/metadata]
+  - gap_id: GAP-003
+    discovered_at_stage: IMPLEMENT
+    earliest_affected_stage: IMPLEMENT
+    classification: AUTHORIZATION_SCOPE
+    severity: HIGH
+    condition: in-flight Chat conversation creation could commit its conversation ID after user or tenant identity changed
+    evidence: fixed in source checkpoint dd6a42f82; wave-2 read-only review also identified null-tenant desktop identity and Task Control rejection handling edge cases
+    owner: conductor
+    action: verify user/tenant and null-tenant switch behavior in the consolidated exact-head test round
+    attempts: 0/1
+    stale_gates: [Chat, Task Control, identity transition, auth isolation]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: local implementation has not yet been tested on the candidate SHA
+    root_cause: conversation state and asynchronous completion were not scoped to the current identity
+    decision_class: MUST_FIX
+    attempted_strategies: [read-only source review; generation and identity fencing implemented]
+    prohibited_retries: []
 
 Completion invariants:
   all_mandatory_stages_closed: false

@@ -135418,7 +135418,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Push the demo readiness fix and obtain fresh exact-head CI. Then reconcile independent security/MCP PRs while preserving their active worktrees, and continue external authority-gated acceptance.",
+      "next_action": "Publish dd6a42f82 and run consolidated exact-head tests, then reconcile security and MCP gates in the prescribed order.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
