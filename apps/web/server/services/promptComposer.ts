@@ -499,6 +499,7 @@ export async function composePrompt(
         input.tenantId,
         input.initiatedByUserId,
         profile.personaId ?? null,
+        authorizedProjectId,
       );
     } catch (err) {
       console.warn("Rule memory retrieval failed:", err);

@@ -1720,7 +1720,10 @@ export const chatRouter = router({
         input.conversationId,
         ctx.user.id,
         conversation.systemPrompt || undefined,
-        ctx.tenantId || undefined
+        {
+          tenantId: (conversation as any).tenantId || ctx.tenantId || undefined,
+          projectId: (conversation as any).projectId ?? null,
+        }
       );
 
       return context;
