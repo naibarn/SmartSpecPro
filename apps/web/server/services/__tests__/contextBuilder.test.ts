@@ -10,8 +10,8 @@ vi.mock("../scopedMemoryService", () => ({
   retrieveForPrompt: vi.fn(),
 }));
 
-vi.mock("../chatService", () => ({
-  getEntityMemories: vi.fn(),
+vi.mock("../memoryService", () => ({
+  getEntityMemoriesForContext: vi.fn(),
 }));
 
 vi.mock("../promptComposer", () => ({
@@ -51,7 +51,7 @@ import {
 
 import { buildPersonaPromptSegments, getPersonaById } from "../personaService";
 import { retrieveForPrompt } from "../scopedMemoryService";
-import { getEntityMemories } from "../chatService";
+import { getEntityMemoriesForContext } from "../memoryService";
 import { composePrompt } from "../promptComposer";
 import { captureTeamProjectProviderContextBinding } from "../teamProjectProviderAuthorization";
 import {
@@ -69,7 +69,7 @@ import type { UnifiedExecutionRequest } from "../executors/types";
 const mockGetPersonaById = vi.mocked(getPersonaById);
 const mockBuildPersonaPromptSegments = vi.mocked(buildPersonaPromptSegments);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
-const mockGetEntityMemories = vi.mocked(getEntityMemories);
+const mockGetEntityMemoriesForContext = vi.mocked(getEntityMemoriesForContext);
 const mockComposePrompt = vi.mocked(composePrompt);
 const mockCaptureTeamProjectProviderContextBinding = vi.mocked(
   captureTeamProjectProviderContextBinding,
@@ -94,6 +94,7 @@ function makeRequest(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetEntityMemoriesForContext.mockResolvedValue([]);
   mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
     version: "team-room-provider-context.v1",
     tenantId: "t1",
@@ -110,6 +111,38 @@ beforeEach(() => {
 // ─── buildChatContext ──────────────────────────────────────
 
 describe("buildChatContext", () => {
+  it("requests only global entity memories when chat has no verified project binding", async () => {
+    mockGetPersonaById.mockResolvedValue({ id: "p1" } as any);
+    mockRetrieveForPrompt.mockResolvedValue([]);
+    mockBuildPersonaPromptSegments.mockReturnValue({
+      prefix: "Persona prefix",
+      styleInstructions: "",
+      restrictionsBulletPoints: "",
+    });
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        id: 1,
+        userId: 1,
+        personaId: "p1",
+        entityType: "preference",
+        entityName: "global preference",
+        facts: ["Use concise answers"],
+        projectId: null,
+      } as any,
+    ]);
+
+    const messages = await buildChatContext(
+      makeRequest({ conversationContext: { activePersonaId: "p1" } }),
+      "You are a helpful assistant",
+      null,
+    );
+
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(messages.some((message) =>
+      typeof message.content === "string" && message.content.includes("Use concise answers"),
+    )).toBe(true);
+  });
+
   it("with persona -- loads persona, builds segments, retrieves memory", async () => {
     const persona = {
       id: "p1",
@@ -129,7 +162,7 @@ describe("buildChatContext", () => {
     mockRetrieveForPrompt.mockResolvedValue([
       { memory: { content: "User prefers short answers" }, score: 0.9, matchType: "keyword" } as any,
     ]);
-    mockGetEntityMemories.mockResolvedValue([
+    mockGetEntityMemoriesForContext.mockResolvedValue([
       { entityName: "User", facts: ["Works in marketing"], entityType: "user" } as any,
     ]);
 
@@ -145,7 +178,7 @@ describe("buildChatContext", () => {
     expect(mockGetPersonaById).toHaveBeenCalledWith("p1");
     expect(mockBuildPersonaPromptSegments).toHaveBeenCalledWith(persona);
     expect(mockRetrieveForPrompt).toHaveBeenCalled();
-    expect(mockGetEntityMemories).toHaveBeenCalled();
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
 
     // Should have 3 messages: persona+memory system, skill system, user
     expect(messages).toHaveLength(3);
@@ -173,7 +206,7 @@ describe("buildChatContext", () => {
       restrictionsBulletPoints: null,
     });
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
 
     const req = makeRequest({
       conversationContext: { activePersonaId: "p1" },
@@ -284,7 +317,7 @@ describe("buildChatContext", () => {
       restrictionsBulletPoints: null,
     });
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
 
     const req = makeRequest({
       conversationContext: { activePersonaId: "p1" },

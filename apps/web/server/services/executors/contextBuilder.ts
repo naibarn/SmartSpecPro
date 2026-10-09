@@ -3,7 +3,7 @@ import {
   getPersonaById,
 } from "../personaService";
 import { retrieveForPrompt } from "../scopedMemoryService";
-import { getEntityMemories } from "../chatService";
+import { getEntityMemoriesForContext } from "../memoryService";
 import {
   composePrompt,
   type ComposePromptInput,
@@ -87,9 +87,13 @@ export async function buildChatContext(
         }
 
         // Entity memory
-        const entityMemories = await getEntityMemories(
+        // Chat requests currently carry no verified canonical project binding.
+        // Keep user-global memories, but never hydrate project-scoped memories
+        // from another project into an unbound provider request.
+        const entityMemories = await getEntityMemoriesForContext(
           request.userId,
           undefined,
+          null,
           personaId,
         );
         if (entityMemories.length > 0) {
