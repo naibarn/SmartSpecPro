@@ -52,6 +52,7 @@ jobs:
           server/services/billing/emailDelivery.test.ts
           client/src/components/guardian/__tests__/FeedbackButton.test.tsx
           client/src/components/editor/TiptapEditor.test.tsx
+          client/src/components/editor/UnifiedDocumentSurface.test.tsx
           client/src/components/editor/__tests__/paste-handlers.test.ts
           client/src/components/editor/hardening.test.tsx
           client/src/components/editor/serialization-guard.test.ts
