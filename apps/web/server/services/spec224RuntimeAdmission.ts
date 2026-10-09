@@ -6,6 +6,7 @@ import {
   runnerCapabilitySnapshots,
   runnerNodes,
   tenants,
+  users,
   workerJobAttempts,
   workerJobEvents,
   workerJobs,
@@ -1347,22 +1348,24 @@ export async function dispatchWithPersistedSpec224RunnerStart<T>(input: {
       }
       const stagedInputBindingValid = manifest.spec224Input
         ? Boolean(command.workspaceRef) &&
-          await defaultSpec224RunnerInputStagingService.isStagedInputBoundToManifest({
-            inputRef: command.inputRef,
-            inputDigest: manifest.spec224Input.inputDigest,
-            totalBytes: manifest.spec224Input.totalBytes,
-            commandId: command.commandId,
-            workerJobId: command.jobId,
-            attemptId: snapshot.currentAttemptId,
-            attempt: command.attempt,
-            leaseId: command.leaseId,
-            fencingToken: command.fencingToken,
-            tenantId: command.tenantId,
-            runnerId: command.runnerId,
-            runnerSessionId: command.runnerSessionId,
-            authorizationGrantRef: command.authorizationGrantRef,
-            workspaceRef: command.workspaceRef!,
-          })
+          (await defaultSpec224RunnerInputStagingService.isStagedInputBoundToManifest(
+            {
+              inputRef: command.inputRef,
+              inputDigest: manifest.spec224Input.inputDigest,
+              totalBytes: manifest.spec224Input.totalBytes,
+              commandId: command.commandId,
+              workerJobId: command.jobId,
+              attemptId: snapshot.currentAttemptId,
+              attempt: command.attempt,
+              leaseId: command.leaseId,
+              fencingToken: command.fencingToken,
+              tenantId: command.tenantId,
+              runnerId: command.runnerId,
+              runnerSessionId: command.runnerSessionId,
+              authorizationGrantRef: command.authorizationGrantRef,
+              workspaceRef: command.workspaceRef!,
+            }
+          ))
         : true;
       if (
         manifest.tenantId !== snapshot.tenantId ||
@@ -1486,6 +1489,15 @@ async function evaluateAndValidateSnapshot(
     });
     return { decision: "DENY", reason: "DENIED_GRANT_BINDING" };
   }
+  if (!testSnapshotLoader) {
+    if (!transaction) {
+      return {
+        decision: "DENY",
+        reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+      };
+    }
+    await lockCanonicalGrantAuthorityRows(transaction, snapshot);
+  }
   const validation = await validateSpec224RecoveryGrant({
     grantId: String(binding.grantId),
     tenantId: snapshot.tenantId,
@@ -1545,4 +1557,59 @@ async function evaluateAndValidateSnapshot(
     });
   }
   return finalDecision;
+}
+
+/**
+ * Keep the canonical rows read by the Python grant authority stable until
+ * this protected-start transaction commits. Python remains the sole grant
+ * decision engine; these locks only linearize its persisted approval inputs
+ * against canonical writers while the bounded HTTP validation is in flight.
+ */
+async function lockCanonicalGrantAuthorityRows(
+  transaction: DrizzleDB,
+  snapshot: Spec224CanonicalAdmissionSnapshot
+): Promise<void> {
+  const grantId = snapshot.grantBinding?.grantId;
+  const tenantOwnerId = snapshot.tenantOwnerId;
+  if (
+    typeof grantId !== "string" ||
+    typeof tenantOwnerId !== "number" ||
+    !Number.isSafeInteger(tenantOwnerId) ||
+    tenantOwnerId < 1
+  ) {
+    throw new Error("SPEC224_CANONICAL_GRANT_AUTHORITY_BINDING_INVALID");
+  }
+
+  // The admission snapshot loader already locks the tenant row through its
+  // worker_jobs join. Reassert the owner binding here and lock every persisted
+  // row whose state the Python validator reads before making the HTTP call.
+  await transaction.execute(sql`
+    SELECT 1 FROM tenants
+    WHERE id = ${snapshot.tenantId} AND "ownerId" = ${tenantOwnerId}
+    FOR SHARE
+  `);
+  await transaction.execute(sql`
+    SELECT 1 FROM "approval_requests"
+    WHERE id = ${grantId} AND tenant_id = ${snapshot.tenantId}
+    FOR SHARE
+  `);
+  await transaction.execute(sql`
+    SELECT id FROM "approval_responses"
+    WHERE request_id = ${grantId}
+    ORDER BY id
+    FOR SHARE
+  `);
+  await transaction.execute(sql`
+    SELECT id FROM "audit_logs"
+    WHERE resource_id = ${grantId}
+      AND resource_type = 'spec224_recovery_grant'
+      AND action = 'spec224.recovery_grant.issued'
+    ORDER BY id
+    FOR SHARE
+  `);
+  await transaction
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, tenantOwnerId))
+    .for("share");
 }

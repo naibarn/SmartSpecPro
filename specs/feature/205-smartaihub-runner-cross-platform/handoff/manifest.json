@@ -124,20 +124,26 @@
     {
       "class": "DEPLOYMENT",
       "id": "WINDOWS_REFRESH_LIVE_VERIFICATION_PENDING",
-      "next_action": "Deploy the integrated backend repair through the normal release path, then verify automatic refresh and Control Plane acknowledgement on the Windows Runner. If it still fails, capture the sanitized HTTP status/error code and server correlation evidence.",
-      "root_cause": "The refresh endpoint's preflight rejected a revoked refresh token before the existing bounded replay grace handler could recover a token set after a lost response. The source defect is fixed, but the screenshot's generic RUNNER_CONNECT_REQUEST_FAILED does not prove that this exact branch was triggered."
+      "next_action": "Verify PR #412 in the normally deployed Control Plane, complete browser reauthorization on Windows, and capture fresh authenticated session/capability/Codex/workspace evidence. If refresh still fails, capture the sanitized status/error code and server correlation record.",
+      "root_cause": "The user screenshot shows RUNNER_CONNECT_REQUEST_REJECTED_400 but no response body, request ID, or deployed SHA. At source 19b5a890b41b95172bcd97a12fcccaa32d9984af, the refresh route mapped unexpected exceptions to generic HTTP 400; PR #412 merged at 1df17e691f710df466737c586838c37f7c90ff6a changes that fallback to sanitized HTTP 500. The screenshot does not establish that this branch caused the observed response, and the backend deployment remains unverified."
+    },
+    {
+      "class": "ACCEPTANCE",
+      "id": "WINDOWS_WSS_ROTATION_REVIEW_CANDIDATE_PENDING",
+      "next_action": "Obtain owner authorization, dispatch the existing Windows review-build workflow for exact integrated SHA 79805356f9252e1ba6858d993dbcc42476788745, and verify on the native host without disturbing the current session.",
+      "root_cause": "PR #415 implements and locally verifies the active-loop credential handoff, but the repository Windows installer workflow is manual and no candidate was generated or installed. The historical production event remains uncorrelated to a credential revision."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+    "expected_canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "On the authorized Windows host, obtain Runner-owner approval before installing unsigned review build 0.2.26 if it is not already installed; then verify browser reauthorization, refresh/session continuity, fresh heartbeat and capability snapshot. Keep Codex smoke user-triggered and non-production.",
-    "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
+    "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745 through the existing runner-desktop-release workflow (platform=windows), then install/accept that candidate on the Windows host and capture fresh session, WSS reconnect, capability acknowledgement, Codex readiness, and workspace binding evidence. Do not reconnect/reinstall the currently active installation as a diagnostic. Keep SPEC-224 protected dispatch DENY.",
+    "next_ready_workunit": "WINDOWS_WSS_ROTATION_REVIEW_BUILD_AND_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Read handoff/evidence/codex-auth-status-probe-20261009.md and the Windows refresh evidence. Codex local login status probing is integrated at 5ce718f; Windows installation and live refresh/session acceptance remain pending.",
-    "waiting_predicate": "Reactivate when the Windows Runner owner authorizes or confirms the installed build and supplies fresh read-back evidence for refresh, session, heartbeat and capability snapshot."
+    "resume_point": "PR #415 merged at 79805356f9252e1ba6858d993dbcc42476788745. Local regression suite passed 173 unit + 8 integration tests. The active-loop A→B WSS credential rotation mechanism is reproduced and fixed; socket close alone retains A. Windows Tauri build and installed candidate acceptance remain pending owner authorization. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md.",
+    "waiting_predicate": "Reactivate when the owner authorizes the manual unsigned Windows review build for exact source SHA 79805356f9252e1ba6858d993dbcc42476788745; then build from that SHA and obtain native Windows acceptance evidence."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -242,9 +248,14 @@
         "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+      },
+      {
+        "digest": "9b48f3be051c0ff3bb8580c16be550444f25bf2053535d97494bb5b91c48f7fd",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
       }
     ],
-    "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
+    "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -369,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 22,
+  "generation": 27,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -401,15 +412,17 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+    "canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
     "integrated": true,
-    "integrated_at": "2026-10-09T04:20:31Z"
+    "integrated_at": "2026-10-09T14:48:44Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.102236Z"
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
+    ],
+    "updated_at": "2026-10-09T14:50:08Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -515,11 +528,24 @@
           "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
           "kind": "SUPPORTING_ARTIFACT",
           "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        },
+        {
+          "digest": "9b48f3be051c0ff3bb8580c16be550444f25bf2053535d97494bb5b91c48f7fd",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
         }
       ],
-      "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
+      "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
+    },
+    "lifecycle": {
+      "current_state": "VALIDATION_PENDING",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
+      ],
+      "updated_at": "2026-10-09T14:50:08Z"
     },
     "requirements": {
       "REQ-663D83B30437": {
@@ -1305,7 +1331,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:24:17.714907Z",
+  "updated_at": "2026-10-09T14:50:14.605871Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1313,11 +1339,14 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-manual-refresh-button-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+    "sha": "79805356f9252e1ba6858d993dbcc42476788745",
     "status": "PENDING",
     "task_regressions": []
   }

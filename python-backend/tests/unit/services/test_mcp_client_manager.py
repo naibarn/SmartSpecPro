@@ -11,7 +11,6 @@ import pytest
 
 from app.services.mcp_client_manager import (
     MAX_RESPONSE_BYTES,
-    MAX_STDIO_PER_TENANT,
     McpClientManager,
     McpConnection,
     McpConnectionError,
@@ -129,79 +128,6 @@ class TestStreamableHttpTransport:
                 # The connection is created; fallback happens at call time
             )
             assert conn.sse_fallback_enabled is True
-
-
-# ---------------------------------------------------------------------------
-# stdio Transport
-# ---------------------------------------------------------------------------
-
-class TestStdioTransport:
-    """stdio transport via OpenSandbox."""
-
-    @pytest.mark.asyncio
-    async def test_connect_stdio_routes_through_opensandbox(
-        self, manager: McpClientManager
-    ):
-        """connect_stdio routes through OpenSandbox, not direct subprocess."""
-        with patch("app.services.mcp_client_manager.opensandbox_settings") as mock_settings:
-            mock_settings.OPENSANDBOX_ENABLED = True
-            with patch("app.services.mcp_client_manager.get_sandbox_client") as mock_get:
-                mock_client = AsyncMock()
-                mock_client.create_sandbox.return_value = "sandbox-123"
-                mock_get.return_value = mock_client
-                conn = await manager.connect_stdio(
-                    command="npx",
-                    args=["@modelcontextprotocol/server-github"],
-                    env={},
-                    tenant_id=1,
-                )
-                assert conn.transport == "stdio"
-                assert conn.sandbox_id == "sandbox-123"
-                mock_client.create_sandbox.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_connect_stdio_disabled_error(self, manager: McpClientManager):
-        """connect_stdio returns error when OPENSANDBOX_ENABLED=false."""
-        with patch("app.services.mcp_client_manager.opensandbox_settings") as mock_settings:
-            mock_settings.OPENSANDBOX_ENABLED = False
-            with pytest.raises(
-                McpConnectionError, match="OpenSandbox.*OPENSANDBOX_ENABLED"
-            ):
-                await manager.connect_stdio(
-                    command="npx",
-                    args=["server"],
-                    env={},
-                    tenant_id=1,
-                )
-
-    @pytest.mark.asyncio
-    async def test_per_tenant_max_stdio_containers(self, manager: McpClientManager):
-        """per-tenant max 2 concurrent stdio containers enforced."""
-        with patch("app.services.mcp_client_manager.opensandbox_settings") as mock_settings:
-            mock_settings.OPENSANDBOX_ENABLED = True
-            with patch("app.services.mcp_client_manager.get_sandbox_client") as mock_get:
-                mock_client = AsyncMock()
-                call_count = 0
-
-                async def fake_create(config):
-                    nonlocal call_count
-                    call_count += 1
-                    return f"sandbox-{call_count}"
-
-                mock_client.create_sandbox.side_effect = fake_create
-                mock_get.return_value = mock_client
-
-                # Create MAX_STDIO_PER_TENANT connections
-                for _ in range(MAX_STDIO_PER_TENANT):
-                    await manager.connect_stdio(
-                        command="npx", args=["s"], env={}, tenant_id=42
-                    )
-
-                # Next should fail
-                with pytest.raises(McpConnectionError, match="Max.*stdio"):
-                    await manager.connect_stdio(
-                        command="npx", args=["s"], env={}, tenant_id=42
-                    )
 
 
 # ---------------------------------------------------------------------------

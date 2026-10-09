@@ -1601,6 +1601,24 @@ function sendError(res: Response, error: unknown): void {
   res.status(400).json({ error: "RUNNER_REQUEST_INVALID" });
 }
 
+function sendRunnerRefreshError(res: Response, error: unknown): void {
+  if (
+    error instanceof Spec224RunnerInputStagingError ||
+    error instanceof RunnerCompatibilityError ||
+    error instanceof RunnerAuthError ||
+    error instanceof RunnerGatewayError ||
+    error instanceof RunnerUpdateError ||
+    error instanceof EphemeralAuthorizationStoreError
+  ) {
+    sendError(res, error);
+    return;
+  }
+  // The refresh route has no user-supplied payload to validate. An unexpected
+  // exception is a server failure and must not be mislabeled as HTTP 400, which
+  // makes the Runner treat a server-side problem as an invalid client request.
+  res.status(500).json({ error: "RUNNER_REFRESH_FAILED" });
+}
+
 async function authenticate(
   req: Request,
   res: Response,
@@ -2308,7 +2326,7 @@ export function registerRunnerControlRoutes(
         expiresInSeconds: 900,
       });
     } catch (error) {
-      sendError(res, error);
+      sendRunnerRefreshError(res, error);
     }
   });
 

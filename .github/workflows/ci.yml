@@ -36,6 +36,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
+      - name: Test workspace protocol package-manager selection
+        run: bash scripts/ci/tests/node_tests_selection.test.sh
       - name: Test api-generator (coverage)
         run: bash scripts/ci/node_tests.sh api-generator
       - name: Upload api-generator coverage summary
@@ -68,16 +70,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev ffmpeg
+      - name: Provide Tauri external binaries for tests
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          mkdir -p apps/tauri-shell/src-tauri/binaries
+          cp "$(command -v ffmpeg)" "apps/tauri-shell/src-tauri/binaries/ffmpeg-${target}"
+          cp "$(command -v ffprobe)" "apps/tauri-shell/src-tauri/binaries/ffprobe-${target}"
+      - uses: actions/setup-python@v5
         with:
-          node-version: "22.22.3"
-      - name: Test desktop-app (coverage)
-        run: bash scripts/ci/node_tests.sh apps/desktop
-      - name: Upload desktop-app coverage summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-desktop-app
-          path: apps/desktop/coverage/coverage-summary.json
+          python-version: "3.11"
+      - name: Install uv for LiteRT-LM runtime preparation
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install uv
+      - name: Prepare on-demand LiteRT-LM resource bundle
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand --target "${target}"
+      - name: Test Tauri shell
+        run: cargo test --locked --manifest-path apps/tauri-shell/src-tauri/Cargo.toml
 
   marketplace_extension:
     runs-on: ubuntu-latest
@@ -186,11 +202,30 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev espeak ffmpeg
+      - name: Provide Tauri external binaries for checks
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          mkdir -p apps/tauri-shell/src-tauri/binaries
+          cp "$(command -v ffmpeg)" "apps/tauri-shell/src-tauri/binaries/ffmpeg-${target}"
+          cp "$(command -v ffprobe)" "apps/tauri-shell/src-tauri/binaries/ffprobe-${target}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv for LiteRT-LM runtime preparation
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install uv
+      - name: Prepare on-demand LiteRT-LM resource bundle
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand --target "${target}"
       - name: Install npm dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build Remotion render schemas
+        run: pnpm --filter @smartspec/remotion-render run build
       - name: Run targeted Local AI tests
         run: |
-          pnpm --filter @smartspec/web run test -- \
+          pnpm --filter @smartspec/web exec vitest run \
             client/src/features/local-ai/adapters/browserLocalRuntime.test.ts \
             client/src/features/local-ai/voice/chatMicProvider.test.ts \
             client/src/features/local-ai/voice/localVoiceRuntime.test.ts \
@@ -245,10 +280,6 @@ jobs:
           path: _cov/control-plane/coverage
       - uses: actions/download-artifact@v4
         with:
-          name: coverage-desktop-app
-          path: _cov/apps/desktop/coverage
-      - uses: actions/download-artifact@v4
-        with:
           name: coverage-smartspecweb
           path: _cov/apps/web/coverage
       - uses: actions/download-artifact@v4
@@ -258,7 +289,7 @@ jobs:
 
       - name: Generate repo coverage summary + badge JSONs
         run: |
-          python3 scripts/ci/coverage_summary.py             --python-xml _cov/python/coverage.xml             --api-generator _cov/api-generator/coverage/coverage-summary.json             --control-plane _cov/control-plane/coverage/coverage-summary.json             --desktop-app _cov/apps/desktop/coverage/coverage-summary.json             --smartspecweb _cov/apps/web/coverage/coverage-summary.json             --out-json _cov/coverage_summary.json             --out-md _cov/coverage_summary.md             --fail-on-missing
+          python3 scripts/ci/coverage_summary.py             --python-xml _cov/python/coverage.xml             --api-generator _cov/api-generator/coverage/coverage-summary.json             --control-plane _cov/control-plane/coverage/coverage-summary.json             --smartspecweb _cov/apps/web/coverage/coverage-summary.json             --out-json _cov/coverage_summary.json             --out-md _cov/coverage_summary.md             --fail-on-missing
           python3 scripts/ci/coverage_badge.py --in _cov/coverage_summary.json --out _cov/badges/coverage.json --mode min
           python3 scripts/ci/security_badge.py --source python-backend/app/api/llm_openai_compat.py --out _cov/badges/security.json
           PYTHONPATH=python-backend python3 scripts/ci/policy_snapshot.py --out _cov/policy_snapshot.json

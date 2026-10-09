@@ -27,5 +27,8 @@
     "adm-zip": "^0.6.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0"
   }
 }

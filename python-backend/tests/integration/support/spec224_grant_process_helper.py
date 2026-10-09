@@ -6,36 +6,19 @@ import json
 import os
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
-
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spec224_test_database import database_url  # noqa: E402
 from app.services.approval_db_service import ApprovalDBService  # noqa: E402
-
-
-def _database_url() -> str:
-    value = os.environ.get("DATABASE_URL", "")
-    parsed = urlparse(value)
-    if (
-        parsed.hostname not in {"localhost", "127.0.0.1"}
-        or parsed.port != 55493
-        or parsed.path.lstrip("/") != "spec224_d385_test"
-        or parsed.username != "spec224_d385_runtime"
-        or os.environ.get("SPEC224_TEST_DATABASE_IDENTITY")
-        != "spec224-d385-20261001|spec224_d385_test|spec224_d385_runtime|PostgreSQL 15.17"
-    ):
-        raise RuntimeError("SPEC224_TEST_DATABASE_FORBIDDEN")
-    if value.startswith("postgresql://"):
-        value = "postgresql+asyncpg://" + value.removeprefix("postgresql://")
-    return value
 
 
 async def main() -> None:
     action = sys.argv[1]
     request = json.loads(os.environ["SPEC224_GRANT_TEST_INPUT"])
-    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    engine = create_async_engine(database_url(), pool_pre_ping=True)
     sessions = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with engine.connect() as connection:
