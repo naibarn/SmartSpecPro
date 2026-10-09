@@ -875,15 +875,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1b0b86492b3f4b387bb0645605140ce4a9bfcc3f",
+    "expected_canonical_sha": "2b576aaa5c29500155fcf3000891017bc3b54c8f",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "Obtain accountable Platform/Security owner approval for a dedicated non-production source-attestation issuer, signing key/KMS identity, key lifecycle/revocation policy, and immutable evidence bucket/prefix. Then configure server-side authority adapters and integrate only after independent validation; keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied.",
+    "next_action": "Obtain an authenticated Platform/Security decision naming the existing server workload principal, approved signing operation/key resource, exact non-production evidence account/bucket/prefix, distinct writer/verifier identities, scoped tenant/profile policy, TTL/revocation/retention, and approval record. Then verify those resources read-only before implementing adapters.",
     "next_ready_workunit": "SPEC224_REMOTE_SOURCE_TRUST_AUTHORITY_APPROVAL",
-    "reactivation_predicate": "Authenticated Platform/Security owner approval and resolvable approved issuer/key/storage policy are present.",
-    "resume_point": "PR #387 merged at 1b0b86492b3f4b387bb0645605140ce4a9bfcc3f. Isolated verifier v1 and focused 11-test evidence are in orchestra/tasks/spec224-remote-source-trust-authority-20261009/implementation-handoff.md. The verifier is unregistered and grants no dispatch permission. No authorized remote issuer/trust root/evidence store exists; runtime admission remains DENY. Next: owner approval and authority provisioning, then protected-start integration with atomic replay consumption and commit-time revocation recheck. Operator confirmed Windows and Linux Runner versions are usable on 2026-10-09; the attached image shows successful Linux WSL2 Runner pairing, but contains no authoritative binary version string. This is platform usability only and does not prove fresh capability, Codex job readiness, trusted dispatch, receipt, or settlement. See orchestra/tasks/spec224-remote-source-trust-authority-20261009/implementation-handoff.md.",
-    "waiting_predicate": "Reactivate when owner-approved issuer identity, trust-key catalog/resource, scoped tenant/profile policy, and dedicated evidence storage configuration are available and verifiable server-side."
+    "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
+    "resume_point": "Read the 2026-10-09 authority inventory in orchestra/tasks/spec224-remote-source-trust-authority-20261009/implementation-handoff.md. Wrangler is unavailable and Worker config has activation disabled/local with no bindings, so Cloudflare account resource existence remains UNKNOWN. Continue at owner decision package; do not repeat verifier design or use test-only storage as trusted evidence. Keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied.",
+    "waiting_predicate": "An authenticated owner response supplies exact existing principal/key/signing operation/storage identities and policy fields; all resources resolve through an approved read-only inventory path."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,15 +1123,29 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1b0b86492b3f4b387bb0645605140ce4a9bfcc3f",
+    "canonical_sha": "2b576aaa5c29500155fcf3000891017bc3b54c8f",
     "integrated": true,
     "integrated_at": "2026-10-08T23:52:41Z"
   },
   "lifecycle": {
-    "current_state": "VALIDATION_PENDING",
-    "previous_state": "DISCOVERING",
-    "state_evidence": [],
+    "current_state": "WAITING_APPROVAL",
+    "previous_state": "VALIDATION_PENDING",
+    "state_evidence": [
+      "orchestra/tasks/spec224-remote-source-trust-authority-20261009/authority-design.md#Read-only infrastructure inventory",
+      "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint"
+    ],
     "updated_at": "2026-10-08T02:06:09.264229Z"
+  },
+  "manual_decisions": {
+    "lifecycle": {
+      "current_state": "WAITING_APPROVAL",
+      "previous_state": "VALIDATION_PENDING",
+      "state_evidence": [
+        "orchestra/tasks/spec224-remote-source-trust-authority-20261009/authority-design.md#Read-only infrastructure inventory",
+        "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint"
+      ],
+      "updated_at": "2026-10-08T02:06:09.264229Z"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -3070,7 +3084,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T00:12:01.519012Z",
+  "updated_at": "2026-10-09T00:28:54.896204Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

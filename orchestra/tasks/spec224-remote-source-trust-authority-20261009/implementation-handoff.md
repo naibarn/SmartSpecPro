@@ -84,3 +84,41 @@ The operator clarified that the target for this acceptance run is the Debian Lin
 4. Run PostgreSQL separate-connection race tests for revocation and duplicate consumption, then independently resume Windows/Linux Runner, economic, dispatch and deployment gates.
 
 **Reactivation predicate:** accountable owner approval exists and approved issuer/key/storage configuration can be resolved server-side. Until then continue only dependency-independent tests/docs and keep both trusted remote admission classes denied.
+
+## Authority provisioning readiness — 2026-10-09
+
+**Fresh canonical source:** `2b576aaa5c29500155fcf3000891017bc3b54c8f`; task worktree is clean at that source before this documentation checkpoint.
+
+### Read-only inventory findings
+
+- `apps/cloudflare/wrangler.jsonc` names Worker `smartspec-cloudflare-runtime`, with `CLOUDFLARE_ACTIVATION=disabled`, `CLOUDFLARE_ENVIRONMENT=local`, and no resource bindings. It does not establish a deployed service principal or SPEC-224 server authority.
+- `apps/web/server/services/spec224RemoteBundleStorage.ts` supports only dedicated non-production R2/S3-compatible configuration and restricts test buckets to `spec224-admission-test*`; the existing evidence still says roles are unverified and mutation/delete denial is untested.
+- No `wrangler` executable was installed in this task environment. No Cloudflare/R2/KMS-related environment-variable names were present. Therefore authenticated account inventory was unavailable; actual R2 bucket, Secrets Store, KMS and service principal existence is **UNKNOWN**, not absent.
+- No resource, key, secret, binding, grant, bucket, deploy, or runtime setting was created or changed.
+- Official Cloudflare docs describe Secrets Store as account-level secrets retrievable by a bound Worker as a value, while Workers Web Crypto supports cryptographic operations. This is a possible software-signing path but is not evidence of a non-exportable asymmetric KMS signing operation. A security owner must explicitly accept Worker runtime access to key bytes before considering this store as signer input. The inspected Cloudflare Worker is disabled/local and has no such binding.
+
+### Bounded owner package
+
+See `owner-approval-request.md` and `authority-design.md`. Logical proposal only: existing authenticated SmartSpecPro server workload owning canonical DevelopmentRun/job/attempt reads; purpose-specific Ed25519 signing operation; dedicated non-production R2 evidence target with `spec224/<tenant-id>/<profile-digest>/` prefix; distinct writer and read-only verifier principals; one approved non-production tenant/project/environment and profile allowlist; explicit TTL, retention, rotation, revocation, incident ownership, byte/count/time limits, and immutable readback proof. These names are not provisioned resources. Owner must supply actual principal/account/key/bucket IDs and durable approval reference.
+
+### Focused review passes
+
+1. Checked the task started at the fresh `origin/main` SHA before edits.
+2. Confirmed worker activation remains disabled and environment is local.
+3. Confirmed Wrangler bindings do not declare R2 or Secrets Store resources.
+4. Checked Wrangler CLI availability without invoking package installation or login.
+5. Checked only names, not values, of Cloudflare/R2/KMS environment variables.
+6. Re-read existing storage constraints; did not upgrade test bucket allowlist to trusted use.
+7. Compared existing signing domains; did not nominate or reuse application/Runner keys.
+8. Checked official Secrets Store integration: Worker can retrieve the bound secret value; no non-exportable signing operation is evidenced.
+9. Checked official Worker Web Crypto: signing primitives do not prove a configured key authority or approved issuer.
+10. Reviewed the package for scope creep: no resource creation, credential access, runtime admission change, Runner path edit, production trust, or dispatch authorization.
+
+### Status and next action
+
+- Workunit 1 decision package: **PREPARED / OWNER DECISION REQUIRED**.
+- Existing resources available in Cloudflare account: **UNKNOWN** from this execution context; repository config only confirms no Worker bindings.
+- Existing resources approved for SPEC-224: **NONE evidenced**.
+- Workunit 2 concrete adapters: **WAITING_APPROVAL** until an authenticated owner returns exact identities/resources, signing operation and policy.
+- Workunit 3 protected admission: **NOT READY**; both `REMOTE_TEST_TRUSTED` and `PRODUCTION_TRUSTED` remain denied. Runner ownership paths and reserved `spec224RuntimeAdmission.ts` files were not modified.
+- Independent next action: owner supplies the bounded approval record and exact existing resources. Then verify metadata/policy read-only before implementing adapters; if Cloudflare inventory remains unavailable, use the established platform inventory/approval workflow rather than inferring resource absence.

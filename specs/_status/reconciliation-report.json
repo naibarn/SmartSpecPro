@@ -102074,7 +102074,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "1b0b86492b3f4b387bb0645605140ce4a9bfcc3f",
+      "canonical_sha": "2b576aaa5c29500155fcf3000891017bc3b54c8f",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -103366,7 +103366,7 @@
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-08T02:06:09.264229Z",
-      "lifecycle": "VALIDATION_PENDING",
+      "lifecycle": "WAITING_APPROVAL",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": null,

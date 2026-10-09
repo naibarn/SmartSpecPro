@@ -1,6 +1,6 @@
 # SPEC-224 Remote Source Trust Authority Design
 
-**Canonical source checked:** `8368ed2d2cae51dc2131b86d90c91374c971e422`
+**Canonical source checked:** `2b576aaa5c29500155fcf3000891017bc3b54c8f` (2026-10-09)
 **Decision:** `NO_AUTHORIZED_REMOTE_TRUST_ISSUER_OR_TRUST_ROOT_FOUND`
 **Runtime posture:** keep `REMOTE_TEST_TRUSTED` denied; do not enable `PRODUCTION_TRUSTED`.
 
@@ -25,6 +25,28 @@
 7. **Commit-time fence:** the cryptographic/object verification result is evidence only. At protected start, use the existing short transaction to lock current job/attempt/lease and re-read binding and `worker_job_events` revocation state, serializing against the existing invalidation writer. No object-store, KMS, or other slow I/O occurs under those locks. Grant, approval, economics, lease, fencing, idempotency, and persisted-proof checks remain owned by current admission.
 
 This design intentionally does not nominate a real issuer, key, bucket, owner, or configuration source. Those are not present as approved authority in the repository/runtime evidence examined. Do not create an issuer service principal or key as a substitute.
+
+## Read-only infrastructure inventory (2026-10-09)
+
+| Resource | Observable state | Availability/approval conclusion |
+| --- | --- | --- |
+| Cloudflare Worker config | `apps/cloudflare/wrangler.jsonc` names `smartspec-cloudflare-runtime`; activation is `disabled`, environment is `local`, and the config explicitly declares no resource bindings. | Repository configuration only; no deployed or authorized issuer identity is established. |
+| R2 / S3 evidence storage | Existing code accepts dedicated non-production credentials only and restricts the test bucket to `spec224-admission-test*`; prior evidence marks configured roles unverified and immutability/mutation denial untested. | Test-only plumbing exists. No account, bucket, prefix, endpoint, or production-capable identity can be confirmed from this host. |
+| Cloudflare Secrets Store | No binding/store/key reference appears in the Worker config. `wrangler` is not installed, and no Cloudflare/R2/KMS-related environment variable names were present in this process. No authenticated account inventory could therefore be queried. | Account resource existence is **UNKNOWN**, not absent. No SPEC-224 approval or binding exists in the inspected repo config. |
+| Signing capability | Cloudflare Workers Web Crypto documents cryptographic signing support. Secrets Store Workers integration exposes a bound secret through `env.<binding>.get()`, i.e. as a secret value available to Worker code. | This demonstrates a possible software-signing path, not a non-exportable asymmetric KMS signing operation or a suitable key-isolation boundary. Do not select Secrets Store as the signing root without explicit Security acceptance of the Worker runtime's access to private key bytes. |
+| Other key stores | No authenticated cloud/key-management CLI or credentials were available for inventory. Existing application signing keys belong to other trust domains. | No usable/approved alternative is confirmed. |
+
+This is a read-only inventory from the task worktree and process context, not a Cloudflare account audit. Do not infer that resources are absent in the account. Cloudflare documents [Secrets Store](https://developers.cloudflare.com/secrets-store/) as account-level secret storage, [Worker integration](https://developers.cloudflare.com/secrets-store/integrations/workers/) retrieves a bound secret value into Worker code, and [Workers Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/) supports Ed25519 signing. Together these document a possible software-signing path, not a non-exportable KMS signing operation or an approved key-isolation boundary for this deployment. The current config and execution context also provide no evidence that the Cloudflare Worker is the authenticated server workload that owns canonical SPEC-224 state.
+
+## Bounded owner decision package
+
+Proposed logical issuer: `SmartSpecPro SPEC-224 non-production source attestor`, implemented inside an **existing authenticated server workload that owns canonical DevelopmentRun/job/attempt reads**. The owner must identify the actual deployed principal, environment, service entrypoint, and accountable team; this label does not create or assert a principal.
+
+Proposed trust root: a purpose-specific Ed25519 signing key with a server-side signing operation, exact key ID/public fingerprint, overlap and revocation policy. Prefer an already approved KMS asymmetric-sign operation if available. Secrets Store is only a candidate for secret delivery after a documented decision that its Worker binding/runtime exposure meets key isolation requirements; it is not treated as KMS. No signing resource or key is currently confirmed.
+
+Proposed storage policy: dedicated non-production R2 bucket, prefix `spec224/<tenant-id>/<profile-digest>/`, conditional immutable content-addressed writes, exact bucket/account/endpoint allowlist, distinct writer and read-only verifier principals, and evidence proving verifier writes/deletes are denied. The exact account and bucket IDs must come from an authenticated owner inventory; `spec224-admission-test*` is not promoted or reused as trusted evidence storage without explicit verification and approval.
+
+Scope is one explicitly approved non-production tenant/project and named execution profile(s), `REMOTE_TEST_TRUSTED` only. Owner approval must set evidence TTL/clock skew, retention, revocation semantics, alerting, rotation overlap, incident response, maximum object count/size/deadline, and name the independent storage verifier. Owner response fields are in `owner-approval-request.md`. Until those fields and a durable approval reference are supplied, Workunit 2 and protected admission remain gated.
 
 ## Linux Runner coordination
 

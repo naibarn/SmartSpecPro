@@ -2,11 +2,11 @@
 # 224 — Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `VALIDATION_PENDING`
+- Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1244 unresolved of 1244
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 17
+- Manifest generation: 18
 
 ## Source-declared status and relationship claims
 
