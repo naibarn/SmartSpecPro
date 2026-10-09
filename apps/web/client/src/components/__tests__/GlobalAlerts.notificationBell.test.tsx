@@ -54,6 +54,31 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "admin.notificationBell.title": "Notifications",
         "admin.notificationBell.titleCount": `Notifications (${count})`,
         "admin.notificationBell.close": "Close notifications",
+        "admin.notificationBell.markAllRead": "Mark all as read",
+        "admin.notificationBell.markRead": "Mark as read",
+        "admin.notificationBell.expandActions": "Expand quick actions",
+        "admin.notificationBell.collapseActions": "Collapse quick actions",
+        "admin.notificationBell.viewDetails": "View details",
+        "admin.notificationBell.openChat": "Open Chat",
+        "admin.notificationBell.viewSchedule": "View schedule",
+        "admin.notificationBell.viewAll": "View all notifications",
+        "admin.notificationBell.history": "View recent history",
+        "admin.notificationBell.scheduledAlerts": "Scheduled alerts",
+        "admin.notificationBell.viewDetailsButton": "View details",
+        "admin.notificationBell.openChatButton": "Open Chat",
+        "admin.notificationBell.viewScheduleButton": "View schedule",
+        "admin.notificationBell.openMediaStudio": "Open Media Studio",
+        "admin.notificationBell.adminSettings": "Admin Settings",
+        "admin.notificationBell.systemGuardian": "System Guardian",
+        "admin.notificationBell.viewFeedback": "View Feedback",
+        "admin.notificationBell.back": "Back",
+        "admin.notificationBell.errorDetails": "Error details",
+        "admin.notificationBell.code": "Code",
+        "admin.notificationBell.duration": "Duration",
+        "admin.notificationBell.cost": "Cost",
+        "admin.notificationBell.retry": "Retry",
+        "admin.notificationBell.nextRetry": "Next retry",
+        "admin.notificationBell.source": "Source",
       };
       return messages[key] ?? key;
     },
@@ -316,7 +341,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(
       screen.getByText("No unread alerts, but 1 recent item available")
     ).toBeTruthy();
-    expect(screen.getByText("ดูย้อนหลัง")).toBeTruthy();
+    expect(screen.getByText("View recent history")).toBeTruthy();
   });
 
   it("shows a no-history message when there are no notifications at all", async () => {
@@ -1072,7 +1097,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
       fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
-    fireEvent.click(screen.getByText("ดูย้อนหลัง"));
+    fireEvent.click(screen.getByText("View recent history"));
 
     expect(setLocationMock).toHaveBeenCalledWith("/notifications");
   });

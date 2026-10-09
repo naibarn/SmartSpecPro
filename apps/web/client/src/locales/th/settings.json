@@ -1145,5 +1145,6 @@
   "assistantAppearance.dismissReminder": "ปิดข้อความเตือน",
   "assistantAppearance.chatHintCopy": "ถาม AI หรือแจ้งปัญหาได้ตรงนี้",
   "assistantAppearance.openChat": "เปิดแชต",
-  "assistantAppearance.dismissChatHint": "ปิดคำแนะนำ Chat และ Feedback"
+  "assistantAppearance.dismissChatHint": "ปิดคำแนะนำ Chat และ Feedback",
+  "assistantAppearance.systemReducedMotion": "การตั้งค่าลดการเคลื่อนไหวของอุปกรณ์ปิดภาพเคลื่อนไหวตกแต่งชั่วคราว โดยไม่เปลี่ยนค่ากำหนดที่บันทึกไว้"
 }

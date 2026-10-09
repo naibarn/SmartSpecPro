@@ -60,6 +60,27 @@ describe("AssistantAppearancePreferences", () => {
     expect(saved.motion).toBe("subtle");
   });
 
+  it("explains when the operating system temporarily overrides the saved motion choice", () => {
+    const originalMatchMedia = window.matchMedia;
+    const mediaQuery = {
+      matches: true,
+      media: "(prefers-reduced-motion: reduce)",
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList;
+    Object.defineProperty(window, "matchMedia", { configurable: true, value: vi.fn(() => mediaQuery) });
+    try {
+      render(<AssistantAppearancePreferences />);
+      expect(screen.getByText("assistantAppearance.systemReducedMotion")).toBeTruthy();
+      fireEvent.change(screen.getByLabelText("assistantAppearance.motion"), { target: { value: "off" } });
+      expect(screen.queryByText("assistantAppearance.systemReducedMotion")).toBeNull();
+      expect(JSON.parse(localStorage.getItem("assistant-mascot:v2:tenant-3:user-7")!).motion).toBe("off");
+    } finally {
+      Object.defineProperty(window, "matchMedia", { configurable: true, value: originalMatchMedia });
+    }
+  });
+
   it("emits a deterministic demo request without sending a notification", () => {
     const listener = vi.fn();
     window.addEventListener("smartspec:show-assistant-mascot-demo", listener);

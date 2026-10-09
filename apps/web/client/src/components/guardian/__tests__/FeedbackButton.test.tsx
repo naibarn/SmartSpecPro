@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 
 const mockRoute = vi.hoisted(() => ({
@@ -105,13 +105,18 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "feedback.sendAsUrgent": "Send feedback as urgent",
       "feedback.normalDescription": "Tell us what happened and how we can improve.",
       "feedback.urgentDescription": "Use this for urgent issues only.",
+      "feedback.urgentConfirmTitle": "Send urgent feedback?",
+      "feedback.urgentConfirmDescription": "This will be sent to the emergency response team.",
+      "feedback.urgentConfirmSend": "Send urgent feedback",
+      "feedback.urgentConfirmCancel": "Cancel",
+      "feedback.conversationTitle": "AI Chat Assistant",
       "assistantAppearance.launcherLabel": "AI Chat & Feedback",
       "assistantAppearance.launcherAriaLabel": "Open AI Chat & Feedback",
     })[key] ?? key,
   }),
 }));
 
-import { FeedbackButton, isAssistantBalloonEligible, isAssistantBalloonSuppressedRoute } from "../FeedbackButton";
+import { FeedbackButton, getAssistantHintPosition, isAssistantBalloonEligible, isAssistantBalloonSuppressedRoute } from "../FeedbackButton";
 
 describe("assistant reminder balloon eligibility", () => {
   const eligibleSurface = {
@@ -160,6 +165,54 @@ describe("assistant reminder balloon eligibility", () => {
     "/dashboard/emergency",
   ])("does not classify unrelated route %s as an immersive route", route => {
     expect(isAssistantBalloonSuppressedRoute(route)).toBe(false);
+  });
+});
+
+describe("assistant hint visual viewport placement", () => {
+  const originalVisualViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+
+  afterEach(() => {
+    if (originalVisualViewport) {
+      Object.defineProperty(window, "visualViewport", originalVisualViewport);
+    } else {
+      Reflect.deleteProperty(window, "visualViewport");
+    }
+  });
+
+  it("keeps the complete balloon inside a panned and zoomed visual viewport", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 120, offsetTop: 80, width: 280, height: 400 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 300, top: 250, right: 348, bottom: 290, width: 48 },
+      { width: 180, height: 100 },
+    )).toEqual({ left: "234px", top: "142px" });
+  });
+
+  it("uses the visible space below the launcher when the keyboard reduces the viewport", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 280, width: 390, height: 240 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 170, top: 320, right: 218, bottom: 350, width: 48 },
+      { width: 180, height: 100 },
+    )).toEqual({ left: "104px", top: "358px" });
+  });
+
+  it("suppresses the balloon when neither side of the launcher has safe space", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 300, width: 320, height: 132 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 136, top: 340, right: 184, bottom: 370, width: 48 },
+      { width: 180, height: 100 },
+    )).toBeNull();
   });
 });
 

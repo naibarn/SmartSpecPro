@@ -126,17 +126,19 @@ async function initializeAuthenticatedBrowser(
   height: number,
   identity = TEST_IDENTITY,
   tenantFlag: TenantFlagFixture = { enabled: true },
+  procedureLog: string[] = [],
 ) {
   await page.setViewportSize({ width, height });
   await page.addInitScript(() => {
     localStorage.setItem("smartspec_locale", "en");
     localStorage.setItem("smartspec_locale_chosen", "true");
   });
-  await mockAuthenticatedApi(page, identity, [], tenantFlag);
+  await mockAuthenticatedApi(page, identity, procedureLog, tenantFlag);
 }
 
 test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback and draft preservation", async ({ page }) => {
-  await initializeAuthenticatedBrowser(page, 390, 844);
+  const procedures: string[] = [];
+  await initializeAuthenticatedBrowser(page, 390, 844, TEST_IDENTITY, { enabled: true }, procedures);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/chat");
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
@@ -161,9 +163,20 @@ test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback
   await expect(page.getByPlaceholder("Type a message or / for skills...")).toHaveValue("unsent chat draft");
   await page.getByRole("tab", { name: "Feedback" }).click();
   await page.getByPlaceholder("Title").fill("unsent feedback draft");
+  await page.getByPlaceholder("Describe in detail...").fill("unsent feedback description");
   await page.getByRole("tab", { name: "AI Chat" }).click();
   await page.getByRole("tab", { name: "Feedback" }).click();
   await expect(page.getByPlaceholder("Title")).toHaveValue("unsent feedback draft");
+  const sideEffectCallsBeforeHint = [...procedures].filter(procedure =>
+    /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
+  await expect(page.locator(".assistant-reminder-balloon, .assistant-chat-onboarding-hint")).toHaveCount(0);
+  await expect(page.getByPlaceholder("Title")).toHaveValue("unsent feedback draft");
+  await expect(page.getByPlaceholder("Describe in detail...")).toHaveValue("unsent feedback description");
+  expect(procedures.filter(procedure =>
+    /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
+  )).toEqual(sideEffectCallsBeforeHint);
   await page.getByRole("tab", { name: "AI Chat" }).click();
   const size = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
   expect(size.width).toBeLessThanOrEqual(size.viewport + 1);
@@ -365,6 +378,26 @@ test("SPEC-308 settings expose five accessible choices and appearance changes st
   await expect(appearance.getByRole("radio", { name: "Smart Orbit", exact: true })).toHaveAttribute("aria-checked", "true");
   expect(procedures.filter(procedure => procedure.startsWith("notificationPreferences.") && !procedure.endsWith("getPreferences"))).toEqual([]);
 
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+  for (const [style, label] of [
+    ["droplet", "Smart Drop"],
+    ["star", "Smart Spark"],
+    ["shield", "Smart Shield"],
+    ["chat", "Smart Chat"],
+    ["orbit", "Smart Orbit"],
+  ]) {
+    await appearance.getByRole("radio", { name: label, exact: true }).click();
+    await expect(launcher.locator("[data-mascot-style]")).toHaveAttribute("data-mascot-style", style);
+    await launcher.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "AI Chat & Feedback" })).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: "AI Chat" })).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: "Task Control" })).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: "Feedback" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+
   await appearance.getByRole("radio", { name: "Smart Orbit", exact: true }).click();
   const preference = await page.evaluate(() => {
     const key = `assistant-mascot:v2:${encodeURIComponent("tenant-spec-308-browser")}:${encodeURIComponent("30801")}`;
@@ -489,15 +522,23 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
 });
 
 test("SPEC-308 balloon CTA opens the existing notification Bell", async ({ page }) => {
-  await initializeAuthenticatedBrowser(page, 390, 844);
+  const procedures: string[] = [];
+  await initializeAuthenticatedBrowser(page, 390, 844, TEST_IDENTITY, { enabled: true }, procedures);
   await page.goto("/settings?tab=notifications");
   await expect(page.getByTestId("assistant-appearance-preferences")).toBeVisible();
   await page.getByRole("button", { name: "Demo reminder balloon" }).click();
   const balloon = page.locator(".assistant-reminder-balloon");
   await expect(balloon).toBeVisible();
+  const sideEffectsBeforeCta = [...procedures].filter(procedure =>
+    /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
+  );
   await page.getByRole("button", { name: /View notifications|assistantAppearance.viewNotifications/ }).click();
   await expect(page.getByTestId("global-notification-bell")).toBeVisible();
   await expect(page.getByText("Mock notification")).toBeVisible();
+  expect(procedures.filter(procedure =>
+    /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
+  )).toEqual(sideEffectsBeforeCta);
+  // Deterministic simulated APIs prove only the CTA intent; no live auth acceptance is implied.
 });
 
 test("SPEC-308 Thai launcher and reminder labels are localized", async ({ page }) => {

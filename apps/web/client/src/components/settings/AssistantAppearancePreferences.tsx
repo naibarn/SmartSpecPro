@@ -56,6 +56,7 @@ export function AssistantAppearancePreferences() {
     identity: null,
     preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES,
   });
+  const [systemReducedMotion, setSystemReducedMotion] = useState(false);
   const preferences = loadedPreferences.identity === identity
     ? loadedPreferences.preferences
     : DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
@@ -70,6 +71,15 @@ export function AssistantAppearancePreferences() {
       preferences: loadAssistantMascotPreferences(window.localStorage, identity),
     });
   }, [enabled, identity]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncReducedMotion = () => setSystemReducedMotion(mediaQuery.matches);
+    syncReducedMotion();
+    mediaQuery.addEventListener("change", syncReducedMotion);
+    return () => mediaQuery.removeEventListener("change", syncReducedMotion);
+  }, []);
 
   const update = (patch: Partial<AssistantMascotPreferences>) => {
     if (!enabled || !isValidPreferencePatch(patch)) return;
@@ -155,6 +165,9 @@ export function AssistantAppearancePreferences() {
               <option value="normal">{t("assistantAppearance.normal")}</option>
             </select>
           </HStack>
+          {systemReducedMotion && preferences.motion !== "off" && (
+            <Text type="supporting">{t("assistantAppearance.systemReducedMotion")}</Text>
+          )}
         </VStack>
       )}
     </VStack>

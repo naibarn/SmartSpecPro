@@ -113,6 +113,49 @@ export function isAssistantBalloonSuppressedRoute(location: string) {
     || pathname === "/disaster/map";
 }
 
+type AssistantHintAnchor = { left: number; top: number; right: number; bottom: number; width: number };
+type AssistantHintSize = { width: number; height: number };
+
+/** Return fixed-position coordinates only when the complete hint fits in the visible viewport. */
+export function getAssistantHintPosition(
+  anchor: AssistantHintAnchor,
+  size: AssistantHintSize,
+  viewport: Pick<VisualViewport, "offsetLeft" | "offsetTop" | "width" | "height"> | null =
+    typeof window === "undefined" ? null : window.visualViewport,
+  fallbackViewport = typeof window === "undefined"
+    ? { width: 0, height: 0 }
+    : { width: window.innerWidth, height: window.innerHeight },
+): CSSProperties | null {
+  const viewportLeft = viewport?.offsetLeft ?? 0;
+  const viewportTop = viewport?.offsetTop ?? 0;
+  const viewportWidth = viewport?.width ?? fallbackViewport.width;
+  const viewportHeight = viewport?.height ?? fallbackViewport.height;
+  const inset = 16;
+  const gap = 8;
+
+  if (![viewportLeft, viewportTop, viewportWidth, viewportHeight, size.width, size.height].every(Number.isFinite)
+    || viewportWidth <= inset * 2 || viewportHeight <= inset * 2
+    || size.width <= 0 || size.height <= 0
+    || size.width > viewportWidth - inset * 2 || size.height > viewportHeight - inset * 2) {
+    return null;
+  }
+
+  const minLeft = viewportLeft + inset;
+  const maxLeft = viewportLeft + viewportWidth - size.width - inset;
+  const left = Math.max(minLeft, Math.min(maxLeft, anchor.left + anchor.width / 2 - size.width / 2));
+  const minTop = viewportTop + inset;
+  const maxTop = viewportTop + viewportHeight - size.height - inset;
+  const above = anchor.top - size.height - gap;
+  const below = anchor.bottom + gap;
+  const top = above >= minTop
+    ? Math.min(above, maxTop)
+    : below <= maxTop
+      ? Math.max(below, minTop)
+      : null;
+
+  return top === null ? null : { left: `${left}px`, top: `${top}px` };
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -999,19 +1042,17 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
     const updateHintPosition = () => {
       const anchor = feedbackButtonRef.current?.getBoundingClientRect();
-      if (!anchor) return;
+      if (!anchor) {
+        setAssistantHintStyle(null);
+        return;
+      }
       const hint = document.querySelector<HTMLElement>(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
       const bounds = hint?.getBoundingClientRect();
-      const hintWidth = bounds?.width ?? Math.min(window.innerWidth < 768 ? 216 : 360, window.innerWidth - 32);
+      const viewport = window.visualViewport;
+      const viewportWidth = viewport?.width ?? window.innerWidth;
+      const hintWidth = bounds?.width ?? Math.min(viewportWidth < 768 ? 216 : 360, viewportWidth - 32);
       const hintHeight = bounds?.height ?? 132;
-      const left = Math.max(16, Math.min(
-        window.innerWidth - hintWidth - 16,
-        anchor.left + anchor.width / 2 - hintWidth / 2,
-      ));
-      let top = anchor.top - hintHeight - 8;
-      if (top < 16) top = anchor.bottom + 8;
-      top = Math.max(16, Math.min(top, window.innerHeight - hintHeight - 16));
-      setAssistantHintStyle({ left: `${left}px`, top: `${top}px` });
+      setAssistantHintStyle(getAssistantHintPosition(anchor, { width: hintWidth, height: hintHeight }));
     };
     updateHintPosition();
     // Re-measure after the launcher/balloon have completed this layout pass.
@@ -1027,11 +1068,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     const hint = document.querySelector(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
     if (hint) resizeObserver?.observe(hint);
     window.visualViewport?.addEventListener("resize", updateHintPosition);
+    window.visualViewport?.addEventListener("scroll", updateHintPosition);
     return () => {
       window.cancelAnimationFrame(positionFrame);
       window.removeEventListener("resize", updateHintPosition);
       window.removeEventListener("scroll", updateHintPosition, true);
       window.visualViewport?.removeEventListener("resize", updateHintPosition);
+      window.visualViewport?.removeEventListener("scroll", updateHintPosition);
       resizeObserver?.disconnect();
     };
   }, [canShowDecorativeBalloon, feedbackPlacement, hasVisibleDemoBalloon, hasVisibleNotificationBalloon, hasVisibleOnboardingHint]);

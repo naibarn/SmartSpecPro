@@ -1145,5 +1145,6 @@
   "assistantAppearance.dismissReminder": "Dismiss reminder",
   "assistantAppearance.chatHintCopy": "Ask AI or send feedback here.",
   "assistantAppearance.openChat": "Open chat",
-  "assistantAppearance.dismissChatHint": "Dismiss Chat & Feedback hint"
+  "assistantAppearance.dismissChatHint": "Dismiss Chat & Feedback hint",
+  "assistantAppearance.systemReducedMotion": "Your device's reduced-motion setting currently turns off decorative movement. Your saved preference is unchanged."
 }

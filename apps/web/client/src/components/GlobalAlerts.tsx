@@ -1177,6 +1177,7 @@ function GlobalUrgentReminders({
 }
 
 function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { notification: any; onBack: () => void; onOpenInNewTab: (url: string) => void }) {
+  const { t } = useScopedTranslation("admin");
   const meta = n.metadata as any;
   const actionUrl = resolveNotificationActionUrl(n);
   const hasLegacyActions = !actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
@@ -1188,7 +1189,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
           onClick={onBack}
           style={{ background: "none", border: "none", color: "#0078d4", cursor: "pointer", padding: "2px 4px", fontSize: "12px" }}
         >
-          &larr; Back
+          &larr; {t("admin.notificationBell.back")}
         </button>
       </div>
 
@@ -1244,9 +1245,9 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
       {/* Error Details */}
       {meta?.errorDetails?.errorMessage && (
         <div style={{ margin: "8px 0", padding: "8px", background: "rgba(211,47,47,0.08)", borderRadius: "6px", borderLeft: "3px solid #d32f2f" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#d32f2f", marginBottom: "4px" }}>Error Details</div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#d32f2f", marginBottom: "4px" }}>{t("admin.notificationBell.errorDetails")}</div>
           {meta.errorDetails.errorCode && (
-            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>Code: {meta.errorDetails.errorCode}</div>
+            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>{t("admin.notificationBell.code")}: {meta.errorDetails.errorCode}</div>
           )}
           <div style={{ fontSize: "12px", color: "var(--foreground, #ccc)", whiteSpace: "pre-wrap" }}>
             {meta.errorDetails.errorMessage.length > 500 ? meta.errorDetails.errorMessage.slice(0, 500) + "..." : meta.errorDetails.errorMessage}
@@ -1259,12 +1260,12 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
         <div style={{ margin: "8px 0", display: "flex", gap: "12px", flexWrap: "wrap" }}>
           {meta.metrics.durationMs != null && (
             <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
-              Duration: <strong style={{ color: "var(--foreground, #ccc)" }}>{meta.metrics.durationMs > 1000 ? `${(meta.metrics.durationMs / 1000).toFixed(1)}s` : `${meta.metrics.durationMs}ms`}</strong>
+              {t("admin.notificationBell.duration")}: <strong style={{ color: "var(--foreground, #ccc)" }}>{meta.metrics.durationMs > 1000 ? `${(meta.metrics.durationMs / 1000).toFixed(1)}s` : `${meta.metrics.durationMs}ms`}</strong>
             </div>
           )}
           {meta.metrics.costUsd != null && (
             <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
-              Cost: <strong style={{ color: "var(--foreground, #ccc)" }}>${meta.metrics.costUsd.toFixed(4)}</strong>
+              {t("admin.notificationBell.cost")}: <strong style={{ color: "var(--foreground, #ccc)" }}>${meta.metrics.costUsd.toFixed(4)}</strong>
             </div>
           )}
           {meta.metrics.itemCount != null && (
@@ -1278,15 +1279,15 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
       {/* Retry Info */}
       {meta?.retryInfo && (
         <div style={{ margin: "8px 0", padding: "6px 8px", background: "rgba(245,124,0,0.08)", borderRadius: "6px", fontSize: "12px" }}>
-          Retry {meta.retryInfo.retryCount ?? 0}/{meta.retryInfo.maxRetries ?? "?"}
-          {meta.retryInfo.nextRetryAt && ` — next: ${new Date(meta.retryInfo.nextRetryAt).toLocaleString()}`}
+          {t("admin.notificationBell.retry")} {meta.retryInfo.retryCount ?? 0}/{meta.retryInfo.maxRetries ?? "?"}
+          {meta.retryInfo.nextRetryAt && ` — ${t("admin.notificationBell.nextRetry")}: ${new Date(meta.retryInfo.nextRetryAt).toLocaleString()}`}
         </div>
       )}
 
       {/* Source */}
       {meta?.source && (
         <div style={{ fontSize: "11px", color: "var(--muted-foreground, #666)", marginTop: "8px" }}>
-          Source: <span style={{ fontFamily: "monospace" }}>{meta.source}</span>
+          {t("admin.notificationBell.source")}: <span style={{ fontFamily: "monospace" }}>{meta.source}</span>
         </div>
       )}
 
@@ -1307,7 +1308,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                 width: "100%",
               }}
             >
-              {n.actionLabel || "View Details"} &rarr;
+              {n.actionLabel || t("admin.notificationBell.viewDetailsButton")} &rarr;
             </button>
           )}
           {n.conversationId && !actionUrl && (
@@ -1324,7 +1325,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                 width: "100%",
               }}
             >
-              Open Chat &rarr;
+              {t("admin.notificationBell.openChatButton")} &rarr;
             </button>
           )}
           {n.scheduledMessageId && !actionUrl && (
@@ -1341,7 +1342,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                 width: "100%",
               }}
             >
-              View Schedule &rarr;
+              {t("admin.notificationBell.viewScheduleButton")} &rarr;
             </button>
           )}
           {hasLegacyActions && (
@@ -1360,7 +1361,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  Open Media Studio &rarr;
+                  {t("admin.notificationBell.openMediaStudio")} &rarr;
                 </button>
               )}
               {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
@@ -1377,7 +1378,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  Admin Settings &rarr;
+                  {t("admin.notificationBell.adminSettings")} &rarr;
                 </button>
               )}
               {(n.title?.includes("latency") || n.title?.includes("API error")) && (
@@ -1394,7 +1395,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  System Guardian &rarr;
+                  {t("admin.notificationBell.systemGuardian")} &rarr;
                 </button>
               )}
               {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
@@ -1416,7 +1417,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
                     width: "100%",
                   }}
                 >
-                  View Feedback &rarr;
+                  {t("admin.notificationBell.viewFeedback")} &rarr;
                 </button>
               )}
             </>
@@ -1966,7 +1967,7 @@ function GlobalNotificationBell() {
               {count > 0 && (
                 <button
                   onClick={() => markAllRead.mutate()}
-                  title="Mark all as read"
+                  title={t("admin.notificationBell.markAllRead")}
                   style={{
                     background: "none",
                     border: "none",
@@ -1977,7 +1978,7 @@ function GlobalNotificationBell() {
                     borderRadius: "4px",
                   }}
                 >
-                  Mark all read
+                  {t("admin.notificationBell.markAllRead")}
                 </button>
               )}
               <button
@@ -2123,6 +2124,7 @@ function GlobalNotificationBell() {
                               e.stopPropagation();
                               handleOpenInNewTab(resolveNotificationActionUrl(n, user?.role)!);
                             }}
+                            aria-label={t("admin.notificationBell.viewDetails")}
                             style={{
                               background: "none",
                               border: "none",
@@ -2132,7 +2134,7 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            {(n as any).actionLabel || "View Details"} &rarr;
+                            {(n as any).actionLabel || t("admin.notificationBell.viewDetailsButton")} &rarr;
                           </button>
                         )}
                         {/* Conversation link */}
@@ -2142,6 +2144,7 @@ function GlobalNotificationBell() {
                               e.stopPropagation();
                               handleOpenInNewTab(`/chat?conversationId=${n.conversationId}`);
                             }}
+                            aria-label={t("admin.notificationBell.openChat")}
                             style={{
                               background: "none",
                               border: "none",
@@ -2151,7 +2154,7 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            Open Chat &rarr;
+                            {t("admin.notificationBell.openChatButton")} &rarr;
                           </button>
                         )}
                         {/* Schedule link */}
@@ -2161,6 +2164,7 @@ function GlobalNotificationBell() {
                               e.stopPropagation();
                               handleOpenInNewTab(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`);
                             }}
+                            aria-label={t("admin.notificationBell.viewSchedule")}
                             style={{
                               background: "none",
                               border: "none",
@@ -2170,7 +2174,7 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            View Schedule &rarr;
+                            {t("admin.notificationBell.viewScheduleButton")} &rarr;
                           </button>
                         )}
                         {/* Metadata details badge */}
@@ -2192,7 +2196,8 @@ function GlobalNotificationBell() {
                           e.stopPropagation();
                           setExpandedId(expandedId === n.id ? null : n.id);
                         }}
-                        title={expandedId === n.id ? "Collapse quick actions" : "Expand quick actions"}
+                        title={expandedId === n.id ? t("admin.notificationBell.collapseActions") : t("admin.notificationBell.expandActions")}
+                        aria-label={expandedId === n.id ? t("admin.notificationBell.collapseActions") : t("admin.notificationBell.expandActions")}
                         style={{
                           color: "var(--muted-foreground, #666)",
                           padding: "4px",
@@ -2213,7 +2218,8 @@ function GlobalNotificationBell() {
                           e.stopPropagation();
                           markRead.mutate({ id: n.id });
                         }}
-                        title="Mark as read"
+                        title={t("admin.notificationBell.markRead")}
+                        aria-label={t("admin.notificationBell.markRead")}
                         style={{
                           background: "none",
                           border: "none",
@@ -2240,7 +2246,7 @@ function GlobalNotificationBell() {
                   fontSize: "13px",
                 }}
               >
-                No notifications
+                {t("admin.notificationBell.none")}
               </div>
             )}
           </div>
@@ -2268,7 +2274,7 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              {hasUnread ? "View All Notifications" : "ดูย้อนหลัง"}
+              {hasUnread ? t("admin.notificationBell.viewAll") : t("admin.notificationBell.history")}
             </button>
             <button
               onClick={() => {
@@ -2282,7 +2288,7 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              Scheduled Alerts
+              {t("admin.notificationBell.scheduledAlerts")}
             </button>
             <button
               onClick={() => {
