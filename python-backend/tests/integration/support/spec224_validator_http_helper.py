@@ -30,6 +30,21 @@ async def main() -> None:
         raise RuntimeError("SPEC224_CANONICAL_VALIDATOR_ROUTE_NOT_FOUND")
     app.router.routes.append(route)
 
+    @app.middleware("http")
+    async def controlled_validator_delay(request, call_next):
+        delay_file = os.environ.get("SPEC224_VALIDATOR_DELAY_FILE", "")
+        observed_file = os.environ.get("SPEC224_VALIDATOR_DELAY_OBSERVED_FILE", "")
+        if request.url.path == target and delay_file and Path(delay_file).is_file():
+            try:
+                delay_ms = int(Path(delay_file).read_text(encoding="ascii").strip())
+            except (OSError, ValueError):
+                delay_ms = 0
+            if observed_file:
+                Path(observed_file).write_text("observed", encoding="ascii")
+            if 0 < delay_ms <= 10_000:
+                await asyncio.sleep(delay_ms / 1000)
+        return await call_next(request)
+
     server = uvicorn.Server(
         uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error", access_log=False)
     )

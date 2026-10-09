@@ -11,7 +11,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFile } from "node:fs/promises";
+import { access, readFile, rm, writeFile } from "node:fs/promises";
 import postgres from "postgres";
 import {
   assertSpec224DisposableDatabaseUrl,
@@ -42,6 +42,14 @@ const validatorPath =
 const grantHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_grant_process_helper.py"
+);
+const validatorDelayDirectory = process.env.SPEC224_TEST_PGDATA
+  ? dirname(process.env.SPEC224_TEST_PGDATA)
+  : "/tmp";
+const validatorDelayFile = resolve(validatorDelayDirectory, "validator-delay");
+const validatorDelayObservedFile = resolve(
+  validatorDelayDirectory,
+  "validator-delay-observed"
 );
 const serverHelper = resolve(
   repositoryRoot,
@@ -89,6 +97,8 @@ function helperEnv(input: Record<string, unknown>) {
     SPEC224_TEST_PG_NETWORK: process.env.SPEC224_TEST_PG_NETWORK,
     SPEC224_TEST_PGDATA: process.env.SPEC224_TEST_PGDATA,
     SPEC224_TEST_PG_PROXY_PID: process.env.SPEC224_TEST_PG_PROXY_PID,
+    SPEC224_VALIDATOR_DELAY_FILE: validatorDelayFile,
+    SPEC224_VALIDATOR_DELAY_OBSERVED_FILE: validatorDelayObservedFile,
     PYTHONPATH: resolve(repositoryRoot, "python-backend"),
     SMARTSPEC_WEB_GATEWAY_TOKEN: process.env.SMARTSPEC_WEB_GATEWAY_TOKEN,
     SMARTSPEC_PROXY_TOKEN: "proxy-only-test-credential",
@@ -177,38 +187,34 @@ async function waitForGrantFenceWaiter() {
   throw new Error("SPEC224_PYTHON_REVOKER_DID_NOT_WAIT_ON_SHARED_FENCE");
 }
 
-async function waitForPythonApprovalQueryBlocked() {
+async function waitForValidatorDelayObservation() {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
-    const [row] = await sql`
-      SELECT pid, query
-      FROM pg_stat_activity
-      WHERE datname = current_database()
-        AND wait_event_type = 'Lock'
-        AND query ILIKE '%approval_requests%'
-      ORDER BY query_start DESC
-      LIMIT 1
-    `;
-    if (row) return row as { pid: number; query: string };
+    try {
+      await access(validatorDelayObservedFile);
+      return;
+    } catch {
+      // The loopback FastAPI middleware has not received the request yet.
+    }
     await new Promise(resolveWait => setTimeout(resolveWait, 10));
   }
-  throw new Error("SPEC224_PYTHON_VALIDATOR_QUERY_NOT_BLOCKED");
+  throw new Error("SPEC224_VALIDATOR_HTTP_DELAY_NOT_OBSERVED");
 }
 
-async function waitForPythonApprovalQueryReleased() {
+async function waitForBlockedMutation(queryMarker: string) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const [row] = await sql`
-      SELECT count(*)::int AS count
-      FROM pg_stat_activity
+      SELECT pid FROM pg_stat_activity
       WHERE datname = current_database()
         AND wait_event_type = 'Lock'
-        AND query ILIKE '%approval_requests%'
+        AND query LIKE ${`%${queryMarker}%`}
+      LIMIT 1
     `;
-    if (row.count === 0) return;
+    if (row) return;
     await new Promise(resolveWait => setTimeout(resolveWait, 10));
   }
-  throw new Error("SPEC224_PYTHON_VALIDATOR_QUERY_DID_NOT_RELEASE");
+  throw new Error(`SPEC224_CANONICAL_MUTATION_NOT_BLOCKED:${queryMarker}`);
 }
 
 async function grantFenceHolderCount() {
@@ -778,26 +784,12 @@ describeDb(
         operation,
         path: sourcePath,
       });
-      const blocker = postgres(connectionString, {
-        max: 1,
-        connect_timeout: 5,
-      });
-      let releaseTableLock: () => void = () => {};
-      let signalTableLock: () => void = () => {};
-      const tableLockReady = new Promise<void>(resolveReady => {
-        signalTableLock = resolveReady;
-      });
-      const unblock = new Promise<void>(resolveUnblock => {
-        releaseTableLock = resolveUnblock;
-      });
-      const blockerTransaction = blocker.begin(async tx => {
-        await tx`LOCK TABLE approval_requests IN ACCESS EXCLUSIVE MODE`;
-        signalTableLock();
-        await unblock;
-      });
-      await tableLockReady;
+      const approvalWriter = postgres(connectionString, { max: 1 });
+      const ownerWriter = postgres(connectionString, { max: 1 });
+      const tenantWriter = postgres(connectionString, { max: 1 });
       try {
-        const startedAt = Date.now();
+        await rm(validatorDelayObservedFile, { force: true });
+        await writeFile(validatorDelayFile, "1200", { encoding: "ascii" });
         const admission = checkSpec224RuntimeAdmission({
           tenantId,
           workerJobId: fixtureJobId,
@@ -809,30 +801,91 @@ describeDb(
             expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
           },
         });
-        const blockedValidatorQuery = await waitForPythonApprovalQueryBlocked();
-        expect(blockedValidatorQuery.query).toMatch(/approval_requests/i);
+        await waitForValidatorDelayObservation();
         expect(await grantFenceHolderCount()).toBeGreaterThan(0);
-        const settledBeforeUnlock = await Promise.race([
-          admission.then(
-            () => true,
-            () => true
-          ),
-          new Promise<boolean>(resolveWait =>
-            setTimeout(() => resolveWait(false), 100)
-          ),
+        const approvalMutation = approvalWriter
+          .begin(async tx => {
+            await tx`UPDATE /* spec224_approval_mutation */ approval_requests
+            SET status = 'REJECTED' WHERE id = ${grantId}`;
+            throw new Error("ROLLBACK_APPROVAL_RACE_FIXTURE");
+          })
+          .catch(error => {
+            if (String(error).includes("ROLLBACK_APPROVAL_RACE_FIXTURE"))
+              return;
+            throw error;
+          });
+        const ownerMutation = ownerWriter
+          .begin(async tx => {
+            await tx`UPDATE /* spec224_owner_mutation */ users
+              SET "isDisabled" = true WHERE id = ${userId}`;
+            throw new Error("ROLLBACK_OWNER_RACE_FIXTURE");
+          })
+          .catch(error => {
+            if (String(error).includes("ROLLBACK_OWNER_RACE_FIXTURE")) return;
+            throw error;
+          });
+        const tenantOwnerMutation = tenantWriter
+          .begin(async tx => {
+            await tx`UPDATE /* spec224_tenant_owner_mutation */ tenants
+              SET "ownerId" = "ownerId" WHERE id = ${tenantId}`;
+            throw new Error("ROLLBACK_TENANT_OWNER_RACE_FIXTURE");
+          })
+          .catch(error => {
+            if (String(error).includes("ROLLBACK_TENANT_OWNER_RACE_FIXTURE"))
+              return;
+            throw error;
+          });
+        await Promise.all([
+          waitForBlockedMutation("spec224_approval_mutation"),
+          waitForBlockedMutation("spec224_owner_mutation"),
+          waitForBlockedMutation("spec224_tenant_owner_mutation"),
         ]);
-        expect(settledBeforeUnlock).toBe(false);
-        await expect(admission).resolves.toEqual({
+        await expect(admission).resolves.toMatchObject({ decision: "ALLOW" });
+        await Promise.all([
+          approvalMutation,
+          ownerMutation,
+          tenantOwnerMutation,
+        ]);
+        expect(await grantFenceHolderCount()).toBe(0);
+        const successfulValidation = await sql`
+          SELECT "payloadJson" FROM worker_job_events
+          WHERE "workerJobId"=${fixtureJobId}
+            AND "eventType"='SPEC224_RECOVERY_GRANT_VALIDATED'
+        `;
+        expect(
+          successfulValidation.some(row => row.payloadJson?.result === "VALID")
+        ).toBe(true);
+
+        await rm(validatorDelayObservedFile, { force: true });
+        await writeFile(validatorDelayFile, "6500", { encoding: "ascii" });
+        const startedAt = Date.now();
+        const timeoutAdmission = checkSpec224RuntimeAdmission({
+          tenantId,
+          workerJobId: fixtureJobId,
+          lease: {
+            jobId: fixtureJobId,
+            attemptId,
+            leaseToken,
+            fencingVersion: 4,
+            expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          },
+        });
+        await waitForValidatorDelayObservation();
+        expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+        await expect(timeoutAdmission).resolves.toEqual({
           decision: "DENY",
           reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
         });
         expect(Date.now() - startedAt).toBeGreaterThanOrEqual(4_500);
         expect(await grantFenceHolderCount()).toBe(0);
+        await rm(validatorDelayFile, { force: true });
       } finally {
-        releaseTableLock();
-        await blockerTransaction;
-        await blocker.end({ timeout: 5 });
-        await waitForPythonApprovalQueryReleased();
+        await rm(validatorDelayFile, { force: true });
+        await Promise.all([
+          approvalWriter.end({ timeout: 5 }),
+          ownerWriter.end({ timeout: 5 }),
+          tenantWriter.end({ timeout: 5 }),
+        ]);
       }
       const validations = await sql`
         SELECT "payloadJson" FROM worker_job_events
