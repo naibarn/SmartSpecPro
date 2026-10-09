@@ -1,0 +1,22 @@
+{
+  "evidence_id": "SPEC268_PROVIDER_BOUNDARY_CONTEXT_QUICK_20261010",
+  "source_sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
+  "profile": "quick",
+  "status": "PASS",
+  "command": "./node_modules/.bin/vitest run server/services/__tests__/teamProjectProviderAuthorization.test.ts server/services/__tests__/contextBuilder.test.ts server/services/__tests__/contextEngineAdapter.test.ts server/services/__tests__/unifiedOrchestrator.test.ts",
+  "working_directory": "apps/web",
+  "result": {
+    "test_files_passed": 4,
+    "tests_passed": 112,
+    "duration_seconds": 1.15
+  },
+  "started_at": "2026-10-09T23:42:48Z",
+  "captured_at": "2026-10-09T23:44:19Z",
+  "scope": "Provider-boundary team-room authorization binding, fail-closed revalidation, room/run/tenant/project binding, client project-state stripping, and team-room memory suppression.",
+  "limitations": [
+    "Focused test evidence only; this does not verify all SPEC-268 requirements.",
+    "Team-room persistent memory remains disabled because existing entity-memory records lack safe project provenance.",
+    "Database revalidation and an external provider request are not atomic; revocation may race after revalidation and before provider consumption.",
+    "No production deployment or SPEC-224 protected dispatch was performed."
+  ]
+}

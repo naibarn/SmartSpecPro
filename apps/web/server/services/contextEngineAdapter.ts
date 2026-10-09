@@ -1,4 +1,8 @@
-import { buildChatContext, buildTeamContext } from "./executors/contextBuilder";
+import {
+  buildChatContext,
+  buildTeamContextWithProviderBinding,
+} from "./executors/contextBuilder";
+import type { TeamProjectProviderContextBinding } from "./teamProjectProviderAuthorization";
 import type { UnifiedExecutionRequest } from "./executors/types";
 
 export type ContextSurface = "chat" | "team_room";
@@ -1349,6 +1353,26 @@ function buildPackFromMessages(
   };
 }
 
+function removeUnverifiedProjectContext(
+  dynamicParams: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (!dynamicParams) return null;
+  const safe = { ...dynamicParams };
+  delete safe.projectId;
+  delete safe.project_id;
+  delete safe.projectState;
+  delete safe.project_state;
+
+  const rawContextState = safe.contextState;
+  if (rawContextState && typeof rawContextState === "object" && !Array.isArray(rawContextState)) {
+    const contextState = { ...(rawContextState as Record<string, unknown>) };
+    delete contextState.projectState;
+    delete contextState.project_state;
+    safe.contextState = contextState;
+  }
+  return safe;
+}
+
 export function summarizeContextPack(pack: ContextPack): string {
   return [
     `${pack.surface}:${pack.intent}`,
@@ -1410,6 +1434,22 @@ export async function buildTeamExecutionContextPack(
   tenantId: string,
   options: BuildExecutionContextPackOptions = {},
 ): Promise<ContextPack> {
+  const result = await buildTeamExecutionContextPackWithProviderBinding(
+    request,
+    tenantId,
+    options,
+  );
+  return result.contextPack;
+}
+
+export async function buildTeamExecutionContextPackWithProviderBinding(
+  request: UnifiedExecutionRequest,
+  tenantId: string,
+  options: BuildExecutionContextPackOptions = {},
+): Promise<{
+  contextPack: ContextPack;
+  projectAuthorizationBinding: TeamProjectProviderContextBinding;
+}> {
   const mergedDynamicParams = (() => {
     const baseParams = request.dynamicParams ?? null;
     const overlayParams = options.dynamicParams ?? null;
@@ -1429,18 +1469,25 @@ export async function buildTeamExecutionContextPack(
     }
     return merged;
   })();
-  const coreMessages = await buildTeamContext(request, tenantId);
+  const { messages: coreMessages, projectAuthorizationBinding } =
+    await buildTeamContextWithProviderBinding(request, tenantId);
   const prefixMessages =
     options.skillSystemPrompt && options.skillSystemPrompt.trim()
       ? ([{ role: "system", content: options.skillSystemPrompt.trim() }] satisfies ContextMessage[])
       : [];
-  return buildPackFromMessages({
-    surface: "team_room",
-    query: request.teamContext?.currentMessage?.trim() || request.userMessage,
-    coreMessages,
-    prefixMessages,
-    dynamicParams: mergedDynamicParams,
-    tokenBudget: options.tokenBudget,
-    label: options.label ?? "team_room",
-  });
+  return {
+    contextPack: buildPackFromMessages({
+      surface: "team_room",
+      query: request.teamContext?.currentMessage?.trim() || request.userMessage,
+      coreMessages,
+      prefixMessages,
+      // Client-carried project IDs or state are advisory only. The team-room
+      // builder supplies history under a server-read room binding, and this
+      // pack has no project memory until that context has source provenance.
+      dynamicParams: removeUnverifiedProjectContext(mergedDynamicParams),
+      tokenBudget: options.tokenBudget,
+      label: options.label ?? "team_room",
+    }),
+    projectAuthorizationBinding,
+  };
 }

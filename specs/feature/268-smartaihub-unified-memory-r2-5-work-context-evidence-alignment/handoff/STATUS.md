@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1101 unresolved of 1101
-- Next action: Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.
-- Manifest generation: 10
+- Next action: Continue with canonical room-to-project identity and source-level memory provenance; retain team-room memory suppression until focused isolation tests pass.
+- Manifest generation: 11
 
 ## Source-declared status and relationship claims
 

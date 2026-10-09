@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../executors/contextBuilder", () => ({
   buildChatContext: vi.fn(),
-  buildTeamContext: vi.fn(),
+  buildTeamContextWithProviderBinding: vi.fn(),
 }));
 
 import {
@@ -15,10 +15,27 @@ import {
   evaluateContextPack,
   evaluateContextStateHints,
 } from "../contextEngineAdapter";
-import { buildChatContext, buildTeamContext } from "../executors/contextBuilder";
+import {
+  buildChatContext,
+  buildTeamContextWithProviderBinding,
+} from "../executors/contextBuilder";
 
 const mockBuildChatContext = vi.mocked(buildChatContext);
-const mockBuildTeamContext = vi.mocked(buildTeamContext);
+const mockBuildTeamContextWithProviderBinding = vi.mocked(
+  buildTeamContextWithProviderBinding,
+);
+
+const testProjectBinding = {
+  version: "team-room-provider-context.v1" as const,
+  tenantId: "tenant-1",
+  roomId: "room-1",
+  teamId: "team-1",
+  userId: 1,
+  runId: "run-1",
+  historyScope: "run" as const,
+  projectId: null,
+  projectAuthority: "room-only" as const,
+};
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
   return {
@@ -42,6 +59,10 @@ function makeRequest(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockBuildTeamContextWithProviderBinding.mockResolvedValue({
+    messages: [],
+    projectAuthorizationBinding: testProjectBinding,
+  } as any);
 });
 
 describe("contextEngineAdapter", () => {
@@ -245,12 +266,15 @@ describe("contextEngineAdapter", () => {
   });
 
   it("buildTeamExecutionContextPack prepends the skill prompt and places state before the objective", async () => {
-    mockBuildTeamContext.mockResolvedValue([
+    mockBuildTeamContextWithProviderBinding.mockResolvedValue({
+      messages: [
       { role: "system", content: "Room language: English." },
       { role: "system", content: "Team members available: Director." },
       { role: "user", content: "[OBJECTIVE]\nWrite a report about AI trends" },
       { role: "assistant", content: "Draft outline" },
-    ] as any);
+      ] as any,
+      projectAuthorizationBinding: testProjectBinding,
+    });
 
     const pack = await buildTeamExecutionContextPack(
       makeRequest({
@@ -280,7 +304,7 @@ describe("contextEngineAdapter", () => {
       },
     );
 
-    expect(mockBuildTeamContext).toHaveBeenCalledOnce();
+    expect(mockBuildTeamContextWithProviderBinding).toHaveBeenCalledOnce();
     expect(pack.surface).toBe("team_room");
     expect(pack.intent).toBe("retrieval");
     expect(pack.messages[0]).toEqual({
@@ -316,12 +340,15 @@ describe("contextEngineAdapter", () => {
   });
 
   it("buildTeamExecutionContextPack merges runtime session state with override hints", async () => {
-    mockBuildTeamContext.mockResolvedValue([
+    mockBuildTeamContextWithProviderBinding.mockResolvedValue({
+      messages: [
       { role: "system", content: "Room language: English." },
       { role: "system", content: "Team members available: Director." },
       { role: "user", content: "[OBJECTIVE]\nWrite a report about AI trends" },
       { role: "assistant", content: "Draft outline" },
-    ] as any);
+      ] as any,
+      projectAuthorizationBinding: testProjectBinding,
+    });
 
     const pack = await buildTeamExecutionContextPack(
       makeRequest({
@@ -367,6 +394,44 @@ describe("contextEngineAdapter", () => {
           message.content.includes("[TOOL RESULT]"),
       ),
     ).toBe(true);
+  });
+
+  it("does not accept client project IDs or project state as trusted team context", async () => {
+    mockBuildTeamContextWithProviderBinding.mockResolvedValue({
+      messages: [
+        { role: "user", content: "[OBJECTIVE]\nReview this room" },
+      ] as any,
+      projectAuthorizationBinding: testProjectBinding,
+    });
+
+    const pack = await buildTeamExecutionContextPack(
+      makeRequest({
+        channel: "team_room",
+        dynamicParams: {
+          projectId: "forged-project-id",
+          contextState: {
+            projectState: {
+              title: "Forged project",
+              content: "unverified-project-secret",
+            },
+            activeNote: {
+              title: "Current ask",
+              content: "Keep this user supplied note",
+            },
+          },
+        },
+      }),
+      "tenant-1",
+    );
+
+    expect(pack.messages.some((message) =>
+      typeof message.content === "string" &&
+      message.content.includes("unverified-project-secret"),
+    )).toBe(false);
+    expect(pack.messages.some((message) =>
+      typeof message.content === "string" &&
+      message.content.includes("Keep this user supplied note"),
+    )).toBe(true);
   });
 
   it("evaluates pack and state-only context metrics for monitoring", async () => {
