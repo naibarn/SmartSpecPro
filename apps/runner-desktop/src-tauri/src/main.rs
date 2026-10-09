@@ -122,6 +122,21 @@ fn setting_lock(state: &RunnerState) -> Result<std::sync::MutexGuard<'_, Desktop
         .map_err(|_| "RUNNER_LOCAL_SETTINGS_LOCK_FAILED".into())
 }
 
+fn reset_refresh_backoff_for_manual_retry(
+    last_attempt: &mut Option<(Instant, &'static str)>,
+    now: Instant,
+) -> bool {
+    if matches!(
+        *last_attempt,
+        Some((attempted_at, "renewing"))
+            if now.saturating_duration_since(attempted_at) < Duration::from_secs(35)
+    ) {
+        return false;
+    }
+    *last_attempt = None;
+    true
+}
+
 #[tauri::command]
 async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
     let settings = setting_lock(&state)?.clone();
@@ -250,6 +265,18 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         credential_state: credential_state.into(),
         credential_error_code,
     })
+}
+
+#[tauri::command]
+async fn retry_runner_credentials(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
+    {
+        let mut last_attempt = state
+            .last_refresh_attempt
+            .lock()
+            .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?;
+        reset_refresh_backoff_for_manual_retry(&mut last_attempt, Instant::now());
+    }
+    runner_status(state).await
 }
 
 #[tauri::command]
@@ -763,6 +790,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             runner_status,
+            retry_runner_credentials,
             connect_runner,
             rescan_runner,
             verify_runner_tool,
@@ -796,5 +824,39 @@ mod debug_report_tests {
             Some("probe_timeout".into())
         );
         assert_eq!(safe_debug_code(Some("secret-token-value")), None);
+    }
+}
+
+#[cfg(test)]
+mod credential_retry_tests {
+    use super::reset_refresh_backoff_for_manual_retry;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn manual_retry_clears_retry_and_reauth_backoff() {
+        let now = Instant::now();
+        for state in ["retrying", "reauth_required"] {
+            let mut last_attempt = Some((now - Duration::from_secs(5), state));
+            assert!(reset_refresh_backoff_for_manual_retry(
+                &mut last_attempt,
+                now
+            ));
+            assert!(last_attempt.is_none());
+        }
+    }
+
+    #[test]
+    fn manual_retry_does_not_duplicate_an_in_flight_refresh() {
+        let now = Instant::now();
+        let attempt = now - Duration::from_secs(5);
+        let mut last_attempt = Some((attempt, "renewing"));
+        assert!(!reset_refresh_backoff_for_manual_retry(
+            &mut last_attempt,
+            now
+        ));
+        assert_eq!(
+            last_attempt.map(|(at, state)| (at, state)),
+            Some((attempt, "renewing"))
+        );
     }
 }
