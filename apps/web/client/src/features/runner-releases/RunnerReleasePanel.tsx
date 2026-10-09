@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   Download,
   Loader2,
   RefreshCw,
@@ -11,6 +12,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/help/HelpButton";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   DashboardSectionHeader,
@@ -130,6 +132,7 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
     }
     return [...groups.entries()].slice(0, 5);
   }, [desktopDownloads]);
+  const [latestDesktopVersion, ...olderDesktopVersions] = desktopDownloadsByVersion;
   const preferred = useMemo(() => detectRunnerTarget(), []);
   const [activeUpdate, setActiveUpdate] = useState<RunnerUpdateCommand | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -157,6 +160,34 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
               ? "incompatible"
               : null;
   const canStartUpdate = Boolean(updateAvailable && preferredTarget?.updateBinary && !updateBlockReason);
+  const renderDesktopDownloadVersion = (
+    [version, downloads]: (typeof desktopDownloadsByVersion)[number],
+    isLatest = false,
+  ) => (
+    <section className="rounded-lg border border-fuchsia-200/80 bg-white/70 p-3" aria-label={t("dashboard:runnerReleases.desktopReviewVersion", { version })}>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-800">{t("dashboard:runnerReleases.desktopReviewVersion", { version })}</h3>
+        {isLatest && <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">{t("dashboard:runnerReleases.latestDesktopVersion")}</Badge>}
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {downloads.map(download => (
+          <li key={`${download.buildId}:${download.platform}`}>
+            <Button asChild variant="outline" size="sm">
+              <a href={download.downloadUrl} download>
+                <Download className="mr-2 h-4 w-4" />
+                {download.platform === "windows"
+                  ? t("dashboard:runnerReleases.downloadWindowsDesktop", { version: download.version })
+                  : t("dashboard:runnerReleases.downloadMacDesktop", { version: download.version })}
+              </a>
+            </Button>
+            <p className="mt-1 text-xs text-slate-500">
+              {formatBytes(download.sizeBytes)} · {t("dashboard:runnerReleases.artifactExpires", { time: new Date(download.expiresAt).toLocaleString() })}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 
   useEffect(() => {
     if (!activeUpdate || !localRunner) return;
@@ -202,10 +233,19 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
         title={t("dashboard:runnerReleases.title")}
         description={t("dashboard:runnerReleases.description")}
         trailing={(
-          <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={isLoading} aria-label={t("dashboard:runnerReleases.checkVersion")}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            {t("dashboard:runnerReleases.checkVersion")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <HelpButton
+              page="/dashboard"
+              topic="runner-connection"
+              variant="outline"
+              size="sm"
+              label={t("dashboard:runnerReleases.installGuide")}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={isLoading} aria-label={t("dashboard:runnerReleases.checkVersion")}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {t("dashboard:runnerReleases.checkVersion")}
+            </Button>
+          </div>
         )}
       />
       <p className="mt-3 text-sm text-slate-600" role="note">
@@ -219,33 +259,23 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
             <p className="mt-1 text-sm text-slate-600">{t("dashboard:runnerReleases.desktopReviewNote")}</p>
             <p className="mt-1 text-xs text-slate-500">{t("dashboard:runnerReleases.desktopReviewHistory")}</p>
           </header>
-          {desktopDownloadsByVersion.length > 0 && (
-            <ol className="mt-3 space-y-2">
-              {desktopDownloadsByVersion.map(([version, downloads]) => (
-                <li key={version}>
-                  <section className="rounded-lg border border-fuchsia-200/80 bg-white/70 p-3" aria-label={t("dashboard:runnerReleases.desktopReviewVersion", { version })}>
-                    <h3 className="text-sm font-semibold text-slate-800">{t("dashboard:runnerReleases.desktopReviewVersion", { version })}</h3>
-                    <ul className="mt-2 flex flex-wrap gap-2">
-                      {downloads.map(download => (
-                        <li key={`${download.buildId}:${download.platform}`}>
-                          <Button asChild variant="outline" size="sm">
-                            <a href={download.downloadUrl} download>
-                              <Download className="mr-2 h-4 w-4" />
-                              {download.platform === "windows"
-                                ? t("dashboard:runnerReleases.downloadWindowsDesktop", { version: download.version })
-                                : t("dashboard:runnerReleases.downloadMacDesktop", { version: download.version })}
-                            </a>
-                          </Button>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {formatBytes(download.sizeBytes)} · {t("dashboard:runnerReleases.artifactExpires", { time: new Date(download.expiresAt).toLocaleString() })}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                </li>
-              ))}
+          {latestDesktopVersion && (
+            <ol className="mt-3">
+              <li>{renderDesktopDownloadVersion(latestDesktopVersion, true)}</li>
             </ol>
+          )}
+          {olderDesktopVersions.length > 0 && (
+            <details className="group mt-3 rounded-lg border border-fuchsia-200/80 bg-white/70">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+                <span>{t("dashboard:runnerReleases.olderVersions", { count: olderDesktopVersions.length })}</span>
+                <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <ol className="space-y-2 border-t border-fuchsia-100 p-3">
+                {olderDesktopVersions.map(versionGroup => (
+                  <li key={versionGroup[0]}>{renderDesktopDownloadVersion(versionGroup)}</li>
+                ))}
+              </ol>
+            </details>
           )}
           {desktopDownloadError && <p className="mt-2 text-sm text-amber-800" role="status">{t("dashboard:runnerReleases.desktopReviewUnavailable")}</p>}
         </article>
