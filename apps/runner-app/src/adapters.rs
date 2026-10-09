@@ -752,8 +752,14 @@ fn codex_login_status_authenticated(output: &[u8]) -> bool {
 }
 
 fn codex_wif_is_configured() -> bool {
-    std::env::var_os("OPENAI_FEDERATION_RULE_ID").is_some()
-        || std::env::var_os("OPENAI_IDENTITY_TOKEN_FILE").is_some()
+    codex_wif_configured(
+        std::env::var_os("OPENAI_FEDERATION_RULE_ID").is_some(),
+        std::env::var_os("OPENAI_IDENTITY_TOKEN_FILE").is_some(),
+    )
+}
+
+fn codex_wif_configured(federation_rule_present: bool, identity_token_file_present: bool) -> bool {
+    federation_rule_present || identity_token_file_present
 }
 
 /// Whether this discovered command has a documented, non-interactive prompt
@@ -2234,6 +2240,14 @@ mod tests {
             b"Logged in using ChatGPT; token=secret\n"
         ));
         assert!(!codex_login_status_authenticated(b"\xff"));
+    }
+
+    #[test]
+    fn codex_wif_configuration_defers_status_probe_when_either_variable_is_present() {
+        assert!(!codex_wif_configured(false, false));
+        assert!(codex_wif_configured(true, false));
+        assert!(codex_wif_configured(false, true));
+        assert!(codex_wif_configured(true, true));
     }
 
     #[cfg(unix)]
