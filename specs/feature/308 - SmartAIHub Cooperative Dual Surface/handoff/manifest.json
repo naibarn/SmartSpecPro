@@ -41,6 +41,12 @@
       "id": "MCP_CONTRACT_TEST_FIXTURES",
       "next_action": "Review and integrate PR #403 after its required contract-and-security check passes; then rerun #399 against the updated base.",
       "root_cause": "The baseline workflow and protocol fixtures expected the wrong package setup/session persistence owner. The repair is isolated in PR #403 and is not yet integrated."
+    },
+    {
+      "class": "SECURITY_GATE_BASELINE",
+      "id": "SPEC308_PRODUCTION_DEPENDENCY_AUDIT",
+      "next_action": "Dependency/security owners triage the high and critical advisories and approve compatible patched versions in a separate dependency remediation PR; rerun the unchanged mandatory audit without suppressing or lowering it.",
+      "root_cause": "The mandatory CI production dependency audit reports 85 advisories (9 low, 37 moderate, 38 high, 1 critical) on the unchanged baseline dependency tree. The workflow and package manifests/lockfile were not altered by SPEC-308 or PR #403. Automatic pnpm audit fix proposed 66 overrides, including cross-major constraints, and was not applied without compatibility review."
     }
   ],
   "concurrency": {
@@ -48,10 +54,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Merge PR #403 after its contract-and-security gate completes and any required review; rerun PR #399 CI at the resulting canonical base. Obtain approved non-production app/DB/control-plane configuration and authorized test user/tenant, then complete Bell, Settings, tenant-isolation, animation and draft acceptance. Configure MCP_SMOKE_URL/MCP_SMOKE_TOKEN through secure CI settings.",
-    "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
-    "reactivation_predicate": "PR #403 has passed required checks and been integrated; approved non-production runtime and authorized test identity are available; secure CI contains authorized MCP smoke endpoint/token.",
-    "resume_point": "PR #399 implementation/browser source commit 02fe8ea64145b1222f68e87801ce32efa2ece5aa on origin/main c7a4fbd1ff09214b462e8660b2626049d87f01c7. The full isolated Chromium suite passed 10/10 at this exact SHA with deterministic mocks; screenshots are retained. This remains simulation, not live acceptance. PR #403 head 779532c22af916f5da0ba47f44c19e1a051c4bf5 has fixture/workflow and minimal MCP caller context type repairs; its CI is still running. Latest #399 CI failure remains the unchanged MCP baseline suite and missing authorized live smoke endpoint/token. All 66 ledger rows remain OPEN. Continue authorized runtime acceptance only after a non-production endpoint and test identity are provisioned; do not deploy.",
+    "next_action": "Dependency/security owners triage the 85 production audit advisories (including 38 high and 1 critical) and approve compatible patched versions in a separate PR; preserve the mandatory audit gate. After the audit passes, complete PR #403 review/integration, rerun #399 on the updated canonical base, and resume authenticated non-production acceptance once the app runtime, authorized identity, and MCP smoke endpoint/token are provisioned.",
+    "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
+    "reactivation_predicate": "Compatible high/critical dependency remediations are integrated and the mandatory production audit passes; PR #403 contract/security checks including live MCP authority pass and it is integrated; approved non-production runtime and authorized test identity are available.",
+    "resume_point": "PR #399 latest head bbb842acdb0cab27f6dac99e0f42faa92dcd2977 is docs/evidence-only after implementation/browser source SHA 02fe8ea64145b1222f68e87801ce32efa2ece5aa; the full 10-test isolated Chromium suite passed at the exact implementation SHA. Latest #399 CI run 37897928261 failed on unchanged MCP baseline fixtures (44 failed / 76 passed) because PR #403 is not integrated; live MCP smoke is still fail-closed for missing authorized endpoint/token. PR #403 current head 779532c22af916f5da0ba47f44c19e1a051c4bf5 has 118 focused tests passed and targeted type-check pending; its live smoke is blocked by external CI authority. All 66 requirement rows remain OPEN. Next: finish #403 gates/review, then normal integration and rerun #399; resume authenticated runtime only when approved non-production endpoint and test identity exist. Do not deploy.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -104,7 +110,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -305,7 +311,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T07:14:10.947194Z",
+  "updated_at": "2026-10-09T07:19:35.135153Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -314,7 +320,9 @@
       "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
       "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json"
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897928261.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37897633316.json"
     ],
     "freshness": "CURRENT",
     "required_profiles": [
