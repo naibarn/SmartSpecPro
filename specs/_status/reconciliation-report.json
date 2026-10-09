@@ -87695,7 +87695,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.102236Z",
       "lifecycle": "DISCOVERING",
-      "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
+      "next_action": "Windows owner acceptance of review artifact 11612928361 followed by fresh authenticated session/capability/Codex and workspace/source readback.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "primary_blocker": {
         "class": "ACCEPTANCE",
@@ -103372,7 +103372,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-08T02:06:09.264229Z",
       "lifecycle": "WAITING_APPROVAL",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": null,
       "problem": null,
