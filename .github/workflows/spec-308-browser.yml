@@ -50,7 +50,7 @@ jobs:
         working-directory: apps/web
         run: >-
           pnpm test --
-          client/src/components/GlobalAlerts.notificationBell.test.tsx
+          client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx
           client/src/components/assistant-mascot/AssistantMascot.test.tsx
           client/src/components/guardian/__tests__/FeedbackButton.test.tsx
           client/src/components/settings/AssistantAppearancePreferences.test.tsx
