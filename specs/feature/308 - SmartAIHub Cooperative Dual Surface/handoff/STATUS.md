@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.
-- Manifest generation: 6
+- Next action: After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

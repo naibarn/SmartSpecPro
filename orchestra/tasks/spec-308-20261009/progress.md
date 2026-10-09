@@ -5,7 +5,7 @@ Loop policy:
   purpose: coding webapp with an agent loop
   current_stage: IMPLEMENTATION
   resume_from: IMPLEMENTATION
-  iteration: 12/12
+  iteration: 14/14
   tool_call_batches: unknown/30
   estimated_cost_usd: unknown <= 0.50
   dispatch_waves: 2/6
@@ -68,3 +68,9 @@ Loop policy:
 - CI evidence at `evidence/pr-ci-37884628652.json`: pnpm setup, install, and workspace schema build pass; MCP tests still fail in existing server suites without `DATABASE_URL`, with one stale test import. Live contract fails closed because the endpoint/token are not configured.
 - Immediate next: repair the pre-existing MCP test fixture/import without weakening the security gate; configure the live endpoint through secure CI settings; provision the approved non-production app runtime and authorized test identity for browser acceptance.
 - The unrelated manual migration workflow run reports failure with zero jobs and no check rollup entry; it is not part of this PR's required checks and was not modified.
+
+## Responsive correction checkpoint
+- Source commit `64dc5fb3c9c2fec61b909a1c956346d7476258ef`; corrected the QA-discovered mobile width and label gaps, added the optional dismissible mobile Chat onboarding hint, one-shot reduced-motion-aware mascot/balloon motion, and renewed component screenshots across 320/360/375/390/767/768/1024/1440px.
+- Focused regression at exact SHA: 8 files / 83 tests pass; EN/TH settings JSON parses; screenshot capture confirmed 216px mobile balloons/hints, 44px launcher hit target, hidden label below 768px and visible label from 768px.
+- Playwright guest-browser check at 320px confirmed explicit onboarding CTA opens the existing Chat dialog; no authenticated backend/tenant acceptance is implied.
+- Fresh CI run 37885591534 is recorded at `evidence/pr-ci-37885591534.json`; same external live secret and existing MCP suite baseline blockers remain.

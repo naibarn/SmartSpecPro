@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "check": "MCP v2 Compatibility Gates",
+  "head_sha": "64dc5fb3c9c2fec61b909a1c956346d7476258ef",
+  "run_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/37885591534",
+  "outcomes": {
+    "contract_and_security": "FAIL",
+    "live_contract_evidence": "FAIL",
+    "build_preview": "SKIPPED"
+  },
+  "findings": [
+    "pnpm setup, frozen install, and workspace schema package build passed.",
+    "MCP focused tests still fail in existing server suites without DATABASE_URL; one existing test also has an unavailable import. 41 tests passed, 7 skipped, and 3 suites failed.",
+    "Live contract evidence fails closed because MCP_SMOKE_URL and MCP_SMOKE_TOKEN are not configured."
+  ],
+  "classification": "POST_INTEGRATION_GATE_BLOCKED",
+  "next_action": "Configure the authorized live MCP endpoint through secure CI settings and resolve existing MCP test fixture/import failures in a separate baseline repair. Continue SPEC-308 browser acceptance when the non-production app runtime and authorized test tenant/user are available."
+}

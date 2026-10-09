@@ -1,6 +1,6 @@
 # SPEC-308 UI capture record
 
-Capture date: 2026-10-09. Source candidate contains the mobile width/breakpoint fixes recorded in QA round 13. Vite client returned HTTP 200. Captures used a mocked `GET /api/tenant/current` response enabling the SPEC-308 tenant flag; the app session was unauthenticated/guest. The deployment visual allow was set to `true` for the local Vite process only.
+Capture date: 2026-10-09. Source commit `64dc5fb3c9c2fec61b909a1c956346d7476258ef` contains the mobile width/breakpoint fixes recorded in QA round 13. Vite client returned HTTP 200. Captures used a mocked `GET /api/tenant/current` response enabling the SPEC-308 tenant flag; the app session was unauthenticated/guest. The deployment visual allow was set to `true` for the local Vite process only.
 
 The crops hide the unrelated transient system-error toast caused by the unavailable backend; no product styles were changed to hide it. These captures establish responsive component geometry and generic text only. They do not establish authenticated Bell behavior, Settings, theme contrast, or full-page runtime acceptance.
 

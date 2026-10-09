@@ -48,10 +48,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Resume after the required MCP CI baseline is repaired and its secure live endpoint is configured, and after an approved non-production app runtime plus authenticated test tenant/user is available. Then continue unresolved SPEC-308 requirements and browser acceptance; keep all rollout flags off until the required gates pass.",
+    "next_action": "Provide access to an approved non-production app runtime and authorized test user/tenant through the project runtime/secret path. Configure the live MCP endpoint through secure repository CI settings and repair existing MCP CI fixture/import failures without weakening the gate; then continue authenticated browser acceptance and remaining open requirements.",
     "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
     "reactivation_predicate": "The required runtime and test identity are available; refresh origin/main and exact-SHA handoff before continuing.",
-    "resume_point": "PR #399 branch codex/spec-308-dual-surface-20261009, CI evidence at e8e1872a753f452b46a6dd6204b20e338efb724f; source focused tests passed at 0bc15b68fa2c0ddc8a6b3bd182c14f4b6050887d. Latest configured origin/main was c7a4fbd1ff09214b462e8660b2626049d87f01c7. Resume at baseline MCP CI repair and secure runtime provisioning; then authenticated browser acceptance and remaining open requirements. No production deployment.",
+    "resume_point": "PR #399 branch codex/spec-308-dual-surface-20261009 at source commit 64dc5fb3c9c2fec61b909a1c956346d7476258ef, based on origin/main c7a4fbd1ff09214b462e8660b2626049d87f01c7. The focused SPEC-308 regression passed 8 files / 83 tests at this SHA. CI run 37885591534 remains blocked by existing MCP server test dependencies and missing live endpoint/token. Continue remaining SPEC-308 requirements after CI baseline repair and approved non-production runtime/auth fixture are available; do not deploy.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -67,7 +67,7 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.",
+    "next_action": "After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.",
     "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
     "residual_requirements": [
       "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
@@ -104,7 +104,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 6,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -196,7 +196,7 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.",
+      "next_action": "After secure MCP CI configuration and baseline test repair, continue with authenticated non-production browser acceptance once DATABASE_URL, CONTROL_PLANE_API_KEY, and the authorized tenant/user fixture are available. Keep rollout flags off until all required gates pass.",
       "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
       "residual_requirements": [
         "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
@@ -305,19 +305,19 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:38:22.160196Z",
+  "updated_at": "2026-10-09T04:50:00.321572Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
       "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37884628652.json"
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885591534.json"
     ],
     "freshness": "CURRENT",
     "required_profiles": [
       "quick"
     ],
-    "sha": "e8e1872a753f452b46a6dd6204b20e338efb724f",
+    "sha": "64dc5fb3c9c2fec61b909a1c956346d7476258ef",
     "status": "PARTIAL",
     "task_regressions": []
   }
