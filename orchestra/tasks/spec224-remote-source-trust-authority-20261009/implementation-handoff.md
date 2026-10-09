@@ -1,9 +1,11 @@
 # SPEC-224 Remote Source Trust Authority — checkpoint handoff
 
-**Canonical base:** `8368ed2d2cae51dc2131b86d90c91374c971e422`
+**Canonical base:** `f078537ad55c110ab7c3c7521723e232dfeff4a7`
 **Task branch:** `codex/spec224-remote-source-trust-20261009`
 **Task worktree:** `/home/dev/.cache/codex/worktrees/spec224-remote-source-trust-20261009`
-**State:** `IMPLEMENTED_ISOLATED_COMPONENT / NOT_INTEGRATED / NOT_RUNTIME_AUTHORITY`
+**Verifier integration:** PR #387, merge SHA `1b0b86492b3f4b387bb0645605140ce4a9bfcc3f`
+**Canonical handoff integration:** PR #388, merge SHA `f078537ad55c110ab7c3c7521723e232dfeff4a7`
+**State:** `INTEGRATED_ISOLATED_COMPONENT / NOT_RUNTIME_AUTHORITY`
 
 ## Completed in this checkpoint
 
@@ -21,6 +23,12 @@
 - Prettier on changed TypeScript files — **passed**.
 - `git diff --check` — **passed**.
 - A first package-script invocation accidentally selected the whole web test suite because the package script did not forward the path filter as expected; it was interrupted. It showed unrelated baseline failures/timeouts in scheduler Cloud Tasks, chat wiring, skill classifier, voice gateway, vertical-drama quality, telegram, worker fleet, and unrelated UI tests. The exact target test was rerun directly and passed. No claim is made for the package suite.
+
+## Runner platform usability update — operator-confirmed
+
+On 2026-10-09 the operator confirmed that the Windows and Linux Runner versions are usable. The attached screenshot shows a successful SmartAIHub Runner connection from WSL2, supporting Linux-side connection usability. The screenshot does not expose a reliable binary version string, so this handoff records no numeric version. The Windows usability statement is operator-confirmed; the screenshot itself shows WSL2 only.
+
+This closes the platform installation/connection usability note only. It does **not** establish a fresh capability snapshot, Codex authentication/policy readiness, job-specific workspace binding, source-trust admission, authorized DevelopmentRun dispatch, completion receipt, economic settlement, or deployment. No Runner pairing code, account email, device identifier, or token-like URL value is copied into this repository.
 
 ## Focused QA/review passes
 
@@ -44,7 +52,8 @@ Therefore:
 - `REMOTE_TEST_TRUSTED`: **DENY / not enabled**.
 - `PRODUCTION_TRUSTED`: **DENY / not enabled**.
 - Protected-start integration and persisted-proof dispatch revalidation: **NOT READY**, awaiting issuer + key + storage authority and owner approval.
-- Live dispatch, Windows readiness, P-RECOVERY, economic provisioning, deployment: **separate gates; unverified**.
+- Windows/Linux Runner platform usability: **OPERATOR_CONFIRMED_USABLE** (Windows by operator statement; Linux WSL2 connection shown in the attached UI screenshot). Exact binary versions, fresh capability snapshots, Codex readiness, and job-specific authority remain unverified.
+- Live dispatch, P-RECOVERY, economic provisioning, deployment: **separate gates; unverified**.
 - PostgreSQL lock/revocation/replay race proof: **NOT RUN**; must be performed against actual admission transaction in later integration, not inferred from these unit tests.
 
 ## Linux Runner coordination
