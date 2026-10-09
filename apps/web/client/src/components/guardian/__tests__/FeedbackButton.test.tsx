@@ -246,6 +246,30 @@ describe("FeedbackButton placement", () => {
     expect(feedbackMocks.createChat).not.toHaveBeenCalled();
   });
 
+  it("supports manual-activation keyboard navigation for the dialog tabs", () => {
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
+
+    const chatTab = screen.getByRole("tab", { name: "AI Chat" });
+    const feedbackTab = screen.getByRole("tab", { name: "Send Feedback" });
+    expect(chatTab).toHaveAttribute("aria-controls", "assistant-help-panel-chat");
+    expect(chatTab).toHaveAttribute("aria-selected", "true");
+    expect(chatTab).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "assistant-help-tab-chat");
+
+    chatTab.focus();
+    fireEvent.keyDown(chatTab, { key: "ArrowRight" });
+    expect(feedbackTab).toHaveFocus();
+    expect(feedbackTab).toHaveAttribute("aria-selected", "false");
+    expect(feedbackTab).toHaveAttribute("tabindex", "-1");
+    expect(feedbackMocks.createChat).not.toHaveBeenCalled();
+
+    fireEvent.click(feedbackTab);
+    expect(feedbackTab).toHaveAttribute("aria-selected", "true");
+    expect(feedbackTab).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "assistant-help-tab-feedback");
+  });
+
   it("waits for session restoration before creating an authenticated conversation", async () => {
     feedbackMocks.loading = true;
     const view = render(<FeedbackButton />);

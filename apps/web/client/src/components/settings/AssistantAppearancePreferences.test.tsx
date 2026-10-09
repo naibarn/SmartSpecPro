@@ -29,6 +29,28 @@ describe("AssistantAppearancePreferences", () => {
     }
     fireEvent.click(screen.getByTestId("assistant-mascot-style-star"));
     expect(JSON.parse(localStorage.getItem("assistant-mascot:v2:tenant-3:user-7")!).style).toBe("star");
+    expect(screen.getByRole("radio", { name: "assistantAppearance.styles.star" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("keeps motion, reminder, onboarding, and launcher visibility as independent scoped preferences", () => {
+    render(<AssistantAppearancePreferences />);
+    fireEvent.change(screen.getByLabelText("assistantAppearance.motion"), { target: { value: "off" } });
+    fireEvent.click(screen.getByLabelText("assistantAppearance.reminders"));
+    fireEvent.click(screen.getByLabelText("assistantAppearance.onboarding"));
+
+    const key = "assistant-mascot:v2:tenant-3:user-7";
+    const saved = JSON.parse(localStorage.getItem(key)!);
+    expect(saved).toMatchObject({ motion: "off", notificationReminders: false, chatOnboarding: false, enabled: true });
+
+    fireEvent.click(screen.getByLabelText("assistantAppearance.enabled"));
+    expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({ enabled: false, motion: "off", notificationReminders: false, chatOnboarding: false });
+  });
+
+  it("rejects an unsupported motion value instead of persisting it", () => {
+    render(<AssistantAppearancePreferences />);
+    fireEvent.change(screen.getByLabelText("assistantAppearance.motion"), { target: { value: "continuous" } });
+    const saved = JSON.parse(localStorage.getItem("assistant-mascot:v2:tenant-3:user-7")!);
+    expect(saved.motion).toBe("subtle");
   });
 
   it("emits a deterministic demo request without sending a notification", () => {

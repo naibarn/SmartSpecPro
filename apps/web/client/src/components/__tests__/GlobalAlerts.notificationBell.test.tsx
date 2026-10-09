@@ -5,6 +5,7 @@ import React from "react";
 // Mutable mock data that tests can change
 let notificationCountData = { count: 3 };
 let notificationsData: any[] = [];
+let recentNotificationsData: any[] = [];
 let urgentRemindersData: any[] = [];
 let currentLocation = "/";
 let mockLocale: "en" | "th" = "en";
@@ -21,7 +22,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     scheduledMessages: {
       getNotificationCount: { useQuery: () => ({ data: notificationCountData }) },
-      getNotifications: { useQuery: () => ({ data: notificationsData }) },
+      getNotifications: { useQuery: (input: { limit?: number }) => ({ data: input?.limit === 10 ? recentNotificationsData : notificationsData }) },
       getUrgentReminders: { useQuery: () => ({ data: urgentRemindersData }) },
       markAllRead: { useMutation: () => ({ mutate: vi.fn(), isLoading: false }) },
       markRead: { useMutation: () => ({ mutate: vi.fn(), isLoading: false }) },
@@ -111,6 +112,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     localStorage.clear();
     notificationCountData = { count: 3 };
     notificationsData = [];
+    recentNotificationsData = [];
     urgentRemindersData = [];
     currentLocation = "/";
     mockLocale = "en";
@@ -159,7 +161,6 @@ describe("GlobalNotificationBell occurrence badge", () => {
         occurrenceCount: 5,
       },
     ];
-
     render(<GlobalAlerts />);
 
     await act(async () => {
@@ -292,6 +293,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
         occurrenceCount: 1,
       },
     ];
+    recentNotificationsData = notificationsData;
 
     render(<GlobalAlerts />);
 
@@ -309,6 +311,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     notificationCountData = { count: 0 };
     currentLocation = "/dashboard";
     notificationsData = [];
+    recentNotificationsData = [];
 
     render(<GlobalAlerts />);
 
@@ -317,6 +320,26 @@ describe("GlobalNotificationBell occurrence badge", () => {
     });
 
     expect(screen.getByText("No notifications yet")).toBeTruthy();
+  });
+
+  it("uses recent polling data in the bell summary before the dropdown query loads", () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/dashboard";
+    notificationsData = [];
+    recentNotificationsData = [
+      {
+        id: 6,
+        title: "Read notification",
+        content: "Previously viewed",
+        isRead: true,
+        priority: "normal",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(screen.getByLabelText(/No unread alerts, but 1 recent item available/i)).toBeTruthy();
   });
 
   it("opens the existing notification surface from the explicit bell intent", async () => {
@@ -344,7 +367,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(setLocationMock).toHaveBeenCalledWith("/notifications");
   });
 
-  it("projects only a new authorized SSE row ID to cosmetic attention", async () => {
+  it("does not project an unverified SSE payload to cosmetic attention", async () => {
     const arrivals: CustomEvent[] = [];
     const onArrival = (event: Event) => arrivals.push(event as CustomEvent);
     window.addEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, onArrival);
@@ -357,9 +380,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     });
 
     window.removeEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, onArrival);
-    expect(arrivals).toHaveLength(1);
-    expect(arrivals[0].detail.signals[0]).toMatchObject({ opaqueStableKey: "777", trustedCategory: "general", trustedSeverity: "normal", authorization: "verified" });
-    expect(JSON.stringify(arrivals[0].detail)).not.toContain("Private");
+    expect(arrivals).toHaveLength(0);
   });
 
   it("moves the bell when dragged", async () => {

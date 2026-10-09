@@ -15,6 +15,25 @@ import { ASSISTANT_MASCOT_GLOBAL_ALLOW, isAssistantMascotEnabled } from "@/lib/a
 import { assistantMascotStorageKey, DEFAULT_ASSISTANT_MASCOT_PREFERENCES, loadAssistantMascotPreferences, type AssistantMascotPreferences } from "@/lib/assistantMascotPreferences";
 import { ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, requestAssistantMascotDemo } from "@/lib/assistantMascotEvents";
 
+const MASCOT_MOTIONS = ["off", "subtle", "normal"] as const;
+
+function isValidPreferencePatch(patch: Partial<AssistantMascotPreferences>): boolean {
+  return Object.entries(patch).every(([key, value]) => {
+    switch (key) {
+      case "enabled":
+      case "notificationReminders":
+      case "chatOnboarding":
+        return typeof value === "boolean";
+      case "style":
+        return typeof value === "string" && ASSISTANT_MASCOT_STYLES.includes(value as AssistantMascotPreferences["style"]);
+      case "motion":
+        return typeof value === "string" && MASCOT_MOTIONS.includes(value as AssistantMascotPreferences["motion"]);
+      default:
+        return false;
+    }
+  });
+}
+
 export function AssistantAppearancePreferences() {
   const { t } = useScopedTranslation("settings");
   const { user } = useAuth();
@@ -51,7 +70,10 @@ export function AssistantAppearancePreferences() {
   }, [enabled, identity]);
 
   const update = (patch: Partial<AssistantMascotPreferences>) => {
-    if (!enabled) return;
+    if (!enabled || !isValidPreferencePatch(patch)) return;
+    // Do not let an event from a just-rendered identity overwrite that identity's
+    // saved settings before its scoped preferences have hydrated.
+    if (identity && loadedPreferences.identity !== identity) return;
     const next = { ...preferences, ...patch, version: 2 as const };
     setLoadedPreferences({ identity, preferences: next });
     if (!identity || typeof window === "undefined") return;
@@ -119,7 +141,11 @@ export function AssistantAppearancePreferences() {
           </HStack>
           <HStack as="div" gap={4} align="center" justify="between">
             <Label htmlFor="assistant-motion">{t("assistantAppearance.motion")}</Label>
-            <select id="assistant-motion" value={preferences.motion} onChange={event => update({ motion: event.target.value as AssistantMascotPreferences["motion"] })}>
+            <select
+              id="assistant-motion"
+              value={preferences.motion}
+              onChange={event => update({ motion: event.target.value as AssistantMascotPreferences["motion"] })}
+            >
               <option value="off">{t("assistantAppearance.off")}</option>
               <option value="subtle">{t("assistantAppearance.subtle")}</option>
               <option value="normal">{t("assistantAppearance.normal")}</option>

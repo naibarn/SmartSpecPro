@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useRef, useCallback, useReducer, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useReducer, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -215,6 +215,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<HelpPanel>("chat");
+  const helpTabRefs = useRef<Partial<Record<HelpPanel, HTMLButtonElement>>>({});
   const [chatConversationId, setChatConversationId] = useState<number | null>(null);
   const [chatPromptRequest, setChatPromptRequest] = useState<{
     id: number;
@@ -761,6 +762,32 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     [authLoading, ensureChatConversation, user],
   );
 
+  const handleHelpTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const panels: HelpPanel[] = user && !authLoading
+      ? ["chat", "control-plane", "feedback"]
+      : ["chat", "feedback"];
+    const currentIndex = panels.indexOf(activePanel);
+    const isRtl = document.documentElement.dir === "rtl";
+    let nextPanel: HelpPanel | undefined;
+
+    if (event.key === (isRtl ? "ArrowRight" : "ArrowLeft")) {
+      nextPanel = panels[(currentIndex - 1 + panels.length) % panels.length];
+    } else if (event.key === (isRtl ? "ArrowLeft" : "ArrowRight")) {
+      nextPanel = panels[(currentIndex + 1) % panels.length];
+    } else if (event.key === "Home") {
+      nextPanel = panels[0];
+    } else if (event.key === "End") {
+      nextPanel = panels[panels.length - 1];
+    }
+
+    if (nextPanel) {
+      event.preventDefault();
+      // This tablist uses manual activation: moving focus must not start a Chat
+      // conversation or otherwise perform work until the user activates a tab.
+      helpTabRefs.current[nextPanel]?.focus();
+    }
+  };
+
   const handleOpenTaskPrompt = useCallback(
     async (prompt: string) => {
       const requestScopeGeneration = chatConversationScopeGenerationRef.current;
@@ -1131,12 +1158,17 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         <nav
           aria-label={t("feedback.sections")}
           role="tablist"
+          onKeyDown={handleHelpTabKeyDown}
           className={`grid shrink-0 ${user && !authLoading ? "grid-cols-3" : "grid-cols-2"} gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2`}
         >
           <Button
+            ref={element => { helpTabRefs.current.chat = element ?? undefined; }}
             type="button"
+            id="assistant-help-tab-chat"
             role="tab"
+            aria-controls="assistant-help-panel-chat"
             aria-selected={activePanel === "chat"}
+            tabIndex={activePanel === "chat" ? 0 : -1}
             variant={activePanel === "chat" ? "secondary" : "ghost"}
             className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("chat")}
@@ -1145,9 +1177,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             {user && !authLoading ? t("feedback.chatTab") : t("chat.guest.chatTab")}
           </Button>
           {user && !authLoading && <Button
+            ref={element => { helpTabRefs.current["control-plane"] = element ?? undefined; }}
             type="button"
+            id="assistant-help-tab-control-plane"
             role="tab"
+            aria-controls="assistant-help-panel-control-plane"
             aria-selected={activePanel === "control-plane"}
+            tabIndex={activePanel === "control-plane" ? 0 : -1}
             variant={activePanel === "control-plane" ? "secondary" : "ghost"}
             className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("control-plane")}
@@ -1156,9 +1192,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             {t("feedback.taskControlTab")}
           </Button>}
           <Button
+            ref={element => { helpTabRefs.current.feedback = element ?? undefined; }}
             type="button"
+            id="assistant-help-tab-feedback"
             role="tab"
+            aria-controls="assistant-help-panel-feedback"
             aria-selected={activePanel === "feedback"}
+            tabIndex={activePanel === "feedback" ? 0 : -1}
             variant={activePanel === "feedback" ? "secondary" : "ghost"}
             className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("feedback")}
@@ -1168,7 +1208,15 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           </Button>
         </nav>
 
-        <section hidden={activePanel !== "chat"} className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.chatSection")}>
+        <section
+          id="assistant-help-panel-chat"
+          role="tabpanel"
+          aria-labelledby="assistant-help-tab-chat"
+          tabIndex={0}
+          hidden={activePanel !== "chat"}
+          className="min-h-0 flex-1 overflow-hidden"
+          aria-label={t("feedback.chatSection")}
+        >
           {authLoading ? (
             <section className="flex min-h-[16rem] flex-col items-center justify-center gap-3 p-6 text-center" aria-live="polite">
               <p className="text-sm text-muted-foreground">{t("chat.guest.checkingSession")}</p>
@@ -1217,7 +1265,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         </section>
 
         {user && !authLoading && activePanel === "control-plane" && (
-          <section className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.taskControlSection")}>
+          <section id="assistant-help-panel-control-plane" role="tabpanel" aria-labelledby="assistant-help-tab-control-plane" tabIndex={0} className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.taskControlSection")}>
             <UniversalControlPlanePanel
               conversationId={chatConversationId}
               onClose={() => selectHelpPanel("chat")}
@@ -1228,7 +1276,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           </section>
         )}
 
-        {activePanel === "feedback" && <div className="space-y-4 p-4 sm:p-5">
+        {activePanel === "feedback" && <section id="assistant-help-panel-feedback" role="tabpanel" aria-labelledby="assistant-help-tab-feedback" tabIndex={0} className="space-y-4 p-4 sm:p-5">
           {/* Show retry banner if ticket created but upload failed */}
           {pendingUploadTicketId && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
@@ -1433,7 +1481,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
               Admin Feedback Hub &rarr;
             </button>
           )}
-        </div>}
+        </section>}
       </DialogContent>
     </Dialog>
   );

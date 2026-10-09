@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import "@testing-library/jest-dom/vitest";
-import { ASSISTANT_MASCOT_STYLES, AssistantMascot } from "./AssistantMascot";
+import {
+  ASSISTANT_MASCOT_STYLES,
+  AssistantMascot,
+  type AssistantMascotExpression,
+} from "./AssistantMascot";
 
 describe("AssistantMascot", () => {
   it("renders all five stable styles with distinct silhouettes", () => {
@@ -44,6 +48,45 @@ describe("AssistantMascot", () => {
       );
     }
   );
+
+  it.each(ASSISTANT_MASCOT_STYLES.flatMap(style =>
+    (["calm", "happy", "thinking", "concerned"] as const).map(expression => ({
+      style,
+      expression,
+    }))
+  ))(
+    "renders a safe $style mascot with $expression expression",
+    ({ style, expression }) => {
+      const { container } = render(
+        <AssistantMascot style={style} expression={expression} />
+      );
+      const svg = container.querySelector("svg")!;
+
+      expect(svg).toHaveAttribute("viewBox", "0 0 96 96");
+      expect(svg.querySelector("g")).toBeInTheDocument();
+      expect(
+        svg.querySelector("script, foreignObject, image, use, a")
+      ).toBeNull();
+      expect(svg.querySelector("[onload], [onclick], [tabindex]")).toBeNull();
+      expect(container.innerHTML).not.toMatch(/https?:|data:/i);
+    }
+  );
+
+  it("falls back to a recognizable chat mascot for invalid runtime values", () => {
+    const { container } = render(
+      <AssistantMascot
+        style={"unknown" as never}
+        size={48 as never}
+        expression={"unknown" as never}
+      />
+    );
+    const svg = container.querySelector("svg")!;
+
+    expect(svg).toHaveAttribute("data-mascot-style", "chat");
+    expect(svg).toHaveAttribute("width", "32");
+    expect(svg).toHaveAttribute("height", "32");
+    expect(svg.querySelector("g")).toBeInTheDocument();
+  });
 
   it("is decorative, non-focusable, and has no accessible notification content", () => {
     const { container } = render(

@@ -188,19 +188,31 @@ export function AssistantMascot({
   expression = "calm",
   className,
 }: AssistantMascotProps) {
+  // Keep the launcher recognizable if persisted or dynamically supplied values
+  // are invalid at runtime, even though the public TypeScript API is narrow.
+  const resolvedStyle = ASSISTANT_MASCOT_STYLES.includes(style)
+    ? style
+    : "chat";
+  const resolvedSize = ([24, 32, 40] as const).includes(size) ? size : 32;
+  const resolvedExpression = (
+    Object.keys(eyeY) as AssistantMascotExpression[]
+  ).includes(expression)
+    ? expression
+    : "calm";
+
   return (
     <svg
       aria-hidden="true"
       focusable="false"
-      data-mascot-style={style}
+      data-mascot-style={resolvedStyle}
       viewBox="0 0 96 96"
-      width={size}
-      height={size}
+      width={resolvedSize}
+      height={resolvedSize}
       className={className}
       style={{ color: "var(--foreground)", flex: "none" }}
     >
-      {silhouettes[style]}
-      <Face expression={expression} />
+      {silhouettes[resolvedStyle]}
+      <Face expression={resolvedExpression} />
     </svg>
   );
 }

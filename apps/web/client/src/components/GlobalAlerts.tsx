@@ -1559,7 +1559,9 @@ function GlobalNotificationBell() {
   const count = data?.count || 0;
   const hasUnread = count > 0;
   const shouldShowWithoutUnread = /^\/(?:admin\/)?dashboard(?:$|[/?])/.test(location);
-  const recentCount = notifications?.length ?? 0;
+  // The bounded polling query is already available before the dropdown opens.
+  // Use it for the Recent summary while the on-demand list query is disabled.
+  const recentCount = recentNotifications?.length ?? 0;
   const hasRecentHistory = recentCount > 0;
   const statusSummary = hasUnread
     ? `${count} unread notification${count !== 1 ? "s" : ""}`
