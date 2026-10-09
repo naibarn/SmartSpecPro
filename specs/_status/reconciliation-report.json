@@ -143923,7 +143923,7 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "CURRENT",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T04:04:01.301528Z",
       "lifecycle": "WAITING_DEPENDENCY",
@@ -143985,7 +143985,7 @@
       "successors": [],
       "title": "SmartAIHub Cooperative Dual Surface — Living Chat Mascot, Notification Bell & Reminder Balloon",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",

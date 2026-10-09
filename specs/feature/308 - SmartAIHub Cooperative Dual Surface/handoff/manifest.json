@@ -32,7 +32,7 @@
     "next_action": "Continue with authenticated browser acceptance and unresolved specification requirements once the app DB/control-plane runtime and authorized test identity are available.",
     "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
     "reactivation_predicate": "The required runtime and test identity are available; refresh origin/main and exact-SHA handoff before continuing.",
-    "resume_point": "Start by reviewing the SPEC-308 PR branch checkpoint, then complete authenticated Settings/Notification/Bell/Chat/Feedback browser tests and resolve every remaining AC without enabling production.",
+    "resume_point": "Current task branch tip 5ff91647b53d040ea93c59e90e208d27b645b568 includes latest origin/main c7a4fbd1 and the SPEC-308 partial implementation commit a430a747. Continue at authenticated browser acceptance and unresolved ACs; do not enable production.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -85,7 +85,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 2,
+  "generation": 3,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -102,7 +102,9 @@
     "title": "SmartAIHub Cooperative Dual Surface — Living Chat Mascot, Notification Bell & Reminder Balloon"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "a430a747cf4991cbb7fbbdf5351dad984f29231b"
+    ],
     "mapping": [
       {
         "coverage": "PARTIAL; not all ACs verified and not yet integrated into origin/main.",
@@ -113,7 +115,8 @@
           "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
           "apps/web/client/src/lib/notificationAttention.ts",
           "apps/web/client/src/lib/assistantMascotPreferences.ts"
-        ]
+        ],
+        "source_sha": "a430a747cf4991cbb7fbbdf5351dad984f29231b"
       }
     ],
     "source_paths": [
@@ -283,14 +286,25 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:27:10.398992Z",
+  "updated_at": "2026-10-09T04:30:03.198541Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      {
+        "kind": "FOCUSED_TEST_AND_QA",
+        "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
+      },
+      {
+        "kind": "RESPONSIVE_COMPONENT_CAPTURE",
+        "path": "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md"
+      }
+    ],
+    "freshness": "CURRENT",
+    "required_profiles": [
+      "quick"
+    ],
+    "sha": "5ff91647b53d040ea93c59e90e208d27b645b568",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }

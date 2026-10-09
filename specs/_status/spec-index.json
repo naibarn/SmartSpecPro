@@ -39,10 +39,10 @@
     "record_kind.PLANNING_ARTIFACT": 112,
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 2,
-    "verification.PARTIAL": 9,
+    "verification.PARTIAL": 10,
     "verification.PASS": 4,
     "verification.PENDING": 1,
-    "verification.UNKNOWN": 457
+    "verification.UNKNOWN": 456
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
   "record_count": 473,
@@ -135415,7 +135415,7 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "CURRENT",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T04:04:01.301528Z",
       "lifecycle": "WAITING_DEPENDENCY",
@@ -135477,7 +135477,7 @@
       "successors": [],
       "title": "SmartAIHub Cooperative Dual Surface — Living Chat Mascot, Notification Bell & Reminder Balloon",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",

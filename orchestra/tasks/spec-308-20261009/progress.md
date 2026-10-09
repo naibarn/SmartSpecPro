@@ -18,13 +18,14 @@ Loop policy:
   stop_reason: partial_runtime_gate
 
 ## Baseline
-- Configured canonical: `origin/main` `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`.
+- Configured canonical before refresh: `origin/main` `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`; latest fetched `origin/main` is `c7a4fbd1ff09214b462e8660b2626049d87f01c7`.
 - Task worktree: `/home/dev/worktrees/spec-308-dual-surface-20261009`, branch `codex/spec-308-dual-surface-20261009`.
 - Canonical workspace user-uploaded untracked files preserved in `/home/dev/projects/SmartSpecPro`; all implementation occurs in task worktree.
 - WP0 scout: `/root/wp0_source_audit`, read-only, returned; no files changed.
-- WP0 import is on Draft PR #399 at `e6a7243fa871f1999f1e6f6e835d32d1df81135f`.
+- WP0 import checkpoint is `e6a7243fa871f1999f1e6f6e835d32d1df81135f`; implementation source checkpoint is `a430a747cf4991cbb7fbbdf5351dad984f29231b`; latest branch merge tip is `5ff91647b53d040ea93c59e90e208d27b645b568`.
+- Draft PR #399 remains open; latest `origin/main` was reconciled into the task branch through a normal merge.
 - WP1 renderer and WP2 reducer returned and are closed; conductor integrated their exports with the existing Bell/Feedback owners.
-- Focused regression: 8 Vitest files / 83 tests pass under Happy DOM; EN/TH settings JSON parses.
+- Focused regression on branch merge tip `5ff91647b53d040ea93c59e90e208d27b645b568`: 8 Vitest files / 83 tests pass under Happy DOM; EN/TH settings JSON parses.
 - Twelve QA lenses and component screenshot measurements are recorded under `evidence/`.
 - Server-backed authenticated browser gate remains blocked by missing worktree `DATABASE_URL`; no production rollout.
 

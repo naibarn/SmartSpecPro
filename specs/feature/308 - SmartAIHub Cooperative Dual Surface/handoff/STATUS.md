@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
 - Next action: Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.
-- Manifest generation: 2
+- Manifest generation: 3
 
 ## Source-declared status and relationship claims
 

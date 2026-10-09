@@ -1,6 +1,6 @@
 # SPEC-308 QA loop log
 
-Baseline under review: worktree branch `codex/spec-308-dual-surface-20261009`, based on canonical `origin/main` `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`. Final focused regression rerun for this checkpoint: 8 files / 83 tests passed with Happy DOM. Repository typecheck was not run per `AGENTS.md`.
+Baseline under review: worktree branch `codex/spec-308-dual-surface-20261009`, reconciled with latest `origin/main` `c7a4fbd1ff09214b462e8660b2626049d87f01c7`. Source commit `a430a747cf4991cbb7fbbdf5351dad984f29231b`; tests rerun at branch merge tip `5ff91647b53d040ea93c59e90e208d27b645b568`: 8 files / 83 tests passed with Happy DOM. Repository typecheck was not run per `AGENTS.md`.
 
 These are twelve separate requirement lenses. They establish focused source/test evidence, not production acceptance.
 
@@ -17,7 +17,7 @@ These are twelve separate requirement lenses. They establish focused source/test
 | 9 | Balloon action and dismissal side effects | CTA sends only the explicit Bell intent; if Bell cannot be shown it routes to `/notifications`. Dismiss has no mark-read or Chat operation. | Bell intent/fallback tests; source assertion that CTA dispatches the notification event only. | PASS |
 | 10 | Responsive launcher and reminder | Found undefined `--spacing-20`, fixed to existing token multiplication and recaptured. Launcher is 44×44 at 320/390px; label visible at 768/1440px. Balloons stay within all four viewports. | Component crops in `evidence/screenshots/` at 320×800, 390×844, 768×1024, 1440×900. | PASS (component capture only) |
 | 11 | Motion, focus, timers and visibility | Bell animation is single-shot and guarded by user motion preference and OS reduced-motion. Attention deadlines clean up; focus, hidden tab, open dialog and dragging suspend attention. | Reducer timing/focus tests and reduced-motion helper test; CSS/source inspection. | PASS (no assistive-tech/browser interaction run) |
-| 12 | Full focused regression / artifact integrity | Re-ran all changed-surface and legacy bell/launcher suites after fixes; validated both locale JSON files. | 8 files / 83 tests pass; `python3 -m json.tool` for EN/TH; `git diff --check` pending final gate. | PASS |
+| 12 | Full focused regression / artifact integrity | Re-ran all changed-surface and legacy bell/launcher suites on merge tip `5ff91647`; validated both locale JSON files. | 8 files / 83 tests pass; `python3 -m json.tool` for EN/TH; scoped `git diff --check` passed before commit. | PASS |
 
 ## Fixes made during the loop
 

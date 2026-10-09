@@ -1,6 +1,6 @@
 # SPEC-308 UI capture record
 
-Capture date: 2026-10-09. Source revision: current task worktree before this checkpoint's commit. Vite client returned HTTP 200. The server-backed app could not start because `DATABASE_URL` was missing, so the screenshots were captured from the client dev server with a mocked `GET /api/tenant/current` response enabling the SPEC-308 tenant flag. Session is unauthenticated/guest.
+Capture date: 2026-10-09. Source commit `a430a747cf4991cbb7fbbdf5351dad984f29231b`. Vite client returned HTTP 200. The server-backed app could not start because `DATABASE_URL` was missing, so the screenshots were captured from the client dev server with a mocked `GET /api/tenant/current` response enabling the SPEC-308 tenant flag. Session is unauthenticated/guest.
 
 The global visual allow was set to `true` in the local Vite process only. Screenshot crops hide the unrelated transient system-error toast caused by the unavailable backend; no product CSS/state was changed for capture. These component crops establish size/placement/copy only. They do not establish authenticated Bell behavior, Settings, theme contrast, or full-page runtime acceptance.
 
