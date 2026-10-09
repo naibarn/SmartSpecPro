@@ -51,7 +51,7 @@
     "next_action": "Merge PR #403 after its contract-and-security gate completes and any required review; rerun PR #399 CI at the resulting canonical base. Obtain approved non-production app/DB/control-plane configuration and authorized test user/tenant, then complete Bell, Settings, tenant-isolation, animation and draft acceptance. Configure MCP_SMOKE_URL/MCP_SMOKE_TOKEN through secure CI settings.",
     "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
     "reactivation_predicate": "PR #403 has passed required checks and been integrated; approved non-production runtime and authorized test identity are available; secure CI contains authorized MCP smoke endpoint/token.",
-    "resume_point": "PR #399 branch codex/spec-308-dual-surface-20261009 at source commit 95fcf3e1392a34392020ca7c11c200fe8b641736, based on origin/main c7a4fbd1ff09214b462e8660b2626049d87f01c7. Seven isolated Chromium tests pass with deterministic mocked APIs; evidence is simulated, not live acceptance. PR #403 carries the separate MCP baseline test/workflow repair; its live MCP authority remains missing. Continue authenticated non-production browser acceptance only after approved endpoint and authorized test identity are provisioned. Do not deploy.",
+    "resume_point": "PR #399 source commit 91f52f0726d02e447c5ce85f736c38ab451263b7 on origin/main c7a4fbd1ff09214b462e8660b2626049d87f01c7. Seven isolated Chromium tests pass with deterministic mocked APIs; this is simulated evidence, not live acceptance. Latest CI run 37896740084 failed on unchanged MCP baseline fixtures (44/120) and missing authorized MCP smoke endpoint/token; repair is isolated in PR #403. All 66 requirement rows remain OPEN. Continue runtime acceptance only after approved non-production runtime and authorized identity are available; do not deploy.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -104,7 +104,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 8,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -305,7 +305,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T07:01:07.934728Z",
+  "updated_at": "2026-10-09T07:04:26.308768Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -313,13 +313,14 @@
       "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md",
       "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
       "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json"
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37885769725.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37896740084.json"
     ],
     "freshness": "CURRENT",
     "required_profiles": [
       "quick"
     ],
-    "sha": "95fcf3e1392a34392020ca7c11c200fe8b641736",
+    "sha": "91f52f0726d02e447c5ce85f736c38ab451263b7",
     "status": "PARTIAL",
     "task_regressions": []
   }

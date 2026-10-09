@@ -8,19 +8,21 @@
 
 ## Browser checks
 
-The isolated spec `apps/web/tests/e2e/spec-308-dual-surface.spec.ts` passed 7 tests:
+The isolated spec `apps/web/tests/e2e/spec-308-dual-surface.spec.ts` passed 9 tests:
 
 1. Synthetic authenticated identity resolves through mocked APIs.
 2. Launcher uses the mascot renderer and keeps the existing dialog entry point.
 3. AI Chat and Feedback tabs remain reachable.
 4. Unsaved feedback title survives tab changes.
 5. Unsaved Chat draft survives Chat ↔ Task Control ↔ Chat.
-6. OS reduced-motion preference is emulated while the launcher remains usable.
-7. No horizontal overflow at 320, 360, 390, 767, 768, and 1440 CSS pixels.
+6. OS reduced-motion preference is emulated; the greeting animation computes to `animation-name: none` and `0s`.
+7. Settings selects and persists a mascot style in a user-and-tenant scoped key; switching the mocked tenant starts from its own default.
+8. The demo reminder balloon CTA opens the existing notification Bell and displays the deterministic mock row.
+9. No horizontal overflow at 320, 360, 390, 767, 768, and 1440 CSS pixels.
 
 Responsive full-page captures are in `evidence/screenshots/{320,360,390,767,768,1440}x-authenticated-simulation.png`.
 
-This simulation does **not** establish server-side tenant authorization, live Bell data/read behavior, a production-like Settings flow, real SSE delivery, or non-production runtime acceptance. Existing focused Bell, Settings, attention reducer, localization and reduced-motion tests remain unit/component evidence. No Requirement Ledger row is closed from this simulation alone.
+This simulation does **not** establish server-side tenant authorization (tenant switching is mocked), live Bell data/read behavior, real SSE delivery, or non-production runtime acceptance. The Settings route and Bell CTA are exercised in-browser against mocked APIs; no live preferences API or notification read was called. Existing focused Bell, Settings, attention reducer, localization and reduced-motion tests remain supporting component evidence. No Requirement Ledger row is closed from this simulation alone.
 
 ## Command and result
 
@@ -28,7 +30,7 @@ This simulation does **not** establish server-side tenant authorization, live Be
 PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3189 \
   pnpm --filter @smartspec/web exec playwright test \
   tests/e2e/spec-308-dual-surface.spec.ts --project=chromium
-Result: 7 passed, 0 failed
+Result: 9 passed, 0 failed
 ```
 
-Exact source SHA tested: `95fcf3e1392a34392020ca7c11c200fe8b641736` (PR #399 head at execution). Result: 7 passed, 0 failed. The browser test and screenshot evidence are included in this SHA.
+Exact source SHA tested: `91f52f0726d02e447c5ce85f736c38ab451263b7` (PR #399 head at execution). Result: 9 passed, 0 failed. The browser test and screenshot evidence are included in this SHA.

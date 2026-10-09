@@ -2,7 +2,7 @@
 
 Baseline under review: worktree branch `codex/spec-308-dual-surface-20261009`, reconciled with latest `origin/main` `c7a4fbd1ff09214b462e8660b2626049d87f01c7`. Responsive fixes were implemented at `64dc5fb3c9c2fec61b909a1c956346d7476258ef`; tests rerun at that SHA: 8 files / 83 tests passed with Happy DOM. Repository typecheck was not run per `AGENTS.md`.
 
-These are fourteen separate requirement lenses. They establish focused source/test evidence, not production acceptance.
+These are separate requirement lenses. They establish focused source/test evidence, not production acceptance.
 
 | Round | QA lens | Finding and action | Retest / evidence | Result |
 |---|---|---|---|---|
@@ -43,7 +43,7 @@ These are fourteen separate requirement lenses. They establish focused source/te
 
 ## Continuation QA — isolated browser, 2026-10-09
 
-Exact source SHA tested: `95fcf3e1392a34392020ca7c11c200fe8b641736` (PR #399 head). The test fixture and screenshots are committed and bound in `evidence/isolated-browser-simulation.md`.
+Exact source tree tested: the SPEC-308 candidate tree committed by the task checkpoint. Nine Chromium tests passed; the test fixture and screenshots are bound in `evidence/isolated-browser-simulation.md`.
 
 | Dimension | Result | Evidence / boundary |
 |---|---|---|
@@ -54,14 +54,16 @@ Exact source SHA tested: `95fcf3e1392a34392020ca7c11c200fe8b641736` (PR #399 hea
 | 5. Feedback tab visibility | PASS | Existing Feedback tab renders. |
 | 6. Feedback draft preservation | PASS | Unsent title persists across tab changes. |
 | 7. Chat draft preservation | PASS | Unsent text persists across Chat ↔ Task Control ↔ Chat. |
-| 8. Reduced-motion media query | PASS | Chromium emulates `prefers-reduced-motion: reduce`; launcher remains available. |
-| 9. 320px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
-| 10. 360px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
-| 11. 390px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
-| 12. 767px breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
-| 13. 768px tablet breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
-| 14. 1440px desktop geometry | PASS | No document horizontal overflow; screenshot captured. |
+| 8. Reduced-motion animation behavior | PASS | Under `prefers-reduced-motion: reduce`, computed greeting animation is `none` / `0s`; launcher remains available. |
+| 9. Settings preference scope | PASS | Settings simulation saves the selected style under user+tenant key; switching mocked tenant does not reuse it. Server-side isolation remains unverified. |
+| 10. Balloon CTA routing | PASS | Demo reminder CTA opens the existing Bell and deterministic notification row. No live read or API call is established. |
+| 11. 320px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 12. 360px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 13. 390px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 14. 767px breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
+| 15. 768px tablet breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
+| 16. 1440px desktop geometry | PASS | No document horizontal overflow; screenshot captured. |
 
-Command: isolated Playwright Chromium spec; result **7 tests passed**. Exact command, synthetic identity, screenshot paths, and evidence limits are in `evidence/isolated-browser-simulation.md`.
+Command: isolated Playwright Chromium spec; result **9 tests passed**. Exact command, synthetic identity, screenshot paths, and evidence limits are in `evidence/isolated-browser-simulation.md`.
 
-These dimensions are simulated UI checks, not live authenticated acceptance. Bell data/read interactions and authenticated Settings are not established by this run; they remain in the focused component suite and external runtime gate respectively. No ledger row is closed by this continuation because the requirements require additional live, integrated, accessibility, security, or performance evidence.
+These dimensions are simulated UI checks, not live authenticated acceptance. Settings storage and Bell CTA routing were exercised only with deterministic mocks; server tenant authorization, Bell live read behavior, authenticated runtime, and settings server persistence remain open. No ledger row is closed by this continuation because the requirements require additional live, integrated, accessibility, security, or performance evidence.
