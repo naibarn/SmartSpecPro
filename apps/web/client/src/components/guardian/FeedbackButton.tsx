@@ -276,6 +276,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [feedbackPlacement, setFeedbackPlacement] = useState<FeedbackPlacement>(() => getInitialFeedbackPlacement());
   const [isButtonDragging, setIsButtonDragging] = useState(false);
+  const [dragCompletionVersion, setDragCompletionVersion] = useState(0);
+  const completedDragPositionVersionRef = useRef(0);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1024 : window.innerWidth,
   );
@@ -605,6 +607,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       suppressNextClickRef.current = dragState.moved;
       dragStateRef.current = null;
       setIsButtonDragging(false);
+      if (dragState.moved) {
+        setDragCompletionVersion(version => version + 1);
+      }
     };
 
     document.addEventListener("pointermove", handlePointerMove);
@@ -1058,7 +1063,20 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     // Re-measure after the launcher/balloon have completed this layout pass.
     // This is needed after a drag, when the hint is intentionally unmounted
     // during movement and its first measurement can still reflect the old spot.
-    const positionFrame = window.requestAnimationFrame(updateHintPosition);
+    const positionFrames: number[] = [window.requestAnimationFrame(updateHintPosition)];
+    if (dragCompletionVersion > completedDragPositionVersionRef.current) {
+      // The launcher placement and the remounted balloon can settle in separate
+      // commits after pointerup. Measure after two paint opportunities so the
+      // final launcher rect, rather than its pre-drag position, anchors the hint.
+      const firstSettleFrame = window.requestAnimationFrame(() => {
+        const finalSettleFrame = window.requestAnimationFrame(() => {
+          updateHintPosition();
+          completedDragPositionVersionRef.current = dragCompletionVersion;
+        });
+        positionFrames.push(finalSettleFrame);
+      });
+      positionFrames.push(firstSettleFrame);
+    }
     window.addEventListener("resize", updateHintPosition);
     window.addEventListener("scroll", updateHintPosition, true);
     const resizeObserver = typeof ResizeObserver === "undefined"
@@ -1070,14 +1088,14 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     window.visualViewport?.addEventListener("resize", updateHintPosition);
     window.visualViewport?.addEventListener("scroll", updateHintPosition);
     return () => {
-      window.cancelAnimationFrame(positionFrame);
+      positionFrames.forEach(frame => window.cancelAnimationFrame(frame));
       window.removeEventListener("resize", updateHintPosition);
       window.removeEventListener("scroll", updateHintPosition, true);
       window.visualViewport?.removeEventListener("resize", updateHintPosition);
       window.visualViewport?.removeEventListener("scroll", updateHintPosition);
       resizeObserver?.disconnect();
     };
-  }, [canShowDecorativeBalloon, feedbackPlacement, hasVisibleDemoBalloon, hasVisibleNotificationBalloon, hasVisibleOnboardingHint]);
+  }, [canShowDecorativeBalloon, dragCompletionVersion, feedbackPlacement, hasVisibleDemoBalloon, hasVisibleNotificationBalloon, hasVisibleOnboardingHint]);
 
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
