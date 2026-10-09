@@ -62,6 +62,47 @@ async def test_tenant_service_applies_updates_and_suspension():
     assert suspended.status == TenantStatus.SUSPENDED
 
 
+@pytest.mark.asyncio
+async def test_tenant_service_indexes_domains_lists_and_soft_deletes():
+    service = TenantService()
+    first = await service.create_tenant(
+        name="Shared Name", admin_email="one@example.test", trial_days=0
+    )
+    second = await service.create_tenant(
+        name="Shared Name", admin_email="two@example.test", trial_days=0
+    )
+
+    assert first.slug != second.slug
+    updated = await service.update_tenant(
+        first.tenant_id, {"custom_domain": "one.example.test"}
+    )
+    assert updated is first
+    assert await service.get_tenant_by_domain("one.example.test") is first
+
+    listed = await service.list_tenants(plan=TenantPlan.FREE, limit=1, offset=0)
+    assert len(listed) == 1
+    assert listed[0].plan == TenantPlan.FREE
+
+    assert await service.delete_tenant(second.tenant_id)
+    assert second.status == TenantStatus.DELETED
+    assert second not in await service.list_tenants()
+
+    assert await service.delete_tenant(first.tenant_id, hard_delete=True)
+    assert await service.get_tenant_by_domain("one.example.test") is None
+
+
+def test_tenant_context_serializes_tenant_and_user_scope():
+    tenant = Tenant(name="Context Tenant", slug="context")
+    context = TenantContext.from_tenant(
+        tenant, user_id="user-1", user_email="user@example.test", request_id="req-1"
+    )
+
+    serialized = context.to_dict()
+    assert serialized["tenant_id"] == tenant.tenant_id
+    assert serialized["user_id"] == "user-1"
+    assert serialized["request_id"] == "req-1"
+
+
 def test_tenant_context_scopes_access_and_restores_previous_context():
     tenant = Tenant(name="Scoped Tenant", slug="scoped", plan=TenantPlan.FREE)
     context = TenantContext.from_tenant(
