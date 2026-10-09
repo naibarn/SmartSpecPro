@@ -43,3 +43,24 @@
 ## Next action
 
 No implementation continuation is required for this checkpoint. If the user requests zero-touch Harness setup, plan a separate local MCP setup flow with explicit consent and package provenance verification, then implement and validate it as its own outcome.
+
+## Runner acceptance routing update — 2026-10-09
+
+- Use the Windows Runner as the primary acceptance baseline because it is the
+  most ready environment, per the user's direction. Latest Windows Desktop
+  screenshots show Runner `0.2.24`, 5/11 tools ready, and a successful real
+  Codex prompt through the Runner (`codex-cli 0.161.0`). This establishes a
+  passing smoke check, not persistent session acceptance.
+- The Windows Desktop also reports automatic token refresh failure
+  (`RUNNER_CONNECT_REQUEST_FAILED`), with access token expiry shown as
+  `2026-10-09 06:28:18`. Verify refresh/reconnect and Control Plane session
+  continuity. Resume `orchestra/runner-codex-shim-fix-20261008` at
+  `FINAL_VERIFY`, rerun its pending Windows-hosted workflow with publication
+  disabled, and continue independent implementation work against the Windows
+  baseline while platform verification runs.
+- Keep Windows, WSL2, and Debian Linux acceptance evidence separate. WSL2's
+  successful direct Codex CLI smoke does not prove Runner-bound readiness; its
+  Runner still reports `auth_probe_required`. Debian Linux has no new evidence
+  in this update.
+- Canonical Spec 205 evidence and the full continuation checklist are in
+  `specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md`.

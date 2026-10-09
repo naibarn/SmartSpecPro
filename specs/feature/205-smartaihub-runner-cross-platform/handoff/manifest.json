@@ -114,17 +114,30 @@
     "status": "UNRESOLVED",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "ACCEPTANCE",
+      "id": "WINDOWS_HOSTED_RUNNER_VERIFY_PENDING",
+      "next_action": "Run the pending Windows-hosted Runner workflow with release publication disabled, then record its exact run and candidate revision.",
+      "root_cause": "The Windows-hosted Runner workflow for the repaired Codex shim candidate is still pending; the user-provided successful prompt smoke does not replace the platform test suite."
+    },
+    {
+      "class": "RUNTIME",
+      "id": "WINDOWS_RUNNER_TOKEN_REFRESH_FAILED",
+      "next_action": "Collect fresh Windows Runner status, doctor, capabilities, and rescan evidence across the refresh/reconnect boundary, and confirm the authenticated session remains acknowledged by the Control Plane.",
+      "root_cause": "The Windows Runner Desktop screenshot reports automatic token refresh failure RUNNER_CONNECT_REQUEST_FAILED despite a successful Codex prompt smoke."
+    }
+  ],
   "concurrency": {
     "expected_canonical_sha": "f072ec8448884b88970310fab954c97a465fc6b9",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Use Windows as the primary acceptance baseline. The latest user screenshots establish a successful Windows Runner-bound Codex smoke on Runner 0.2.24 with Codex CLI 0.161.0 and 5/11 tools ready. Continue independent Spec 205 implementation work against this baseline while closing two gates: rerun orchestra/runner-codex-shim-fix-20261008 Windows-hosted workflow with publication disabled, and verify automatic token refresh/session continuity after the reported RUNNER_CONNECT_REQUEST_FAILED. Keep WSL2 and Debian Linux evidence in separate acceptance lanes.",
+    "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": null,
-    "waiting_predicate": null
+    "resume_point": "Read handoff/evidence/windows-first-runner-routing-20261009.md and orchestra/runner-codex-shim-fix-20261008/progress.md. Codex prompt smoke passed on Windows; resume FINAL_VERIFY and token-refresh continuity checks.",
+    "waiting_predicate": "Windows-hosted Runner workflow for the repaired candidate completes; independent implementation work may proceed while it runs."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -231,7 +244,7 @@
         "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -356,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -394,6 +407,117 @@
     "previous_state": null,
     "state_evidence": [],
     "updated_at": "2026-10-06T03:28:17.102236Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
+        },
+        {
+          "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
+        },
+        {
+          "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
+        },
+        {
+          "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
+        },
+        {
+          "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
+        },
+        {
+          "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
+        },
+        {
+          "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
+        },
+        {
+          "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
+        },
+        {
+          "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
+        },
+        {
+          "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
+        },
+        {
+          "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
+        },
+        {
+          "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
+        },
+        {
+          "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
+        },
+        {
+          "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
+        },
+        {
+          "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
+        },
+        {
+          "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
+        },
+        {
+          "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
+        }
+      ],
+      "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -1149,7 +1273,7 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T14:23:37.160250Z",
+  "updated_at": "2026-10-09T01:14:17.675090Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
