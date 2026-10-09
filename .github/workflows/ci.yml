@@ -74,7 +74,13 @@ jobs:
       - name: Install Tauri system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev ffmpeg
+      - name: Provide Tauri external binaries for tests
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          mkdir -p apps/tauri-shell/src-tauri/binaries
+          cp "$(command -v ffmpeg)" "apps/tauri-shell/src-tauri/binaries/ffmpeg-${target}"
+          cp "$(command -v ffprobe)" "apps/tauri-shell/src-tauri/binaries/ffprobe-${target}"
       - name: Test Tauri shell
         run: cargo test --locked --manifest-path apps/tauri-shell/src-tauri/Cargo.toml
 
@@ -185,6 +191,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev espeak ffmpeg
+      - name: Provide Tauri external binaries for checks
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          mkdir -p apps/tauri-shell/src-tauri/binaries
+          cp "$(command -v ffmpeg)" "apps/tauri-shell/src-tauri/binaries/ffmpeg-${target}"
+          cp "$(command -v ffprobe)" "apps/tauri-shell/src-tauri/binaries/ffprobe-${target}"
       - name: Install npm dependencies
         run: pnpm install --frozen-lockfile
       - name: Build Remotion render schemas
