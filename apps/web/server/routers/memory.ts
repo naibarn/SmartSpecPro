@@ -122,6 +122,7 @@ export const memoryRouter = router({
         query: input.query,
         topK: input.topK,
         embedding: embedding ?? undefined,
+        projectId,
       });
 
       const l2Triggered = typeof input.conversationId === "number" && l1Results.length < 3;

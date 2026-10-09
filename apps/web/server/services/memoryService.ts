@@ -1961,13 +1961,19 @@ export async function buildChatContext(
         ]);
 
         const queryEmbedding = useVectorSearch ? await generateQueryEmbedding(activeRetrievalQuery) : null;
-        const rules = await getRuleMemories(tenantIdForMemory!, userId, activePersonaId);
+        const rules = await getRuleMemories(
+          tenantIdForMemory!,
+          userId,
+          activePersonaId,
+          options?.projectId ?? null,
+        );
         const l1Results = await searchMemories({
           tenantId: tenantIdForMemory!,
           scopes: [{ type: "user", id: String(userId) }],
           query: activeRetrievalQuery,
           topK: useVectorSearch ? 10 : 5,
           embedding: queryEmbedding ?? undefined,
+          projectId: options?.projectId ?? null,
         });
 
         let l2Results: Array<{ chunk: { id: string; content: string; tokenCount: number } }> = [];

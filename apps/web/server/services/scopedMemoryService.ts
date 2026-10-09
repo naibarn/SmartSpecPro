@@ -5,7 +5,7 @@
  * visibility rules and priority-based multi-scope retrieval.
  */
 
-import { eq, and, inArray, sql, desc, or, ilike, type SQL } from "drizzle-orm";
+import { eq, and, inArray, sql, desc, or, ilike, isNull, type SQL } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   scopedMemories,
@@ -26,6 +26,8 @@ export interface SearchOptions {
   tenantId: string;
   scopes: MemoryScope[];
   query: string;
+  /** When supplied, limits prompt retrieval to global and matching-project memories. */
+  projectId?: string | null;
   topK?: number;
   keywordWeight?: number;
   vectorWeight?: number;
@@ -43,6 +45,13 @@ export interface PromptScopeOptions {
   initiatedByUserId?: number;
   projectId?: string | null;
   additionalScopes?: MemoryScope[];
+}
+
+/** Explicit null means a no-project context; omitted preserves memory-management search. */
+export function buildProjectContextCondition(projectId?: string | null): SQL | undefined {
+  if (projectId === undefined) return undefined;
+  if (projectId === null) return isNull(scopedMemories.projectId);
+  return or(isNull(scopedMemories.projectId), eq(scopedMemories.projectId, projectId));
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -268,21 +277,24 @@ export async function listMemories(
   ownerType: MemoryScope["type"],
   ownerId: string,
   limit = 50,
+  contextProjectId?: string | null,
 ): Promise<ScopedMemory[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  const conditions = [
+    eq(scopedMemories.tenantId, tenantId),
+    eq(scopedMemories.ownerType, ownerType),
+    eq(scopedMemories.ownerId, ownerId),
+  ];
+  const projectCondition = buildProjectContextCondition(contextProjectId);
+  if (projectCondition) conditions.push(projectCondition);
 
   try {
     return await db
       .select()
       .from(scopedMemories)
-      .where(
-        and(
-          eq(scopedMemories.tenantId, tenantId),
-          eq(scopedMemories.ownerType, ownerType),
-          eq(scopedMemories.ownerId, ownerId),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(desc(scopedMemories.updatedAt), desc(scopedMemories.createdAt))
       .limit(limit);
   } catch (error) {
@@ -354,13 +366,16 @@ export async function searchMemories(
   if (scopes.length === 0) return [];
 
   // Build scope filter: tenantId AND ((ownerType = X AND ownerId = Y) OR ...)
-  const scopeConditions = scopes.map(
+  const ownerConditions = scopes.map(
     (s) => sql`(${scopedMemories.ownerType} = ${s.type} AND ${scopedMemories.ownerId} = ${s.id})`,
   );
-  const scopeFilter = and(
+  const scopeConditions = [
     eq(scopedMemories.tenantId, tenantId),
-    sql`(${sql.join(scopeConditions, sql` OR `)})`,
-  )!;
+    sql`(${sql.join(ownerConditions, sql` OR `)})`,
+  ];
+  const projectCondition = buildProjectContextCondition(options.projectId);
+  if (projectCondition) scopeConditions.push(projectCondition);
+  const scopeFilter = and(...scopeConditions)!;
 
   // Keyword score using ts_rank
   const keywordScore = sql<number>`
@@ -447,14 +462,21 @@ export async function searchMemories(
     .slice(0, topK);
 }
 
-function buildScopeFilter(tenantId: string, scopes: MemoryScope[]) {
+export function buildScopeFilter(
+  tenantId: string,
+  scopes: MemoryScope[],
+  projectId?: string | null,
+) {
   const scopeConditions = scopes.map(
     (s) => sql`(${scopedMemories.ownerType} = ${s.type} AND ${scopedMemories.ownerId} = ${s.id})`,
   );
-  return and(
+  const conditions = [
     eq(scopedMemories.tenantId, tenantId),
     sql`(${sql.join(scopeConditions, sql` OR `)})`,
-  )!;
+  ];
+  const projectCondition = buildProjectContextCondition(projectId);
+  if (projectCondition) conditions.push(projectCondition);
+  return and(...conditions)!;
 }
 
 function normalizeScoreResult(
@@ -480,7 +502,7 @@ async function searchStructuredMemories(
   const query = options.query.trim();
   if (!query) return [];
 
-  const scopeFilter = buildScopeFilter(options.tenantId, options.scopes);
+  const scopeFilter = buildScopeFilter(options.tenantId, options.scopes, options.projectId);
   const queryLike = `%${query}%`;
   const projectBoost = options.projectId
     ? sql<number>`CASE WHEN ${scopedMemories.projectId} = ${options.projectId} THEN 1.0 ELSE 0.0 END`
@@ -593,10 +615,13 @@ async function searchGraphMemories(
     relatedConditions.push(sql`${scopedMemories.metadataJson}::text ILIKE ${`%${options.teamId}%`}`);
   }
 
-  const graphFilter = and(
+  const graphConditions: SQL[] = [
     eq(scopedMemories.tenantId, options.tenantId),
-    or(...relatedConditions),
-  );
+    or(...relatedConditions)!,
+  ];
+  const projectCondition = buildProjectContextCondition(options.projectId);
+  if (projectCondition) graphConditions.push(projectCondition);
+  const graphFilter = and(...graphConditions);
   if (!graphFilter) return [];
   const queryMatchScore = query
     ? sql<number>`CASE WHEN to_tsvector('english', ${scopedMemories.title} || ' ' || ${scopedMemories.content}) @@ plainto_tsquery('english', ${query}) THEN 0.35 ELSE 0.0 END`
@@ -644,6 +669,7 @@ async function searchGraphMemories(
 async function getWorkingSummaryMemories(
   tenantId: string,
   scopes: MemoryScope[],
+  projectId: string | null,
 ): Promise<MemorySearchResult[]> {
   const relevantScopes = uniqueScopes(
     scopes.filter((scope) => scope.type === "room" || scope.type === "team" || scope.type === "project"),
@@ -653,7 +679,7 @@ async function getWorkingSummaryMemories(
   const resultGroups = await Promise.all(
     relevantScopes.map(async (scope) => {
       try {
-        return await listMemories(tenantId, scope.type, scope.id, 16);
+        return await listMemories(tenantId, scope.type, scope.id, 16, projectId);
       } catch {
         return [];
       }
@@ -688,6 +714,7 @@ export async function getRuleMemories(
   tenantId: string,
   userId: number,
   _personaId?: string | null,
+  projectId?: string | null,
 ): Promise<ScopedMemory[]> {
   const db = await getDb();
   if (!db) return [];
@@ -698,6 +725,8 @@ export async function getRuleMemories(
     eq(scopedMemories.ownerId, String(userId)),
     eq(scopedMemories.memoryKind, "rule"),
   ];
+  const projectCondition = buildProjectContextCondition(projectId);
+  if (projectCondition) conditions.push(projectCondition);
 
   try {
     return await db
@@ -731,6 +760,7 @@ export async function retrieveForPrompt(
   embedding?: number[],
   options?: PromptScopeOptions,
 ): Promise<MemorySearchResult[]> {
+  const contextProjectId = options?.projectId ?? null;
   const scopes = buildPromptScopeList({
     assistantId,
     runId,
@@ -753,12 +783,13 @@ export async function retrieveForPrompt(
     tenantId,
     scopes,
     query,
+    projectId: contextProjectId,
     topK,
     embedding: effectiveEmbedding ?? undefined,
     keywordWeight: effectiveEmbedding ? 0.45 : 0.65,
     vectorWeight: effectiveEmbedding ? 0.55 : 0.35,
   });
-  const workingSummaryResults = await getWorkingSummaryMemories(tenantId, scopes);
+  const workingSummaryResults = await getWorkingSummaryMemories(tenantId, scopes, contextProjectId);
 
   const structuredResults = await searchStructuredMemories({
     tenantId,
@@ -766,7 +797,7 @@ export async function retrieveForPrompt(
     query,
     topK: Math.max(3, Math.floor(topK / 2)),
     embedding: effectiveEmbedding ?? undefined,
-    projectId: options?.projectId ?? null,
+    projectId: contextProjectId,
   });
 
   const graphResults = await searchGraphMemories({
@@ -779,7 +810,7 @@ export async function retrieveForPrompt(
     runId,
     roomId,
     teamId,
-    projectId: options?.projectId ?? null,
+    projectId: contextProjectId,
   });
 
   const merged = new Map<string, MemorySearchResult>();
