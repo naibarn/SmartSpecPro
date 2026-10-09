@@ -2,11 +2,11 @@
 # 205 — Spec 205 — SmartAIHub Runner Cross-Platform Runtime
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 162 unresolved of 162
-- Next action: Windows owner acceptance of review artifact 11612928361 followed by fresh authenticated session/capability/Codex and workspace/source readback.
-- Manifest generation: 25
+- Next action: Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.
+- Manifest generation: 27
 
 ## Source-declared status and relationship claims
 
