@@ -2955,7 +2955,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 15,
-      "next_action": "Windows owner acceptance of review artifact 11612928361 followed by fresh authenticated session/capability/Codex and workspace/source readback.",
+      "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/205-smartaihub-runner-cross-platform",

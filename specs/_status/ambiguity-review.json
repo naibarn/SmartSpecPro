@@ -11109,7 +11109,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
+      "canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -91801,7 +91801,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+      "canonical_sha": "79805356f9252e1ba6858d993dbcc42476788745",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -92193,8 +92193,8 @@
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-06T03:28:17.102236Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "Windows owner acceptance of review artifact 11612928361 followed by fresh authenticated session/capability/Codex and workspace/source readback.",
+      "lifecycle": "VALIDATION_PENDING",
+      "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "primary_blocker": {
         "class": "ACCEPTANCE",
@@ -101716,7 +101716,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "fb166fde1c364d24b5b70e85ec4eabe896215e7a",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -101804,9 +101804,9 @@
         "requirement REQ-8F6342670657 is OPEN",
         "requirement REQ-6EE519C1B13B is OPEN",
         "requirement REQ-CEACEE580AE9 is OPEN",
-        "requirement REQ-7B69F6E62344 is OPEN",
+        "requirement REQ-7B69F6E62344 is PARTIAL",
         "requirement REQ-1469D9D44215 is OPEN",
-        "requirement REQ-CC6F899DD48F is OPEN",
+        "requirement REQ-CC6F899DD48F is PARTIAL",
         "requirement REQ-99CFEF66B856 is OPEN",
         "requirement REQ-85C5709C4AE3 is OPEN",
         "requirement REQ-EDADA7E9DB8E is OPEN",
@@ -101971,8 +101971,7 @@
         "requirement REQ-CABED85A91E7 is OPEN",
         "requirement REQ-FB15FD17397D is OPEN",
         "requirement REQ-77CC51AB1B60 is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
