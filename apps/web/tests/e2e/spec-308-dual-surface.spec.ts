@@ -17,7 +17,7 @@ function procedureName(url: string): string {
   return new URL(url).pathname.replace(/^\/trpc\//, "").split(",")[0] ?? "";
 }
 
-async function mockAuthenticatedApi(page: Page, identity = TEST_IDENTITY) {
+async function mockAuthenticatedApi(page: Page, identity = TEST_IDENTITY, procedureLog: string[] = []) {
   await page.route("**/api/tenant/current", route => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -25,6 +25,7 @@ async function mockAuthenticatedApi(page: Page, identity = TEST_IDENTITY) {
   }));
   await page.route("**/trpc/**", async route => {
     const procedure = procedureName(route.request().url());
+    procedureLog.push(procedure);
     let data: unknown = null;
     if (procedure === "auth.me") data = identity;
     else if (procedure === "tenant.current") {
@@ -136,12 +137,27 @@ test("SPEC-308 Bell animates for a new event and retains its existing action", a
   await expect(page.getByText("Mock notification")).toBeVisible();
 });
 
-test("SPEC-308 settings persist appearance per authenticated tenant and user", async ({ page }) => {
-  await initializeAuthenticatedBrowser(page, 1024, 900);
+test("SPEC-308 settings expose five accessible choices and appearance changes stay local", async ({ page }) => {
+  const procedures: string[] = [];
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  await mockAuthenticatedApi(page, TEST_IDENTITY, procedures);
   await page.goto("/settings?tab=notifications");
   const appearance = page.getByTestId("assistant-appearance-preferences");
   await expect(appearance).toBeVisible();
-  await page.getByTestId("assistant-mascot-style-orbit").click();
+  const styleChoices = appearance.getByRole("radiogroup", { name: "Mascot style" }).getByRole("radio");
+  await expect(styleChoices).toHaveCount(5);
+  for (const style of ["droplet", "star", "shield", "chat", "orbit"]) {
+    await expect(appearance.getByRole("radio", { name: style, exact: true })).toBeVisible();
+  }
+  await appearance.getByRole("radio", { name: "orbit", exact: true }).click();
+  await expect(appearance.getByRole("radio", { name: "orbit", exact: true })).toHaveAttribute("aria-checked", "true");
+  expect(procedures.filter(procedure => procedure.startsWith("notificationPreferences.") && !procedure.endsWith("getPreferences"))).toEqual([]);
+
+  await appearance.getByRole("radio", { name: "orbit", exact: true }).click();
   const preference = await page.evaluate(() => {
     const key = `assistant-mascot:v2:${encodeURIComponent("tenant-spec-308-browser")}:${encodeURIComponent("30801")}`;
     return { key, value: localStorage.getItem(key) };
@@ -153,9 +169,31 @@ test("SPEC-308 settings persist appearance per authenticated tenant and user", a
   const otherIdentity = { ...TEST_IDENTITY, currentTenantId: "tenant-spec-308-other" };
   await mockAuthenticatedApi(page, otherIdentity);
   await page.reload();
-  await expect(page.getByTestId("assistant-mascot-style-droplet")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("radio", { name: "droplet", exact: true })).toHaveAttribute("aria-checked", "true");
   expect(await page.evaluate(() => localStorage.getItem("assistant-mascot:v2:tenant-spec-308-other:30801"))).toBeNull();
   expect(await page.evaluate(() => localStorage.getItem("assistant-mascot:v2:tenant-spec-308-browser:30801")).then(value => JSON.parse(value ?? "null").style)).toBe("orbit");
+});
+
+test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
+  const procedures: string[] = [];
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  await mockAuthenticatedApi(page, TEST_IDENTITY, procedures);
+  await page.goto("/settings?tab=notifications");
+  await expect(page.getByTestId("assistant-appearance-preferences")).toBeVisible();
+  const callsBeforeDemo = [...procedures];
+  await page.getByRole("button", { name: "Demo reminder balloon" }).click();
+  const balloon = page.locator(".assistant-reminder-balloon");
+  await expect(balloon).toBeVisible();
+  expect(procedures).toEqual(callsBeforeDemo);
+  await balloon.getByRole("button", { name: "Dismiss reminder" }).click();
+  await expect(balloon).toHaveCount(0);
+  expect(procedures).toEqual(callsBeforeDemo);
+  expect(procedures.filter(procedure => /notification.*(read|mark)|mark.*read/i.test(procedure))).toEqual([]);
+  // This is an isolated mock API simulation; it does not prove authenticated live acceptance.
 });
 
 test("SPEC-308 balloon CTA opens the existing notification Bell", async ({ page }) => {
