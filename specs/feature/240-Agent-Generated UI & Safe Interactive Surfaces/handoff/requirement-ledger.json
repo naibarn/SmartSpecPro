@@ -1,5 +1,5 @@
 {
-  "generation": 4,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -1785,26 +1785,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L672"
       ],
       "authority_source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L672",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "fb166fde1c364d24b5b70e85ec4eabe896215e7a",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "PR #423 merged at fb166fde1c364d24b5b70e85ec4eabe896215e7a: bounded CompiledGeneratedSurfaceV3 validation helper and tests."
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Implement the trusted proposal-to-CompiledGeneratedSurfaceV3 compiler and GeneratedUiHostProjectionV3 adapter at an authorized server caller; validate with runtime integration evidence.",
       "requirement_digest": "eb6faee67a9e6187bf98d78221df5cc671a2f454f4f23f4f39b1589815825d53",
       "requirement_id": "REQ-7B69F6E62344",
       "requirement_text": "**Schema compatibility:** `GeneratedSurfaceEnvelopeV1` and `SurfaceHostBindingV2` describe the earlier logical model. New implementation SHALL compile proposal→`CompiledGeneratedSurfaceV3`→`GeneratedUiHostProjectionV3` behind versioned compatibility adapters; do not serialize `V1` as the canonical persisted form and then attach unvalidated V2/V3 extension bags. Use JSON Schema fixtures and reject unknown privileged fields. No SQL schema is authorized by this type sketch without checking actual migrations.",
       "source_spec_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Vitest 4.1.11: 1 file / 23 tests passed on source e53097ec655ddc9be4dea7e67c30ef8ed909d815; source tree equals canonical fb166fde1c364d24b5b70e85ec4eabe896215e7a.",
+        "Scoped strict TypeScript compile of generatedSurfaceEnvelope.ts passed."
+      ],
+      "verification_method": "Focused Vitest and scoped TypeScript compile; no server compiler, caller, renderer, or runtime acceptance."
     },
     {
       "applicability": "UNASSESSED",
@@ -1829,26 +1834,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L678"
       ],
       "authority_source": "specs/feature/240-Agent-Generated UI & Safe Interactive Surfaces/spec.md#L678",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "fb166fde1c364d24b5b70e85ec4eabe896215e7a",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "PR #423 merged at fb166fde1c364d24b5b70e85ec4eabe896215e7a: bounded per-region patch digest, sequence/revision/source/manifest fences, atomic replacement validation, and snapshot reconciliation."
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Bind region patches to the server-published whole-surface snapshot fence and role/authorization revision at the trusted stream caller; test duplicate, late, gap, role-change, and coherent multi-region reconciliation.",
       "requirement_digest": "0396f4dc355895b8b6a64a9c985bda33dc53c181eb0ca22343e4abffc73223a5",
       "requirement_id": "REQ-CC6F899DD48F",
       "requirement_text": "A patch envelope MUST include `surfaceId`, `regionId`, `sequence`, `baseRegionRevision`, `nextRegionRevision`, `sourceDataRevision`, `manifestVersion`, validated operations, content digest and trace ID. Revisions are monotonically increasing **per region**, with one server-published whole-surface snapshot fence for coherent multi-region updates. Reject duplicate/late patches; on a gap, changed catalog, role change or failed digest, stop applying patches and obtain a newly authorized snapshot. Do not apply half a table update with an obsolete visible total. High-risk controls remain disabled during reconciliation.",
       "source_spec_digest": "3ff39bf3127a944bf756138afff6da374764c6fd57a28a8d06364b74736ba889",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Vitest 4.1.11: 1 file / 23 tests passed on source e53097ec655ddc9be4dea7e67c30ef8ed909d815; source tree equals canonical fb166fde1c364d24b5b70e85ec4eabe896215e7a.",
+        "Scoped strict TypeScript compile of generatedSurfaceEnvelope.ts passed."
+      ],
+      "verification_method": "Focused Vitest and scoped TypeScript compile; caller-level snapshot fence and role-change behavior remain unimplemented."
     },
     {
       "applicability": "UNASSESSED",
