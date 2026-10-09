@@ -81,6 +81,17 @@ jobs:
           mkdir -p apps/tauri-shell/src-tauri/binaries
           cp "$(command -v ffmpeg)" "apps/tauri-shell/src-tauri/binaries/ffmpeg-${target}"
           cp "$(command -v ffprobe)" "apps/tauri-shell/src-tauri/binaries/ffprobe-${target}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv for LiteRT-LM runtime preparation
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install uv
+      - name: Prepare on-demand LiteRT-LM resource bundle
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand --target "${target}"
       - name: Test Tauri shell
         run: cargo test --locked --manifest-path apps/tauri-shell/src-tauri/Cargo.toml
 
@@ -197,6 +208,17 @@ jobs:
           mkdir -p apps/tauri-shell/src-tauri/binaries
           cp "$(command -v ffmpeg)" "apps/tauri-shell/src-tauri/binaries/ffmpeg-${target}"
           cp "$(command -v ffprobe)" "apps/tauri-shell/src-tauri/binaries/ffprobe-${target}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv for LiteRT-LM runtime preparation
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install uv
+      - name: Prepare on-demand LiteRT-LM resource bundle
+        run: |
+          target="$(rustc -vV | sed -n 's/^host: //p')"
+          python apps/tauri-shell/scripts/prepare-litert-lm-bundle.py --bundle-mode on-demand --target "${target}"
       - name: Install npm dependencies
         run: pnpm install --frozen-lockfile
       - name: Build Remotion render schemas
