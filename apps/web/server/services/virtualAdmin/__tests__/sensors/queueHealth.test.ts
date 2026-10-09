@@ -15,7 +15,9 @@ describe("QueueHealthSensor", () => {
     const { getQueueHealthStatus } = await import("../../../../services/queueHealthMonitor");
     (getQueueHealthStatus as any).mockResolvedValue({
       activeAlerts: [],
-      queues: { media: { waiting: 2 }, default: { waiting: 0 } },
+      queues: [
+        { name: "worker_jobs", length: 2, status: "ok" },
+      ],
     });
 
     const reading = await queueHealthSensor.collect();
@@ -26,8 +28,8 @@ describe("QueueHealthSensor", () => {
   it("returns degraded when queue has warnings", async () => {
     const { getQueueHealthStatus } = await import("../../../../services/queueHealthMonitor");
     (getQueueHealthStatus as any).mockResolvedValue({
-      activeAlerts: [{ severity: "warning", queue: "media" }],
-      queues: { media: { waiting: 150 } },
+      activeAlerts: [{ severity: "warning", queue: "worker_jobs" }],
+      queues: [{ name: "worker_jobs", length: 150, status: "warning" }],
     });
 
     const reading = await queueHealthSensor.collect();
@@ -37,8 +39,8 @@ describe("QueueHealthSensor", () => {
   it("returns critical when queue has critical alerts", async () => {
     const { getQueueHealthStatus } = await import("../../../../services/queueHealthMonitor");
     (getQueueHealthStatus as any).mockResolvedValue({
-      activeAlerts: [{ severity: "critical", queue: "media" }],
-      queues: { media: { waiting: 1000 } },
+      activeAlerts: [{ severity: "critical", queue: "worker_jobs" }],
+      queues: [{ name: "worker_jobs", length: 1000, status: "critical" }],
     });
 
     const reading = await queueHealthSensor.collect();
@@ -49,11 +51,10 @@ describe("QueueHealthSensor", () => {
     const { getQueueHealthStatus } = await import("../../../../services/queueHealthMonitor");
     (getQueueHealthStatus as any).mockResolvedValue({
       activeAlerts: [],
-      queues: { media: { waiting: 5 }, default: { waiting: 10 } },
+      queues: [{ name: "worker_jobs", length: 5, status: "ok" }],
     });
 
     const reading = await queueHealthSensor.collect();
-    expect(reading.metrics).toHaveProperty("queue_media_depth", 5);
-    expect(reading.metrics).toHaveProperty("queue_default_depth", 10);
+    expect(reading.metrics).toHaveProperty("queue_worker_jobs_depth", 5);
   });
 });
