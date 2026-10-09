@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { ASSISTANT_MASCOT_GLOBAL_ALLOW, isAssistantMascotEnabled } from "@/lib/assistantMascotFeatureGate";
 import { assistantMascotStorageKey, DEFAULT_ASSISTANT_MASCOT_PREFERENCES, loadAssistantMascotPreferences, type AssistantMascotPreferences } from "@/lib/assistantMascotPreferences";
@@ -63,19 +64,34 @@ export function AssistantAppearancePreferences() {
         <VStack as="div" gap={4}>
           <VStack as="fieldset" gap={3}>
             <legend><Text as="span" type="label">{t("assistantAppearance.style")}</Text></legend>
-            <HStack as="div" gap={3} wrap="wrap">
+            <RadioGroup
+              aria-label={t("assistantAppearance.style")}
+              value={preferences.style}
+              onValueChange={value => {
+                if (ASSISTANT_MASCOT_STYLES.includes(value as AssistantMascotPreferences["style"])) {
+                  update({ style: value as AssistantMascotPreferences["style"] });
+                }
+              }}
+              className="flex flex-wrap gap-3"
+              data-testid="assistant-mascot-style-options"
+            >
               {ASSISTANT_MASCOT_STYLES.map(style => (
-                <AstryxButton
+                <Label
                   key={style}
-                  label={style}
-                  type="button"
-                  variant={preferences.style === style ? "primary" : "secondary"}
-                  aria-pressed={preferences.style === style}
-                  onClick={() => update({ style })}
-                  data-testid={`assistant-mascot-style-${style}`}
-                ><HStack gap={2} align="center"><AssistantMascot style={style} size={32} /><Text>{style}</Text></HStack></AstryxButton>
+                  htmlFor={`assistant-mascot-style-${style}`}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border p-2"
+                  data-testid={`assistant-mascot-style-${style}-preview`}
+                >
+                  <RadioGroupItem
+                    id={`assistant-mascot-style-${style}`}
+                    value={style}
+                    aria-label={style}
+                  />
+                  <AssistantMascot style={style} size={32} />
+                  <Text>{style}</Text>
+                </Label>
               ))}
-            </HStack>
+            </RadioGroup>
           </VStack>
           <AstryxButton label={t("assistantAppearance.demo")} type="button" variant="secondary" onClick={requestAssistantMascotDemo} />
           <HStack as="div" gap={4} align="center" justify="between">
