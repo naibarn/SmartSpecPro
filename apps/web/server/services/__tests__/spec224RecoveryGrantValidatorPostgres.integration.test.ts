@@ -51,6 +51,10 @@ const validatorDelayObservedFile = resolve(
   validatorDelayDirectory,
   "validator-delay-observed"
 );
+const validatorTimingFile = resolve(
+  validatorDelayDirectory,
+  "validator-timing"
+);
 const serverHelper = resolve(
   repositoryRoot,
   "python-backend/tests/integration/support/spec224_validator_http_helper.py"
@@ -99,6 +103,7 @@ function helperEnv(input: Record<string, unknown>) {
     SPEC224_TEST_PG_PROXY_PID: process.env.SPEC224_TEST_PG_PROXY_PID,
     SPEC224_VALIDATOR_DELAY_FILE: validatorDelayFile,
     SPEC224_VALIDATOR_DELAY_OBSERVED_FILE: validatorDelayObservedFile,
+    SPEC224_VALIDATOR_TIMING_FILE: validatorTimingFile,
     PYTHONPATH: resolve(repositoryRoot, "python-backend"),
     SMARTSPEC_WEB_GATEWAY_TOKEN: process.env.SMARTSPEC_WEB_GATEWAY_TOKEN,
     SMARTSPEC_PROXY_TOKEN: "proxy-only-test-credential",
@@ -145,6 +150,42 @@ function spawnRevoke(input: Record<string, unknown>) {
           )
     );
   });
+  return { child, result };
+}
+
+function spawnGrantIssue(input: Record<string, unknown>) {
+  if (!python) throw new Error("SPEC224_TEST_PYTHON_REQUIRED");
+  const child = spawn(python, [grantHelper, "issue"], {
+    cwd: pythonProcessCwd,
+    env: helperEnv(input),
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", chunk => {
+    stdout += chunk;
+  });
+  child.stderr.setEncoding("utf8").on("data", chunk => {
+    stderr += chunk;
+  });
+  const result = new Promise<Record<string, unknown>>(
+    (resolveResult, rejectResult) => {
+      child.once("error", rejectResult);
+      child.once("close", code => {
+        if (code !== 0) {
+          rejectResult(
+            new Error(`SPEC224_TEST_ISSUE_FAILED:${code}:${stderr}`)
+          );
+          return;
+        }
+        try {
+          resolveResult(JSON.parse(stdout.trim().split("\n").at(-1) ?? "{}"));
+        } catch (error) {
+          rejectResult(error);
+        }
+      });
+    }
+  );
   return { child, result };
 }
 
@@ -215,6 +256,49 @@ async function waitForBlockedMutation(queryMarker: string) {
     await new Promise(resolveWait => setTimeout(resolveWait, 10));
   }
   throw new Error(`SPEC224_CANONICAL_MUTATION_NOT_BLOCKED:${queryMarker}`);
+}
+
+async function waitForIdleAdmissionTransaction() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql<
+      {
+        pid: number;
+        xact_start: Date;
+        observed_at: Date;
+        query: string;
+      }[]
+    >`
+      SELECT pid, xact_start, clock_timestamp() AS observed_at, query
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND pid <> pg_backend_pid()
+        AND xact_start IS NOT NULL
+        AND state = 'idle in transaction'
+        AND query ILIKE '%FOR SHARE%'
+      ORDER BY xact_start
+      LIMIT 1
+    `;
+    if (row) return row;
+    await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  }
+  throw new Error(
+    "SPEC224_ADMISSION_TRANSACTION_NOT_OBSERVED_IDLE_IN_TRANSACTION"
+  );
+}
+
+async function waitForTransactionRelease(pid: number) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const [row] = await sql<{ xact_start: Date | null; observed_at: Date }[]>`
+      SELECT xact_start, clock_timestamp() AS observed_at
+      FROM pg_stat_activity
+      WHERE pid = ${pid}
+    `;
+    if (!row || row.xact_start === null) return row?.observed_at ?? new Date();
+    await new Promise(resolveWait => setTimeout(resolveWait, 5));
+  }
+  throw new Error("SPEC224_ADMISSION_TRANSACTION_RELEASE_NOT_OBSERVED");
 }
 
 async function grantFenceHolderCount() {
@@ -632,7 +716,7 @@ describeDb(
       ).resolves.toMatchObject({ result: "INVALID_TENANT" });
     });
 
-    it("holds the shared grant fence through actual Node-to-Python validator timeout", async () => {
+    it("measures the real validator transaction and probes approval/audit insert races", async () => {
       const runId = randomUUID();
       fixtureJobId = randomUUID();
       const attemptId = randomUUID();
@@ -787,8 +871,14 @@ describeDb(
       const approvalWriter = postgres(connectionString, { max: 1 });
       const ownerWriter = postgres(connectionString, { max: 1 });
       const tenantWriter = postgres(connectionString, { max: 1 });
+      const responseWriter = postgres(connectionString, { max: 1 });
+      const auditWriter = postgres(connectionString, { max: 1 });
+      let phantomResponseId: string | undefined;
+      let phantomAuditId: string | undefined;
+      let issueAttempt: ReturnType<typeof spawnGrantIssue> | undefined;
       try {
         await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
         await writeFile(validatorDelayFile, "1200", { encoding: "ascii" });
         const admission = checkSpec224RuntimeAdmission({
           tenantId,
@@ -803,6 +893,17 @@ describeDb(
         });
         await waitForValidatorDelayObservation();
         expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+        const heldTransaction = await waitForIdleAdmissionTransaction();
+        phantomResponseId = randomUUID();
+        const responseInsertStartedAt = Date.now();
+        await responseWriter.begin(async tx => {
+          await tx`SET LOCAL lock_timeout = '300ms'`;
+          await tx`
+            INSERT INTO approval_responses (id, request_id, approver_id, decision, comment, created_at)
+            VALUES (${phantomResponseId}, ${grantId}, ${userId}, 'approved', 'FK key-share insert probe', NOW())
+          `;
+        });
+        const responseInsertMs = Date.now() - responseInsertStartedAt;
         const approvalMutation = approvalWriter
           .begin(async tx => {
             await tx`UPDATE /* spec224_approval_mutation */ approval_requests
@@ -840,7 +941,55 @@ describeDb(
           waitForBlockedMutation("spec224_owner_mutation"),
           waitForBlockedMutation("spec224_tenant_owner_mutation"),
         ]);
+        issueAttempt = spawnGrantIssue({
+          tenantId,
+          ownerId: userId,
+          idempotencyKey: `spec224-issue-race-${randomUUID()}`,
+          scope,
+        });
+        await waitForBlockedMutation("FROM tenants");
+        expect(issueAttempt.child.exitCode).toBeNull();
         await expect(admission).resolves.toMatchObject({ decision: "ALLOW" });
+        const transactionEndedAt = await waitForTransactionRelease(
+          heldTransaction.pid
+        );
+        const [timingStartNs, timingEndNs] = (
+          await readFile(validatorTimingFile, "ascii")
+        )
+          .trim()
+          .split("\n");
+        const validatorHttpMs = Number(
+          (BigInt(timingEndNs) - BigInt(timingStartNs)) / 1_000_000n
+        );
+        const transactionMs =
+          transactionEndedAt.getTime() - heldTransaction.xact_start.getTime();
+        expect(validatorHttpMs).toBeGreaterThanOrEqual(1_000);
+        expect(transactionMs).toBeGreaterThanOrEqual(validatorHttpMs);
+        expect(responseInsertMs).toBeLessThan(300);
+        console.info(
+          "SPEC224_LATENCY_EVIDENCE",
+          JSON.stringify({
+            databaseIdentity: getSpec224DisposablePostgresTarget().identity,
+            configuredDelayMs: 1200,
+            validatorHttpMs,
+            admissionTransactionMs: transactionMs,
+            approvalResponseFkInsertMs: responseInsertMs,
+            approvalResponseInsertBlocked: false,
+            officialIssueWriterBlockedOnTenant: true,
+          })
+        );
+        const issuedAfterCommit = await issueAttempt.result;
+        expect(typeof issuedAfterCommit.grantId).toBe("string");
+        issuedGrantIds.push(String(issuedAfterCommit.grantId));
+        const [issuedRowCounts] = await sql`
+          SELECT
+            (SELECT count(*)::int FROM approval_responses WHERE request_id = ${String(issuedAfterCommit.grantId)}) AS response_count,
+            (SELECT count(*)::int FROM audit_logs WHERE resource_id = ${String(issuedAfterCommit.grantId)} AND action = 'spec224.recovery_grant.issued') AS audit_count
+        `;
+        expect(issuedRowCounts).toMatchObject({
+          response_count: 1,
+          audit_count: 1,
+        });
         await Promise.all([
           approvalMutation,
           ownerMutation,
@@ -848,15 +997,79 @@ describeDb(
         ]);
         expect(await grantFenceHolderCount()).toBe(0);
         const successfulValidation = await sql`
-          SELECT "payloadJson" FROM worker_job_events
+          SELECT "payloadJson", "workerJobAttempt", "leaseFencingVersion"
+          FROM worker_job_events
           WHERE "workerJobId"=${fixtureJobId}
             AND "eventType"='SPEC224_RECOVERY_GRANT_VALIDATED'
         `;
         expect(
           successfulValidation.some(row => row.payloadJson?.result === "VALID")
         ).toBe(true);
+        expect(successfulValidation[0]).toMatchObject({
+          workerJobAttempt: 1,
+          leaseFencingVersion: "4",
+        });
+
+        const [responseApproverCount] = await sql`
+          SELECT count(DISTINCT approver_id)::int AS count
+          FROM approval_responses
+          WHERE request_id = ${grantId} AND decision = 'approved'
+        `;
+        expect(responseApproverCount.count).toBe(1);
+        await sql`DELETE FROM approval_responses WHERE id = ${phantomResponseId}`;
+        phantomResponseId = undefined;
 
         await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
+        await writeFile(validatorDelayFile, "1200", { encoding: "ascii" });
+        const duplicateAuditAdmission = checkSpec224RuntimeAdmission({
+          tenantId,
+          workerJobId: fixtureJobId,
+          lease: {
+            jobId: fixtureJobId,
+            attemptId,
+            leaseToken,
+            fencingVersion: 4,
+            expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+          },
+        });
+        await waitForValidatorDelayObservation();
+        await waitForIdleAdmissionTransaction();
+        phantomAuditId = randomUUID();
+        const auditInsertStartedAt = Date.now();
+        await auditWriter.begin(async tx => {
+          await tx`SET LOCAL lock_timeout = '300ms'`;
+          await tx`
+            INSERT INTO audit_logs (id, user_id, user_role, action, resource_type, resource_id, details)
+            SELECT ${phantomAuditId}, user_id, user_role, action, resource_type, resource_id, details
+            FROM audit_logs
+            WHERE resource_id = ${grantId}
+              AND resource_type = 'spec224_recovery_grant'
+              AND action = 'spec224.recovery_grant.issued'
+            LIMIT 1
+          `;
+        });
+        const auditInsertMs = Date.now() - auditInsertStartedAt;
+        expect(auditInsertMs).toBeLessThan(300);
+        await expect(duplicateAuditAdmission).resolves.toEqual({
+          decision: "DENY",
+          reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
+        });
+        console.info(
+          "SPEC224_PHANTOM_INSERT_EVIDENCE",
+          JSON.stringify({
+            approvalResponseInsert: "FK_KEY_SHARE_COMPATIBLE_WITH_FOR_SHARE",
+            approvalDecisionEffect: "NO_CHANGE_OWNER_APPROVER_DISTINCT_SET",
+            issuanceAuditInsert: "UNBLOCKED_NO_GAP_LOCK",
+            duplicateIssuanceAuditEffect: "PYTHON_QUERY_FAILURE_FAIL_CLOSED",
+            auditInsertMs,
+          })
+        );
+        await sql`DELETE FROM audit_logs WHERE id = ${phantomAuditId}`;
+        phantomAuditId = undefined;
+
+        await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
         await writeFile(validatorDelayFile, "6500", { encoding: "ascii" });
         const startedAt = Date.now();
         const timeoutAdmission = checkSpec224RuntimeAdmission({
@@ -872,19 +1085,52 @@ describeDb(
         });
         await waitForValidatorDelayObservation();
         expect(await grantFenceHolderCount()).toBeGreaterThan(0);
+        const timeoutTransaction = await waitForIdleAdmissionTransaction();
+        const timeoutRequestObservedAt = Date.now();
         await expect(timeoutAdmission).resolves.toEqual({
           decision: "DENY",
           reason: "DENIED_ADMISSION_AUTHORITY_UNAVAILABLE",
         });
+        const timeoutElapsedMs = Date.now() - timeoutRequestObservedAt;
+        const timeoutTransactionEndedAt = await waitForTransactionRelease(
+          timeoutTransaction.pid
+        );
+        const timeoutTransactionMs =
+          timeoutTransactionEndedAt.getTime() -
+          timeoutTransaction.xact_start.getTime();
         expect(Date.now() - startedAt).toBeGreaterThanOrEqual(4_500);
+        expect(timeoutTransactionMs).toBeGreaterThanOrEqual(4_500);
         expect(await grantFenceHolderCount()).toBe(0);
+        console.info(
+          "SPEC224_TIMEOUT_LATENCY_EVIDENCE",
+          JSON.stringify({
+            configuredValidatorDelayMs: 6500,
+            clientTimeoutMs: timeoutElapsedMs,
+            admissionTransactionMs: timeoutTransactionMs,
+            grantFenceReleased: true,
+          })
+        );
         await rm(validatorDelayFile, { force: true });
       } finally {
         await rm(validatorDelayFile, { force: true });
+        await rm(validatorDelayObservedFile, { force: true });
+        await rm(validatorTimingFile, { force: true });
+        if (phantomResponseId) {
+          await sql`DELETE FROM approval_responses WHERE id = ${phantomResponseId}`;
+        }
+        if (phantomAuditId) {
+          await sql`DELETE FROM audit_logs WHERE id = ${phantomAuditId}`;
+        }
+        if (issueAttempt?.child.exitCode === null) {
+          issueAttempt.child.kill("SIGTERM");
+          await issueAttempt.result.catch(() => undefined);
+        }
         await Promise.all([
           approvalWriter.end({ timeout: 5 }),
           ownerWriter.end({ timeout: 5 }),
           tenantWriter.end({ timeout: 5 }),
+          responseWriter.end({ timeout: 5 }),
+          auditWriter.end({ timeout: 5 }),
         ]);
       }
       const validations = await sql`

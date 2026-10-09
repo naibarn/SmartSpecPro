@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sys
+import time
 from pathlib import Path
 
 import uvicorn
@@ -34,7 +35,10 @@ async def main() -> None:
     async def controlled_validator_delay(request, call_next):
         delay_file = os.environ.get("SPEC224_VALIDATOR_DELAY_FILE", "")
         observed_file = os.environ.get("SPEC224_VALIDATOR_DELAY_OBSERVED_FILE", "")
-        if request.url.path == target and delay_file and Path(delay_file).is_file():
+        timing_file = os.environ.get("SPEC224_VALIDATOR_TIMING_FILE", "")
+        is_validator_request = request.url.path == target
+        started_ns = time.monotonic_ns() if is_validator_request else 0
+        if is_validator_request and delay_file and Path(delay_file).is_file():
             try:
                 delay_ms = int(Path(delay_file).read_text(encoding="ascii").strip())
             except (OSError, ValueError):
@@ -43,7 +47,12 @@ async def main() -> None:
                 Path(observed_file).write_text("observed", encoding="ascii")
             if 0 < delay_ms <= 10_000:
                 await asyncio.sleep(delay_ms / 1000)
-        return await call_next(request)
+        response = await call_next(request)
+        if is_validator_request and timing_file:
+            Path(timing_file).write_text(
+                f"{started_ns}\n{time.monotonic_ns()}\n", encoding="ascii"
+            )
+        return response
 
     server = uvicorn.Server(
         uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error", access_log=False)
