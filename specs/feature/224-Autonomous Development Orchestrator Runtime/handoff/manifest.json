@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "fad61d4be74557872d03cbbfcd09986c621eb3fd",
+    "expected_canonical_sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "Design and verify an authority-owned bounded validation-proof contract that allows Python validation before the protected transaction while preserving a single Python authorization engine and complete commit-time binding/revocation checks. Reuse already approved signing authority if present; otherwise retain in-transaction HTTP and identify the exact missing authority.",
-    "next_ready_workunit": "SPEC224_VALIDATOR_LATENCY_REDUCTION_CONTRACT",
+    "next_action": "Retain the bounded Python validator inside the protected PostgreSQL transaction. Revisit optimization only if authorized production telemetry demonstrates material lock contention or an existing canonical Python-side validation mechanism can prove equivalent commit-time authority without another policy engine. No production telemetry or live dispatch was available in this workunit.",
+    "next_ready_workunit": "SPEC224_PRODUCTION_LATENCY_OBSERVATION",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "origin/main is fad61d4be74557872d03cbbfcd09986c621eb3fd. PR #406 integrated commit-time canonical grant row locking and Python request/response/issuance-audit checks. Disposable PostgreSQL 15.17 evidence includes actual Node-to-Python HTTP, approval/user/tenant mutation waits, protected-start row-lock race, Python approval/audit tamper denial, validator timeout denial, and 23 focused Node unit tests. HTTP remains inside the protected transaction; do not move it until SPEC224_VALIDATOR_LATENCY_REDUCTION_CONTRACT establishes a safe authority-owned proof. Keep REMOTE_TEST_TRUSTED/PRODUCTION_TRUSTED denied; Windows/Linux physical Runner readiness and live dispatch remain separate.",
+    "resume_point": "origin/main is 4d1ca5535af139a799fd8e92ab809b3417675238 (PR #408). On the exact integrated SHA, actual Node-to-Python HTTP plus disposable PostgreSQL 15.17 passed 7/7; measured 1200ms injected delay as 1212ms validator HTTP and 1250ms admission transaction; an FK-backed ApprovalResponse insert completed in 15ms under FOR SHARE; canonical Python issuance waited on tenant FOR UPDATE; duplicate AuditLog insert completed in 13ms without a gap lock and caused Python validation to fail closed; 6500ms delay hit the 5000ms client timeout at 5025ms and released the grant fence. Focused unit/schema/migration tests passed 131/131. Migration 0388 supplies the worker_job_events columns/trigger missing only from the frozen 0000-0002 fixture. Decision: NO-GO for moving HTTP or adding a proof/signing system; measurements are disposable-host only. Keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied; Windows/Linux readiness, live dispatch, settlement and deployment remain separate unverified gates. No further independently executable validator optimization is justified without production telemetry; next workunit is observation only.",
     "waiting_predicate": "Reactivate trust-adapter work only when an authenticated owner decision names exact existing issuer principal, approved signing operation/key, storage account/bucket/prefix, distinct writer/verifier identities and permissions, tenant/project/environment/profile scope, freshness/revocation/retention policy, and durable approval reference. Reactivate Windows acceptance when the 0.2.26 review build is installed, browser reconnect/replacement is approved, and a fresh Control Plane session/capability snapshot plus Codex execution readiness is captured."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 21,
+  "generation": 22,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,9 +1123,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fad61d4be74557872d03cbbfcd09986c621eb3fd",
+    "canonical_sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
     "integrated": true,
-    "integrated_at": "2026-10-09T08:39:56Z"
+    "integrated_at": "2026-10-09T09:11:25Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3090,14 +3090,26 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T08:42:31.511172Z",
+  "updated_at": "2026-10-09T09:14:03.541134Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "NOT_RUN",
+    "evidence": [
+      "PR #408 / commit 4d1ca5535af139a799fd8e92ab809b3417675238",
+      "apps/web/server/services/__tests__/spec224RecoveryGrantValidatorPostgres.integration.test.ts (actual Node-to-Python HTTP; isolated PostgreSQL 15.17)",
+      "apps/web/server/services/__tests__/spec224RuntimeAdmission.test.ts",
+      "apps/web/server/services/__tests__/spec224RecoveryGrantValidator.test.ts",
+      "apps/web/server/services/__tests__/spec224ProtectedExecutionStart.test.ts",
+      "apps/web/drizzle/schema.test.ts",
+      "apps/web/drizzle/unifiedJobControlPlaneMigration.test.ts",
+      "apps/web/drizzle/__tests__/spec278DurableExecutionSessionsMigration.test.ts"
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "quick",
+      "integration"
+    ],
+    "sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
