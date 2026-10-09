@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 import {
   scopedMemories,
   memoryPromotions,
@@ -104,6 +105,48 @@ describe("scopedMemoryService", () => {
       };
       expect(opts.topK).toBeUndefined();
       expect(opts.keywordWeight).toBeUndefined();
+    });
+  });
+
+  describe("project context isolation", () => {
+    const dialect = new PgDialect();
+
+    it("keeps global and same-project memories in a project context", () => {
+      const condition = service.buildProjectContextCondition("project-a");
+      const compiled = dialect.sqlToQuery(condition!);
+
+      expect(compiled.sql).toMatch(/"projectId" is null/i);
+      expect(compiled.sql).toMatch(/"projectId" = \$1/i);
+      expect(compiled.params).toEqual(["project-a"]);
+    });
+
+    it("keeps only global memories when the context has no project", () => {
+      const condition = service.buildProjectContextCondition(null);
+      const compiled = dialect.sqlToQuery(condition!);
+
+      expect(compiled.sql).toMatch(/"projectId" is null/i);
+      expect(compiled.sql).not.toMatch(/"projectId" =/i);
+      expect(compiled.params).toEqual([]);
+    });
+
+    it("does not change explicit memory-management searches without a context filter", () => {
+      expect(service.buildProjectContextCondition()).toBeUndefined();
+    });
+
+    it("adds the context boundary to owner and tenant filtering", () => {
+      const condition = service.buildScopeFilter(
+        "tenant-1",
+        [{ type: "user", id: "42" }],
+        "project-a",
+      );
+      const compiled = dialect.sqlToQuery(condition);
+
+      expect(compiled.sql).toContain('"tenantId"');
+      expect(compiled.sql).toContain('"ownerType"');
+      expect(compiled.sql).toContain('"ownerId"');
+      expect(compiled.sql).toContain('"projectId" is null');
+      expect(compiled.params).toContain("tenant-1");
+      expect(compiled.params).toContain("project-a");
     });
   });
 
