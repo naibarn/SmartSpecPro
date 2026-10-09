@@ -46,6 +46,19 @@ jobs:
       - name: Build generated workspace schema used by web routes
         run: pnpm --filter @smartspec/remotion-render build
 
+      - name: Run focused SPEC-308 component regressions
+        working-directory: apps/web
+        run: >-
+          pnpm test --
+          client/src/components/GlobalAlerts.notificationBell.test.tsx
+          client/src/components/assistant-mascot/AssistantMascot.test.tsx
+          client/src/components/guardian/__tests__/FeedbackButton.test.tsx
+          client/src/components/settings/AssistantAppearancePreferences.test.tsx
+          client/src/components/settings/NotificationPreferencesPanel.test.tsx
+          client/src/lib/notificationAttention.test.ts
+          client/src/lib/assistantMascotPreferences.test.ts
+          client/src/lib/assistantMascotFeatureGate.test.ts
+
       - name: Install Chromium and system dependencies
         run: pnpm --filter @smartspec/web exec playwright install --with-deps chromium
 
