@@ -297,6 +297,7 @@ test("SPEC-308 configured normal motion does not animate unverified SSE", async 
 });
 
 test("SPEC-308 manual motion off disables decorative balloon entrance", async ({ page }) => {
+  await installMockEventSource(page);
   await page.addInitScript(() => {
     localStorage.setItem("assistant-mascot:v2:tenant-spec-308-browser:30801", JSON.stringify({
       version: 2,
@@ -405,14 +406,14 @@ test("SPEC-308 unverified SSE does not replace demo hint and mascot still opens 
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30805 }));
   await expect(balloon).toBeVisible();
   await page.clock.fastForward(2_100);
-  await expect(balloon).toHaveCount(1);
+  await expect(balloon).toBeVisible();
   await expect(launcher.locator(".assistant-mascot-greeting-subtle")).toHaveCount(0);
   const launcherBox = await launcher.boundingBox();
   const balloonBox = await balloon.boundingBox();
   const launcherRight = launcherBox!.x + launcherBox!.width;
   const balloonRight = balloonBox!.x + balloonBox!.width;
   const nearestAlignedEdge = Math.min(Math.abs(launcherBox!.x - balloonBox!.x), Math.abs(launcherRight - balloonRight));
-  expect(nearestAlignedEdge).toBeLessThanOrEqual(24);
+  expect(nearestAlignedEdge, `launcher=${JSON.stringify(launcherBox)} balloon=${JSON.stringify(balloonBox)}`).toBeLessThanOrEqual(24);
   expect(balloonBox!.x).toBeGreaterThanOrEqual(0);
   expect(balloonBox!.y).toBeGreaterThanOrEqual(0);
   expect(balloonBox!.x + balloonBox!.width).toBeLessThanOrEqual(390);
@@ -484,4 +485,10 @@ test("SPEC-308 Thai launcher and reminder labels are localized", async ({ page }
   const balloon = page.locator(".assistant-reminder-balloon");
   await expect(balloon.getByText("มีแจ้งเตือนใหม่ อย่าลืมเข้าดู")).toBeVisible();
   await expect(balloon.getByRole("button", { name: "ดูแจ้งเตือน" })).toBeVisible();
+  await page.getByRole("button", { name: "เปิด AI Chat และ Feedback" }).click();
+  const dialog = page.getByRole("dialog", { name: "แชต AI และความคิดเห็น" });
+  await expect(dialog.getByRole("tab", { name: "ควบคุมงาน" })).toBeVisible();
+  await dialog.getByRole("tab", { name: "ส่งความคิดเห็น" }).click();
+  await expect(dialog.getByPlaceholder("หัวข้อ")).toBeVisible();
+  await expect(dialog.getByLabel("ส่งเป็นเรื่องเร่งด่วน")).toBeVisible();
 });

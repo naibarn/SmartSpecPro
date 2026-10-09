@@ -674,7 +674,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         setPendingUploadTicketId(data.id);
         return;
       }
-      toast.success("Feedback submitted! Thank you.");
+      toast.success(t("feedback.submitted"));
       resetForm();
     },
     onError: (err) => {
@@ -686,7 +686,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const ensureChatConversation = useCallback(async () => {
     if (!user) {
-      throw new Error("Sign in to use AI Chat");
+      throw new Error(t("guest.signInRequired"));
     }
     if (chatConversationId) {
       return chatConversationId;
@@ -699,7 +699,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     const requestIdentity = conversationIdentity;
     let request: Promise<number>;
     request = createChatConversationMutation
-      .mutateAsync({ title: "AI Chat Assistant" })
+      .mutateAsync({ title: t("feedback.conversationTitle") })
       .then(result => {
         if (
           requestScopeGeneration !== chatConversationScopeGenerationRef.current ||
@@ -718,7 +718,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       });
     chatConversationPromiseRef.current = request;
     return request;
-  }, [chatConversationId, createChatConversationMutation, conversationIdentity, user]);
+  }, [chatConversationId, createChatConversationMutation, conversationIdentity, t, user]);
 
   useEffect(() => {
     if (
@@ -815,19 +815,26 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim() || isSubmitting || isConfirmingUrgent) return;
+    const submitScopeGeneration = chatConversationScopeGenerationRef.current;
+    const submitIdentity = conversationIdentity;
 
     if (isUrgent) {
       setIsConfirmingUrgent(true);
       const confirmed = await confirm({
-        title: "Send urgent feedback?",
-        description:
-          "This will immediately alert every eligible admin with a critical center-screen notification. Use this only for issues that need immediate attention.",
-        confirmText: "Send Urgent Feedback",
-        cancelText: "Go Back",
+        title: t("feedback.urgentConfirmTitle"),
+        description: t("feedback.urgentConfirmDescription"),
+        confirmText: t("feedback.urgentConfirmSend"),
+        cancelText: t("feedback.urgentConfirmCancel"),
         tone: "danger",
       });
       setIsConfirmingUrgent(false);
       if (!confirmed) return;
+    }
+    if (
+      submitScopeGeneration !== chatConversationScopeGenerationRef.current ||
+      submitIdentity !== conversationIdentityRef.current
+    ) {
+      return;
     }
 
     submitMutation.mutate({
@@ -847,9 +854,11 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     isConfirmingUrgent,
     isSubmitting,
     isUrgent,
+    conversationIdentity,
     pendingDiagnostics,
     submitMutation,
     ticketType,
+    t,
     title,
   ]);
 
@@ -857,10 +866,10 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     if (!pendingUploadTicketId) return;
     const ok = await uploadFiles(pendingUploadTicketId);
     if (ok) {
-      toast.success("Feedback submitted! Thank you.");
+      toast.success(t("feedback.submitted"));
       resetForm();
     }
-  }, [pendingUploadTicketId, files, resetForm]);
+  }, [pendingUploadTicketId, files, resetForm, t]);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const fileArray = Array.from(newFiles);
@@ -869,7 +878,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     setFiles((prev) => {
       const remaining = MAX_FILES - prev.length;
       if (remaining <= 0) {
-        errors.push(`Maximum ${MAX_FILES} files allowed`);
+        errors.push(t("feedback.maxFilesAllowed", { count: MAX_FILES }));
         return prev;
       }
 
@@ -877,15 +886,15 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       for (const file of fileArray.slice(0, remaining)) {
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
         if (!ALLOWED_EXTENSIONS.has(ext)) {
-          errors.push(`${file.name}: type not allowed (jpg, png, webp, pdf, md)`);
+          errors.push(t("feedback.fileTypeNotAllowed", { name: file.name }));
           continue;
         }
         if (file.size === 0) {
-          errors.push(`${file.name}: file is empty`);
+          errors.push(t("feedback.fileEmpty", { name: file.name }));
           continue;
         }
         if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: too large (max 5 MB)`);
+          errors.push(t("feedback.fileTooLarge", { name: file.name }));
           continue;
         }
         valid.push(file);
@@ -893,7 +902,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
       if (fileArray.length > remaining) {
         const skipped = fileArray.slice(remaining).map((f) => f.name).join(", ");
-        errors.push(`Skipped (limit reached): ${skipped}`);
+        errors.push(t("feedback.filesSkipped", { names: skipped }));
       }
 
       if (errors.length > 0) {
@@ -902,7 +911,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
       return [...prev, ...valid];
     });
-  }, []);
+  }, [t]);
 
   const removeFile = useCallback((index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -1116,11 +1125,11 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       >
         <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
           <DialogTitle className="pr-10 text-left text-base sm:text-lg">
-            {user && !authLoading ? "AI Chat & Feedback" : t("chat.guest.panelTitle")}
+            {user && !authLoading ? t("feedback.panelTitle") : t("chat.guest.panelTitle")}
           </DialogTitle>
         </DialogHeader>
         <nav
-          aria-label="AI Chat and Feedback sections"
+          aria-label={t("feedback.sections")}
           role="tablist"
           className={`grid shrink-0 ${user && !authLoading ? "grid-cols-3" : "grid-cols-2"} gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2`}
         >
@@ -1133,7 +1142,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             onClick={() => selectHelpPanel("chat")}
           >
             <Bot className="h-4 w-4" aria-hidden="true" />
-            {user && !authLoading ? "AI Chat" : t("chat.guest.chatTab")}
+            {user && !authLoading ? t("feedback.chatTab") : t("chat.guest.chatTab")}
           </Button>
           {user && !authLoading && <Button
             type="button"
@@ -1144,7 +1153,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             onClick={() => selectHelpPanel("control-plane")}
           >
             <Network className="h-4 w-4" aria-hidden="true" />
-            Task Control
+            {t("feedback.taskControlTab")}
           </Button>}
           <Button
             type="button"
@@ -1155,11 +1164,11 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             onClick={() => selectHelpPanel("feedback")}
           >
             <Siren className="h-4 w-4" aria-hidden="true" />
-            {user && !authLoading ? "Send Feedback" : t("chat.guest.feedbackTab")}
+            {user && !authLoading ? t("feedback.feedbackTab") : t("chat.guest.feedbackTab")}
           </Button>
         </nav>
 
-        <section hidden={activePanel !== "chat"} className="min-h-0 flex-1 overflow-hidden" aria-label="AI Chat Assistant">
+        <section hidden={activePanel !== "chat"} className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.chatSection")}>
           {authLoading ? (
             <section className="flex min-h-[16rem] flex-col items-center justify-center gap-3 p-6 text-center" aria-live="polite">
               <p className="text-sm text-muted-foreground">{t("chat.guest.checkingSession")}</p>
@@ -1208,7 +1217,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         </section>
 
         {user && !authLoading && activePanel === "control-plane" && (
-          <section className="min-h-0 flex-1 overflow-hidden" aria-label="Task Control Center">
+          <section className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.taskControlSection")}>
             <UniversalControlPlanePanel
               conversationId={chatConversationId}
               onClose={() => selectHelpPanel("chat")}
@@ -1223,9 +1232,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           {/* Show retry banner if ticket created but upload failed */}
           {pendingUploadTicketId && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
-              <p className="text-amber-800 font-medium">Ticket created but file upload failed</p>
+              <p className="text-amber-800 font-medium">{t("feedback.ticketCreatedUploadFailed")}</p>
               <p className="text-amber-600 text-xs mt-1">
-                You can retry uploading or skip to submit without files.
+                {t("feedback.uploadRetryOrSkip")}
               </p>
               <div className="flex gap-2 mt-2">
                 <Button
@@ -1236,18 +1245,18 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   onClick={handleRetryUpload}
                 >
                   <RefreshCw className={`h-3 w-3 ${uploading ? "animate-spin" : ""}`} />
-                  {uploading ? "Uploading..." : "Retry Upload"}
+                  {uploading ? t("feedback.uploading") : t("feedback.retryUpload")}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7 text-xs"
                   onClick={() => {
-                    toast.success("Feedback submitted without attachments.");
+                    toast.success(t("feedback.submittedWithoutAttachments"));
                     resetForm();
                   }}
                 >
-                  Skip
+                  {t("feedback.skipAttachments")}
                 </Button>
               </div>
             </div>
@@ -1257,24 +1266,24 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             <>
               <Select value={ticketType} onValueChange={setTicketType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t("feedback.typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bug">Bug Report</SelectItem>
-                  <SelectItem value="feature_request">Feature Request</SelectItem>
-                  <SelectItem value="observation">Observation</SelectItem>
-                  <SelectItem value="question">Question</SelectItem>
+                  <SelectItem value="bug">{t("feedback.types.bug")}</SelectItem>
+                  <SelectItem value="feature_request">{t("feedback.types.featureRequest")}</SelectItem>
+                  <SelectItem value="observation">{t("feedback.types.observation")}</SelectItem>
+                  <SelectItem value="question">{t("feedback.types.question")}</SelectItem>
                 </SelectContent>
               </Select>
               <Textarea
-                placeholder="Title"
+                placeholder={t("feedback.titlePlaceholder")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 rows={2}
                 className="min-h-16 break-words"
               />
               <Textarea
-                placeholder="Describe in detail..."
+                placeholder={t("feedback.descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -1285,12 +1294,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   <Siren className={`mt-0.5 h-4 w-4 shrink-0 ${isUrgent ? "text-red-600" : "text-muted-foreground"}`} />
                   <div className="min-w-0">
                     <label htmlFor="feedback-urgent-switch" className="text-sm font-medium cursor-pointer">
-                      Send as urgent
+                      {t("feedback.sendAsUrgent")}
                     </label>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {isUrgent
-                        ? "All eligible admins will receive a critical alert immediately."
-                        : "Normal feedback is reviewed through the regular queue."}
+                        ? t("feedback.urgentDescription")
+                        : t("feedback.normalDescription")}
                     </p>
                   </div>
                 </div>
@@ -1299,7 +1308,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   checked={isUrgent}
                   onCheckedChange={setIsUrgent}
                   disabled={isSubmitting || isConfirmingUrgent}
-                  aria-label="Send feedback as urgent"
+                  aria-label={t("feedback.sendAsUrgent")}
                 />
               </div>
             </>
@@ -1335,13 +1344,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
               />
               <Paperclip className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
-                {isDragOver ? "Drop files here" : "Drag & drop or click to attach files"}
+                {isDragOver ? t("feedback.dropFiles") : t("feedback.attachFiles")}
               </p>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                jpg, png, webp, pdf, md — max 5 MB each — up to {MAX_FILES} files
+                {t("feedback.fileLimits", { count: MAX_FILES })}
               </p>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                วางภาพจากคลิปบอร์ดได้ (Ctrl+V) สูงสุด {MAX_FILES} ไฟล์
+                {t("feedback.pasteImagesHint", { count: MAX_FILES })}
               </p>
             </div>
 
@@ -1360,7 +1369,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                     <button
                       type="button"
                       onClick={() => removeFile(idx)}
-                      aria-label={`Remove ${file.name}`}
+                      aria-label={t("feedback.removeFile", { name: file.name })}
                       className="text-muted-foreground hover:text-destructive shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -1368,7 +1377,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
                   </div>
                 ))}
                 <p className="text-[10px] text-muted-foreground">
-                  {files.length}/{MAX_FILES} files
+                  {t("feedback.fileCount", { count: files.length, max: MAX_FILES })}
                 </p>
               </div>
             )}
@@ -1379,12 +1388,11 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
           {pendingDiagnostics && !pendingUploadTicketId && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 break-words">
               <p className="break-words">
-                ระบบจะแนบข้อมูลวินิจฉัยทางเทคนิค (รหัสติดตาม, หน้าที่เกิดปัญหา, ข้อความ error)
-                ไปให้ผู้ดูแลโดยอัตโนมัติ
+                {t("feedback.diagnosticsNotice")}
               </p>
               {pendingDiagnostics.primaryError?.traceId && (
                 <p className="mt-1 break-all font-mono text-[10px] text-blue-600">
-                  traceId: {pendingDiagnostics.primaryError.traceId}
+                  {t("feedback.traceIdLabel")}: {pendingDiagnostics.primaryError.traceId}
                 </p>
               )}
             </div>
@@ -1397,12 +1405,12 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
               onClick={handleSubmit}
             >
               {uploading
-                ? "Uploading files..."
+                ? t("feedback.uploadingFiles")
                 : isConfirmingUrgent
-                  ? "Waiting for confirmation..."
+                  ? t("feedback.waitingForConfirmation")
                 : submitMutation.isPending
-                  ? "Submitting..."
-                  : "Submit Feedback"}
+                  ? t("feedback.submitting")
+                  : t("feedback.submit")}
             </Button>
           )}
           <button
@@ -1410,7 +1418,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
             className="text-xs text-muted-foreground hover:text-primary text-center w-full"
             onClick={() => { setMapContextDraft(null); setOpen(false); setLocation("/my-feedback"); }}
           >
-            View my submitted feedback &rarr;
+            {t("feedback.viewSubmitted")}
           </button>
           {user?.role === "admin" && (
             <button
