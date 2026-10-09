@@ -481,6 +481,7 @@ test("SPEC-308 unverified SSE does not replace demo hint and mascot still opens 
 });
 
 test("SPEC-308 reminder follows the launcher after drag and stays inside the viewport", async ({ page }) => {
+  await installMockEventSource(page);
   await page.clock.install();
   await initializeAuthenticatedBrowser(page, 390, 844);
   await page.goto("/chat");
