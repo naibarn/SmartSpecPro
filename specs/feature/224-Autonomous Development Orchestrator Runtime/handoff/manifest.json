@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2b576aaa5c29500155fcf3000891017bc3b54c8f",
+    "expected_canonical_sha": "65f60ae0795a30a8f95523822459c2ce42284d23",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
     "next_action": "Obtain an authenticated Platform/Security decision naming the existing server workload principal, approved signing operation/key resource, exact non-production evidence account/bucket/prefix, distinct writer/verifier identities, scoped tenant/profile policy, TTL/revocation/retention, and approval record. Then verify those resources read-only before implementing adapters.",
     "next_ready_workunit": "SPEC224_REMOTE_SOURCE_TRUST_AUTHORITY_APPROVAL",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "Read the 2026-10-09 authority inventory in orchestra/tasks/spec224-remote-source-trust-authority-20261009/implementation-handoff.md. Wrangler is unavailable and Worker config has activation disabled/local with no bindings, so Cloudflare account resource existence remains UNKNOWN. Continue at owner decision package; do not repeat verifier design or use test-only storage as trusted evidence. Keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied.",
+    "resume_point": "PR #390 is integrated at 65f60ae0795a30a8f95523822459c2ce42284d23. Read the 2026-10-09 authority inventory in orchestra/tasks/spec224-remote-source-trust-authority-20261009/implementation-handoff.md. Wrangler is unavailable and Worker config has activation disabled/local with no bindings, so Cloudflare account resource existence remains UNKNOWN. Continue at owner decision package; do not repeat verifier design or use test-only storage as trusted evidence. Keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied.",
     "waiting_predicate": "An authenticated owner response supplies exact existing principal/key/signing operation/storage identities and policy fields; all resources resolve through an approved read-only inventory path."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 18,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,16 +1123,17 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2b576aaa5c29500155fcf3000891017bc3b54c8f",
+    "canonical_sha": "65f60ae0795a30a8f95523822459c2ce42284d23",
     "integrated": true,
-    "integrated_at": "2026-10-08T23:52:41Z"
+    "integrated_at": "2026-10-09T00:31:45Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/authority-design.md#Read-only infrastructure inventory",
-      "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint"
+      "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint",
+      "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23"
     ],
     "updated_at": "2026-10-08T02:06:09.264229Z"
   },
@@ -1142,7 +1143,8 @@
       "previous_state": "VALIDATION_PENDING",
       "state_evidence": [
         "orchestra/tasks/spec224-remote-source-trust-authority-20261009/authority-design.md#Read-only infrastructure inventory",
-        "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint"
+        "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint",
+        "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23"
       ],
       "updated_at": "2026-10-08T02:06:09.264229Z"
     }
@@ -3084,7 +3086,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T00:28:54.896204Z",
+  "updated_at": "2026-10-09T00:31:52.236052Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
