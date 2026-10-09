@@ -43,6 +43,9 @@ jobs:
       - name: Install web workspace dependencies
         run: pnpm install --frozen-lockfile --filter @smartspec/web...
 
+      - name: Build generated workspace schema used by web routes
+        run: pnpm --filter @smartspec/remotion-render build
+
       - name: Install Chromium and system dependencies
         run: pnpm --filter @smartspec/web exec playwright install --with-deps chromium
 

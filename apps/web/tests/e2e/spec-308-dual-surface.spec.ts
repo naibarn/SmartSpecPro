@@ -144,13 +144,13 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
   const mutationCallsBeforeRefresh = [...procedures].filter(procedure =>
     /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
   );
-  const backgroundPage = await page.context().newPage();
-  await backgroundPage.goto("about:blank");
-  await page.bringToFront();
+  // The application query client listens for visibilitychange and refetches
+  // stale active queries when the page regains focus. Trigger that documented
+  // browser event directly; creating a second page is not reliable in headless CI.
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await expect.poll(() => tenantFlagResponses[tenantFlagResponses.length - 1]).toBe(false);
   await expect(launcher.locator("svg.lucide-message-square-plus")).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toHaveCount(0);
-  await backgroundPage.close();
 
   await expect(dialog).toBeVisible();
   await expect(page.getByRole("tab", { name: "Feedback" })).toHaveAttribute("aria-selected", "true");
