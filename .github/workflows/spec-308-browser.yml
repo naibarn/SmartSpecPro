@@ -48,8 +48,10 @@ jobs:
 
       - name: Run focused SPEC-308 component regressions
         working-directory: apps/web
+        env:
+          JWT_SECRET: test-jwt-secret-32-chars-minimum-1234567890
         run: >-
-          pnpm test --
+          pnpm exec vitest run
           client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx
           client/src/components/assistant-mascot/AssistantMascot.test.tsx
           client/src/components/guardian/__tests__/FeedbackButton.test.tsx
