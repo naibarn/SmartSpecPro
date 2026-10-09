@@ -28,17 +28,32 @@ export function AssistantAppearancePreferences() {
   const identity = user?.id && user.currentTenantId
     ? assistantMascotStorageKey(user.id, user.currentTenantId)
     : null;
-  const [preferences, setPreferences] = useState<AssistantMascotPreferences>(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+  const [loadedPreferences, setLoadedPreferences] = useState<{
+    identity: string | null;
+    preferences: AssistantMascotPreferences;
+  }>({
+    identity: null,
+    preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES,
+  });
+  const preferences = loadedPreferences.identity === identity
+    ? loadedPreferences.preferences
+    : DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
 
   useEffect(() => {
-    if (!enabled || !identity || typeof window === "undefined") return;
-    setPreferences(loadAssistantMascotPreferences(window.localStorage, identity));
+    if (!enabled || !identity || typeof window === "undefined") {
+      setLoadedPreferences({ identity: null, preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES });
+      return;
+    }
+    setLoadedPreferences({
+      identity,
+      preferences: loadAssistantMascotPreferences(window.localStorage, identity),
+    });
   }, [enabled, identity]);
 
   const update = (patch: Partial<AssistantMascotPreferences>) => {
     if (!enabled) return;
     const next = { ...preferences, ...patch, version: 2 as const };
-    setPreferences(next);
+    setLoadedPreferences({ identity, preferences: next });
     if (!identity || typeof window === "undefined") return;
     try {
       window.localStorage.setItem(identity, JSON.stringify(next));
@@ -85,10 +100,10 @@ export function AssistantAppearancePreferences() {
                   <RadioGroupItem
                     id={`assistant-mascot-style-${style}`}
                     value={style}
-                    aria-label={style}
+                    aria-label={t(`assistantAppearance.styles.${style}`)}
                   />
                   <AssistantMascot style={style} size={32} />
-                  <Text>{style}</Text>
+                  <Text>{t(`assistantAppearance.styles.${style}`)}</Text>
                 </Label>
               ))}
             </RadioGroup>

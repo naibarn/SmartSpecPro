@@ -230,7 +230,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1024 : window.innerWidth,
   );
-  const [mascotPreferences, setMascotPreferences] = useState(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+  const [loadedMascotPreferences, setLoadedMascotPreferences] = useState<{
+    identity: string | null;
+    preferences: typeof DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
+  }>({ identity: null, preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES });
+  const mascotPreferences = loadedMascotPreferences.identity === mascotIdentity
+    ? loadedMascotPreferences.preferences
+    : DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
   const [showMascotDemo, setShowMascotDemo] = useState(false);
   const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
   const [balloonSurfaceBlocked, setBalloonSurfaceBlocked] = useState(false);
@@ -240,6 +246,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     undefined,
     () => createInitialAttentionState({ scopeGeneration: 1, enabled: false }),
   );
+  const attentionScopeKeyRef = useRef(mascotIdentity);
+  const attentionScopeGenerationRef = useRef(1);
   // Holds the ticket ID when ticket was created but file upload failed
   const [pendingUploadTicketId, setPendingUploadTicketId] = useState<number | null>(null);
   // Diagnostics bundle from a "แจ้งปัญหา" system-error-toast report, if this
@@ -304,24 +312,37 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   useEffect(() => {
     if (!mascotEnabled || !mascotIdentity || typeof window === "undefined") {
-      setMascotPreferences(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+      setLoadedMascotPreferences({ identity: null, preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES });
       return;
     }
-    setMascotPreferences(loadAssistantMascotPreferences(window.localStorage, mascotIdentity));
+    setLoadedMascotPreferences({
+      identity: mascotIdentity,
+      preferences: loadAssistantMascotPreferences(window.localStorage, mascotIdentity),
+    });
   }, [mascotEnabled, mascotIdentity]);
+
+  useLayoutEffect(() => {
+    if (attentionScopeKeyRef.current === mascotIdentity) return;
+    attentionScopeKeyRef.current = mascotIdentity;
+    const scopeGeneration = attentionScopeGenerationRef.current + 1;
+    attentionScopeGenerationRef.current = scopeGeneration;
+    dispatchAttention({ type: "SET_SCOPE", scopeGeneration, now: Date.now() });
+    setShowMascotDemo(false);
+    setShowChatOnboardingHint(false);
+  }, [mascotIdentity]);
 
   useEffect(() => {
     if (!mascotEnabled || !mascotIdentity) return;
     const syncPreferences = (event: Event) => {
       const detail = (event as CustomEvent<{ key?: string; preferences?: typeof DEFAULT_ASSISTANT_MASCOT_PREFERENCES }>).detail;
       if (detail?.key !== mascotIdentity || !detail.preferences) return;
-      setMascotPreferences(detail.preferences);
+      setLoadedMascotPreferences({ identity: mascotIdentity, preferences: detail.preferences });
     };
     window.addEventListener(ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, syncPreferences);
     return () => window.removeEventListener(ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, syncPreferences);
   }, [mascotEnabled, mascotIdentity]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) {
       setShowMascotDemo(false);
       return;
@@ -335,18 +356,30 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     dispatchAttention({ type: "SET_ENABLED", enabled: mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders, now: Date.now() });
   }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders || !mascotIdentity) return;
     const acceptBaseline = (event: Event) => {
       const detail = (event as CustomEvent<AssistantNotificationProjection>).detail;
       if (detail?.scopeKey !== mascotIdentity || !Array.isArray(detail.signals)) return;
-      dispatchAttention({ type: "BASELINE", signals: detail.signals });
+      dispatchAttention({
+        type: "BASELINE",
+        signals: detail.signals.map((signal) => ({
+          ...signal,
+          scopeGeneration: attentionScopeGenerationRef.current,
+        })),
+      });
     };
     const acceptArrival = (event: Event) => {
       const detail = (event as CustomEvent<AssistantNotificationProjection>).detail;
       if (detail?.scopeKey !== mascotIdentity || !Array.isArray(detail.signals)) return;
       for (const signal of detail.signals) {
-        dispatchAttention({ type: "NEW_NOTIFICATION", signal, source: "live", now: Date.now(), viewport: window.innerWidth < 768 ? "mobile" : "desktop" });
+        dispatchAttention({
+          type: "NEW_NOTIFICATION",
+          signal: { ...signal, scopeGeneration: attentionScopeGenerationRef.current },
+          source: "live",
+          now: Date.now(),
+          viewport: window.innerWidth < 768 ? "mobile" : "desktop",
+        });
       }
     };
     window.addEventListener(ASSISTANT_NOTIFICATION_BASELINE_EVENT, acceptBaseline);
@@ -875,8 +908,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
   const canShowDecorativeBalloon = !balloonSurfaceBlocked && !routeSuppressesBalloon && !open && !isButtonDragging;
-  const hasVisibleNotificationBalloon = attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
-  const notificationAttentionPending = attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE";
+  const attentionScopeCurrent = attention.scopeGeneration === attentionScopeGenerationRef.current;
+  const hasVisibleNotificationBalloon = attentionScopeCurrent && attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
+  const notificationAttentionPending = attentionScopeCurrent && (attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE");
   const hasVisibleDemoBalloon = showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
   const hasVisibleOnboardingHint = showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
   const assistantHintPositionStyle = assistantHintStyle ?? { visibility: "hidden" as const };
@@ -1007,14 +1041,14 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         </Button>
       </DialogTrigger>
       {canShowDecorativeBalloon && (hasVisibleDemoBalloon || hasVisibleNotificationBalloon) && (
-        <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon flex-wrap" style={assistantHintPositionStyle} role="status" aria-live="polite" onFocus={() => { if (hasVisibleNotificationBalloon) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() }); }} onBlur={(event) => { if (hasVisibleNotificationBalloon && !event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
+        <HStack as="aside" gap={2} align="start" className={`assistant-reminder-balloon flex-wrap${mascotPreferences.motion === "off" ? " assistant-motion-off" : ""}`} style={assistantHintPositionStyle} role="status" aria-live="polite" onFocus={() => { if (hasVisibleNotificationBalloon) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() }); }} onBlur={(event) => { if (hasVisibleNotificationBalloon && !event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); if (hasVisibleNotificationBalloon) dispatchAttention({ type: "DISMISS", now: Date.now() }); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => { setShowMascotDemo(false); if (hasVisibleNotificationBalloon) dispatchAttention({ type: "DISMISS", now: Date.now() }); }}>×</Button>
         </HStack>
       )}
       {canShowDecorativeBalloon && hasVisibleOnboardingHint && (
-        <HStack as="aside" gap={2} align="start" className="assistant-chat-onboarding-hint flex-wrap" style={assistantHintPositionStyle} role="note">
+        <HStack as="aside" gap={2} align="start" className={`assistant-chat-onboarding-hint flex-wrap${mascotPreferences.motion === "off" ? " assistant-motion-off" : ""}`} style={assistantHintPositionStyle} role="note">
           <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.chatHintCopy")}</Text>
           <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dismissChatOnboardingHint(); setActivePanel("chat"); setOpen(true); }}>{settingsT("assistantAppearance.openChat")}</Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissChatHint")} onClick={dismissChatOnboardingHint}>×</Button>

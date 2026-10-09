@@ -177,14 +177,48 @@ describe("notificationAttention reducer", () => {
     expect(live(state, signal("focused", 2), 91_600).episode).toBeNull();
   });
 
-  it("resets all identity and timing state on scope change", () => {
-    let state = baseline(start(), [signal("user-a", 20)]);
-    state = action(state, { type: "RESET", scopeGeneration: 2, now: 100 });
+  it("resets identity state on scope change and requires a fresh scoped baseline", () => {
+    let state = baseline(start(), [signal("same-row-id", 20)]);
+    state = live(state, signal("old-arrival", 21), 100);
+    state = action(state, { type: "DISMISS", now: 2_100 });
+    expect(state.normalCooldownUntil).toBe(62_100);
+
+    state = action(state, { type: "SET_SCOPE", scopeGeneration: 2, now: 3_000 });
     expect(state.scopeGeneration).toBe(2);
     expect(state.status).toBe("INITIALIZING");
+    expect(state.baselineComplete).toBe(false);
     expect(state.seenKeys).toEqual([]);
     expect(state.latestVersion).toBe(-1);
     expect(state.normalCooldownUntil).toBe(0);
+    expect(state.criticalCooldownUntil).toBe(0);
+
+    // An arrival from the prior scope is stale, and even a current-scope
+    // arrival is ignored until the new identity's history is baselined.
+    expect(live(state, signal("old-arrival", 22), 3_001).status).toBe("INITIALIZING");
+    state = live(
+      state,
+      signal("same-row-id", 0, { scopeGeneration: 2 }),
+      3_002,
+    );
+    expect(state.status).toBe("INITIALIZING");
+
+    state = baseline(state, [signal("same-row-id", 0, { scopeGeneration: 2 })]);
+    expect(state.status).toBe("QUIET");
+    expect(
+      live(state, signal("same-row-id", 1, { scopeGeneration: 1 }), 3_003).status,
+    ).toBe("QUIET");
+    expect(
+      live(state, signal("same-row-id", 1, { scopeGeneration: 2 }), 3_004).status,
+    ).toBe("QUIET");
+    expect(
+      live(state, signal("new-scope-row", 1, { scopeGeneration: 2 }), 3_005).status,
+    ).toBe("COALESCING");
+  });
+
+  it("ignores stale or repeated scope generations", () => {
+    const state = baseline(start(), [signal("seen", 1)]);
+    expect(action(state, { type: "SET_SCOPE", scopeGeneration: 1, now: 2 })).toBe(state);
+    expect(action(state, { type: "SET_SCOPE", scopeGeneration: 0, now: 3 })).toBe(state);
   });
 
   it("fails closed at its bounded seen-key ceiling", () => {

@@ -571,7 +571,15 @@ export function reduceNotificationAttention(
       };
 
     case "SET_SCOPE":
-      if (action.scopeGeneration === state.scopeGeneration) return state;
+      // Scope generations are epochs. Ignore malformed or stale scope changes
+      // so a delayed action from a previous identity cannot move the reducer
+      // back to an older epoch and make its notification IDs valid again.
+      if (
+        !Number.isSafeInteger(action.scopeGeneration) ||
+        action.scopeGeneration <= state.scopeGeneration
+      ) {
+        return state;
+      }
       return createNotificationAttentionState({
         scopeGeneration: action.scopeGeneration,
         enabled: state.enabled,

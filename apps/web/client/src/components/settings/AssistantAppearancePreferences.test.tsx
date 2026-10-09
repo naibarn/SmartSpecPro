@@ -25,6 +25,7 @@ describe("AssistantAppearancePreferences", () => {
 
     for (const style of ["droplet", "star", "shield", "chat", "orbit"]) {
       expect(screen.getByTestId(`assistant-mascot-style-${style}`)).toBeTruthy();
+      expect(screen.getByRole("radio", { name: `assistantAppearance.styles.${style}` })).toBeTruthy();
     }
     fireEvent.click(screen.getByTestId("assistant-mascot-style-star"));
     expect(JSON.parse(localStorage.getItem("assistant-mascot:v2:tenant-3:user-7")!).style).toBe("star");

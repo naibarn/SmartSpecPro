@@ -30,7 +30,19 @@ async function installMockEventSource(page: Page) {
     (globalThis as any).EventSource = MockEventSource;
     (window as any).__spec308EmitNotification = (data: unknown) =>
       MockEventSource.current?.emit("notification", JSON.stringify(data));
+    (window as any).__spec308NotificationBaselineReady = false;
+    const dispatchEvent = window.dispatchEvent.bind(window);
+    window.dispatchEvent = (event: Event) => {
+      if (event.type === "smartspec:assistant-notification-baseline") {
+        (window as any).__spec308NotificationBaselineReady = true;
+      }
+      return dispatchEvent(event);
+    };
   });
+}
+
+async function waitForNotificationBaseline(page: Page) {
+  await page.waitForFunction(() => (window as any).__spec308NotificationBaselineReady === true);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -250,6 +262,8 @@ test("SPEC-308 Bell animates for a new event and retains its existing action", a
   await page.goto("/chat");
   const bell = page.getByTestId("global-notification-bell");
   await expect(bell).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open AI Chat & Feedback" }).locator("[data-mascot-style]")).toBeVisible();
+  await waitForNotificationBaseline(page);
   await page.evaluate(() => (window as any).__spec308EmitNotification({
     id: 30802,
     title: "Private notification title",
@@ -278,10 +292,35 @@ test("SPEC-308 normal motion uses the distinct bell animation", async ({ page })
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/chat");
   await expect(page.getByTestId("global-notification-bell")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open AI Chat & Feedback" }).locator("[data-mascot-style]")).toBeVisible();
+  await waitForNotificationBaseline(page);
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30804 }));
   const ringingIcon = page.locator(".assistant-bell-ring-normal");
   await expect(ringingIcon).toBeVisible();
   await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring");
+});
+
+test("SPEC-308 manual motion off disables decorative balloon entrance", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("assistant-mascot:v2:tenant-spec-308-browser:30801", JSON.stringify({
+      version: 2,
+      enabled: true,
+      style: "droplet",
+      motion: "off",
+      notificationReminders: true,
+      chatOnboarding: true,
+    }));
+  });
+  await initializeAuthenticatedBrowser(page, 390, 844);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/chat");
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+  await expect(launcher).toBeVisible();
+  await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
+  const balloon = page.locator(".assistant-reminder-balloon");
+  await expect(balloon).toBeVisible();
+  await expect.poll(() => balloon.evaluate(node => getComputedStyle(node).animationName)).toBe("none");
 });
 
 test("SPEC-308 settings expose five accessible choices and appearance changes stay local", async ({ page }) => {
@@ -297,14 +336,14 @@ test("SPEC-308 settings expose five accessible choices and appearance changes st
   await expect(appearance).toBeVisible();
   const styleChoices = appearance.getByRole("radiogroup", { name: "Mascot style" }).getByRole("radio");
   await expect(styleChoices).toHaveCount(5);
-  for (const style of ["droplet", "star", "shield", "chat", "orbit"]) {
+  for (const style of ["Smart Drop", "Smart Spark", "Smart Shield", "Smart Chat", "Smart Orbit"]) {
     await expect(appearance.getByRole("radio", { name: style, exact: true })).toBeVisible();
   }
-  await appearance.getByRole("radio", { name: "orbit", exact: true }).click();
-  await expect(appearance.getByRole("radio", { name: "orbit", exact: true })).toHaveAttribute("aria-checked", "true");
+  await appearance.getByRole("radio", { name: "Smart Orbit", exact: true }).click();
+  await expect(appearance.getByRole("radio", { name: "Smart Orbit", exact: true })).toHaveAttribute("aria-checked", "true");
   expect(procedures.filter(procedure => procedure.startsWith("notificationPreferences.") && !procedure.endsWith("getPreferences"))).toEqual([]);
 
-  await appearance.getByRole("radio", { name: "orbit", exact: true }).click();
+  await appearance.getByRole("radio", { name: "Smart Orbit", exact: true }).click();
   const preference = await page.evaluate(() => {
     const key = `assistant-mascot:v2:${encodeURIComponent("tenant-spec-308-browser")}:${encodeURIComponent("30801")}`;
     return { key, value: localStorage.getItem(key) };
@@ -316,7 +355,7 @@ test("SPEC-308 settings expose five accessible choices and appearance changes st
   const otherIdentity = { ...TEST_IDENTITY, currentTenantId: "tenant-spec-308-other" };
   await mockAuthenticatedApi(page, otherIdentity);
   await page.reload();
-  await expect(page.getByRole("radio", { name: "droplet", exact: true })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: "Smart Drop", exact: true })).toHaveAttribute("aria-checked", "true");
   expect(await page.evaluate(() => localStorage.getItem("assistant-mascot:v2:tenant-spec-308-other:30801"))).toBeNull();
   expect(await page.evaluate(() => localStorage.getItem("assistant-mascot:v2:tenant-spec-308-browser:30801")).then(value => JSON.parse(value ?? "null").style)).toBe("orbit");
 });
@@ -332,6 +371,8 @@ test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
   await mockAuthenticatedApi(page, TEST_IDENTITY, procedures);
   await page.goto("/settings?tab=notifications");
   await expect(page.getByTestId("assistant-appearance-preferences")).toBeVisible();
+  const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+  await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
   const callsBeforeDemo = [...procedures];
   await page.getByRole("button", { name: "Demo reminder balloon" }).click();
   const balloon = page.locator(".assistant-reminder-balloon");
@@ -357,6 +398,8 @@ test("SPEC-308 live reminder replaces demo hint and mascot still opens Chat", as
   await page.goto("/chat");
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   const balloon = page.locator(".assistant-reminder-balloon");
+  await expect(launcher).toBeVisible();
+  await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   await expect(balloon).toBeVisible();
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30805 }));
@@ -385,6 +428,8 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
   await page.goto("/chat");
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   const balloon = page.locator(".assistant-reminder-balloon");
+  await expect(launcher).toBeVisible();
+  await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   await expect(balloon).toBeVisible();
   const initialLauncher = await launcher.boundingBox();

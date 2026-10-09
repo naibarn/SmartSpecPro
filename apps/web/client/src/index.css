@@ -688,6 +688,11 @@
   box-shadow: var(--shadow-high);
 }
 
+.assistant-motion-off.assistant-reminder-balloon,
+.assistant-motion-off.assistant-chat-onboarding-hint {
+  animation: none !important;
+}
+
 @media (min-width: 768px) {
   .assistant-chat-onboarding-hint {
     display: none;
