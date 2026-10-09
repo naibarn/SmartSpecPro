@@ -99,9 +99,11 @@ function safeError(error) {
   return "ดำเนินการไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองอีกครั้ง";
 }
 
-async function refreshStatus() {
+async function refreshStatus({ retryCredentials = false } = {}) {
   try {
-    const status = await invoke("runner_status");
+    const status = await invoke(
+      retryCredentials ? "retry_runner_credentials" : "runner_status",
+    );
     elements["app-version"].textContent = status.appVersion ?? "—";
     elements["app-build-date"].textContent = formatDate(status.buildDate);
     elements["first-launch-date"].textContent = formatDate(status.firstLaunchAtMs);
@@ -324,9 +326,18 @@ elements["connect-button"].addEventListener("click", async () => {
 });
 
 elements["refresh-button"].addEventListener("click", async () => {
-  await refreshStatus();
-  await refreshWorkspaces();
-  await scanTools();
+  const button = elements["refresh-button"];
+  button.disabled = true;
+  button.textContent = "กำลังลองต่ออายุ…";
+  setNotice(elements["connection-notice"], "กำลังตรวจสถานะและลองต่ออายุ token อีกครั้ง");
+  try {
+    await refreshStatus({ retryCredentials: true });
+    await refreshWorkspaces();
+    await scanTools();
+  } finally {
+    button.disabled = false;
+    button.textContent = "รีเฟรชสถานะ";
+  }
 });
 elements["rescan-button"].addEventListener("click", scanTools);
 elements["export-debug-button"].addEventListener("click", async () => {
