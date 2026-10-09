@@ -24,12 +24,16 @@ async function mockAuthenticatedApi(
   identity = TEST_IDENTITY,
   procedureLog: string[] = [],
   tenantFlag: TenantFlagFixture = { enabled: true },
+  tenantFlagResponses: boolean[] = [],
 ) {
-  await page.route("**/api/tenant/current", route => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ tenant: { id: identity.currentTenantId, featureFlags: { livingMascotDualSurface: tenantFlag.enabled } } }),
-  }));
+  await page.route("**/api/tenant/current", route => {
+    tenantFlagResponses.push(tenantFlag.enabled);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ tenant: { id: identity.currentTenantId, featureFlags: { livingMascotDualSurface: tenantFlag.enabled } } }),
+    });
+  });
   await page.route("**/trpc/**", async route => {
     const procedure = procedureName(route.request().url());
     procedureLog.push(procedure);
@@ -105,6 +109,7 @@ test("SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback
 
 test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and actions", async ({ page }) => {
   const procedures: string[] = [];
+  const tenantFlagResponses: boolean[] = [];
   const tenantFlag = { enabled: true };
   await page.clock.install();
   await page.setViewportSize({ width: 1024, height: 900 });
@@ -112,7 +117,7 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
     localStorage.setItem("smartspec_locale", "en");
     localStorage.setItem("smartspec_locale_chosen", "true");
   });
-  await mockAuthenticatedApi(page, TEST_IDENTITY, procedures, tenantFlag);
+  await mockAuthenticatedApi(page, TEST_IDENTITY, procedures, tenantFlag, tenantFlagResponses);
   await page.goto("/chat");
 
   const launcher = page.getByRole("button", { name: "Open AI Chat and Feedback" });
@@ -131,17 +136,21 @@ test("SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and 
   await page.getByPlaceholder("Describe in detail...").fill(feedbackDescription);
   await expect(page.getByRole("button", { name: "Submit Feedback" })).toBeEnabled();
 
-  // Re-resolve only the mock tenant flag as the application does after focus
-  // returns to a stale tenant/current query. Advancing fixed wall time does not
-  // run notification polling intervals or discard the in-memory dialog state.
+  // Return focus after the shared tenant/current query becomes stale. This
+  // exercises TanStack Query's supported focus refetch without reloading or
+  // unmounting the dialog; fixed wall time does not run polling intervals.
   page.clock.setFixedTime(new Date(Date.now() + 61_000));
   tenantFlag.enabled = false;
   const mutationCallsBeforeRefresh = [...procedures].filter(procedure =>
     /^(chat\.(createConversation|sendMessage)|feedback\.submit|scheduledMessages\.(mark|read))/i.test(procedure),
   );
-  await page.context().setOffline(true);
-  await page.context().setOffline(false);
-  await expect.poll(() => page.getByRole("button", { name: "Open AI Chat and Feedback" }).locator("[data-mascot-style]").count()).toBe(0);
+  const backgroundPage = await page.context().newPage();
+  await backgroundPage.goto("about:blank");
+  await page.bringToFront();
+  await expect.poll(() => tenantFlagResponses[tenantFlagResponses.length - 1]).toBe(false);
+  await expect(launcher.locator("svg.lucide-message-square-plus")).toBeVisible();
+  await expect(launcher.locator("[data-mascot-style]")).toHaveCount(0);
+  await backgroundPage.close();
 
   await expect(dialog).toBeVisible();
   await expect(page.getByRole("tab", { name: "Feedback" })).toHaveAttribute("aria-selected", "true");
