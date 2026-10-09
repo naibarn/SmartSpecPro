@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 from typing import List, Optional, Dict
 import structlog
 import re
+import bleach
 
 from app.core.database import get_db
 from app.core.auth import get_current_user, require_admin
@@ -20,6 +21,12 @@ from app.services.marketplace_service import MarketplaceService
 
 logger = structlog.get_logger()
 router = APIRouter()
+_MARKETPLACE_HTML_TAGS = {
+    "p", "br", "strong", "b", "em", "i", "u", "code", "pre",
+    "ul", "ol", "li", "blockquote", "a",
+}
+_MARKETPLACE_HTML_ATTRIBUTES = {"a": ["href", "title"]}
+_MARKETPLACE_HTML_PROTOCOLS = {"http", "https", "mailto"}
 
 
 # ==================== Request/Response Models ====================
@@ -100,8 +107,14 @@ class CreateTemplateRequest(BaseModel):
         """Sanitize text fields to prevent XSS"""
         if not v:
             return v
-        # Sanitize but allow basic markdown formatting
-        return InputSanitizer.sanitize_string(v, allow_html=True, max_length=10000)
+        # Keep basic formatting while removing active markup and unsafe attributes.
+        return bleach.clean(
+            InputSanitizer.sanitize_string(v, allow_html=True, max_length=10000),
+            tags=_MARKETPLACE_HTML_TAGS,
+            attributes=_MARKETPLACE_HTML_ATTRIBUTES,
+            protocols=_MARKETPLACE_HTML_PROTOCOLS,
+            strip=True,
+        )
 
     @field_validator('readme_content')
     @classmethod
@@ -109,8 +122,14 @@ class CreateTemplateRequest(BaseModel):
         """Sanitize README content"""
         if not v:
             return v
-        # Allow more HTML for README but still sanitize dangerous content
-        return InputSanitizer.sanitize_string(v, allow_html=True, max_length=50000)
+        # README formatting uses the same safe HTML subset as descriptions.
+        return bleach.clean(
+            InputSanitizer.sanitize_string(v, allow_html=True, max_length=50000),
+            tags=_MARKETPLACE_HTML_TAGS,
+            attributes=_MARKETPLACE_HTML_ATTRIBUTES,
+            protocols=_MARKETPLACE_HTML_PROTOCOLS,
+            strip=True,
+        )
 
 
 class UpdateTemplateRequest(BaseModel):
