@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
+    "expected_canonical_sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
     "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
   },
   "continuation": {
-    "next_action": "Retain the bounded Python validator inside the protected PostgreSQL transaction. Revisit optimization only if authorized production telemetry demonstrates material lock contention or an existing canonical Python-side validation mechanism can prove equivalent commit-time authority without another policy engine. No production telemetry or live dispatch was available in this workunit.",
-    "next_ready_workunit": "SPEC224_PRODUCTION_LATENCY_OBSERVATION",
+    "next_action": "On the authorized Windows host, install/accept Runner Desktop 0.2.26 through its owner workflow if not already installed, reauthorize once in the browser, then capture fresh installed version, status/doctor/capabilities/rescan, token-refresh/session continuity, authenticated Control Plane acknowledgement, and Runner-bound Codex readiness. Do not dispatch. In parallel, keep remote trust DENY and request the existing authenticated owner approval/resource identities; request exact P-RECOVERY and non-production funding/ledger authority only after a fresh run/job/attempt and source/workspace bindings exist.",
+    "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_FRESH_CAPABILITY_AND_CODEX_READINESS",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "origin/main is 4d1ca5535af139a799fd8e92ab809b3417675238 (PR #408). On the exact integrated SHA, actual Node-to-Python HTTP plus disposable PostgreSQL 15.17 passed 7/7; measured 1200ms injected delay as 1212ms validator HTTP and 1250ms admission transaction; an FK-backed ApprovalResponse insert completed in 15ms under FOR SHARE; canonical Python issuance waited on tenant FOR UPDATE; duplicate AuditLog insert completed in 13ms without a gap lock and caused Python validation to fail closed; 6500ms delay hit the 5000ms client timeout at 5025ms and released the grant fence. Focused unit/schema/migration tests passed 131/131. Migration 0388 supplies the worker_job_events columns/trigger missing only from the frozen 0000-0002 fixture. Decision: NO-GO for moving HTTP or adding a proof/signing system; measurements are disposable-host only. Keep REMOTE_TEST_TRUSTED and PRODUCTION_TRUSTED denied; Windows/Linux readiness, live dispatch, settlement and deployment remain separate unverified gates. No further independently executable validator optimization is justified without production telemetry; next workunit is observation only.",
+    "resume_point": "Canonical source is 042cbf207b7503bc06f81e1558d2d63cd63fb3a1. Validator latency optimization is closed NO-GO: keep Python canonical P-RECOVERY validation inside the protected transaction; do not repeat PostgreSQL latency tests absent new evidence. Current exact-SHA non-dispatch verification: 85 focused Node tests passed across DevelopmentRun/persistence, protected-start/binding/revocation, economic settlement orchestration, and external Runner dispatcher/executor; static drizzle-kit migration journal check passed without contacting a database. Trust handoff/approval request remains unchanged and no authenticated issuer/key/storage approval or resource IDs are recorded, so both remote trust classes remain DENY. Runner registry reports no active session/owner lease; Windows review build 0.2.26 install and browser reauthorization are not evidenced. Last owner-action manifest is stale: it has no DevelopmentRun/job/attempt, job-specific source/attestation binding, capability snapshot expired 2026-10-08, and zero economic budget/ledger/hold/grant counts only as of 2026-10-08. Do not treat those old counts as current. `docker-compose.full.yml` points Node and Python DATABASE_URL to the same configured Postgres endpoint template, but this host has no running web/Python service; actual runtime endpoint/ACL is unverified. The same profile uses the POSTGRES_USER bootstrap credential for both app services and contains no audit_logs GRANT/REVOKE policy; production role privileges remain unknown and direct AuditLog insert availability is a residual risk. Production receipt settlement verifier has no registered implementation/callsite. Do not create grants, budget/ledger records, dispatch, charges, or deployment without their owner authority.",
     "waiting_predicate": "Reactivate trust-adapter work only when an authenticated owner decision names exact existing issuer principal, approved signing operation/key, storage account/bucket/prefix, distinct writer/verifier identities and permissions, tenant/project/environment/profile scope, freshness/revocation/retention policy, and durable approval reference. Reactivate Windows acceptance when the 0.2.26 review build is installed, browser reconnect/replacement is approved, and a fresh Control Plane session/capability snapshot plus Codex execution readiness is captured."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 22,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -1123,9 +1123,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
+    "canonical_sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
     "integrated": true,
-    "integrated_at": "2026-10-09T09:11:25Z"
+    "integrated_at": "2026-10-09T09:15:39Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3090,25 +3090,29 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T09:14:03.541134Z",
+  "updated_at": "2026-10-09T09:56:10.759482Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "PR #408 / commit 4d1ca5535af139a799fd8e92ab809b3417675238",
-      "apps/web/server/services/__tests__/spec224RecoveryGrantValidatorPostgres.integration.test.ts (actual Node-to-Python HTTP; isolated PostgreSQL 15.17)",
-      "apps/web/server/services/__tests__/spec224RuntimeAdmission.test.ts",
-      "apps/web/server/services/__tests__/spec224RecoveryGrantValidator.test.ts",
+      "apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts",
+      "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
       "apps/web/server/services/__tests__/spec224ProtectedExecutionStart.test.ts",
-      "apps/web/drizzle/schema.test.ts",
-      "apps/web/drizzle/unifiedJobControlPlaneMigration.test.ts",
-      "apps/web/drizzle/__tests__/spec278DurableExecutionSessionsMigration.test.ts"
+      "apps/web/server/services/__tests__/spec224AuthorizationBinding.test.ts",
+      "apps/web/server/services/__tests__/spec224AuthorizationRevocation.test.ts",
+      "apps/web/server/services/__tests__/economicReceiptSettlement.test.ts",
+      "apps/web/server/services/__tests__/economicReceiptSettlementTransaction.test.ts",
+      "apps/web/server/services/__tests__/economicSettlementService.test.ts",
+      "apps/web/server/services/__tests__/externalAgentRunnerDispatcher.test.ts",
+      "apps/web/server/services/__tests__/externalAgentTaskExecutor.test.ts",
+      "apps/web/drizzle.config.ts with static DATABASE_URL placeholder: drizzle-kit check passed; no DB connection",
+      "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md",
+      "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json (stale preparation evidence, not authority)"
     ],
     "freshness": "FRESH",
     "required_profiles": [
-      "quick",
-      "integration"
+      "quick"
     ],
-    "sha": "4d1ca5535af139a799fd8e92ab809b3417675238",
+    "sha": "042cbf207b7503bc06f81e1558d2d63cd63fb3a1",
     "status": "PARTIAL",
     "task_regressions": []
   }
