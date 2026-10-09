@@ -31,6 +31,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build workspace schema package required by MCP tests
+        run: pnpm --filter @smartspec/remotion-render build
       - name: MCP focused tests
         run: >-
           JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890

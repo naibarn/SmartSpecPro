@@ -29,10 +29,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Continue with authenticated browser acceptance and unresolved specification requirements once the app DB/control-plane runtime and authorized test identity are available.",
+    "next_action": "Inspect the fresh PR checks after the scoped MCP CI workflow repair. Then continue authenticated browser acceptance and unresolved specification requirements once the app DB/control-plane runtime and authorized test identity are available.",
     "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
     "reactivation_predicate": "The required runtime and test identity are available; refresh origin/main and exact-SHA handoff before continuing.",
-    "resume_point": "Current task branch tip 5ff91647b53d040ea93c59e90e208d27b645b568 includes latest origin/main c7a4fbd1 and the SPEC-308 partial implementation commit a430a747. Continue at authenticated browser acceptance and unresolved ACs; do not enable production.",
+    "resume_point": "PR #399 task branch codex/spec-308-dual-surface-20261009 at 0bc15b68fa2c0ddc8a6b3bd182c14f4b6050887d (origin/main c7a4fbd1). Focused tests were rerun at this exact SHA: 8 files / 83 passed. MCP contract-and-security CI is rerunning after fixing duplicate pnpm setup; live MCP evidence still requires configured MCP_SMOKE_URL and MCP_SMOKE_TOKEN. Continue authenticated app/browser acceptance and unresolved ACs; do not enable production.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -48,7 +48,7 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
+    "next_action": "First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.",
     "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
     "residual_requirements": [
       "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
@@ -85,7 +85,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 3,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -177,7 +177,7 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
+      "next_action": "First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.",
       "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
       "residual_requirements": [
         "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
@@ -286,7 +286,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:30:03.198541Z",
+  "updated_at": "2026-10-09T04:35:25.392407Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -303,7 +303,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "5ff91647b53d040ea93c59e90e208d27b645b568",
+    "sha": "0bc15b68fa2c0ddc8a6b3bd182c14f4b6050887d",
     "status": "PARTIAL",
     "task_regressions": []
   }

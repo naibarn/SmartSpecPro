@@ -116369,7 +116369,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T04:04:01.301528Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
+      "next_action": "First verify fresh PR CI after the scoped MCP test prerequisite fix. Continue authenticated non-production acceptance only after DATABASE_URL, CONTROL_PLANE_API_KEY, and an authorized test tenant/user are available; keep the feature globally off until browser gates pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": null,
       "problem": null,

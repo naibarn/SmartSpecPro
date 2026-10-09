@@ -23,9 +23,9 @@ Loop policy:
 - Canonical workspace user-uploaded untracked files preserved in `/home/dev/projects/SmartSpecPro`; all implementation occurs in task worktree.
 - WP0 scout: `/root/wp0_source_audit`, read-only, returned; no files changed.
 - WP0 import checkpoint is `e6a7243fa871f1999f1e6f6e835d32d1df81135f`; implementation source checkpoint is `a430a747cf4991cbb7fbbdf5351dad984f29231b`; latest branch merge tip is `5ff91647b53d040ea93c59e90e208d27b645b568`.
-- Draft PR #399 remains open; latest `origin/main` was reconciled into the task branch through a normal merge.
+- PR #399 is open and ready for review; latest `origin/main` was reconciled into the task branch through a normal merge.
 - WP1 renderer and WP2 reducer returned and are closed; conductor integrated their exports with the existing Bell/Feedback owners.
-- Focused regression on branch merge tip `5ff91647b53d040ea93c59e90e208d27b645b568`: 8 Vitest files / 83 tests pass under Happy DOM; EN/TH settings JSON parses.
+- Focused regression rerun at `0bc15b68fa2c0ddc8a6b3bd182c14f4b6050887d`: 8 Vitest files / 83 tests pass under Happy DOM; EN/TH settings JSON parses.
 - Twelve QA lenses and component screenshot measurements are recorded under `evidence/`.
 - Server-backed authenticated browser gate remains blocked by missing worktree `DATABASE_URL`; no production rollout.
 
@@ -60,3 +60,10 @@ Loop policy:
 - PASS: `git diff --check`; zip integrity and extracted contents verified.
 - PASS: 8 focused test files / 83 tests, responsive component crops, twelve-lens QA log, JSON locale parsing.
 - PENDING/BLOCKED: authenticated app runtime, settings UI/balloon interaction under signed-in tenant, full responsive/browser acceptance, canonical merge and post-merge verification.
+
+## PR verification continuation (2026-10-09)
+- PR #399 head `0bc15b68fa2c0ddc8a6b3bd182c14f4b6050887d`; configured `origin/main` remains `c7a4fbd1ff09214b462e8660b2626049d87f01c7`.
+- Repaired MCP workflow's duplicated pnpm version. CI then reached focused tests and exposed a second baseline workflow issue: tests import `@smartspec/remotion-render/render-video-schema`, but CI did not build that workspace package. Added its explicit package build before those tests; CI rerun is pending on the next push.
+- MCP live-contract CI fails closed because `MCP_SMOKE_URL` and `MCP_SMOKE_TOKEN` are absent. No credentials or substitute endpoint were invented.
+- Immediate next: commit/push this workflow repair and current handoff update, inspect the new CI run; then continue only when authenticated non-production app/runtime and authorized test identity are available.
+- The unrelated manual migration workflow run reports failure with zero jobs and no check rollup entry; it is not part of this PR's required checks and was not modified.
