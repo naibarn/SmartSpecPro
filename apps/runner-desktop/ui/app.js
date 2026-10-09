@@ -128,7 +128,10 @@ async function refreshStatus({ retryCredentials = false } = {}) {
     if (status.credentialState === "reauth_required") {
       elements["connection-state"].textContent = "ต้องเชื่อมต่อใหม่";
       elements["connection-state"].className = "state-pill warn";
-      setNotice(elements["connection-notice"], "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง");
+      const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
+        ? "SmartAIHub ปฏิเสธคำขอต่ออายุด้วย HTTP 409 การลองซ้ำอัตโนมัติจะไม่ช่วย กรุณาเชื่อมต่อผ่านเบราว์เซอร์เพื่อยืนยัน session ใหม่"
+        : "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง";
+      setNotice(elements["connection-notice"], notice);
       elements["connect-button"].textContent = "เชื่อมต่อผ่านเบราว์เซอร์";
     } else if (status.credentialState === "renewed") {
       setNotice(elements["connection-notice"], "ต่ออายุ token ให้อัตโนมัติแล้ว");

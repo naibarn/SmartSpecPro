@@ -137,6 +137,12 @@ fn reset_refresh_backoff_for_manual_retry(
     true
 }
 
+fn refresh_requires_browser_reauthorization(error: &str) -> bool {
+    ["_401", "_403", "_409", "REVOKED", "runner_revoked"]
+        .iter()
+        .any(|marker| error.contains(marker))
+}
+
 #[tauri::command]
 async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
     let settings = setting_lock(&state)?.clone();
@@ -222,10 +228,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
                 }
                 Err(error) => {
                     credential_error_code = Some(safe_refresh_error_code(&error));
-                    credential_state = if ["_401", "_403", "REVOKED", "runner_revoked"]
-                        .iter()
-                        .any(|marker| error.contains(marker))
-                    {
+                    credential_state = if refresh_requires_browser_reauthorization(&error) {
                         "reauth_required"
                     } else {
                         "retrying"
@@ -829,8 +832,21 @@ mod debug_report_tests {
 
 #[cfg(test)]
 mod credential_retry_tests {
-    use super::reset_refresh_backoff_for_manual_retry;
+    use super::{refresh_requires_browser_reauthorization, reset_refresh_backoff_for_manual_retry};
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn refresh_conflicts_require_browser_reauthorization_but_server_errors_retry() {
+        assert!(refresh_requires_browser_reauthorization(
+            "RUNNER_CONNECT_REQUEST_REJECTED_409"
+        ));
+        assert!(refresh_requires_browser_reauthorization(
+            "RUNNER_CONNECT_REQUEST_REJECTED_401"
+        ));
+        assert!(!refresh_requires_browser_reauthorization(
+            "RUNNER_CONNECT_REQUEST_REJECTED_503"
+        ));
+    }
 
     #[test]
     fn manual_retry_clears_retry_and_reauth_backoff() {
