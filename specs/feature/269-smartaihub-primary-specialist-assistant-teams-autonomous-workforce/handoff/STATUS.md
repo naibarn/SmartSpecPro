@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 1677 unresolved of 1677
+- Requirements: 0 pass / 1679 unresolved of 1679
 - Next action: Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.
-- Manifest generation: 10
+- Manifest generation: 15
 
 ## Source-declared status and relationship claims
 

@@ -15,7 +15,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-        "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "source_digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "successor_spec_id": "277"
       }
     ],
@@ -23,7 +23,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -35,12 +35,12 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
+    "expected_spec_digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Reconcile Spec 277 identity and projection ownership before planning status UX; retain the existing read model and Task Control surface.",
     "next_ready_workunit": null,
-    "reactivation_predicate": null,
+    "reactivation_predicate": "Canonical owner/disposition is resolved and the existing job/attempt receipt projection is confirmed to expose the required sanitized fields.",
     "resume_point": null,
     "waiting_predicate": null
   },
@@ -49,7 +49,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -76,7 +76,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -84,13 +84,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
-    "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+    "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.792204Z",
+      "last_evidence_at": "2026-10-09T02:04:07.118352Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -114,10 +114,41 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.792204Z"
+    "updated_at": "2026-10-09T02:04:07.118352Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-9B1BBBD2D674": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/277-task-control-experience-r1-6/spec.md#L3572"
+        ],
+        "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L3572",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC277_OWNER_RECONCILIATION",
+          "next_action": "Resolve canonical Spec 277 identity and confirm available job/attempt receipt fields before implementation.",
+          "root_cause": "Spec 277 remains DORMANT_UNRESOLVED; the conditional status projection does not approve a new UI or execution authority."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Resolve canonical Spec 277 identity and confirm available job/attempt receipt fields before implementation.",
+        "requirement_digest": "fb8d00c9b4218912bfda520f678fbc6e45a46dbc6fe601721a85c6536a99dde3",
+        "requirement_id": "REQ-9B1BBBD2D674",
+        "requirement_text": "The projection MUST distinguish SmartAIHub credits, official API quota/billing, reported CLI token usage, estimated API-equivalent cost, subscription allowance, and actual billed charge. Unknown remaining allowance MUST display as unknown. Read models MUST NOT expose credentials, raw provider payloads, or claim a provider switch that is not present in the canonical job/attempt receipt. This is a conditional UI contract only; no duplicate Task Control surface is proposed. See Spec 231 §102.",
+        "source_spec_digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -127,15 +158,25 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.792204Z",
+    "reconciled_at": "2026-10-09T02:04:07.118352Z",
     "sources": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -153,7 +194,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -169,11 +210,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 429,
-    "unresolved": 429
+    "total": 430,
+    "unresolved": 430
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.792204Z",
+  "updated_at": "2026-10-09T02:05:02.646747Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

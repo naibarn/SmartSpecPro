@@ -15,7 +15,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -27,7 +27,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -39,7 +39,7 @@
         "relation_text": "supersedes",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -51,7 +51,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -63,7 +63,7 @@
         "relation_text": "replaceable",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -75,7 +75,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -87,7 +87,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -99,7 +99,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -111,7 +111,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -123,7 +123,7 @@
         "relation_text": "replaces",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -626,7 +626,7 @@
         "relation_text": "superseded",
         "requirement_ids": [],
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L158",
-        "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "successor_spec_id": "267"
       },
       {
@@ -724,7 +724,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-        "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "source_digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "successor_spec_id": "277"
       },
       {
@@ -796,7 +796,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -808,7 +808,7 @@
         "relation_text": "merging",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -820,7 +820,7 @@
         "relation_text": "merge",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -832,7 +832,7 @@
         "relation_text": "absorbing",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -844,7 +844,7 @@
         "relation_text": "replaceable",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -856,7 +856,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       }
     ],
@@ -864,7 +864,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       }
@@ -876,7 +876,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "65f60ae0795a30a8f95523822459c2ce42284d23",
-    "expected_spec_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
+    "expected_spec_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21"
   },
   "continuation": {
     "next_action": "Obtain an authenticated Platform/Security decision naming the existing server workload principal, approved signing operation/key resource, exact non-production evidence account/bucket/prefix, distinct writer/verifier identities, scoped tenant/profile policy, TTL/revocation/retention, and approval record. Then verify those resources read-only before implementing adapters.",
@@ -890,7 +890,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -975,7 +975,7 @@
         "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 907,
+        "line": 908,
         "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
       },
       {
@@ -1057,7 +1057,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       }
@@ -1065,13 +1065,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+    "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-08T02:06:09.264229Z",
+      "last_evidence_at": "2026-10-09T02:04:06.717660Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -1157,10 +1157,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-08T02:06:09.264229Z",
+    "reconciled_at": "2026-10-09T02:04:06.717660Z",
     "sources": [
       {
-        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -1245,7 +1245,7 @@
         "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 907,
+        "line": 908,
         "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
       },
       {
@@ -1308,8 +1308,22 @@
         "excerpt": "/** Opaque pointer to immutable Spec 224 input staged outside the job event log. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 44,
+        "line": 45,
         "path": "apps/web/server/services/agentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "/** Canonically loaded SPEC-224 DevelopmentRun; not a handoff nomination. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 56,
+        "path": "apps/web/server/services/developmentRunEligibility.ts"
+      },
+      {
+        "excerpt": ": \"SPEC-224\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 241,
+        "path": "apps/web/server/services/developmentRunEligibility.ts"
       },
       {
         "excerpt": "explanation: \"Spec 224 approval decision was reconciled through the existing approval authority and Feature 195 control plane.\",",
@@ -1340,6 +1354,13 @@
         "path": "apps/web/server/services/jobReconciler.ts"
       },
       {
+        "excerpt": "* until the normal Spec 224 authorization flow binds real policy evidence.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 28,
+        "path": "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts"
+      },
+      {
         "excerpt": "\"spec-224-authorization-binding-v1\" as const;",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -1350,28 +1371,28 @@
         "excerpt": "\"Owner approval for a bounded Spec 224 external-agent run.\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 207,
+        "line": 211,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
         "excerpt": "journalDescription: `Reserve Spec 224 Codex execution ${loaded.run.runId}`,",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 436,
+        "line": 442,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
         "excerpt": "version: \"spec-224-authorization-binding-v1\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 552,
+        "line": 558,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
         "excerpt": "journalDescription: `Release revoked Spec 224 Codex execution ${input.runId}`,",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 761,
+        "line": 782,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
@@ -1476,21 +1497,21 @@
         "excerpt": "# Spec 224 decisions are committed with a durable delivery intent on the",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 485,
+        "line": 539,
         "path": "python-backend/app/api/approvals.py"
       },
       {
         "excerpt": "\"\"\"Claim persisted Spec 224 decisions for the existing Node reconciler.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 656,
+        "line": 695,
         "path": "python-backend/app/services/approval_db_service.py"
       },
       {
         "excerpt": "# when the persisted Spec 224 intent proves the same actor.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 1556,
+        "line": 1595,
         "path": "python-backend/app/services/approval_db_service.py"
       },
       {
@@ -1525,21 +1546,28 @@
         "excerpt": "it(\"keeps Spec 224 staged input references in the manifest without input bytes or fetch credentials\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 78,
+        "line": 79,
         "path": "apps/web/server/services/__tests__/agentControlPlaneContracts.test.ts"
       },
       {
         "excerpt": "it(\"pins a bounded Spec 224 source fingerprint and explicit write set\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 91,
+        "line": 92,
         "path": "apps/web/server/services/__tests__/agentControlPlaneContracts.test.ts"
+      },
+      {
+        "excerpt": "source: { type: \"feature\", ref: \"spec:224\" },",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 70,
+        "path": "apps/web/server/services/__tests__/developmentRunEligibility.test.ts"
       },
       {
         "excerpt": "it(\"dispatches staged Spec 224 input together with its immutable local-candidate policy\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 298,
+        "line": 299,
         "path": "apps/web/server/services/__tests__/externalAgentRunnerDispatcher.test.ts"
       },
       {
@@ -1553,7 +1581,7 @@
         "excerpt": "it(\"persists a stable Spec 224 continuation intent with a terminal Runner receipt\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 2680,
+        "line": 2681,
         "path": "apps/web/server/services/__tests__/jobControlPlane.test.ts"
       },
       {
@@ -1623,7 +1651,7 @@
         "excerpt": "describe(\"Spec 224 owner authorization binding\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 93,
+        "line": 95,
         "path": "apps/web/server/services/__tests__/spec224AuthorizationBinding.test.ts"
       },
       {
@@ -1672,98 +1700,105 @@
         "excerpt": "suite(\"Spec 224 — PostgreSQL economic certification\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 120,
+        "line": 121,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "VALUES (${tenantId}, ${`${scopeId}-slug`}, 'Spec 224 Economic Test', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 141,
+        "line": 142,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 test reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 181,
+        "line": 182,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 test release\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 198,
+        "line": 199,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 capture reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 295,
+        "line": 305,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 verified settlement\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 307,
+        "line": 317,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 unknown-outcome reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 339,
+        "line": 349,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 over-budget reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 373,
+        "line": 383,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 rollback after staged reservation\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 387,
+        "line": 397,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "VALUES (${foreignTenantId}, ${`${foreignTenantId}-slug`}, 'Spec 224 Foreign Tenant', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 403,
+        "line": 413,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "description: \"Spec 224 cross tenant journal rejection\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 416,
+        "line": 426,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "expect(entries.some((entry: any) => entry.description === \"Spec 224 cross tenant journal rejection\")).toBe(false);",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 425,
+        "line": 435,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 concurrent reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 441,
+        "line": 451,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 concurrent settlement\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 453,
+        "line": 463,
+        "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
+      },
+      {
+        "excerpt": "journalDescription: \"Spec 224 receipt settlement reserve\",",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 490,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
@@ -1830,41 +1865,6 @@
         "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
       },
       {
-        "excerpt": "expect(bySourceRef(baseline, \"spec:224@current#L1062\").text).toBe(",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L15988-L15998\").text",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 57,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L16064-L16068\").text",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 60,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "expect(bySourceRef(baseline, \"spec:224@current#L16071\").text).toContain(",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 64,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
-        "excerpt": "bySourceRef(baseline, \"spec:224@current#L15988-L15998\"),",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 72,
-        "path": "apps/web/server/services/__tests__/spec224MultiSectionConformance.test.ts"
-      },
-      {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
@@ -1872,8 +1872,13 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
       }
     ],
     "stale_fields": [
@@ -1972,7 +1977,7 @@
         "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 907,
+        "line": 908,
         "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
       },
       {
@@ -2035,8 +2040,22 @@
         "excerpt": "/** Opaque pointer to immutable Spec 224 input staged outside the job event log. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 44,
+        "line": 45,
         "path": "apps/web/server/services/agentControlPlaneContracts.ts"
+      },
+      {
+        "excerpt": "/** Canonically loaded SPEC-224 DevelopmentRun; not a handoff nomination. */",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 56,
+        "path": "apps/web/server/services/developmentRunEligibility.ts"
+      },
+      {
+        "excerpt": ": \"SPEC-224\",",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 241,
+        "path": "apps/web/server/services/developmentRunEligibility.ts"
       },
       {
         "excerpt": "explanation: \"Spec 224 approval decision was reconciled through the existing approval authority and Feature 195 control plane.\",",
@@ -2067,6 +2086,13 @@
         "path": "apps/web/server/services/jobReconciler.ts"
       },
       {
+        "excerpt": "* until the normal Spec 224 authorization flow binds real policy evidence.",
+        "identity_ambiguous": false,
+        "kind": "SOURCE",
+        "line": 28,
+        "path": "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts"
+      },
+      {
         "excerpt": "\"spec-224-authorization-binding-v1\" as const;",
         "identity_ambiguous": false,
         "kind": "SOURCE",
@@ -2077,28 +2103,28 @@
         "excerpt": "\"Owner approval for a bounded Spec 224 external-agent run.\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 207,
+        "line": 211,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
         "excerpt": "journalDescription: `Reserve Spec 224 Codex execution ${loaded.run.runId}`,",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 436,
+        "line": 442,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
         "excerpt": "version: \"spec-224-authorization-binding-v1\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 552,
+        "line": 558,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
         "excerpt": "journalDescription: `Release revoked Spec 224 Codex execution ${input.runId}`,",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 761,
+        "line": 782,
         "path": "apps/web/server/services/spec224AuthorizationService.ts"
       },
       {
@@ -2203,21 +2229,21 @@
         "excerpt": "# Spec 224 decisions are committed with a durable delivery intent on the",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 485,
+        "line": 539,
         "path": "python-backend/app/api/approvals.py"
       },
       {
         "excerpt": "\"\"\"Claim persisted Spec 224 decisions for the existing Node reconciler.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 656,
+        "line": 695,
         "path": "python-backend/app/services/approval_db_service.py"
       },
       {
         "excerpt": "# when the persisted Spec 224 intent proves the same actor.",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 1556,
+        "line": 1595,
         "path": "python-backend/app/services/approval_db_service.py"
       },
       {
@@ -2252,21 +2278,28 @@
         "excerpt": "it(\"keeps Spec 224 staged input references in the manifest without input bytes or fetch credentials\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 78,
+        "line": 79,
         "path": "apps/web/server/services/__tests__/agentControlPlaneContracts.test.ts"
       },
       {
         "excerpt": "it(\"pins a bounded Spec 224 source fingerprint and explicit write set\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 91,
+        "line": 92,
         "path": "apps/web/server/services/__tests__/agentControlPlaneContracts.test.ts"
+      },
+      {
+        "excerpt": "source: { type: \"feature\", ref: \"spec:224\" },",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 70,
+        "path": "apps/web/server/services/__tests__/developmentRunEligibility.test.ts"
       },
       {
         "excerpt": "it(\"dispatches staged Spec 224 input together with its immutable local-candidate policy\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 298,
+        "line": 299,
         "path": "apps/web/server/services/__tests__/externalAgentRunnerDispatcher.test.ts"
       },
       {
@@ -2280,7 +2313,7 @@
         "excerpt": "it(\"persists a stable Spec 224 continuation intent with a terminal Runner receipt\", async () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 2680,
+        "line": 2681,
         "path": "apps/web/server/services/__tests__/jobControlPlane.test.ts"
       },
       {
@@ -2350,7 +2383,7 @@
         "excerpt": "describe(\"Spec 224 owner authorization binding\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 93,
+        "line": 95,
         "path": "apps/web/server/services/__tests__/spec224AuthorizationBinding.test.ts"
       },
       {
@@ -2399,98 +2432,105 @@
         "excerpt": "suite(\"Spec 224 — PostgreSQL economic certification\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 120,
+        "line": 121,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "VALUES (${tenantId}, ${`${scopeId}-slug`}, 'Spec 224 Economic Test', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 141,
+        "line": 142,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 test reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 181,
+        "line": 182,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 test release\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 198,
+        "line": 199,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 capture reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 295,
+        "line": 305,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 verified settlement\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 307,
+        "line": 317,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 unknown-outcome reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 339,
+        "line": 349,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 over-budget reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 373,
+        "line": 383,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 rollback after staged reservation\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 387,
+        "line": 397,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "VALUES (${foreignTenantId}, ${`${foreignTenantId}-slug`}, 'Spec 224 Foreign Tenant', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 403,
+        "line": 413,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "description: \"Spec 224 cross tenant journal rejection\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 416,
+        "line": 426,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "expect(entries.some((entry: any) => entry.description === \"Spec 224 cross tenant journal rejection\")).toBe(false);",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 425,
+        "line": 435,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 concurrent reserve\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 441,
+        "line": 451,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
         "excerpt": "journalDescription: \"Spec 224 concurrent settlement\",",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 453,
+        "line": 463,
+        "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
+      },
+      {
+        "excerpt": "journalDescription: \"Spec 224 receipt settlement reserve\",",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 490,
         "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
       },
       {
@@ -2658,7 +2698,7 @@
         "excerpt": "describeDbSuite(\"Spec 224 — PostgreSQL control-plane certification\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 280,
+        "line": 281,
         "path": "apps/web/server/services/__tests__/spec224PostgresIntegration.integration.test.ts"
       },
       {
@@ -2854,7 +2894,7 @@
         "excerpt": "suite(\"Spec 224 durable Runner continuation — PostgreSQL\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
-        "line": 269,
+        "line": 270,
         "path": "apps/web/server/services/__tests__/spec224RunnerContinuationPostgres.integration.test.ts"
       },
       {
@@ -3012,11 +3052,32 @@
         "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
       },
       {
+        "excerpt": "it(\"keeps the existing SPEC-224 provenance interface compatible\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 157,
+        "path": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+      },
+      {
+        "excerpt": "it(\"retains SPEC-224 digest compatibility without changing its provenance contract\", async () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 175,
+        "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts"
+      },
+      {
         "excerpt": "describe(\"Spec 224 incremental SpecSet compiler\", () => {",
         "identity_ambiguous": false,
         "kind": "TEST",
         "line": 36,
         "path": "apps/web/server/services/spec224IncrementalSpecCompiler.test.ts"
+      },
+      {
+        "excerpt": "describe(\"SPEC-224 remote source trust verifier v1\", () => {",
+        "identity_ambiguous": false,
+        "kind": "TEST",
+        "line": 144,
+        "path": "apps/web/server/services/spec224RemoteSourceTrustVerifier.test.ts"
       },
       {
         "excerpt": "\"\"\"Loopback-only ASGI host for the real Spec 224 approval API router.\"\"\"",
@@ -3059,14 +3120,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       }
@@ -3086,7 +3147,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T00:31:52.236052Z",
+  "updated_at": "2026-10-09T02:05:02.544051Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

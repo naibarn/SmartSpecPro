@@ -5,159 +5,30 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
+    "claims": [],
+    "confidence": "UNRESOLVED",
+    "conflicts": [
       {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "220",
-        "referenced_spec_id": "220",
-        "referencing_spec_id": "231",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "231",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "231",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "RELATIONSHIP_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "232",
-        "referencing_spec_id": "231",
-        "relation_text": "successor",
-        "requirement_ids": [
-          "R1.MD",
-          "R2",
-          "R2.1"
+        "classification": "RECONCILIATION_REQUIRED",
+        "evidence": [
+          {
+            "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+            "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
+          },
+          {
+            "digest": "4bfff9d8e5084c9cb73646b93065a8d71d953184c33a75f12b26c049457a2642",
+            "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/spec231-identity-conflict.md"
+          }
         ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": null
-      },
-      {
-        "confidence": "LOW",
-        "direction": "RELATIONSHIP_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "245",
-        "referencing_spec_id": "231",
-        "relation_text": "successor",
-        "requirement_ids": [
-          "R1.MD",
-          "R2",
-          "R2.1"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": null
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "231",
-        "referencing_spec_id": "232",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R1.MD",
-          "R2",
-          "R2.1"
-        ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
-        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-        "successor_spec_id": "232"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "231",
-        "referencing_spec_id": "232",
-        "relation_text": "replace",
-        "requirement_ids": [
-          "R1"
-        ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
-        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-        "successor_spec_id": "232"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "231",
-        "referencing_spec_id": "232",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
-        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-        "successor_spec_id": "232"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "232",
-        "referenced_spec_id": "232",
-        "referencing_spec_id": "231",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R2",
-          "R3",
-          "R5",
-          "R6",
-          "R7"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "245",
-        "referenced_spec_id": "245",
-        "referencing_spec_id": "231",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R2",
-          "R3",
-          "R5",
-          "R6",
-          "R7"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
+        "id": "SPEC231_SPEC232_SPEC245_IDENTITY",
+        "next_action": "Obtain an authenticated owner decision and reconcile 231/232/245 through the supported identity registry and Handoff workflow.",
+        "status": "UNRESOLVED",
+        "summary": "Spec 231 R6 and 232/245 ledger claims assert a distinct 231/232/245 allocation, while canonical generated index leaves all three identities UNRESOLVED and the configured identity registry/history has no owner decision or alias record. Do not infer canonical ownership or rewrite historical references."
       }
     ],
-    "confidence": "UNRESOLVED",
-    "conflicts": [],
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -259,12 +130,12 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6"
+    "expected_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Resolve the canonical 231/232/245 identity relationship through an owner decision and supported registry/Handoff update; then review this conditional provider design against the exact source pin and entitlement gates.",
     "next_ready_workunit": null,
-    "reactivation_predicate": null,
+    "reactivation_predicate": "An authenticated owner decision, registry/history reconciliation, unique index authority, and current source/entitlement review are recorded.",
     "resume_point": null,
     "waiting_predicate": null
   },
@@ -273,7 +144,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -371,21 +242,21 @@
         "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2871,
+        "line": 3061,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 17667,
+        "line": 17857,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 18012,
+        "line": 18202,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
@@ -462,7 +333,7 @@
         "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2805,
+        "line": 2767,
         "path": "apps/web/server/_core/index.ts"
       },
       {
@@ -530,7 +401,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -628,13 +499,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-    "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+    "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.963854Z",
+      "last_evidence_at": "2026-10-09T02:04:06.888973Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -658,10 +529,380 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.963854Z"
+    "updated_at": "2026-10-09T02:04:06.888973Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "UNRESOLVED",
+      "conflicts": [
+        {
+          "classification": "RECONCILIATION_REQUIRED",
+          "evidence": [
+            {
+              "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+              "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
+            },
+            {
+              "digest": "4bfff9d8e5084c9cb73646b93065a8d71d953184c33a75f12b26c049457a2642",
+              "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/spec231-identity-conflict.md"
+            }
+          ],
+          "id": "SPEC231_SPEC232_SPEC245_IDENTITY",
+          "next_action": "Obtain an authenticated owner decision and reconcile 231/232/245 through the supported identity registry and Handoff workflow.",
+          "status": "UNRESOLVED",
+          "summary": "Spec 231 R6 and 232/245 ledger claims assert a distinct 231/232/245 allocation, while canonical generated index leaves all three identities UNRESOLVED and the configured identity registry/history has no owner decision or alias record. Do not infer canonical ownership or rewrite historical references."
+        }
+      ],
+      "evidence": [
+        {
+          "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
+        },
+        {
+          "digest": "da86fd284c32dcec2fe89eedad3cc252e8a5d8d61dabceb3045a1135a638c423",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-plan.md"
+        },
+        {
+          "digest": "6b79c6ab395f865a1ca9de5a1c40eb013bd2a8d3390f40bdc2f0078d724092a5",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/claude-spec.md"
+        },
+        {
+          "digest": "267af4b7b6631e63c28913bf92958877f0238ba6a884fa9920aa708647a60137",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/closure-plan.md"
+        },
+        {
+          "digest": "c792b5b645c9f043c5db02ce8e4a5c5fdfb9e31e755563fbc2a7927bc03f9c71",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/consumer-adoption-inventory.json"
+        },
+        {
+          "digest": "32110847e336cffa0162e906747385d376ff51eee20506fa41f5b4c5255cb4cb",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/deep_implement_config.json"
+        },
+        {
+          "digest": "c3b12d66099fa9f22de3a8e2d5814096ff92898677ebd702a6db74a6492cf1a8",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/plan-review.md"
+        },
+        {
+          "digest": "4132a1c04c065ee43809a3de12843a92e562c788b78ac9cb52fb28c0f3a6bc8c",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/implementation/postgres-integration-evidence.md"
+        },
+        {
+          "digest": "8624486d06f07e18a5c9c93a176f518e2907c7005a4823ecc785ba8ca9b59e88",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/index.md"
+        },
+        {
+          "digest": "58d36c20e04f2040db7d40fa04486df403fd33c006e7446422e1b3a496ba5622",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-01-spec-identity-and-source-map.md"
+        },
+        {
+          "digest": "a100452864207b5d0a8884a17c6121933591b9a20a4e5fab2e4fd92579881dbe",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-02-inference-contract-and-compatibility.md"
+        },
+        {
+          "digest": "5b3398c18f8152578f1154ccb71b1f063c84e618fd10ba3e35cfa46c16cdee9b",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-03-policy-admission-and-deterministic-router.md"
+        },
+        {
+          "digest": "fe71f57908d967213159c8a64a6b6acb736872a156d1f503ef7d9654cbe007f4",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-04-model-deployment-qualification.md"
+        },
+        {
+          "digest": "854fe319d802c7e16a5ab11f703b466bf4fea8fd960da11159257b037c7a5b70",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-05-plan-attempt-and-economics.md"
+        },
+        {
+          "digest": "128640623c2dd1ae046a276db2abc68579f1770be025a36184fd1c88456bb0ec",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-06-provider-surfaces-state-and-jobs.md"
+        },
+        {
+          "digest": "3f5f287e3bb39b73e6729c0aa4c8235bd7abc1a54a89f61294bbd58756e43c41",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-07-consumer-adoption.md"
+        },
+        {
+          "digest": "d1e66b93061e7737d9f69ff8dab0484a86bb8e77d3988168c7710513f12abae7",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-08-evaluation-data-and-learning.md"
+        },
+        {
+          "digest": "6dcce46268422e539f13b69887e1eeb6644de1131c38eaf68df299bfe67e5203",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-09-admin-user-experience.md"
+        },
+        {
+          "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
+          "kind": "SUPPORTING_ARTIFACT",
+          "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "UNRESOLVED",
+      "successors": []
+    },
+    "requirements": {
+      "REQ-035552B8BC4B": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2003"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2003",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "f8344ca28f3daba9c6a17e0b76c7b16b6e65359cbb69a66d6f41e50eb4838851",
+        "requirement_id": "REQ-035552B8BC4B",
+        "requirement_text": "7. `RATE_LIMITED`, `SUBSCRIPTION_ALLOWANCE_EXHAUSTED`, `CLI_UNAVAILABLE`, `UNAUTHORIZED`, `CANCELLED`, and `UPSTREAM_OUTCOME_UNKNOWN` MUST remain distinguishable from SmartAIHub credit exhaustion and official API quota. Fallback to a different provider or paid API MUST require route-policy authorization and user-visible cost disclosure before execution; API-key fallback MUST never be silent.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-0DA2BCCC53C8": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2000"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2000",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "8956efe873d0ebfaf695d4672eb238b1f89d2e0659f6249b85cf9a66d1833ea7",
+        "requirement_id": "REQ-0DA2BCCC53C8",
+        "requirement_text": "4. Admission MUST be per request, bounded by the existing plan's timeout, resource, concurrency and cancellation rules. Cancellation MUST terminate the full child process tree, close relay/stream resources, reap the child, and leave an exact terminal/unknown receipt. Retries MUST be bounded and idempotency-aware; never replay an uncertain accepted request or non-idempotent tool effect.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-310ABA5154FB": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1999"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1999",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "97e2a1c90a1ec6106dcd1adf733889698c5c27c28db1e4d31cad870acf9e05a5",
+        "requirement_id": "REQ-310ABA5154FB",
+        "requirement_text": "3. The adapter MUST enter through existing route planning and, for durable/long-running work, existing `worker_jobs` plus outbox and Runner lease/receipt authority. It MUST NOT add a queue, control plane, dispatch authority, or production Hermes runtime. Spec 267/224/197 owner reconciliation and current Runner certification remain prerequisites; this paragraph does not settle those Specs' authority.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-34274A33AC7D": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2002"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2002",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "e048aa678e62b048cc09288ad4834cdac36b1b81e207a501161a6f10b406ec05",
+        "requirement_id": "REQ-34274A33AC7D",
+        "requirement_text": "6. Usage and quota records MUST keep separate fields for reported input/output/cache tokens, estimated API-equivalent cost, observed subscription allowance/error, and actual invoiced/billed amount. The adapter MUST NOT infer remaining subscription quota or represent estimated equivalent API cost as the user's actual charge. An unavailable allowance remains `UNKNOWN` unless the CLI returns authoritative evidence.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-61BC0C91288E": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2004"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2004",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "72e38858efd8aba62f0e2b1e2892f9c2523eab6ff8e6c27ab1a695ef40901893",
+        "requirement_id": "REQ-61BC0C91288E",
+        "requirement_text": "8. Commercial SaaS eligibility, consumer-plan terms, account sharing, and use on behalf of other tenants remain an external entitlement/legal gate. An individual Claude subscription MUST NOT be treated as authorization for shared commercial service.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-6C3F5D1DB6A7": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1997"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1997",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "8c874970a26f66e36b6b8c8bbbccd1fdda4b56bd5be1f4afa3d504773c7f5ba2",
+        "requirement_id": "REQ-6C3F5D1DB6A7",
+        "requirement_text": "1. Model-only mode MUST disable native provider tools and autonomous turns. A returned tool call is an untrusted model proposal. SmartAIHub MUST validate it against current tenant/user policy, require the existing approval where applicable, and execute it only through the authorized host/Runner Tool, MCP, and Memory boundaries. The provider process MUST NOT receive a second, independent tool or approval authority, or direct Memory write authority.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-7B0D0D5969A5": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1998"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1998",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "cc2c1fce735046299e39ce3e3c59d9a98821ebfecab8888b38be54d923cb3a99",
+        "requirement_id": "REQ-7B0D0D5969A5",
+        "requirement_text": "2. Subscription CLI execution MUST occur only on the initiating user's paired Runner. The platform MUST NOT copy, export, upload, log, or centrally reuse local CLI OAuth/session material or `CLAUDE_CODE_OAUTH_TOKEN`. A device-local credential handle or sanitized login/availability result may be reported; it MUST NOT resolve to reusable secret material on the server. Cross-user, cross-tenant, or shared-account reuse is prohibited by this proposed contract. The adapter MUST fail closed when inherited API-key, auth-token, base-URL, or backend configuration conflicts with the selected local-subscription mode; no fixture-only bypass may be reachable in production.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-B9B15B6328BC": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2001"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2001",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "199f86fd2d02b128111119d91566230cc66b5b2069a7cc1a9bcddd5fa917d61a",
+        "requirement_id": "REQ-B9B15B6328BC",
+        "requirement_text": "5. Context/history MUST be bound to the request digest, tenant/user, policy epoch, and exact projection revision. Replay behavior is upstream-version-sensitive. A transformed or incomplete replay MUST fail closed or use an explicitly approved canonical-text projection; it MUST NOT claim native signed-history parity.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-C6D5394FE0C4": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2005"
+        ],
+        "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2005",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC231_IDENTITY_RECONCILIATION",
+          "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+          "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "requirement_digest": "d58a13fd591624530176b070a341d7f2d57d8effefaec3b4ca963310f5d5df57",
+        "requirement_id": "REQ-C6D5394FE0C4",
+        "requirement_text": "9. Initial compatibility qualification is Windows-first Personal Runner, with Linux optional. The adapter MUST stay behind an experimental capability flag, a reviewed full-SHA dependency pin and CLI version allowlist. For upstream-plugin qualification only, Hermes `>=0.21.4` and the reviewed plugin `0.3.3` at full commit `4bc79c78031d1a042b5d8a7314ceea283db5c5e2` are required. Hermes runtime MUST NOT become a required production cloud dependency. Upgrades require source, license/SBOM, process isolation, history, streaming/cancellation, inherited-environment isolation, and billing-semantics review.",
+        "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -671,10 +912,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.963854Z",
+    "reconciled_at": "2026-10-09T02:04:06.888973Z",
     "sources": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -772,21 +1013,21 @@
         "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2871,
+        "line": 3061,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 17667,
+        "line": 17857,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 18012,
+        "line": 18202,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
@@ -863,7 +1104,7 @@
         "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2805,
+        "line": 2767,
         "path": "apps/web/server/_core/index.ts"
       },
       {
@@ -1238,11 +1479,26 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "source_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
+      },
+      {
+        "digest": "4bfff9d8e5084c9cb73646b93065a8d71d953184c33a75f12b26c049457a2642",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/spec231-identity-conflict.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -1256,21 +1512,21 @@
         "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2871,
+        "line": 3061,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 17667,
+        "line": 17857,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
         "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 18012,
+        "line": 18202,
         "path": "apps/web/drizzle/schema.ts"
       },
       {
@@ -1347,7 +1603,7 @@
         "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
         "identity_ambiguous": false,
         "kind": "SOURCE",
-        "line": 2805,
+        "line": 2767,
         "path": "apps/web/server/_core/index.ts"
       },
       {
@@ -1727,14 +1983,14 @@
         "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
         "line": 3,
         "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "source_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -1840,11 +2096,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 211,
-    "unresolved": 211
+    "total": 220,
+    "unresolved": 220
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.963854Z",
+  "updated_at": "2026-10-09T02:05:02.620882Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

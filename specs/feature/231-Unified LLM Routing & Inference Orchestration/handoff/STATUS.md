@@ -2,11 +2,11 @@
 # 231 — Spec 231 — Unified LLM Routing & Inference Orchestration
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 211 unresolved of 211
+- Requirements: 0 pass / 220 unresolved of 220
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 8
+- Manifest generation: 13
 
 ## Source-declared status and relationship claims
 

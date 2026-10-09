@@ -4039,3 +4039,9 @@ It may not be:
 ```text
 "we sent it somewhere and do not know what happened."
 ```
+
+## Conditional DirectSDK execution note (2026-10-09)
+
+This proposal does not reconcile Spec 267's canonical identity or authorize a runtime. Its handoff remains `DORMANT_UNRESOLVED` / `RECONCILIATION_REQUIRED`.
+
+If a Claude subscription-backed local CLI model request is approved later, its durable admission, lease, cancellation, resource/concurrency limits, recovery, and terminal evidence MUST reuse the existing `worker_jobs` plus outbox and user-owned Runner boundaries. Do not introduce a DirectSDK queue, Hermes production runtime, parallel control plane, or separate Task Control authority. A model request receipt remains distinct from an autonomous external-agent task receipt. See the conditional design in Spec 231 §102.

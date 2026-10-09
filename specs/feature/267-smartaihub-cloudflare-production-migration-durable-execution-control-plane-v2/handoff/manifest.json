@@ -5,12 +5,25 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [],
+    "claims": [
+      {
+        "confidence": "LOW",
+        "direction": "SUCCESSOR_CANDIDATE",
+        "predecessor_spec_id": "224",
+        "referenced_spec_id": "224",
+        "referencing_spec_id": "267",
+        "relation_text": "superseded",
+        "requirement_ids": [],
+        "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L158",
+        "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+        "successor_spec_id": "267"
+      }
+    ],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -22,12 +35,12 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
-    "expected_spec_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50"
+    "expected_spec_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Reconcile Spec 267 identity and confirm existing worker_jobs/outbox and Runner cancellation/receipt ownership before planning any integration.",
     "next_ready_workunit": null,
-    "reactivation_predicate": null,
+    "reactivation_predicate": "Canonical owner/disposition is resolved and the existing durable-job/Runner interfaces and policy are confirmed for this route.",
     "resume_point": null,
     "waiting_predicate": null
   },
@@ -36,7 +49,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -63,7 +76,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -71,16 +84,16 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-    "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+    "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T04:27:57.070279Z",
+      "last_evidence_at": "2026-10-09T02:04:06.918055Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-06T11:34:46+07:00",
+      "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
     },
     "revision": "4.0",
     "slug": "267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
@@ -101,10 +114,41 @@
     "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T04:27:57.070279Z"
+    "updated_at": "2026-10-09T02:04:06.918055Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-737F4A03A9E6": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L4047"
+        ],
+        "authority_source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L4047",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC267_OWNER_RECONCILIATION",
+          "next_action": "Resolve canonical identity and confirm existing worker_jobs/outbox and Runner receipt/cancellation contracts.",
+          "root_cause": "Spec 267 remains DORMANT_UNRESOLVED; no new durable execution authority is approved."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Resolve canonical identity and confirm existing worker_jobs/outbox and Runner receipt/cancellation contracts.",
+        "requirement_digest": "f73da4a6a1c68e868566c12313d69a056548ce51501b9a97e536acffef479951",
+        "requirement_id": "REQ-737F4A03A9E6",
+        "requirement_text": "If a Claude subscription-backed local CLI model request is approved later, its durable admission, lease, cancellation, resource/concurrency limits, recovery, and terminal evidence MUST reuse the existing `worker_jobs` plus outbox and user-owned Runner boundaries. Do not introduce a DirectSDK queue, Hermes production runtime, parallel control plane, or separate Task Control authority. A model request receipt remains distinct from an autonomous external-agent task receipt. See the conditional design in Spec 231 §102.",
+        "source_spec_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +158,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T04:27:57.070279Z",
+    "reconciled_at": "2026-10-09T02:04:06.918055Z",
     "sources": [
       {
-        "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       },
@@ -129,7 +173,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 9,
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "value": "CANONICAL_IMPLEMENTATION_PLAN"
       },
       {
@@ -140,13 +184,26 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 33,
         "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+        "target_ambiguous": true,
+        "target_candidates": [],
         "target_spec_ids": [],
         "value": ""
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -156,7 +213,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "UNASSESSED",
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -168,7 +225,7 @@
         "excerpt": "status: CANONICAL_IMPLEMENTATION_PLAN",
         "line": 9,
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "value": "CANONICAL_IMPLEMENTATION_PLAN"
       },
       {
@@ -178,8 +235,11 @@
         "excerpt": "supersedes:",
         "line": 33,
         "relation": "SUPERSEDES",
+        "scope_signal": "SCOPE_UNSPECIFIED",
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+        "target_ambiguous": true,
+        "target_candidates": [],
         "target_spec_ids": [],
         "value": ""
       }
@@ -187,7 +247,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -195,7 +255,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "UNASSESSED"
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -203,11 +263,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 362,
-    "unresolved": 362
+    "total": 363,
+    "unresolved": 363
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:37:58.339573Z",
+  "updated_at": "2026-10-09T02:05:02.670364Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

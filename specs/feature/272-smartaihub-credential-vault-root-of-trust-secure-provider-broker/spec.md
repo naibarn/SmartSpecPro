@@ -2194,4 +2194,10 @@ Verified on 2026-10-02 against Cloudflare documentation:
 
 ---
 
+## Conditional local CLI credential boundary note (2026-10-09)
+
+This additive design does not resolve Spec 272's `DORMANT_UNRESOLVED` authority or approve subscription-backed service. A user's Claude CLI login, local credential store, and any `CLAUDE_CODE_OAUTH_TOKEN` remain device-local on that user's paired Runner. They MUST NOT be imported, uploaded, copied, logged, or made resolvable through the SmartAIHub Credential Vault, and MUST NOT be reused across users or tenants.
+
+The central vault may retain only a non-secret logical reference or sanitized device capability/login status when current policy permits. Such metadata MUST NOT act as a proxy credential or imply that an individual subscription is eligible for commercial multi-tenant use. A centrally managed official API credential remains a separate provider mode. Commercial entitlement and terms review remain an external gate. See the conditional Spec 231 §102 proposal.
+
 ## End of Spec 272

@@ -98,8 +98,8 @@
         "referencing_spec_id": "208",
         "relation_text": "replace",
         "requirement_ids": [],
-        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4525",
-        "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+        "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4568",
+        "source_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
         "successor_spec_id": "208"
       },
       {
@@ -207,7 +207,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -219,7 +219,7 @@
         "relation_text": "replaceable",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -231,7 +231,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
-        "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+        "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "successor_spec_id": "224"
       },
       {
@@ -305,7 +305,7 @@
         "relation_text": "replace",
         "requirement_ids": [],
         "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L8",
-        "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "successor_spec_id": "200"
       }
     ],
@@ -313,7 +313,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       },
@@ -420,12 +420,12 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa"
+    "expected_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Reconcile Spec 200 ownership and the existing delegated-agent/Runner/job contract before opening implementation work.",
     "next_ready_workunit": null,
-    "reactivation_predicate": null,
+    "reactivation_predicate": "A canonical owner decision resolves Spec 200 identity and confirms the existing Runner, policy, and durable-job boundaries.",
     "resume_point": null,
     "waiting_predicate": null
   },
@@ -434,7 +434,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       },
@@ -563,7 +563,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       },
@@ -666,13 +666,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-    "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+    "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:16.999107Z",
+      "last_evidence_at": "2026-10-09T02:04:06.654918Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-17T22:45:26+07:00",
       "spec_last_changed_at": "2026-09-18T20:52:49+07:00"
@@ -696,10 +696,41 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:16.999107Z"
+    "updated_at": "2026-10-09T02:04:06.654918Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-FEB6E80A1181": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6394"
+        ],
+        "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6394",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC200_OWNER_RECONCILIATION",
+          "next_action": "Resolve canonical Spec 200 authority and confirm Runner, policy, tool, and durable-job owners before implementation.",
+          "root_cause": "Spec 200 remains DORMANT_UNRESOLVED; this conditional model/provider boundary is not an approved Agent Task or dispatch route."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Resolve canonical Spec 200 authority and confirm Runner, policy, tool, and durable-job owners before implementation.",
+        "requirement_digest": "4addda0a1c2e2678b1ccc5c566a1669ca67c37bd4a57d8242cd69fc2405f7b6d",
+        "requirement_id": "REQ-FEB6E80A1181",
+        "requirement_text": "The Claude subscription DirectSDK candidate is a **model-only local CLI provider surface**, not an autonomous external-agent execution. It MUST NOT be registered as a Spec 200 agent or delegated task merely because the Claude CLI runs in a subprocess. In model-only mode, native provider tools and autonomous turns remain disabled; returned tool requests go through SmartAIHub's existing Tool/Policy/Approval, MCP, Memory, and host execution paths. If a user separately selects an autonomous agent, that remains a distinct Spec 200 task with existing Runner authorization, durable `worker_jobs` control, and receipt/finality requirements. See the conditional routing contract in Spec 231 §102; no unresolved Spec identity or approval gate is waived by this cross-reference.",
+        "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -709,10 +740,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:16.999107Z",
+    "reconciled_at": "2026-10-09T02:04:06.654918Z",
     "sources": [
       {
-        "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       },
@@ -930,11 +961,21 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-        "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "value": "Implementation-ready target specification"
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -1042,14 +1083,14 @@
         "excerpt": "**Status:** Implementation-ready target specification",
         "line": 3,
         "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-        "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "value": "Implementation-ready target specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md"
       },
@@ -1180,11 +1221,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 229,
-    "unresolved": 229
+    "total": 230,
+    "unresolved": 230
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:16.999107Z",
+  "updated_at": "2026-10-09T02:05:02.640073Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

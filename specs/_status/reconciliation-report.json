@@ -4045,7 +4045,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+        "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
         "path": "specs/feature/200-universal-coding-agent-control-plane",
         "problem": null,
         "record_key": "canonical:specs/feature/200-universal-coding-agent-control-plane",
@@ -4531,7 +4531,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+        "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
         "problem": null,
         "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -4657,7 +4657,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration",
         "problem": null,
         "record_key": "canonical:specs/feature/231-Unified LLM Routing & Inference Orchestration",
@@ -5305,7 +5305,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+        "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
         "problem": null,
         "record_key": "canonical:specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
@@ -5341,7 +5341,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
         "problem": null,
         "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
@@ -5395,7 +5395,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
         "problem": null,
         "record_key": "canonical:specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
@@ -5485,7 +5485,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
         "path": "specs/feature/277-task-control-experience-r1-6",
         "problem": null,
         "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",
@@ -8530,8 +8530,8 @@
     "schema_version": 1
   },
   "reconciliation_confidence_counts": {
-    "confidence.HIGH": 6,
-    "confidence.LOW": 303,
+    "confidence.HIGH": 5,
+    "confidence.LOW": 304,
     "confidence.MEDIUM": 5,
     "confidence.NOT_APPLICABLE": 131,
     "confidence.UNRESOLVED": 27
@@ -84255,6 +84255,7 @@
         "requirement REQ-6F1BB5398748 is OPEN",
         "requirement REQ-AA70E5D3C28E is OPEN",
         "requirement REQ-FFE04E586883 is OPEN",
+        "requirement REQ-FEB6E80A1181 is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -84352,7 +84353,7 @@
           "excerpt": "**Status:** Implementation-ready target specification",
           "line": 3,
           "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-          "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+          "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
           "value": "Implementation-ready target specification"
         }
       ],
@@ -84365,17 +84366,17 @@
           "excerpt": "**Status:** Implementation-ready target specification",
           "line": 3,
           "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-          "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+          "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
           "value": "Implementation-ready target specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:16.999107Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-09T02:04:06.654918Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/200-universal-coding-agent-control-plane",
       "primary_blocker": null,
@@ -84475,8 +84476,8 @@
           "referencing_spec_id": "208",
           "relation_text": "replace",
           "requirement_ids": [],
-          "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4525",
-          "source_digest": "06fdab4bac6ae42190fd63befa5ff9dd165ebeb08940927f38c9925232e816a8",
+          "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L4568",
+          "source_digest": "30bc72b567024c4d490ceaaf2e922f344e2f8e93b21d11d02d7408f16a872155",
           "successor_spec_id": "208"
         },
         {
@@ -84584,7 +84585,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-          "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -84596,7 +84597,7 @@
           "relation_text": "replaceable",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-          "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -84608,7 +84609,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
-          "source_digest": "2dc3f6ee9555c90fd2dc4050be66eda5d41f876489c58e1528a88077ef0ecb8c",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -84682,7 +84683,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L8",
-          "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+          "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
           "successor_spec_id": "200"
         }
       ],
@@ -84790,14 +84791,14 @@
             "excerpt": "**Status:** Implementation-ready target specification",
             "line": 3,
             "source": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-            "source_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+            "source_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
             "value": "Implementation-ready target specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+            "digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md"
           },
@@ -84923,9 +84924,9 @@
         "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
       },
       "requirements": {
-        "open": 229,
+        "open": 230,
         "pass": 0,
-        "total": 229
+        "total": 230
       },
       "revision": "7",
       "root_kind": "CANONICAL",
@@ -103337,8 +103338,8 @@
       "continuation": "RECONCILIATION_REQUIRED",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 7,
-        "SOURCE": 40,
-        "TEST": 118
+        "SOURCE": 43,
+        "TEST": 123
       },
       "declared_claims": [
         {
@@ -103348,7 +103349,7 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
         }
       ],
@@ -103361,16 +103362,16 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+      "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-08T02:06:09.264229Z",
+      "last_reconciled": "2026-10-09T02:04:06.717660Z",
       "lifecycle": "WAITING_APPROVAL",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -103388,7 +103389,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L185",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103400,7 +103401,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2893",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103412,7 +103413,7 @@
           "relation_text": "supersedes",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L12267",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103424,7 +103425,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103436,7 +103437,7 @@
           "relation_text": "replaceable",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103448,7 +103449,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2894",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103460,7 +103461,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L8683",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103472,7 +103473,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L10797",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103484,7 +103485,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2895",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103496,7 +103497,7 @@
           "relation_text": "replaces",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L11375",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -103999,7 +104000,7 @@
           "relation_text": "superseded",
           "requirement_ids": [],
           "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L158",
-          "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+          "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
           "successor_spec_id": "267"
         },
         {
@@ -104097,7 +104098,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-          "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+          "source_digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
           "successor_spec_id": "277"
         },
         {
@@ -104169,7 +104170,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L13121",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -104181,7 +104182,7 @@
           "relation_text": "merging",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14794",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -104193,7 +104194,7 @@
           "relation_text": "merge",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L14861",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -104205,7 +104206,7 @@
           "relation_text": "absorbing",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L15001",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -104217,7 +104218,7 @@
           "relation_text": "replaceable",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L16870",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         },
         {
@@ -104229,7 +104230,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2896",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
           "successor_spec_id": "224"
         }
       ],
@@ -104320,7 +104321,7 @@
             "excerpt": "Owner-scoped Spec 224 state through the canonical Spec 226",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 907,
+            "line": 908,
             "path": "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
           },
           {
@@ -104383,8 +104384,22 @@
             "excerpt": "/** Opaque pointer to immutable Spec 224 input staged outside the job event log. */",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 44,
+            "line": 45,
             "path": "apps/web/server/services/agentControlPlaneContracts.ts"
+          },
+          {
+            "excerpt": "/** Canonically loaded SPEC-224 DevelopmentRun; not a handoff nomination. */",
+            "identity_ambiguous": false,
+            "kind": "SOURCE",
+            "line": 56,
+            "path": "apps/web/server/services/developmentRunEligibility.ts"
+          },
+          {
+            "excerpt": ": \"SPEC-224\",",
+            "identity_ambiguous": false,
+            "kind": "SOURCE",
+            "line": 241,
+            "path": "apps/web/server/services/developmentRunEligibility.ts"
           },
           {
             "excerpt": "explanation: \"Spec 224 approval decision was reconciled through the existing approval authority and Feature 195 control plane.\",",
@@ -104415,6 +104430,13 @@
             "path": "apps/web/server/services/jobReconciler.ts"
           },
           {
+            "excerpt": "* until the normal Spec 224 authorization flow binds real policy evidence.",
+            "identity_ambiguous": false,
+            "kind": "SOURCE",
+            "line": 28,
+            "path": "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts"
+          },
+          {
             "excerpt": "\"spec-224-authorization-binding-v1\" as const;",
             "identity_ambiguous": false,
             "kind": "SOURCE",
@@ -104425,28 +104447,28 @@
             "excerpt": "\"Owner approval for a bounded Spec 224 external-agent run.\",",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 207,
+            "line": 211,
             "path": "apps/web/server/services/spec224AuthorizationService.ts"
           },
           {
             "excerpt": "journalDescription: `Reserve Spec 224 Codex execution ${loaded.run.runId}`,",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 436,
+            "line": 442,
             "path": "apps/web/server/services/spec224AuthorizationService.ts"
           },
           {
             "excerpt": "version: \"spec-224-authorization-binding-v1\",",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 552,
+            "line": 558,
             "path": "apps/web/server/services/spec224AuthorizationService.ts"
           },
           {
             "excerpt": "journalDescription: `Release revoked Spec 224 Codex execution ${input.runId}`,",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 761,
+            "line": 782,
             "path": "apps/web/server/services/spec224AuthorizationService.ts"
           },
           {
@@ -104551,21 +104573,21 @@
             "excerpt": "# Spec 224 decisions are committed with a durable delivery intent on the",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 485,
+            "line": 539,
             "path": "python-backend/app/api/approvals.py"
           },
           {
             "excerpt": "\"\"\"Claim persisted Spec 224 decisions for the existing Node reconciler.",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 656,
+            "line": 695,
             "path": "python-backend/app/services/approval_db_service.py"
           },
           {
             "excerpt": "# when the persisted Spec 224 intent proves the same actor.",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 1556,
+            "line": 1595,
             "path": "python-backend/app/services/approval_db_service.py"
           },
           {
@@ -104600,21 +104622,28 @@
             "excerpt": "it(\"keeps Spec 224 staged input references in the manifest without input bytes or fetch credentials\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 78,
+            "line": 79,
             "path": "apps/web/server/services/__tests__/agentControlPlaneContracts.test.ts"
           },
           {
             "excerpt": "it(\"pins a bounded Spec 224 source fingerprint and explicit write set\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 91,
+            "line": 92,
             "path": "apps/web/server/services/__tests__/agentControlPlaneContracts.test.ts"
+          },
+          {
+            "excerpt": "source: { type: \"feature\", ref: \"spec:224\" },",
+            "identity_ambiguous": false,
+            "kind": "TEST",
+            "line": 70,
+            "path": "apps/web/server/services/__tests__/developmentRunEligibility.test.ts"
           },
           {
             "excerpt": "it(\"dispatches staged Spec 224 input together with its immutable local-candidate policy\", async () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 298,
+            "line": 299,
             "path": "apps/web/server/services/__tests__/externalAgentRunnerDispatcher.test.ts"
           },
           {
@@ -104628,7 +104657,7 @@
             "excerpt": "it(\"persists a stable Spec 224 continuation intent with a terminal Runner receipt\", async () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 2680,
+            "line": 2681,
             "path": "apps/web/server/services/__tests__/jobControlPlane.test.ts"
           },
           {
@@ -104698,7 +104727,7 @@
             "excerpt": "describe(\"Spec 224 owner authorization binding\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 93,
+            "line": 95,
             "path": "apps/web/server/services/__tests__/spec224AuthorizationBinding.test.ts"
           },
           {
@@ -104747,98 +104776,105 @@
             "excerpt": "suite(\"Spec 224 — PostgreSQL economic certification\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 120,
+            "line": 121,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "VALUES (${tenantId}, ${`${scopeId}-slug`}, 'Spec 224 Economic Test', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 141,
+            "line": 142,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 test reserve\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 181,
+            "line": 182,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 test release\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 198,
+            "line": 199,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 capture reserve\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 295,
+            "line": 305,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 verified settlement\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 307,
+            "line": 317,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 unknown-outcome reserve\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 339,
+            "line": 349,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 over-budget reserve\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 373,
+            "line": 383,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 rollback after staged reservation\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 387,
+            "line": 397,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "VALUES (${foreignTenantId}, ${`${foreignTenantId}-slug`}, 'Spec 224 Foreign Tenant', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 403,
+            "line": 413,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "description: \"Spec 224 cross tenant journal rejection\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 416,
+            "line": 426,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "expect(entries.some((entry: any) => entry.description === \"Spec 224 cross tenant journal rejection\")).toBe(false);",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 425,
+            "line": 435,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 concurrent reserve\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 441,
+            "line": 451,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
             "excerpt": "journalDescription: \"Spec 224 concurrent settlement\",",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 453,
+            "line": 463,
+            "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
+          },
+          {
+            "excerpt": "journalDescription: \"Spec 224 receipt settlement reserve\",",
+            "identity_ambiguous": false,
+            "kind": "TEST",
+            "line": 490,
             "path": "apps/web/server/services/__tests__/spec224EconomicPostgres.integration.test.ts"
           },
           {
@@ -105006,7 +105042,7 @@
             "excerpt": "describeDbSuite(\"Spec 224 — PostgreSQL control-plane certification\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 280,
+            "line": 281,
             "path": "apps/web/server/services/__tests__/spec224PostgresIntegration.integration.test.ts"
           },
           {
@@ -105202,7 +105238,7 @@
             "excerpt": "suite(\"Spec 224 durable Runner continuation — PostgreSQL\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
-            "line": 269,
+            "line": 270,
             "path": "apps/web/server/services/__tests__/spec224RunnerContinuationPostgres.integration.test.ts"
           },
           {
@@ -105360,11 +105396,32 @@
             "path": "apps/web/server/services/__tests__/spec226DevelopmentControlBridge.test.ts"
           },
           {
+            "excerpt": "it(\"keeps the existing SPEC-224 provenance interface compatible\", () => {",
+            "identity_ambiguous": false,
+            "kind": "TEST",
+            "line": 157,
+            "path": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts"
+          },
+          {
+            "excerpt": "it(\"retains SPEC-224 digest compatibility without changing its provenance contract\", async () => {",
+            "identity_ambiguous": false,
+            "kind": "TEST",
+            "line": 175,
+            "path": "apps/web/server/services/__tests__/spec271PortableEvidenceReceipt.test.ts"
+          },
+          {
             "excerpt": "describe(\"Spec 224 incremental SpecSet compiler\", () => {",
             "identity_ambiguous": false,
             "kind": "TEST",
             "line": 36,
             "path": "apps/web/server/services/spec224IncrementalSpecCompiler.test.ts"
+          },
+          {
+            "excerpt": "describe(\"SPEC-224 remote source trust verifier v1\", () => {",
+            "identity_ambiguous": false,
+            "kind": "TEST",
+            "line": 144,
+            "path": "apps/web/server/services/spec224RemoteSourceTrustVerifier.test.ts"
           },
           {
             "excerpt": "\"\"\"Loopback-only ASGI host for the real Spec 224 approval API router.\"\"\"",
@@ -105407,14 +105464,14 @@
             "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
             "line": 4,
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-            "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+            "source_digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
             "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+            "digest": "22b38aa329437dc9e449120a11d88d4e6cf75452589ce409be10d638b79a4a21",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
           }
@@ -108711,6 +108768,15 @@
         "requirement R231-04 is OPEN",
         "requirement R231-07 is OPEN",
         "requirement R231-10 is OPEN",
+        "requirement REQ-6C3F5D1DB6A7 is OPEN",
+        "requirement REQ-7B0D0D5969A5 is OPEN",
+        "requirement REQ-310ABA5154FB is OPEN",
+        "requirement REQ-0DA2BCCC53C8 is OPEN",
+        "requirement REQ-B9B15B6328BC is OPEN",
+        "requirement REQ-34274A33AC7D is OPEN",
+        "requirement REQ-035552B8BC4B is OPEN",
+        "requirement REQ-61BC0C91288E is OPEN",
+        "requirement REQ-C6D5394FE0C4 is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -108730,7 +108796,7 @@
           "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
           "line": 3,
           "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+          "source_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
           "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
         }
       ],
@@ -108743,171 +108809,24 @@
           "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
           "line": 3,
           "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+          "source_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
           "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:17.963854Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-09T02:04:06.888973Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration",
       "primary_blocker": null,
       "problem": null,
       "record_key": "canonical:specs/feature/231-Unified LLM Routing & Inference Orchestration",
       "record_kind": "CANONICAL_SPEC",
-      "relationship_claims": [
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "220",
-          "referenced_spec_id": "220",
-          "referencing_spec_id": "231",
-          "relation_text": "replace",
-          "requirement_ids": [],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": "231"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "229",
-          "referenced_spec_id": "229",
-          "referencing_spec_id": "231",
-          "relation_text": "replacement",
-          "requirement_ids": [],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": "231"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "229",
-          "referenced_spec_id": "229",
-          "referencing_spec_id": "231",
-          "relation_text": "replace",
-          "requirement_ids": [],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": "231"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "RELATIONSHIP_CANDIDATE",
-          "predecessor_spec_id": "231",
-          "referenced_spec_id": "232",
-          "referencing_spec_id": "231",
-          "relation_text": "successor",
-          "requirement_ids": [
-            "R1.MD",
-            "R2",
-            "R2.1"
-          ],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": null
-        },
-        {
-          "confidence": "LOW",
-          "direction": "RELATIONSHIP_CANDIDATE",
-          "predecessor_spec_id": "231",
-          "referenced_spec_id": "245",
-          "referencing_spec_id": "231",
-          "relation_text": "successor",
-          "requirement_ids": [
-            "R1.MD",
-            "R2",
-            "R2.1"
-          ],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": null
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "231",
-          "referenced_spec_id": "231",
-          "referencing_spec_id": "232",
-          "relation_text": "superseded",
-          "requirement_ids": [
-            "R1.MD",
-            "R2",
-            "R2.1"
-          ],
-          "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
-          "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-          "successor_spec_id": "232"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "231",
-          "referenced_spec_id": "231",
-          "referencing_spec_id": "232",
-          "relation_text": "replace",
-          "requirement_ids": [
-            "R1"
-          ],
-          "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
-          "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-          "successor_spec_id": "232"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "231",
-          "referenced_spec_id": "231",
-          "referencing_spec_id": "232",
-          "relation_text": "replacement",
-          "requirement_ids": [],
-          "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
-          "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-          "successor_spec_id": "232"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "232",
-          "referenced_spec_id": "232",
-          "referencing_spec_id": "231",
-          "relation_text": "superseded",
-          "requirement_ids": [
-            "R2",
-            "R3",
-            "R5",
-            "R6",
-            "R7"
-          ],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": "231"
-        },
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "245",
-          "referenced_spec_id": "245",
-          "referencing_spec_id": "231",
-          "relation_text": "superseded",
-          "requirement_ids": [
-            "R2",
-            "R3",
-            "R5",
-            "R6",
-            "R7"
-          ],
-          "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
-          "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-          "successor_spec_id": "231"
-        }
-      ],
+      "relationship_claims": [],
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []
@@ -108918,21 +108837,21 @@
             "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 2871,
+            "line": 3061,
             "path": "apps/web/drizzle/schema.ts"
           },
           {
             "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 17667,
+            "line": 17857,
             "path": "apps/web/drizzle/schema.ts"
           },
           {
             "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 18012,
+            "line": 18202,
             "path": "apps/web/drizzle/schema.ts"
           },
           {
@@ -109009,7 +108928,7 @@
             "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
             "identity_ambiguous": false,
             "kind": "SOURCE",
-            "line": 2805,
+            "line": 2767,
             "path": "apps/web/server/_core/index.ts"
           },
           {
@@ -109389,14 +109308,14 @@
             "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
             "line": 3,
             "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-            "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+            "source_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
             "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+            "digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
           },
@@ -109497,9 +109416,9 @@
         "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
       },
       "requirements": {
-        "open": 211,
+        "open": 220,
         "pass": 0,
-        "total": 211
+        "total": 220
       },
       "revision": "6",
       "root_kind": "CANONICAL",
@@ -127993,6 +127912,7 @@
         "requirement REQ-668CFFC7A4E8 is OPEN",
         "requirement REQ-5F1CFE55E8D7 is OPEN",
         "requirement REQ-C9C7AE30D2F8 is OPEN",
+        "requirement REQ-737F4A03A9E6 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -128011,7 +127931,7 @@
           "excerpt": "status: CANONICAL_IMPLEMENTATION_PLAN",
           "line": 9,
           "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-          "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+          "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
           "value": "CANONICAL_IMPLEMENTATION_PLAN"
         },
         {
@@ -128021,8 +127941,11 @@
           "excerpt": "supersedes:",
           "line": 33,
           "relation": "SUPERSEDES",
+          "scope_signal": "SCOPE_UNSPECIFIED",
           "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-          "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+          "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+          "target_ambiguous": true,
+          "target_candidates": [],
           "target_spec_ids": [],
           "value": ""
         }
@@ -128035,8 +127958,11 @@
           "excerpt": "supersedes:",
           "line": 33,
           "relation": "SUPERSEDES",
+          "scope_signal": "SCOPE_UNSPECIFIED",
           "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-          "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+          "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+          "target_ambiguous": true,
+          "target_candidates": [],
           "target_spec_ids": [],
           "value": ""
         }
@@ -128049,31 +127975,44 @@
           "excerpt": "status: CANONICAL_IMPLEMENTATION_PLAN",
           "line": 9,
           "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-          "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+          "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
           "value": "CANONICAL_IMPLEMENTATION_PLAN"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+      "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T04:27:57.070279Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-09T02:04:06.918055Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
       "primary_blocker": null,
       "problem": null,
       "record_key": "canonical:specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
       "record_kind": "CANONICAL_SPEC",
-      "relationship_claims": [],
+      "relationship_claims": [
+        {
+          "confidence": "LOW",
+          "direction": "SUCCESSOR_CANDIDATE",
+          "predecessor_spec_id": "224",
+          "referenced_spec_id": "224",
+          "referencing_spec_id": "267",
+          "relation_text": "superseded",
+          "requirement_ids": [],
+          "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L158",
+          "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+          "successor_spec_id": "267"
+        }
+      ],
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []
       },
       "relevance_assessment": {
         "active_references": [],
-        "conflict_duplication_risk": "UNASSESSED",
+        "conflict_duplication_risk": "REVIEW_REQUIRED",
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -128085,7 +128024,7 @@
             "excerpt": "status: CANONICAL_IMPLEMENTATION_PLAN",
             "line": 9,
             "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-            "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+            "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
             "value": "CANONICAL_IMPLEMENTATION_PLAN"
           },
           {
@@ -128095,8 +128034,11 @@
             "excerpt": "supersedes:",
             "line": 33,
             "relation": "SUPERSEDES",
+            "scope_signal": "SCOPE_UNSPECIFIED",
             "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-            "source_digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+            "source_digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
+            "target_ambiguous": true,
+            "target_candidates": [],
             "target_spec_ids": [],
             "value": ""
           }
@@ -128104,7 +128046,7 @@
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50",
+            "digest": "0123fc991965ffb94cf758600b9378c9a6d4f5d3a4945395c59c04e80d9a4953",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
           }
@@ -128112,20 +128054,20 @@
         "implementation_equivalence": "UNASSESSED",
         "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED",
-        "successor_or_supersession": "UNASSESSED"
+        "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
       },
       "requirements": {
-        "open": 362,
+        "open": 363,
         "pass": 0,
-        "total": 362
+        "total": 363
       },
       "revision": "4.0",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2",
-      "spec_created_at": null,
+      "spec_created_at": "2026-10-06T11:34:46+07:00",
       "spec_id": "267",
-      "spec_last_changed_at": null,
+      "spec_last_changed_at": "2026-10-06T11:34:46+07:00",
       "spec_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
       "successors": [],
       "title": "SmartAIHub Cloudflare Production Migration & Durable Execution Control Plane V2",
@@ -129353,6 +129295,7 @@
       "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
       "completion_eligible": false,
       "completion_reasons": [
+        "reconciliation confidence is LOW or UNRESOLVED",
         "lifecycle has not reached implementation completion",
         "requirement REQ-385EF8CB10DC is OPEN",
         "requirement REQ-D73918684CD5 is OPEN",
@@ -131031,9 +130974,11 @@
         "requirement REQ-2D64F20630E0 is OPEN",
         "requirement R3.17-18178 is OPEN",
         "requirement REQ-BD45C492BD57 is OPEN",
+        "requirement REQ-60D90DF6D4B9 is OPEN",
+        "requirement REQ-E4ED2E0E2B85 is OPEN",
         "required verification evidence is missing"
       ],
-      "confidence": "HIGH",
+      "confidence": "LOW",
       "configured_root": "specs/feature",
       "continuation": "CONTINUE_REQUIRED",
       "current_reference_counts": {
@@ -131049,7 +130994,7 @@
           "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER",
           "line": 8,
           "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-          "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+          "source_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
           "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
         }
       ],
@@ -131062,16 +131007,16 @@
           "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER",
           "line": 8,
           "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-          "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+          "source_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
           "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+      "digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "STALE",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-07T04:14:02.325224Z",
+      "last_reconciled": "2026-10-09T02:04:06.945444Z",
       "lifecycle": "VALIDATION_PENDING",
       "next_action": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
@@ -131091,7 +131036,7 @@
       },
       "relevance_assessment": {
         "active_references": [],
-        "conflict_duplication_risk": "UNASSESSED",
+        "conflict_duplication_risk": "REVIEW_REQUIRED",
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -131103,14 +131048,14 @@
             "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER",
             "line": 8,
             "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-            "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+            "source_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
             "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+            "digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
           }
@@ -131118,12 +131063,12 @@
         "implementation_equivalence": "UNASSESSED",
         "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED",
-        "successor_or_supersession": "UNASSESSED"
+        "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
       },
       "requirements": {
-        "open": 1677,
+        "open": 1679,
         "pass": 0,
-        "total": 1677
+        "total": 1679
       },
       "revision": "3.18",
       "root_kind": "CANONICAL",
@@ -132706,6 +132651,8 @@
         "requirement REQ-C6FE4EBBD872 is OPEN",
         "requirement REQ-5266ED365C05 is OPEN",
         "requirement REQ-0704A0C942EC is OPEN",
+        "requirement REQ-172CE51E2952 is OPEN",
+        "requirement REQ-51C03D8E9D17 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -132724,7 +132671,7 @@
           "excerpt": "**Status:** Implementation-ready — hardened after 12-pass security/operability review",
           "line": 3,
           "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-          "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+          "source_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
           "value": "Implementation-ready — hardened after 12-pass security/operability review"
         }
       ],
@@ -132737,17 +132684,17 @@
           "excerpt": "**Status:** Implementation-ready — hardened after 12-pass security/operability review",
           "line": 3,
           "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-          "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+          "source_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
           "value": "Implementation-ready — hardened after 12-pass security/operability review"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+      "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T04:27:57.447219Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-09T02:04:07.092286Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
       "primary_blocker": null,
@@ -132773,14 +132720,14 @@
             "excerpt": "**Status:** Implementation-ready — hardened after 12-pass security/operability review",
             "line": 3,
             "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-            "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+            "source_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
             "value": "Implementation-ready — hardened after 12-pass security/operability review"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+            "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
           }
@@ -132791,17 +132738,17 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 245,
+        "open": 247,
         "pass": 0,
-        "total": 245
+        "total": 247
       },
       "revision": "1.1",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
-      "spec_created_at": null,
+      "spec_created_at": "2026-10-06T11:34:46+07:00",
       "spec_id": "272",
-      "spec_last_changed_at": null,
+      "spec_last_changed_at": "2026-10-06T11:34:46+07:00",
       "spec_path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
       "successors": [],
       "title": "Spec 272 — SmartAIHub Credential Vault, Root-of-Trust & Secure Provider Broker",
@@ -134512,6 +134459,7 @@
         "requirement REQ-52643E4E2A06 is OPEN",
         "requirement REQ-5D5695D8A00A is OPEN",
         "requirement REQ-BDDC1982995F is OPEN",
+        "requirement REQ-9B1BBBD2D674 is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -134527,12 +134475,12 @@
       "declared_relationship_claims": [],
       "declared_status_claims": [],
       "deployment": "UNKNOWN",
-      "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+      "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:18.792204Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-09T02:04:07.118352Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
@@ -134549,7 +134497,7 @@
           "relation_text": "replace",
           "requirement_ids": [],
           "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-          "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+          "source_digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
           "successor_spec_id": "277"
         }
       ],
@@ -134567,7 +134515,7 @@
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+            "digest": "1d431bd0018d630e1a62a5e95b0b5d6469181c389c21d1fd53b488e30c238f29",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
           }
@@ -134578,9 +134526,9 @@
         "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
       },
       "requirements": {
-        "open": 429,
+        "open": 430,
         "pass": 0,
-        "total": 429
+        "total": 430
       },
       "revision": "1.8",
       "root_kind": "CANONICAL",
