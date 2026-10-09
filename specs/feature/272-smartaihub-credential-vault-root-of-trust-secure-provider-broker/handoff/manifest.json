@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -22,12 +22,12 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
-    "expected_spec_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3"
+    "expected_spec_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Reconcile Spec 272 identity; obtain commercial/account entitlement authority; then review device-local credential isolation and broker separation.",
     "next_ready_workunit": null,
-    "reactivation_predicate": null,
+    "reactivation_predicate": "Canonical owner/disposition is resolved, local credential non-export is accepted by Security, and commercial/account authority explicitly permits the proposed user-specific use.",
     "resume_point": null,
     "waiting_predicate": null
   },
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -71,16 +71,16 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 7,
   "identity": {
     "canonical_path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-    "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+    "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T04:27:57.447219Z",
+      "last_evidence_at": "2026-10-09T02:04:07.092286Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-06T11:34:46+07:00",
+      "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
     },
     "revision": "1.1",
     "slug": "272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
@@ -101,10 +101,68 @@
     "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T04:27:57.447219Z"
+    "updated_at": "2026-10-09T02:04:07.092286Z"
+  },
+  "manual_decisions": {
+    "requirements": {
+      "REQ-172CE51E2952": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md#L2199"
+        ],
+        "authority_source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md#L2199",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC272_CREDENTIAL_OWNER_AND_ENTITLEMENT",
+          "next_action": "Resolve Spec 272 authority, obtain commercial/account approval, and review local credential isolation before implementation.",
+          "root_cause": "Spec 272 remains DORMANT_UNRESOLVED; subscription credential placement and commercial use are not approved."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Resolve Spec 272 authority, obtain commercial/account approval, and review local credential isolation before implementation.",
+        "requirement_digest": "7ae1a8fd792e7c978229c700bc309ae6a5febf013d6e27bd1fcc36d044b30765",
+        "requirement_id": "REQ-172CE51E2952",
+        "requirement_text": "This additive design does not resolve Spec 272's `DORMANT_UNRESOLVED` authority or approve subscription-backed service. A user's Claude CLI login, local credential store, and any `CLAUDE_CODE_OAUTH_TOKEN` remain device-local on that user's paired Runner. They MUST NOT be imported, uploaded, copied, logged, or made resolvable through the SmartAIHub Credential Vault, and MUST NOT be reused across users or tenants.",
+        "source_spec_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-51C03D8E9D17": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md#L2201"
+        ],
+        "authority_source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md#L2201",
+        "blocker": {
+          "class": "AUTHORITY",
+          "id": "SPEC272_CREDENTIAL_OWNER_AND_ENTITLEMENT",
+          "next_action": "Resolve Spec 272 authority, obtain commercial/account approval, and review local credential isolation before implementation.",
+          "root_cause": "Spec 272 remains DORMANT_UNRESOLVED; subscription credential placement and commercial use are not approved."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Resolve Spec 272 authority, obtain commercial/account approval, and review local credential isolation before implementation.",
+        "requirement_digest": "db4f973094a6a72430df0d9f48d51966190c81b24a741e0fe77c41277f0d6f70",
+        "requirement_id": "REQ-51C03D8E9D17",
+        "requirement_text": "The central vault may retain only a non-secret logical reference or sanitized device capability/login status when current policy permits. Such metadata MUST NOT act as a proxy credential or imply that an individual subscription is eligible for commercial multi-tenant use. A centrally managed official API credential remains a separate provider mode. Commercial entitlement and terms review remain an external gate. See the conditional Spec 231 §102 proposal.",
+        "source_spec_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      }
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +172,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T04:27:57.447219Z",
+    "reconciled_at": "2026-10-09T02:04:07.092286Z",
     "sources": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       },
@@ -129,11 +187,21 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-        "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "source_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "value": "Implementation-ready — hardened after 12-pass security/operability review"
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +223,14 @@
         "excerpt": "**Status:** Implementation-ready — hardened after 12-pass security/operability review",
         "line": 3,
         "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-        "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "source_digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "value": "Implementation-ready — hardened after 12-pass security/operability review"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2a4cc8716bcde3b8fb510347a712db1d4c435999ca9b132a24e0992f9536260d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -178,11 +246,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 245,
-    "unresolved": 245
+    "total": 247,
+    "unresolved": 247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:37:58.389272Z",
+  "updated_at": "2026-10-09T02:05:02.605440Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

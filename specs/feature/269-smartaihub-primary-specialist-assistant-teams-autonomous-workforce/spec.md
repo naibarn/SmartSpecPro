@@ -18180,3 +18180,9 @@ The R3.17 source contains historical clauses describing reusable Workflow/Automa
 ## D. Acceptance scenarios
 
 At minimum cover: one user across two apps/projects; two users in one authorized shared project; same conversation changing Project A→B; no project and ambiguous project; near-equal semantic candidates; picker confirmation; pending memory promotion after confirmation; Chat embedded in two apps with distinct host IDs; App clone, transfer, and lease; ACL revocation during a conversation; and legacy memory cutover with replay/idempotency. Tests must prove no cross-app/project/tenant private-memory leakage and bind evidence to the exact implementation SHA.
+
+## Conditional local subscription provider selection note (2026-10-09)
+
+This additive design does not close Spec 269's existing runtime context or acceptance blocker. For a future, explicitly enabled local CLI provider, the Primary Assistant may present the user's paired Runner as an eligible model source only when device availability, account login status, policy, privacy, and commercial entitlement checks permit it. The user-facing result MUST distinguish local subscription CLI from official API and delegated agent modes.
+
+If the Runner is offline, the local CLI is unauthorized, or its allowance is exhausted, the Assistant MUST report that state without claiming remaining quota. It MUST NOT silently switch to a paid API or another provider; fallback requires explicit route authorization and user-visible cost disclosure. Provider selection does not grant the CLI native tool, memory, approval, project, or budget authority. Those remain SmartAIHub-owned, under existing assistant/Runner/job contracts. Detailed behavior is proposed conditionally in Spec 231 §102.

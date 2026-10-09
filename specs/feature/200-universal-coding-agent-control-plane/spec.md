@@ -6387,4 +6387,10 @@ rollback evidence passes.
 
 ---
 
+## Conditional DirectSDK boundary note (2026-10-09)
+
+This note is a proposed additive clarification only; the canonical handoff still marks Spec 200 `DORMANT_UNRESOLVED` / `RECONCILIATION_REQUIRED`. It does not approve a provider, Runner profile, or dispatch route.
+
+The Claude subscription DirectSDK candidate is a **model-only local CLI provider surface**, not an autonomous external-agent execution. It MUST NOT be registered as a Spec 200 agent or delegated task merely because the Claude CLI runs in a subprocess. In model-only mode, native provider tools and autonomous turns remain disabled; returned tool requests go through SmartAIHub's existing Tool/Policy/Approval, MCP, Memory, and host execution paths. If a user separately selects an autonomous agent, that remains a distinct Spec 200 task with existing Runner authorization, durable `worker_jobs` control, and receipt/finality requirements. See the conditional routing contract in Spec 231 §102; no unresolved Spec identity or approval gate is waived by this cross-reference.
+
 **End of Spec 200**

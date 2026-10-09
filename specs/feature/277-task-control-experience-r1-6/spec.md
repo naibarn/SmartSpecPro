@@ -3565,3 +3565,8 @@ Normative revision-resolution rules:
 9. Canonical publication MUST update the registry atomically with the new file/hash.
 10. Superseded files remain historical evidence and SHOULD NOT be silently deleted until repository retention policy allows it.
 
+## Conditional local subscription provider status note (2026-10-09)
+
+This proposal does not resolve Spec 277's `DORMANT_UNRESOLVED` authority and adds no execution, scheduler, approval, or Task Control authority. If the adapter is later approved, Task Control may project existing Runner/job receipts to show the selected mode (official API, local CLI model call, or delegated agent), Runner availability, sanitized authentication/allowance status, cancellation outcome, and whether fallback was explicitly authorized.
+
+The projection MUST distinguish SmartAIHub credits, official API quota/billing, reported CLI token usage, estimated API-equivalent cost, subscription allowance, and actual billed charge. Unknown remaining allowance MUST display as unknown. Read models MUST NOT expose credentials, raw provider payloads, or claim a provider switch that is not present in the canonical job/attempt receipt. This is a conditional UI contract only; no duplicate Task Control surface is proposed. See Spec 231 §102.

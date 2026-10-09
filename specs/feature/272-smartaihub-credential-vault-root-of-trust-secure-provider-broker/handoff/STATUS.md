@@ -2,11 +2,11 @@
 # 272 — Spec 272 — SmartAIHub Credential Vault, Root-of-Trust & Secure Provider Broker
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 245 unresolved of 245
+- Requirements: 0 pass / 247 unresolved of 247
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 7
 
 ## Source-declared status and relationship claims
 

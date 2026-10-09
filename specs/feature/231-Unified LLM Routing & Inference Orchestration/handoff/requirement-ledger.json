@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "c45317703ba85aa078794cf14f9157503890653d3b26ee4be83fde6b56070e87",
       "requirement_id": "REQ-58201789CB9E",
       "requirement_text": "Cloudflare AI Gateway is the preferred *compatible, authorized cloud* inference gateway. Direct/native and local adapters remain first-class where required for feature fidelity, privacy, credential isolation or offline use. SmartAIHub retains canonical logical routing and policy authority.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "a839c67f785098061c9cd12aa4ff0e84e0cff282b36bb22fcbc214bbdb09e9b4",
       "requirement_id": "REQ-8B8D95E775FB",
       "requirement_text": "Embeddings map request intent to route examples/capability profiles. SmartAIHub may use Spec 229/Vectorize for persistent route embeddings but must keep a distinct logical routing index/profile.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "33385658e371a3f5ce5408cf4be74be38a85a82f9a3067f80e93f1082231b1d0",
       "requirement_id": "REQ-93BD01D06737",
       "requirement_text": "Candidate models must support required text/vision/audio/video, structured output, tools/function calling, computer use, context size, language and code/reasoning requirements.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "bf6ff88ec1aaf4b2e5113cac4e5f75979f1e15c0e70aab0ca58fe682dcb85de8",
       "requirement_id": "REQ-DDE33939F45F",
       "requirement_text": "Required fields include purpose, task class, modalities, language, context estimate, required capabilities/tools, quality class, latency class, risk class, data classification, residency/ZDR requirements, budget and tenant/project identity.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "eb2a2def44a48bf0cab3065d63bbd319634d3dfae7ae60e73fa966e1249e1163",
       "requirement_id": "REQ-CB5242624A9B",
       "requirement_text": "Profile must include:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "a604f2e4bc7c842e6f722e90fcf091b41be7ad48bb46b1039a475997dd909c6d",
       "requirement_id": "REQ-9AD8DA303DEE",
       "requirement_text": "Cloudflare AI Gateway offers identical-request caching, **not native semantic caching**. SmartAIHub semantic response caching is disabled by default pending separate certification. If later enabled, cache keys must include tenant/security scope, purpose, model/profile compatibility, policy version, retrieval/source revision, tool availability, response schema and locale. Never cross tenant/ACL boundaries; mutable/live requests bypass response caching.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "55d60648bb3a8e25856f11d55d7de523658536bd4621393ff4e5b679116832a5",
       "requirement_id": "REQ-7095EDD81987",
       "requirement_text": "Use only for high-value verification, independent research, difficult planning or safety review. Supported aggregation patterns include judge, deterministic merge, voting and synthesis. Routine traffic must not default to multi-model fan-out.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "938c455a67281dedf9992cc50a3880ce4fff27d08c9584acb5aeeaa40497880a",
       "requirement_id": "REQ-3C0C11FA3067",
       "requirement_text": "Cognitive agent loop, tools, handoffs, sessions, guardrails and tracing. Provider model surfaces must be feature-tested; enable strict feature validation where possible rather than silently dropping required Responses-only fields.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "fec152c826f12f023499780be31d9f63847dd7716f361e09a8679952d3c03986",
       "requirement_id": "REQ-6B9E8C5C6708",
       "requirement_text": "If “Orchestra” refers to the framework at `docs.orchestra.org`, its task-centric Agents plus `Conduct`/`Compose` dynamic delegation are relevant reference patterns. SmartAIHub already has LangGraph, OpenAI Agents SDK, Workflow Runtime, Durable Kernel, External Agent Gateway, Capability Resolver and worker_jobs; therefore Orchestra must **not** become another canonical orchestrator or state owner.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "f9e9d88df61e82a206deeffe84b5951e6e4ade7cac9a250c44fecf4d56408fef",
       "requirement_id": "REQ-66C41C5D0580",
       "requirement_text": "Must be benchmarked rather than treated as constants:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "8c12ebd7ad6576e7b02e8853c7dd5434d38338fa4a71fa9879c71b81f4e7a4e9",
       "requirement_id": "REQ-72187AD2E804",
       "requirement_text": "Request includes principal/tenant/project, consumer, purpose, task class, modalities, context estimate, required capabilities/tools, quality/latency/risk classes, data classification, provider/locality constraints, budget, retrieval signals and user model preference/lock.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "6cad07c13ecd2a482fc59acedc0a019980a4f3bc912b06b794015836ddd77bfa",
       "requirement_id": "REQ-048E3604AF7E",
       "requirement_text": "Every later phase must beat the previous baseline on SmartAIHub-specific evaluation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "1a5ddb97905e183cf7173d91771d4c27589cb9e66de6a43774cd84e009392fe0",
       "requirement_id": "REQ-27918C363762",
       "requirement_text": "**Revision status:** Implementation-ready specification; production certification still required.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "d933a4061c943ab161dfb72c43c8b7921e943c1ae34494cf12e2b4f656c98e0a",
       "requirement_id": "REQ-1FB631B2C814",
       "requirement_text": "| 03 | Provider capability parity | Chat Completions and Responses are not interchangeable; silent field drops are dangerous. | Capability-probe native/Responses/Chat surfaces per deployment; strict fail-fast compatibility; no lossy adaptation for required features. |",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "5e605b91af1a91cf644446a9a5fc654bad2db5f88253d804764f333f0c3f5237",
       "requirement_id": "REQ-88946FD6FE6A",
       "requirement_text": "**Ownership is exclusive:** Spec 231 does not recreate LangGraph, OpenAI Agents SDK, the durable kernel, `worker_jobs`, Capability Registry, Spec 229's retrieval index, Spec 220's permission engine or the existing credit ledger. Spec 231 contributes adapters, policy decisions, immutable plan/evidence and inference-specific control. Gateway operational routing is subordinate to the SmartAIHub authorization snapshot. External agents/harnesses are selected through existing capability/agent control (Specs 200/206/230); Spec 231 may select an LLM for an inference call made by an external harness only where the harness integration exposes such a governed call. It must not imply it can replace a user-chosen harness with a model API.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "bbeafe9ba26aa0d9e0444ad30482baf61bb4d898d2a8673300089db4d99767b0",
       "requirement_id": "REQ-1F417C5E134C",
       "requirement_text": "`SAH-INFERENCE-2` is a backward-compatible extension of the descriptive `SAH-INFERENCE-1` contract. The v1 adapter must preserve all existing fields and explicitly report unsupported v2 requirements; no silent default weakening.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "2d098c1ec8e2d5092d064c7002d145ca0154489b9c105d67a64b0e1a78f6f058",
       "requirement_id": "REQ-1A340DBD6C98",
       "requirement_text": "Aliases are pointers to immutable reviewed revisions. A provider's `latest` alias MUST NOT silently change a certified production revision; a compatible update enters qualification. Discovery metadata is untrusted until adapter contract checks pass.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "72434d0bfe1541cd315b9f4551e35663c7d8eaf9547f45425d634443bb21e187",
       "requirement_id": "REQ-3AE64A90FE6C",
       "requirement_text": "OpenAI Agents SDK adapters MUST use strict feature validation where available. Chat-Completions-compatible integrations that silently discard Responses-specific fields are ineligible if those fields are required by the task. Provider-native features that cannot be preserved by the chosen Gateway require an approved **direct-provider adapter**, not silently degraded prompts. The same logical model may have several differently certified surfaces.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "619eaaa162e0e5e6adabede189850f52e223213bbf96f4c6273eb13ba4b6fb29",
       "requirement_id": "REQ-2F54C930D287",
       "requirement_text": "The scoring implementation MUST record excluded candidates and reasons, weights, calibration set and profile version. Do not equate lexical/vector similarity with probability of model success. A classifier is an **advisory signal**, never an authorization decision. If classifier or semantic-routing service fails, deterministic eligible selection remains available.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "717ce03733ab302f4318d1b6f7ee1f0a56500f8b676b8ea87f836f4c1d882bf5",
       "requirement_id": "REQ-9B933E0EBBE2",
       "requirement_text": "Cloudflare AI Gateway is the preferred **admitted cloud execution and operational observability layer**, not the policy source of truth. Use authenticated Cloudflare API/Worker binding as supported by the active adapter; gateway credentials and provider BYOK must be scoped. For user-supplied OpenAI-compatible URLs, local Ollama/vLLM or native provider-only features, dispatch through certified direct/local adapters when gateway compatibility or credential isolation cannot be established.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "e07421008994e55b163fef045941d0a2ef41522487430c87764fb0b7a120be09",
       "requirement_id": "REQ-F740D16CDE20",
       "requirement_text": "Spec 231 compiles a reviewed subset of provider routing/fallback/rate policies into a **versioned Dynamic Route**. Store `smartaihub_route_policy_revision ↔ deployed_gateway_route_version`. Route activation requires a diff, contract test and approved rollout. Gateway route fallback targets MUST be a subset of the SmartAIHub plan's preapproved candidates; never allow an operator to add a cross-policy provider in the Gateway dashboard without detecting route drift and pausing the affected plan. A missing route version or drift → safe direct preapproved path or fail closed.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "ccd4af44d91b7119f44dea2e1098a29a094bc777c7f93d837dfdc0758fbc35b4",
       "requirement_id": "REQ-9ADDAEA4A4C5",
       "requirement_text": "User-defined OpenAI-compatible URLs are untrusted destinations. Before connector activation and **again on every connection/re-resolution**, enforce canonical URL parsing, allowed schemes and ports, DNS-to-IP validation, redirect revalidation, block access to loopback/link-local/cloud-metadata/internal networks except for explicitly authorized local Runner routes, and verify TLS/server identity. Prevent DNS rebinding, redirects into prohibited address ranges and credential forwarding to a different origin. Private network/local URLs must execute on the properly paired Runner with scoped consent, not from a public multi-tenant Worker. Preserve provider URL/adapter revision in the immutable plan; no network fallback may escape the allowed egress zone.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "7511d6a4a206465df9e76d7cf7773d2aaceb97615c203448069260ce37406be0",
       "requirement_id": "REQ-5F5DA2AB54E4",
       "requirement_text": "- `worker_jobs` may reschedule durable steps but MUST NOT reissue an already completed/unknown side-effectful attempt blindly;",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "74d339d0d1cff4531be6aed68d972adab50eee1f9fe4fa02436dbb279bd89af9",
       "requirement_id": "REQ-CE064EAB95F3",
       "requirement_text": "A provider may succeed in starting a stream but fail later. **Never promise seamless failover once user-visible output or a tool-call effect is committed.** Prior to first committed output, an approved fallback can restart the attempt. After commit, emit a typed interrupted/restart-needed event, preserve already delivered output, and require a new answer revision or explicit user-visible retry. Tool-call fragments MUST be fully validated before commit; do not stitch fragments from different models/providers. Disconnection/cancellation must close upstream resources and settle usage where possible.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "5bb79526e39adc605e74f03e72e4157277564835ce8deba0ccba6d83bcb0712f",
       "requirement_id": "REQ-0CC708D60606",
       "requirement_text": "Tools, browser actions, payments, email, filesystem and deployment effects belong to existing approval/execution authorities. Model output is a **proposal** to act. Preserve canonical tool-call ID → execution-intent/idempotency key → result/effect receipt. A model cascade cannot replay a completed tool call; recovered model turn must consume the existing receipt. Ambiguous provider/tool outcomes enter `RECONCILIATION_REQUIRED`, not a blind retry.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "2ee5b91328e031bdda0adc07002513eb1ba75c286574e8b092803070f12d46b9",
       "requirement_id": "REQ-C0528802DC70",
       "requirement_text": "Before paid inference, reserve credits atomically using existing ledger authority and a unique `request_id/plan_id`. Include a worst-case bounded envelope for planned model attempt(s), reasoning output, evaluator, expected cache misses, and allowed cascade/parallel branches. If a full envelope is impractical, reserve each allowed stage **before** starting it while preserving a hard parent budget cap. Re-read the available balance under transactional locking/idempotent reservation; parallel calls must not race past the user's balance.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "f43cb13f866ba1d47cd4e9d2a1d6bb4e51ca185c3a9e32536c3cf4145a29fb45",
       "requirement_id": "REQ-6B966CDA46F8",
       "requirement_text": "Cache is checked only **after** caller eligibility and privacy constraints, not as a way around admission. No cached result may execute a tool or be counted as new independent evidence. Current prices, mutable files, sensitive user-specific RAG and operational status default to no response caching. Revocation/version-change invalidation must be observable and tested.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "e44453e602d75a0df487b367e4afb8a2aa3ddac2081460371db34120cd30c57a",
       "requirement_id": "REQ-6066A2C94ED6",
       "requirement_text": "Evaluator priority: schema/business rules → executable tests → source-grounding checks → calibrated task-specific judge → independent strong model judge → human approval where required. Do not ask the generating model alone to assign a reliability score. Judge prompts, dataset splits and judge versions are pinned; retrieved prompt-injection text remains untrusted. Distinguish `VALID`, `INVALID`, `INDETERMINATE` and `EVALUATOR_UNAVAILABLE` instead of converting an outage to PASS.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "b2fc34082c977127c8e6d159939cde00cbfd003d1da955233ad54ced9e59e453",
       "requirement_id": "REQ-3B2839566A33",
       "requirement_text": "Multimodal requirements are explicit per endpoint: image tiles/resolution, audio direction/chunking, realtime duplex requirements, video duration/frame policies, file upload handling and structured tool schemas. Model catalog labels such as `vision=true` are not sufficient proof; run canonical fixture probes. A modality must not be silently transcribed/downsampled or routed through a text-only endpoint when native modality or fidelity is a required contract. Estimated token/byte cost includes media transformations.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "5ff652a0d464bcf29737f61a314585acaacb9a39e46b4b402c352c6982d8a9f7",
       "requirement_id": "REQ-11DD2E0EE8C5",
       "requirement_text": "Cloudflare AI Gateway request/response payload logging is enabled by default unless configured otherwise. SmartAIHub's private tenant gateways MUST disable raw payload collection by default (gateway config and, where supported, `cf-aig-collect-log-payload: false`); metadata-only logging is allowed only under approved policy. If strict ZDR/local-only policy disallows even third-party metadata logging, select an approved direct/local route or fail closed. Redact authentication headers, provider key aliases, prompts, RAG snippets and tool arguments from gateway metadata and error reports.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "f5016058d243e92a223beccbb956af714bcc165fd890b83dea052f69b4b76fc2",
       "requirement_id": "REQ-0B7CB4D8DB53",
       "requirement_text": "Track latency p50/p95, TTFT, pass rate by task class/language, schema/tool compliance, fallback and cascade frequencies, circuit state, estimated-vs-billed cost and routing regret. Every material drift or provider-model alias update triggers fresh offline evaluations and controlled rollback. Quality dashboards must show slices (Thai/English/mixed, code/RAG/agent/multimodal, risk and tenant tier); never use one blended metric to hide serious regressions.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "a8954994dbd795d9ea1db442368936bb07cdff52b4b8f261692f01ce3b4ecd2e",
       "requirement_id": "REQ-3AEDE051F11D",
       "requirement_text": "Use held-out temporal test data and separate tenant/language/task slices. Include shadow-run cost in the experiment budget. Model judge labels require human adjudication on a sampled hard-negative set. Counterfactual/off-policy evaluation must report missing propensities and uncertainty; do not assume unchosen-model quality is observed. Exploration/online bandit routing is **disabled by default** and cannot test uncertified models on private/high-risk traffic.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "f8be0f188fc05d129dee35283579b67b87016be8bc0e85ac9321b0f042204c37",
       "requirement_id": "REQ-D1FEEE182C20",
       "requirement_text": "Performance/quality/cost thresholds shall be set from measured baseline by workload before canary. Suggested starting goals: no statistically meaningful regression in task success, p95 latency within each declared service tier, demonstrable reduction in **cost per successful task** for the intended optimized workload, and router overhead below a documented per-tier budget. If a metric lacks sufficient sample size, state `NOT CERTIFIED` instead of calling it PASS.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "d5bfc5e3c3bcedb3265bf2f4fccc21893c2bf165da21a9793332a361ef79ad35",
       "requirement_id": "REQ-4481F964B94A",
       "requirement_text": "Shadow traffic is opt-in or otherwise permitted, redacted and charged to a controlled experiment budget. Shadow runs must not send emails, mutate files, execute payments, call external side-effect tools or leak private data to a new provider. Canary should start with small non-consequential cohorts, then broaden only after slice metrics and safety gates pass. Auto-rollback triggers include privacy/account isolation incidents, duplicate settlement/effects, sustained quality regression and provider contract drift. In-flight plans keep the pinned route/registry revision; emergency revocations supersede only where safety requires cancellation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "8c9347a7727ada4baef5f1d974406877d36f229430ca718309059ce70659d9fc",
       "requirement_id": "REQ-217F2F04E3CA",
       "requirement_text": "1. Private Thai prompt never reaches cloud classifier before locality policy.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "2f178a8035b6f51ba818a5dfeb27230d5dd02dca77b941c602726da9a73f2505",
       "requirement_id": "REQ-44A364759DCC",
       "requirement_text": "2. A tenant-prohibited provider is absent from candidate set even if learned router scores it highest.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "885c84e07a4488c5ed4015c4c88c7604b8d12056c7400345cb53590b4a5220b8",
       "requirement_id": "REQ-45CEDA7EB271",
       "requirement_text": "3. A user-selected model lock is preserved or asks explicit consent before incompatible fallback.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "f2b32e21de6d401262c9ac5e770ad0652a2414ecc3d1f77b5d6970a5116a9b91",
       "requirement_id": "REQ-A56021FA17F9",
       "requirement_text": "4. Native Responses-required payload cannot silently route through a lossy Chat Completions adapter.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "55cae4030761ea607babd26aa6e7e7bed62da4cd8bbe0d244b1e74a7ec161ab2",
       "requirement_id": "REQ-84002A93FE8C",
       "requirement_text": "5. A JSON-schema/tool/realtime-audio capability probe blocks an unsupported endpoint.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "af76a98b7afb53c603232f5224eca19f87f4c2ef87489ae7804a6655dbecec0b",
       "requirement_id": "REQ-63CD022DFFBF",
       "requirement_text": "6. Provider model alias drift quarantines unqualified revision.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "9a71fc1820745dd0791c3d76e3b7097405b358c991e9f9dc7058d319ecd35637",
       "requirement_id": "REQ-2B83F1C977FE",
       "requirement_text": "7. Two concurrent requests cannot overspend one user wallet through stale balance reads.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "c9b442da9f45fcdb6d8d54652016d2792ab05009cf424151194342e27f15f45e",
       "requirement_id": "REQ-C2F29EBC547E",
       "requirement_text": "8. Timeout-after-submission cannot double-settle or release all provisional credit without reconciliation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "a7dc0b8365acabded99b27213dde98fcd4d7498f6ff4f4302e4b61d12327670c",
       "requirement_id": "REQ-B87D05E0AC0C",
       "requirement_text": "9. Gateway/SDK/router retry settings cannot generate unbounded nested retries.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "728478704e508cb824194f990aebe4a318b2d34ad8025e0ea8534fd425573b9d",
       "requirement_id": "REQ-47483C768D8C",
       "requirement_text": "10. One provider 429 fails over only to a preapproved compatible provider/account.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "ef2fce3229ef1efb220216e406a09cd969311bf7ea047a8846e23cf9bf5b6222",
       "requirement_id": "REQ-EFEE08A261CC",
       "requirement_text": "11. Wrong-credential and cross-tenant model dispatch are rejected.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "3f691fc139edbf731a23fa79edc621636d82ec30bbfdf24528a755170dd41379",
       "requirement_id": "REQ-D0D59E183CBE",
       "requirement_text": "12. First streamed token followed by failure produces interrupted state, not silently spliced model output.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "edc96786666a6136fcca1a15c038028208474ea8221d141fb6fba8373186b8dc",
       "requirement_id": "REQ-6EE390630C72",
       "requirement_text": "13. Partial streamed tool-call JSON is never executed.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "ce5266549497475388a3bfebea7b927605ea7068f098130512c66f9b6f890b36",
       "requirement_id": "REQ-B1EBE94B2683",
       "requirement_text": "14. A repeated LLM turn reuses existing effect receipt instead of duplicating a browser/payment/file mutation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "df020ba0375a75b2bb9cbdab325a210f9e628fc5d3c567efad9dec7855ab67a9",
       "requirement_id": "REQ-41D39883FD38",
       "requirement_text": "15. Gateway raw payload logging is disabled for private data; metadata fields are bounded and scrubbed.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "228f5a4edf150e4a5405b8a473b5f05a573dbb735331af61e90a65610d0c7b51",
       "requirement_id": "REQ-2F5F46B559F8",
       "requirement_text": "16. Similar prompts from two tenants never share an unauthorized semantic response cache entry.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "534cd7be73d526deae7bfe92921e0ecb7585c714605a2ed0ec2cf409a10aea31",
       "requirement_id": "REQ-84121B992045",
       "requirement_text": "17. Revoked ACL/source revisions invalidate relevant cached RAG answer candidates.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "1887b8034c07c6dc720f1f685ec193d883f6b3b1e49117554de8472a488df63e",
       "requirement_id": "REQ-5B0B1CEFBCA9",
       "requirement_text": "18. LOCAL_ONLY with offline Runner never falls back to cloud.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "a370bd744ad2b66285298a4c712f68d581c773b59747509b514eaecc5f8f3d66",
       "requirement_id": "REQ-864D20317AA4",
       "requirement_text": "19. Evaluator timeout yields `INDETERMINATE` or error, never success.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "d47655be7d4c31947c1be5346d9c01b21b81bfe006208fb65d60a1d25fc9a8aa",
       "requirement_id": "REQ-FCD997F43993",
       "requirement_text": "20. Cascade rejects a path whose predicted total deadline/budget exceeds the request envelope.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "427946c4b6478a9b9d08bbac7f07894d23ce9ade13f0ea14f7dfddbb6778d4e5",
       "requirement_id": "REQ-056E0D21990B",
       "requirement_text": "21. Late cancellation/provider callback is correlated with pinned attempt version and reconciled.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "2a1f1c483602cff41fc93e8459b35e141fe1b70af5fa5e2ece2173e44d4921e8",
       "requirement_id": "REQ-64CE439B7087",
       "requirement_text": "22. Emergency policy revocation prevents queued/in-flight new provider submissions and invalidates unstarted plans.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "b7ef85705f69fa714ed1c6179c4ed9d24f3c5cd7b875fdfee50544baab5ce610",
       "requirement_id": "REQ-0CF14E42ADDB",
       "requirement_text": "23. Learned router fails safely to the certified deterministic baseline during feature-store failure.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "a6bef1f9a066d2b724e698316483655aeed216b7de748ae7963abd42112dfab2",
       "requirement_id": "REQ-1CCA71E17AC6",
       "requirement_text": "24. Shadow deployment has no external side effects and obeys experiment consent/cost caps.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "9297a497c15c3ba46572ee822684103fb18a9146db05d443720d6c6b9162a24b",
       "requirement_id": "REQ-022B14FDB6CD",
       "requirement_text": "25. Unsupported model/tool/schema/region combinations always return typed `NO_ELIGIBLE_ROUTE`.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "258a53cf254a5b79f1d1cd5f3586831b3c8dd74bf6f5ce89b3b36a147e8ae8d4",
       "requirement_id": "REQ-6243CCEB46E9",
       "requirement_text": "26. Model pool rollback leaves active pinned runs intact where safe and revalidates high-risk steps.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1339,7 +1339,7 @@
       "requirement_digest": "6670257820f82b0fc578bd046ae67a3c9a21f63b110242f9d695cc1ff8ff4171",
       "requirement_id": "REQ-BA35E562335E",
       "requirement_text": "27. Query trace and usage accounting correlate to the authoritative plan without disclosing raw prompt to analytics.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1361,7 +1361,7 @@
       "requirement_digest": "527f6fa88646783f684cf2a53902c8947ef4966acc110707108c8678f20bca38",
       "requirement_id": "REQ-392355A68773",
       "requirement_text": "28. Provider price drift updates future reservations while preserving historic invoice/audit snapshots.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1383,7 +1383,7 @@
       "requirement_digest": "705324725a23047412c0dc8d2f8a43e5cc5ab2fc9023ffc6b7f3c13b8e477125",
       "requirement_id": "REQ-6B2E30B6549F",
       "requirement_text": "29. Cloudflare gateway route drift is detected and blocks unapproved fallback targets.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1405,7 +1405,7 @@
       "requirement_digest": "a2f9cfc6c92a9140e429408ced849004774dedff479b14075269dc6950f1beac",
       "requirement_id": "REQ-5B2007FF0CFB",
       "requirement_text": "30. Repeated quality failures trigger quarantine and a versioned incident alert.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1427,7 +1427,7 @@
       "requirement_digest": "2dafb1d2c62291c44e235cee6e6816c4ab487ea175738f340d9df67a8c336d20",
       "requirement_id": "REQ-82D93079CBE1",
       "requirement_text": "**Release blockers:** unknown authorization state; wrong account/tenant; private data escaping approved locality; duplicate paid settlement or tool effects; silent model-lock override; unapproved Gateway fallback; loss of required model features; undocumented paid model alias drift. These cannot be waived by an aggregate quality or cost metric.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1449,7 +1449,7 @@
       "requirement_digest": "408d015d1b4ce2942bdcdc1ec7e1e6baef7c7986742df2cb49bf44ff2a6c7df9",
       "requirement_id": "REQ-CEF618ED4C09",
       "requirement_text": "Spec 229 itself still owns any retrieval retries, rehydration of media vectors, hybrid reranking and evidence gate. Spec 231 may choose a generation model based on authorized summary signals but must not claim authority over citations or source ACL. Model classifier embeddings MAY use distinct Spec 229 index/namespace only through the governed Retrieval Broker, without introducing a separate vector database.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1471,7 +1471,7 @@
       "requirement_digest": "780261f3c3c663bd466c4fcb400e1eae24585bbc504161dff820d6c159ba4752",
       "requirement_id": "REQ-EEAE83C613AD",
       "requirement_text": "Before repository integration, the implementation owner SHALL:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1493,7 +1493,7 @@
       "requirement_digest": "1470202082d7127cb63a232ef2a887f39f1d406ac57bb473d9362c325fcc280a",
       "requirement_id": "REQ-4781A7F3F385",
       "requirement_text": "Any `Spec 231` reference emitted before reconciliation must include `spec_slug = llm-routing-inference` or `spec_slug = zero-downtime-redis-migration`. The compiler and Spec 230 context resolver must reject ambiguous references rather than guessing by date or folder.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1515,7 +1515,7 @@
       "requirement_digest": "2a199555f69d2e2cb4b3aa8ef9ebe5e2657a9ef380f3f8bb9c37513ff1d792e3",
       "requirement_id": "REQ-4831E5ED8485",
       "requirement_text": "Per-model/per-deployment capability certification SHALL record **endpoint-specific**, not merely model-level, support for:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1537,7 +1537,7 @@
       "requirement_digest": "c0c78645f726a8e51aafe282bc8700f7c65f0900c4d61345de3e34f4dbc8060f",
       "requirement_id": "REQ-691E81BEA55F",
       "requirement_text": "| Required inference feature | Routing rule |",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1559,7 +1559,7 @@
       "requirement_digest": "5993ddd31d7570b2d363a0f3ac086a868de497d63375640f137670442181bbdf",
       "requirement_id": "REQ-B9EB370FCF7D",
       "requirement_text": "Add `executionSurface: AI_GATEWAY_DYNAMIC_CHAT | AI_GATEWAY_SINGLE_MODEL | PROVIDER_NATIVE | DIRECT_COMPAT | LOCAL` and `surfaceCertificationId` to the immutable plan. A `routeVersion` is mandatory for Dynamic Routes. Gateway routes must compile to no more than the *already admitted* candidate set. **Do not compile an entire SmartAIHub cognitive/agent graph into Cloudflare Dynamic Routing.**",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1581,7 +1581,7 @@
       "requirement_digest": "ce702c9b92a7bec28ac1b77b9adb820d442fb96d595b127b568e4a81d97209c8",
       "requirement_id": "REQ-27906AA00310",
       "requirement_text": "Automated contract probes SHALL compare structured output, reasoning parameters, stream event order, cancellation, tool IDs, image/audio payload handling, usage accounting and exact model/deployment selected. Unsupported or dropped required features yield `INFERENCE_SURFACE_INCOMPATIBLE`, not a silently simplified request.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1603,7 +1603,7 @@
       "requirement_digest": "788ef0ec65d2b87f4ead97feb2b541ddb52a4b43197812eba9486ed19db2792a",
       "requirement_id": "REQ-F0AFEBA1B7BC",
       "requirement_text": "| Local-only or restricted content | Guardrail model/locality must itself satisfy Spec 220; an external safety model is an external data recipient. |",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1625,7 +1625,7 @@
       "requirement_digest": "7f76b7a7f7ad23906491c66a0da94b4ed0e6e1da024a2076c2e9510383ceb265",
       "requirement_id": "REQ-6EFAFB16B247",
       "requirement_text": "Request-level `guardrailMode` SHALL be `BLOCKING_PRE`, `BLOCKING_PRE_AND_POST_BUFFERED`, `MONITOR_ONLY`, or `LOCAL_CERTIFIED`. `guardrailAttestation` (provider, model revision, language tests, surface, checked stages, outcome) is part of the attempt outcome. Do not claim complete Thai-language or multimodal safety coverage without the actual fixture suite. A provider-side guardrail response is untrusted as a substitute for ACL/tool authorization. Guardrail costs and added latency enter admission estimates.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1647,7 +1647,7 @@
       "requirement_digest": "fa18ea8719dfd6dac67bc1d2afe1af525dfd2bd41dc9a9dcd283cb222eab3422",
       "requirement_id": "REQ-88CCA7C9D748",
       "requirement_text": "Cloudflare AI Gateway logs are on by default and may contain request and response bodies. The `cf-aig-collect-log-payload: false` header disables raw payload storage for that request while preserving permitted metrics; `cf-aig-collect-log: false` disables the gateway log entry. Separately, **Log Classification** requires stored logs and processes eligible stored prompt/response content; it must not be silently enabled to improve router telemetry.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1669,7 +1669,7 @@
       "requirement_digest": "91fdb77fec3aa91f97ffbe178715acd8b02f136121e09936fd81a7435b1f5d9b",
       "requirement_id": "REQ-A8C4BDE0B779",
       "requirement_text": "Any privacy-preserving classification or routing telemetry computed inside SmartAIHub must use data-minimized, authorized features only; individual-user, credential or project secrets never appear in custom metadata. Provider log completeness is an analytics property, not mandatory financial/security audit truth.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1691,7 +1691,7 @@
       "requirement_digest": "d3dd0a1f8f2461afb44f470ad82a0227651cf8b6b0f1f1373a5fbbc40cfad50e",
       "requirement_id": "REQ-D0FECCDCD11F",
       "requirement_text": "Dynamic-route `success` after stream startup is not evidence of **full model completion**. Gateway fallback/retry must be disabled or tightly bounded in surface-specific ways that preserve Spec 231's total attempts and post-commit stream rules. No fallback to a provider absent from the approved plan, even if Gateway route configuration advertises it.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1713,7 +1713,7 @@
       "requirement_digest": "447a65e81c91f3b81cbbaa61dfc9a2e68498390b4c021ac56be0ca0586eb7799",
       "requirement_id": "REQ-F687D30D0977",
       "requirement_text": "Each `planId` has one canonical `retryCoordinator` and a bounded `maximumSubmittedPaidAttempts`, `deadlineAt`, `maxChargeReserve` and `sideEffectClass`. SDK, Gateway and SmartAIHub retries SHALL not multiply. The plan MUST record `gatewayRetryMode`, `sdkRetryMode` and `routerRetryMode`; incompatible combinations are rejected by config validation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1735,7 +1735,7 @@
       "requirement_digest": "43a217fc53e5a4a6fab69aa7240908265ab4e224bcef477e16a819c015658948",
       "requirement_id": "REQ-F16543CFCC35",
       "requirement_text": "- Gateway/request timeout must be characterized as **time to first response**, not assumed a total generation deadline. Separately enforce first-byte, total-deadline, idle-stream and tool-turn timeouts in SmartAIHub.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1757,7 +1757,7 @@
       "requirement_digest": "7ca1749ec52df56bcc8e00f97f2832e0006323c6323a207fa4c83c4dcf18f17c",
       "requirement_id": "REQ-7C841F780F06",
       "requirement_text": "Gateway spend limits are **eventually consistent**; concurrent requests can temporarily exceed them and usage-based prices are estimates. Only SmartAIHub's authoritative credit ledger may admit/capture/refund. The parent request budget must account for:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1779,7 +1779,7 @@
       "requirement_digest": "18c743b99cc4811b81ea918a691511dad6ab409762c5e54570fe598a62ded4aa",
       "requirement_id": "REQ-0D94D4A9805C",
       "requirement_text": "Implement worst-case reservation where bounded; otherwise stage-by-stage incremental reservation with a **hard parent cap** before the next paid stage. Provider rate/budget nodes are defense-in-depth only. For unknown charge outcomes, retain a uniquely referenced provisional liability, reconcile against provider/gateway receipts, enforce an aging/reconciliation SLA and alert before holding balances indefinitely. The ledger must ensure at-most-once capture for each reconciled economic event.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1801,7 +1801,7 @@
       "requirement_digest": "9ca1e49e7f4831f83821f8e5d4ce31a56e751513e44826eae23885364f5a9441",
       "requirement_id": "REQ-96405BDDB02F",
       "requirement_text": "Use fixed-point currency/credits, pinned provider pricing and a dated FX snapshot with an identifiable source. Reserve with safe ceilings when price is uncertain; unknown price is not zero. Preserve distinct estimated, measured and invoiced amounts without turning a stale cost estimate into a user invoice. A user-visible fee estimate must name whether it covers potential retries/evaluator work. A fallback may not exceed user-approved spend or cross into an unapproved billable provider.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1823,7 +1823,7 @@
       "requirement_digest": "1730efe54935f80162a9927f206b36068cadb152abd9a74a7fc38365945ee827",
       "requirement_id": "REQ-2FD30EF4E376",
       "requirement_text": "The router may use RAG evidence *volume* and language to select the model/reasoning profile. It MUST NOT treat a vector/reranker score as a calibrated answer-quality probability. Retrieved instructions remain untrusted content and never modify routing policy or tool permissions. Cross-spec correlation uses `retrievalTraceId` and `inferencePlanId` without leaking source text into Gateway metadata.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1845,7 +1845,7 @@
       "requirement_digest": "b5dd6c6eb4f331516ed79fc298dab4ea7e5ea278180e3b0f6384fdd71bc668d4",
       "requirement_id": "REQ-C21CFEB311E4",
       "requirement_text": "Differentiate provider **prompt-prefix cache**, AI Gateway **identical-request response cache**, SmartAIHub deterministic **exact response cache** and **semantic response cache** (disabled in initial production). Gateway caching is not semantic caching by default. A cacheable request must be deterministic, read-only and stable for a known TTL. Never cache paid/tool-effecting turns as interchangeable completed actions.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1867,7 +1867,7 @@
       "requirement_digest": "a26dc7b4bf2503c714769cdbdf69903dd7c6f67e32dc4a61bcc3168fe642a620",
       "requirement_id": "REQ-D3084102C5A7",
       "requirement_text": "The canonical cache key must include `tenant/security scope, ACL epoch, policy revision, exact model/deployment/profile, prompt/schema/tool revision, source-revision digest, locale, deterministic parameter set`. On cache hit, re-evaluate current user authorization and data-locality policy. Tenant/security policy change, source edit/delete, model revision, credential scope revocation or cache-schema change invalidate or bypass the entry. Sensitive cross-user caches require explicit policy and proof of safe sharing; default is private-per-user or bypass.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1889,7 +1889,7 @@
       "requirement_digest": "208c8c7a989670be3672748bb72fb22942fbe1b987940d1621ef0af7f2a7ceec",
       "requirement_id": "REQ-08C44CA3304E",
       "requirement_text": "Regional failover requires explicit residency revalidation. Emergency credential rotation invalidates new submissions on stale deployments. Versioned operations and incident UI shall show user-safe status, admin diagnostic reasons and expected recovery action without exposing secrets.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1911,7 +1911,7 @@
       "requirement_digest": "02d2d40f2acb96e603898dee73aaa5a835b2019a9ff18ba655709df4eeb4567d",
       "requirement_id": "REQ-0AAE55C8ED34",
       "requirement_text": "- upper confidence bound on policy/privacy violation remains within the zero-violation acceptance gate (no observed violation is required but not alone proof of future zero risk);",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1933,7 +1933,7 @@
       "requirement_digest": "3bf03544a501d0f2768f3afd41e470e9375f7365281fd91fe922d7d09c30596d",
       "requirement_id": "REQ-C42867D53F8F",
       "requirement_text": "Separate versioned identities for `logical_model`, `provider_deployment`, `credential_binding`, `API_surface`, `router_policy`, `evaluator`, `catalog_snapshot` and `pricing_snapshot`. Probe representative production-compatible fixtures for exact required features (Responses vs Chat, tool-turn continuation, strict schemas, streaming, reasoning controls, image/audio/video, large context and usage). A provider marketing claim such as “supports tools” is not a passed contract test.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1955,7 +1955,7 @@
       "requirement_digest": "56eafc613432b0c1278cdd1783231ca97167c9431eef91ee3bf74e3c4cf9df4e",
       "requirement_id": "REQ-C6FFD5CEDA65",
       "requirement_text": "Model discovery → review → capability tests → task-specific quality evaluation → shadow → canary → active. Unknown alias mutation or material loss of a required feature quarantines the affected *deployment × surface* without taking unrelated instances down. In-flight plans keep pinned compatible versions; new attempts must revalidate emergency revocations and credential ownership. Rollbacks restore an approved registry and route revision pair, not one without the other. When model is discontinued, pin old work only if still available/approved; otherwise require an explicit replanning/approval state.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1977,7 +1977,7 @@
       "requirement_digest": "5079b74e95686990ef1518fe56ea757f07e9b9a07fb95be590e4d47a483628b9",
       "requirement_id": "REQ-AD5742C42F92",
       "requirement_text": "Paths may follow existing repo conventions. API MUST expose typed `POLICY_NOT_READY`, `NO_ELIGIBLE_ROUTE`, `INFERENCE_SURFACE_INCOMPATIBLE`, `BUDGET_NOT_RESERVED`, `GUARDRAIL_UNAVAILABLE`, `UNKNOWN_OUTCOME`, `STREAM_INTERRUPTED`, `UNAPPROVED_GATEWAY_ROUTE_DRIFT`, `CREDENTIAL_SCOPE_INVALID` and `MODEL_REVISION_UNCERTIFIED` errors with retryability/degradation metadata. Do not expose backend account identifiers to end users.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1999,7 +1999,7 @@
       "requirement_digest": "8caf773c0a18a6376af082daba1f4e6bdb48a3c2be33688f149c4a16fff50772",
       "requirement_id": "REQ-9DDB437CE0B0",
       "requirement_text": "UI screens: end-user `Auto / choose model / provider lock / local only`, model eligibility and price/latency ranges, explicit fallback-consent modal; admin model registry, surface certification matrix, candidate exclusion inspector, route diff+publish+rollback, gateway config drift, budget reservation vs provider invoices, privacy/guardrails, local Runner readiness, performance/quality slices, cross-tenant fault and incident dashboard. Admin test-as-user must use server-issued scoped impersonation and must never show data that the simulated principal cannot access.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2021,7 +2021,7 @@
       "requirement_digest": "506ee6329dfda8142da846b0b1e2f52e1a80023eef921132dd590b6c6c6e283a",
       "requirement_id": "REQ-1D1FEB9E8434",
       "requirement_text": "`SAH-INFERENCE-2` gains *additive* `executionSurface`, `surfaceCertificationId`, `routeManifestHash`, `guardrailMode`, `aclEpoch`, `sourceRevisionSetHash`, `totalEstimatedChargeCeilingMicros` and `streamingPolicy`. Default migration is **fail-safe**: an older caller missing a newly mandatory high-risk field cannot silently opt into lower protection. APIs, DB schema changes and provider adapters must be covered by forward/backward compatibility tests during rolling deploy. Keep existing plan and job authority; do not create a second execution ledger.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2043,7 +2043,7 @@
       "requirement_digest": "ce5150e8767351fd24e8cb1949aabcf612a96f8ad4ec8c937aab4d189eb34bab",
       "requirement_id": "REQ-2085570931EC",
       "requirement_text": "1. Two documents both labeled `231` cause registry uniqueness CI failure; neither is overwritten.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2065,7 +2065,7 @@
       "requirement_digest": "33125cc2ee35751c27953f6345177707ae51d907c7c2c696c6f513e6e6625093",
       "requirement_id": "REQ-E0D256B58786",
       "requirement_text": "2. Ambiguous unqualified `Spec 231` references are rejected until canonical mapping is approved.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2087,7 +2087,7 @@
       "requirement_digest": "c3f1b428c65c1a2c8b4765ed4a0513f5e2294f7fb3efd0df408a5bff6a031c7a",
       "requirement_id": "REQ-BC53BC7749EE",
       "requirement_text": "3. Dynamic Route chosen for ordinary certified Chat-compatible task; exact route version recorded.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2109,7 +2109,7 @@
       "requirement_digest": "9742a4d48cd91a3273f5ae506cfb944650e7aa9482af0cebba7c6c7805a24c9f",
       "requirement_id": "REQ-77EB6D8E558C",
       "requirement_text": "4. A task requiring native Responses features cannot go through an uncertified Dynamic Route.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2131,7 +2131,7 @@
       "requirement_digest": "78d4da40192423be5ab4fe62c64abae5941fd485f955d8d90bc6ba0be860fbb6",
       "requirement_id": "REQ-D22713ACBF5A",
       "requirement_text": "5. A Chat adapter that loses strict schema or tool-call IDs fails contract certification.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2153,7 +2153,7 @@
       "requirement_digest": "5146e02d4cb82f0085968d6143d2f462b109a0fb660d6e5890ec4c27ca52574d",
       "requirement_id": "REQ-AF9421C60448",
       "requirement_text": "6. A direct/native provider route can serve required nonportable multimodal semantics when authorized.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2175,7 +2175,7 @@
       "requirement_digest": "668f95996959a237c2fb6ff9076c7e6b1152e32652a61d12f532527e25dd230a",
       "requirement_id": "REQ-900F6E45C0FA",
       "requirement_text": "7. Mandatory streaming **response** blocking cannot be treated as enforced on an unbuffered REST stream.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2197,7 +2197,7 @@
       "requirement_digest": "b3749c94ad250f8193d278b3f6f6fddfe63c7ef8702f3f3fb77bda74c1d5a781",
       "requirement_id": "REQ-74D818BF8247",
       "requirement_text": "8. Buffered mandatory post-guardrail response is withheld from user until passed; no streaming promise is made.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2219,7 +2219,7 @@
       "requirement_digest": "3d0d3f42dda589f1c5b025907ab94e0f21f9ee0d3c5fed16c4f15e9e0b97237d",
       "requirement_id": "REQ-89021D828D53",
       "requirement_text": "9. Gateway optional guardrail outage is distinguished from mandatory guardrail outage.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2241,7 +2241,7 @@
       "requirement_digest": "26394670669337458443354b0f791cf1b5cbed80b092b0c1fc02bf8e406c2637",
       "requirement_id": "REQ-C0FDC05D805C",
       "requirement_text": "10. Private tenant prompt does not reach Cloudflare Log Classification unless independently approved.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2263,7 +2263,7 @@
       "requirement_digest": "36e0c62caa952e49e6d12d44fb0d3ad28651d65c6b5df825ab3bd300d4d656ca",
       "requirement_id": "REQ-E08779A33B50",
       "requirement_text": "11. `cf-aig-collect-log-payload: false` is verified in the actual Gateway log configuration/path.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2285,7 +2285,7 @@
       "requirement_digest": "8ab57dd93defc3a49957c1e1f0a0c936aa55400d0be20770a8addb880d7a655b",
       "requirement_id": "REQ-4EF56B33B5D5",
       "requirement_text": "12. Client-provided tenant/credential-owner metadata cannot override authenticated scope.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2307,7 +2307,7 @@
       "requirement_digest": "a4614b0898fc4d13d113d4174cb6d4dc592d5d7cdc6b0c0db894cc6dc8a0bbe8",
       "requirement_id": "REQ-CFB83E13F576",
       "requirement_text": "13. A deployed Cloudflare route hash mismatch removes that deployment from new eligible plans.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2329,7 +2329,7 @@
       "requirement_digest": "badaf8eeecef7a3a19ff1fe53d28151958379a49c77871e2de6bf1790d6e2062",
       "requirement_id": "REQ-47BC9ECB6BF7",
       "requirement_text": "14. Dashboard-added fallback model not in the immutable plan is rejected before dispatch.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2351,7 +2351,7 @@
       "requirement_digest": "0d0493837c699ef69783d5ff0a305a7b67b2d8cccaa7694aa4694afda5498ce0",
       "requirement_id": "REQ-E1F307824B47",
       "requirement_text": "15. In-flight policy emergency revocation fences new paid attempts and revalidates continuation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2373,7 +2373,7 @@
       "requirement_digest": "0bf6a8c0c60e5134f5476f59f4bfca419aba035582f5e1e09bbaf82406fce57c",
       "requirement_id": "REQ-F3386CB0678C",
       "requirement_text": "16. DNS rebind and HTTP redirect to metadata/private IP are blocked with no secret forwarding.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2395,7 +2395,7 @@
       "requirement_digest": "b7d92a00a14fca3796e89e77bc94822761a13cda87ece301a99d2cde77a54284",
       "requirement_id": "REQ-8AECA7B06D98",
       "requirement_text": "17. Local Runner explicit LAN route obeys scoped user consent and never exposes private LAN to shared Workers.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2417,7 +2417,7 @@
       "requirement_digest": "707b2580402ae3a94dc5ccd116c83638138b59b937bde97b7de112a03af9b67e",
       "requirement_id": "REQ-475A9EA0F43D",
       "requirement_text": "18. A timeout after stream first byte does not cause silent cross-provider response splice.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2439,7 +2439,7 @@
       "requirement_digest": "830f6d3160bb4a3bb80827035aaba8b4dac4df42359797db0dec977548b5f7ef",
       "requirement_id": "REQ-E2A0E1872172",
       "requirement_text": "19. SDK + Gateway + Router retry caps cannot exceed the plan's submitted-attempt envelope.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2461,7 +2461,7 @@
       "requirement_digest": "a59a3ac12088a02bdca0ac4da5f3b86890e8f6e86137286e431d28845a69fc36",
       "requirement_id": "REQ-0D6502DD4256",
       "requirement_text": "20. Cancelled paid stream has provisional cost receipt and later reconciliation, not an automatic full refund.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2483,7 +2483,7 @@
       "requirement_digest": "fbc16030d38b5051258370855aa871337d1246f6c50c02d902c032d6ae14793c",
       "requirement_id": "REQ-A6AA13E08614",
       "requirement_text": "21. Late provider usage callback cannot capture the same economic event twice.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2505,7 +2505,7 @@
       "requirement_digest": "521643dac9d44675a82211330f83014f7e624aba2357b77598220536225f722d",
       "requirement_id": "REQ-2F308B483C7D",
       "requirement_text": "22. Gateway 20-rule spend configuration cannot be the only authority for an unbounded tenant population.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2527,7 +2527,7 @@
       "requirement_digest": "919287fb6f5147971b942e839fdb9ae3f0bf5cd62068695c484ecef36eaa8028",
       "requirement_id": "REQ-B1D679F490B8",
       "requirement_text": "23. Simultaneous cascade/parallel branches cannot exceed the parent credit cap.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2549,7 +2549,7 @@
       "requirement_digest": "2de81d3914ae6ca6257037ac369c1cf7d479c943e960c70941e4014bce1294de",
       "requirement_id": "REQ-21D2EFFF0C90",
       "requirement_text": "24. Cost estimates include model reasoning, cached reads/writes, multimodal input and evaluator charges.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2571,7 +2571,7 @@
       "requirement_digest": "b1d5dbf3fae17e4770e79cab7f28cbc99e6c4735e84e8039fbd1511f67c3bc64",
       "requirement_id": "REQ-2ED881CBD1DE",
       "requirement_text": "25. Empty Spec 229 evidence does not cause an automatic expensive model escalation in place of retrieval.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2593,7 +2593,7 @@
       "requirement_digest": "47bdf17164a8e62b2cd600e715d87a436d965cea5a579f83ca6cf197474988db",
       "requirement_id": "REQ-9706842BB481",
       "requirement_text": "26. Stale ACL epoch or deleted source version blocks an otherwise reusable RAG answer cache hit.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2615,7 +2615,7 @@
       "requirement_digest": "e895a028e66a62acc42ee065edf6f1775795e19c9ba0cbdca2093dd47f9df622",
       "requirement_id": "REQ-C230FF984044",
       "requirement_text": "27. Untrusted retrieved document cannot change model-routing restrictions.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2637,7 +2637,7 @@
       "requirement_digest": "cfbe4d242c684f3139b87b1ca4639dec856ade3152d27e059f46465bf014facb",
       "requirement_id": "REQ-6AD165FD8799",
       "requirement_text": "28. A custom cache key missing ACL/source revision causes cache bypass, not reuse.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2659,7 +2659,7 @@
       "requirement_digest": "b6ef19607ae192508b7c4de036314c8d04465d4220a97dc76b967bb5968a7343",
       "requirement_id": "REQ-74653973FBBC",
       "requirement_text": "29. Fair admission preserves interactive p95 while guaranteeing bounded batch progress.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2681,7 +2681,7 @@
       "requirement_digest": "5fec5239c9821eaedde6b12c4082e39c757bdb45be164ba6b92b815c4f941b65",
       "requirement_id": "REQ-0C174B5EBBE7",
       "requirement_text": "30. LOCAL_ONLY with required local judge never invokes cloud fallback or third-party cloud guardrails.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2703,7 +2703,7 @@
       "requirement_digest": "76c6d84d791d1cb2a651288d0b0853fbc2536770d8d7eeecb762f17aeabafdd3",
       "requirement_id": "REQ-550D7B3B6AA6",
       "requirement_text": "31. Learned router promotion is blocked if Thai or mixed-language critical slice regresses.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2725,7 +2725,7 @@
       "requirement_digest": "24a09cdf8cc33b7b9c708a8d454cab0ac2437eef0de4345f6bce9a0acb8dab30",
       "requirement_id": "REQ-2361420F8A71",
       "requirement_text": "32. Insufficient counterfactual labels are reported as uncertainty, not fabricated quality wins.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2747,7 +2747,7 @@
       "requirement_digest": "ad3938a79327368ac137fda73e68c3e7043d64b0ecf35d406f99f7e812357e45",
       "requirement_id": "REQ-31CA57F869D7",
       "requirement_text": "33. Uncertified alias revision quarantine affects only the relevant deployment × surface.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2769,7 +2769,7 @@
       "requirement_digest": "c89b2124337583df92b41d2b6f71f6e12c4a0c0edb0ac8f58ae2c8abbc746319",
       "requirement_id": "R3",
       "requirement_text": "34. An API client lacking R3 mandatory high-risk fields is rejected instead of defaulting to monitor-only.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2791,7 +2791,7 @@
       "requirement_digest": "7bc42b15b22aae23b14992f13b36e6ca118676063172b8808c2476e1b89003b3",
       "requirement_id": "REQ-01FAB72DE6FF",
       "requirement_text": "35. Registry+gateway version rolling deploy never changes a pinned run's executable plan silently.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2813,7 +2813,7 @@
       "requirement_digest": "ba098fb3d769b8b63ce23211b85ce21f1f30c92b45703a972372842d697f0862",
       "requirement_id": "REQ-0E387E66AF1E",
       "requirement_text": "36. Admin user-simulation does not disclose another tenant's plans, prompts, costs or credential refs.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2835,7 +2835,7 @@
       "requirement_digest": "f366f4867f81f8e56b5b75438e0420f849c71b50c2ce1815bc000271016c4ad2",
       "requirement_id": "REQ-037C27B030ED",
       "requirement_text": "37. Route config rollback and model registry rollback move together under an approved snapshot.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2857,7 +2857,7 @@
       "requirement_digest": "395d584aa99bfa2e7c33cc62a9fe445b97ec9b4b84e3be95b420e48f2518bf55",
       "requirement_id": "REQ-1450923EAB74",
       "requirement_text": "38. A mandatory guardrail provider unavailable under regional outage yields a typed fail-closed status.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2879,7 +2879,7 @@
       "requirement_digest": "7d9eb9c7d23bf59337da668b267fa2e97b76d9b950530a93e6ab52e04ecd5173",
       "requirement_id": "REQ-9D4A00267F78",
       "requirement_text": "- Cloudflare AI Gateway Dynamic Routing and endpoint limitation: https://developers.cloudflare.com/ai-gateway/features/dynamic-routing/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2901,7 +2901,7 @@
       "requirement_digest": "a62f6ce4ff5ed50de257568c0073e86bc7ca4830e26930adaeabe7d93114538a",
       "requirement_id": "REQ-5BB2E9FB1A6A",
       "requirement_text": "- Cloudflare AI Gateway JSON routing nodes/start-of-stream semantics: https://developers.cloudflare.com/ai-gateway/features/dynamic-routing/json-configuration/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2923,7 +2923,7 @@
       "requirement_digest": "0e63a3f80af7a824926c154f24f794e73c8b56d65c1584195a36c0fa2f707d7d",
       "requirement_id": "REQ-6A1C9250FCE6",
       "requirement_text": "- Cloudflare Guardrails streaming constraints: https://developers.cloudflare.com/ai-gateway/features/guardrails/usage-considerations/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2945,7 +2945,7 @@
       "requirement_digest": "6f9ba6596b17a93b0493b4c94c0ca04fbc1b664cb2b443a88dce2aaed5ae9d25",
       "requirement_id": "REQ-846D927512EE",
       "requirement_text": "- Cloudflare request retries/first-response timeout: https://developers.cloudflare.com/ai-gateway/configuration/request-handling/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2967,7 +2967,7 @@
       "requirement_digest": "062d3d87973709b78557108b22a6b73c70e841c529791fcc66bfcf8db5944718",
       "requirement_id": "REQ-868367BB2681",
       "requirement_text": "- Cloudflare Gateway logging and content-payload controls: https://developers.cloudflare.com/ai-gateway/observability/logging/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2989,7 +2989,7 @@
       "requirement_digest": "cbe21a6e7422f42f59c420fc06f5ef2403385527b54d9086f795c773fdd71d2f",
       "requirement_id": "REQ-3424E80D37F3",
       "requirement_text": "- Cloudflare Log Classification content opt-in: https://developers.cloudflare.com/ai-gateway/observability/log-classification/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3011,7 +3011,7 @@
       "requirement_digest": "d976db3cc2bc7076c42e63b19fc109aa8a9febe457eb5cff488d039e4a793178",
       "requirement_id": "REQ-1B06FD4BA244",
       "requirement_text": "- Cloudflare spend-limit eventual consistency: https://developers.cloudflare.com/ai-gateway/features/spend-limits/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3033,7 +3033,7 @@
       "requirement_digest": "139dff03562dece305c69ef92090a2169943ddd081dcb8141913b656d3f7cc58",
       "requirement_id": "REQ-74E634ECE401",
       "requirement_text": "- Cloudflare metadata/limits: https://developers.cloudflare.com/ai-gateway/reference/limits/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3055,7 +3055,7 @@
       "requirement_digest": "72d683db20e192727cad45c2a2bc0ec04c8fde63bc296f690ad05018f668e791",
       "requirement_id": "REQ-4323D968AB08",
       "requirement_text": "- Cloudflare exact-response cache: https://developers.cloudflare.com/ai-gateway/features/caching/",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3077,7 +3077,7 @@
       "requirement_digest": "0b9f4a25f6128f9e1e8fe78e9b4bbffc767e28d64665e744f1de0833ae215d6f",
       "requirement_id": "R3-1590",
       "requirement_text": "Every new `InferencePlan`, development ticket, benchmark fixture, cross-spec reference and CI-generated artifact MUST carry `spec_uid` and `spec_revision`; unqualified `P231.*` and `Spec 231` references MUST be rejected when their source lineage is ambiguous. Registry resolution must inspect *main*, open branches/PRs and the authoritative spec registry, then reserve unique numbers with a single reviewed transaction. If live registry access is unavailable, retain HOLD, never guess that 232 is free. Migration of aliases, R3/R4 links, generated code identifiers and user-facing documentation must be atomic. Preserve both independent documents unchanged until approval. Keep the Redis migration deploy path and LLM routing rollout in separate release plans and independent rollback domains.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3099,7 +3099,7 @@
       "requirement_digest": "102212b44eb582ee035fc8c39f3ae84fa34cee86926ff1efab44e4b63be4971d",
       "requirement_id": "R3-1594",
       "requirement_text": "R3's per-inference surface tests SHALL be supplemented with **multi-turn state** certification. A model can support `tools` in isolation yet reject a conversation whose previous turns contain nonportable provider-specific tool IDs, opaque reasoning data, signed continuation material or multimodal state. Define:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3121,7 +3121,7 @@
       "requirement_digest": "abd853408b7a445beb0182d635b8f5877531dfac5fba9ba11bf45fc66a740632",
       "requirement_id": "REQ-762E2070C658",
       "requirement_text": "* Retention and deletion cover opaque state refs and tool maps. Opaque payloads MUST NOT appear in router telemetry or AI Gateway metadata.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3143,7 +3143,7 @@
       "requirement_digest": "15aff0947c03423a9d16ca49c372911780863e163a6f42564750971795f4954e",
       "requirement_id": "REQ-080979DA61AD",
       "requirement_text": "Cloudflare documents HTTP Worker duration as connection-dependent, `waitUntil()` as a bounded short extension (up to 30 seconds), and Queues as **at-least-once** delivery. Therefore a minutes-long or disconnected-background agent task MUST NOT be implemented as `waitUntil` alone or assumed to execute exactly once because it uses Queues. Use a durable job with admitted attempt, recovery cursor, heartbeat, bounded tool stages, cancellation and persistent results. Long-running provider continuation is polled/resumed through the existing job plane, not through a second inference scheduler. No global migration gate: old and new transport families may coexist while sharing canonical job identity.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3165,7 +3165,7 @@
       "requirement_digest": "03de591e45403787a2ad7217e1081799f7d1a013b279c29314fb4f120ab4199d",
       "requirement_id": "REQ-BD174972DF8F",
       "requirement_text": "Before external paid submission, atomically claim `logical_call_id` in the canonical control plane using `(tenant_id, run_id, node_id, logical_call_id)` plus an incrementing fencing epoch. The claim creates at most one **active** attempt-owner lease. Queue delivery is a hint; a duplicate message must return the existing in-flight receipt instead of dispatching a second provider call.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3187,7 +3187,7 @@
       "requirement_digest": "22e90943d99a6caab4752369fde7b18e6fa9fb282c1044cfea412c24cf9d88d1",
       "requirement_id": "REQ-47385BB11AEF",
       "requirement_text": "Required invariants:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3209,7 +3209,7 @@
       "requirement_digest": "8d35d6d1fdc44d0583145280064a5818ce7325d528f82d95dd015f4dc10c7e40",
       "requirement_id": "REQ-74F6069E64AF",
       "requirement_text": "Default timeout values and p95 targets must be calibrated by workload and environment. Cancellation after committed output reports an interruption; never hide it by silently restarting on a new model. When late usage arrives, reconcile without reauthorizing new paid stages. Admission should consider expected queue wait plus p95 provider duration; do not admit a job that cannot plausibly meet an explicit customer deadline without presenting queue/defer alternatives.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3231,7 +3231,7 @@
       "requirement_digest": "8be7d5a74d89726f0e4c3d1b5f043f2e0e213bdc109e6e58e269ee74013647fa",
       "requirement_id": "REQ-B937ADEDF811",
       "requirement_text": "Cloudflare Dynamic Routes are named/versioned and currently invoked by `dynamic/<route-name>` on the supported Chat-compatible endpoint. Merely storing a `routeVersion` in SmartAIHub does **not** prove that a request by mutable name executes that revision. Before production dispatch, the adapter SHALL prove one of:",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3253,7 +3253,7 @@
       "requirement_digest": "7ea6196332c6046f3468fa673e8258403241e2d6ef49afb0fad039384245a8ef",
       "requirement_id": "REQ-3451986CF8AA",
       "requirement_text": "If none is proven, use an explicitly selected single-model route or authorized native provider endpoint and report `ROUTE_PIN_UNAVAILABLE`. Drift detection based only on scheduled polling is not sufficient for high-risk traffic; the dispatch boundary must validate version/manifest or route through a controlled immutable alias. The actual executed model/provider remains separately checked under Section 72.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3275,7 +3275,7 @@
       "requirement_digest": "db25aa39fdb4c6eac5ed28611363664327c67dec9945b39847873929da080e41",
       "requirement_id": "REQ-9D2E5755E3F1",
       "requirement_text": "A production conversation becoming deleted/revoked must invalidate or remove disallowed raw samples, evaluation derivatives, embeddings and external judge artifacts under their retention obligations. Do not assume permission to serve a prompt means permission to send it to a second model for evaluation or training. Shadow calls with private content are opt-in and policy-gated; use synthetic/redacted corpora where appropriate. Never put raw prompts, source text, user identifiers or protected embeddings in generic route metric labels. Mandatory security/audit evidence remains separate, minimized and retention-governed.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3297,7 +3297,7 @@
       "requirement_digest": "5e4caced60b0980521c47fdf388a686384d1318e8563618f87a81f5a243b5051",
       "requirement_id": "REQ-DA93A4501955",
       "requirement_text": "Spec 222 historical success is advisory and must be versioned, stratified and confidence-weighted. Apply outlier/poisoning detection, suspicious tenant/user feedback-rate caps, data-quality gates and minimum effective sample sizes before a learned signal affects production. A semantic nearest-neighbor hit or positive review never overrides a Skill's trust state, a model's qualification, or a privacy restriction. Show the origin and confidence of each *soft* route signal in Admin Inspector without exposing private input content.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3319,7 +3319,7 @@
       "requirement_digest": "6fc9ec1fadc412c6a087489ea87f719a9b878e6fa45be70736a351e6e73ef84c",
       "requirement_id": "REQ-97033B1FB11C",
       "requirement_text": "A production Router usually observes quality only for the selected model; other candidate outcomes are unknown. Offline evaluation MUST distinguish **observed selected-model outcomes**, **paired replay outcomes**, **judge-estimated outcomes** and **unknown counterfactuals**. Never compute an alleged `best-model routing regret` from missing labels.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3341,7 +3341,7 @@
       "requirement_digest": "b1741814c5183d980d464e37daa074e7fc4c7c5283d8987b28941657a8741d35",
       "requirement_id": "REQ-B9A12534D822",
       "requirement_text": "Distinguish `estimated`, `reserved`, `metered`, `gateway_estimated`, `provider_invoiced`, `settled` and `disputed` amounts. Pricing snapshots contain source, effective time, currency, FX observation timestamp, regional surcharge and modality pricing; stale/unknown prices cannot be treated as zero. Include provider prompt-cache **write and read pricing**, reasoning output, image/audio/video input and generation, tokenizer/routing/evaluator cost, provider retry and partial/cancelled output. A local model consumes GPU time, energy, infrastructure capacity or a user-owned Runner resource even if no external token invoice exists; local charge/tariff policy must be explicit rather than assuming all local inference is free.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3363,7 +3363,7 @@
       "requirement_digest": "d171773369ac7cd8a395a765986a6d1d744d194fa68018be7ca1529106f61a2a",
       "requirement_id": "REQ-13D74F3C4FCE",
       "requirement_text": "A `LOCAL_ONLY` request can defer or return `LOCAL_CAPACITY_UNAVAILABLE`; it never silently enters a cloud fallback, cloud evaluator or cloud guardrail. Preemptive eviction of a pinned model during an unfinished tool/streaming turn must be prohibited unless failure/replan is explicit. Device owner disconnect/consent withdrawal fences new work; if local work is in progress, follow its cancellation/privacy policy. When local capacity cannot meet latency or quality requirements, clearly present alternatives rather than overriding privacy or user selection.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3385,7 +3385,7 @@
       "requirement_digest": "7679f2ed0cce29c0a21fda56d340874a6e4d6a1f28e6ce1f14165d880716b800",
       "requirement_id": "REQ-F6C92BD3862D",
       "requirement_text": "Measure media cost on actual dimensions, duration, frame/audio sampling, tokenization and provider-specific charging rules. Model capability certification must include modality-specific files and stream fixtures, limits, upload/error handling and transcript provenance. Background media inference is durable under Section 73. Media vector lifecycle/rehydration continues to belong to Spec 229; Spec 231 chooses an authorized model and prices inference only.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3407,7 +3407,7 @@
       "requirement_digest": "1132ad4d57882dbe4aa41bc0635a1bcc9bce2c13d3abeb3cbb76c6fe91ef4a80",
       "requirement_id": "REQ-583559EF6D40",
       "requirement_text": "Activation is gated by the canonical platform policy, a provider-capability recheck and live environment readiness. Blue/green rollout never silently mutates a plan pinned to the old bundle; emergency revocation can fence it. Recovery exercises SHALL include regional failover, loss of billing authority, stale policy, runtime Worker deployment, duplicate Queue deliveries, hung provider stream, route-name repoint and Redis migration overlap. The repository deployment pipeline blocks ambiguous spec IDs and incompatible cross-spec contract versions. Keep a known-good deterministic/static route profile capable of operating when learned-router evaluation/control components are down. Independent Redis/BullMQ migration and Spec 229 index cutover remain separate promotions and separate rollback barriers.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3429,7 +3429,7 @@
       "requirement_digest": "ffb22acdd57e27e35c94a5dad6dbe5b0047528c5876678b64be91798d86ebf35",
       "requirement_id": "REQ-069F0713D910",
       "requirement_text": "1. Both provisional 231 topics exist; unqualified reference fails while title-qualified `spec_uid` resolves deterministically.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3451,7 +3451,7 @@
       "requirement_digest": "c5566ee3d38e27d54a135c9a088acc80dc63f6f57d5ea5857bae9ae6d375af30",
       "requirement_id": "REQ-95F70404E70F",
       "requirement_text": "2. Registry allocation cannot overwrite an existing spec, open-branch reservation or already published alias.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3473,7 +3473,7 @@
       "requirement_digest": "a8ee7ea00438a54e59a0b81025feeb891ee9c574941846df520131a982e7fbac",
       "requirement_id": "REQ-736A143EA10C",
       "requirement_text": "3. LLM-routing rollout cannot implicitly promote the unrelated Redis migration or RAG reindex.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3495,7 +3495,7 @@
       "requirement_digest": "8a515d40a70a6da8a11f47a1956f21ed1ccb78a43629a11fd38199e3fcc37bed",
       "requirement_id": "REQ-645ABF98A8B2",
       "requirement_text": "4. Cross-provider replay with opaque reasoning continuation is blocked unless the target continuation fixture is certified.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3517,7 +3517,7 @@
       "requirement_digest": "024be01bed33651a28c3682b1c372cf84b33d06770acb7ae8b817a5a76782719",
       "requirement_id": "REQ-0DC514E170DF",
       "requirement_text": "5. A valid same-provider stateful continuation retains canonical tool-call IDs and owner binding.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3539,7 +3539,7 @@
       "requirement_digest": "8101af3c249c91ee12c7026ac5f5825898e58af87a969eeadeccbc4390eb1deb",
       "requirement_id": "REQ-BE1830D4C824",
       "requirement_text": "6. A failed state migration produces `CONTEXT_MIGRATION_REQUIRED`, never a fabricated tool result.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3561,7 +3561,7 @@
       "requirement_digest": "d28889e3ee51f470e508593edb3454d683c5a3effc292dae4346e398dd63c5df",
       "requirement_id": "REQ-FA3AF098288E",
       "requirement_text": "7. Dynamic Route's observed model/provider is recorded and mapped to the admitted candidate set.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3583,7 +3583,7 @@
       "requirement_digest": "71b0571354ac002b9f0900c1fa16fd340a0b119a850ebf308e6fd3aab8d1a266",
       "requirement_id": "REQ-2C1483E1B7C2",
       "requirement_text": "8. Actual fallback to a provider outside the plan causes quarantine and protected incident evidence.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3605,7 +3605,7 @@
       "requirement_digest": "3629db25f489fff5bc4fd6faf36b751fd00d27166737dd2b15157f30fa0e2e9e",
       "requirement_id": "REQ-DE2031745D9A",
       "requirement_text": "9. Missing provider identification remains `UNVERIFIED`; it is not silently priced as the planned primary.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3627,7 +3627,7 @@
       "requirement_digest": "cd874be6f9b68f2b6575e2161f581006e264e28b69b8748dedea7c7593b358e5",
       "requirement_id": "REQ-F00AFFE48D47",
       "requirement_text": "10. Client disconnect during a long inline Worker stream does not create an untracked background inference job.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3649,7 +3649,7 @@
       "requirement_digest": "aa7af1627e35c34e0d9b8e7dea3def289f4f965f1a0a8e3de43c6cb17292a233",
       "requirement_id": "REQ-CFABBA9A2426",
       "requirement_text": "11. `waitUntil` expiry cannot be the sole completion mechanism for a durable inference job.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3671,7 +3671,7 @@
       "requirement_digest": "321636bdb5e238b0c67ad6f6a6b5d8c60d28c425c331e716c0272b03a591703a",
       "requirement_id": "REQ-AAC9ED3D69EE",
       "requirement_text": "12. Duplicate Cloudflare Queue delivery returns the original admitted logical call instead of creating a second paid provider submission.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3693,7 +3693,7 @@
       "requirement_digest": "31df7ef5fb6ee67e968b4f8d33140d54922ddc210aed17a61b8e5b54f0daa775",
       "requirement_id": "REQ-EBC57B4B58BB",
       "requirement_text": "13. Stale fencing epoch cannot dispatch or settle an attempt after takeover.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3715,7 +3715,7 @@
       "requirement_digest": "f744143ae954c74f9f7e6b7a7cee30924bf34b7fb5c48e74dee02a1861a6c286",
       "requirement_id": "REQ-FBADA406C1AC",
       "requirement_text": "14. Ambiguous provider timeout without idempotency guarantee enters `UNKNOWN_OUTCOME`, not blind provider replay.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3737,7 +3737,7 @@
       "requirement_digest": "9e458357c0363587da09f06f1428f527944e3fb76fe37cfc346dd513bdcb1125",
       "requirement_id": "REQ-5D17A4FE1829",
       "requirement_text": "15. First token meets Gateway timeout but overall stream exceeds deadline; SmartAIHub cancels/reports `DEADLINE_EXHAUSTED`.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3759,7 +3759,7 @@
       "requirement_digest": "51d5798890ccc9a17add5c1f4065989bdb519406a7c2a3124fb7f6662c4d600b",
       "requirement_id": "REQ-514FF7612FF2",
       "requirement_text": "16. Route name repointed after plan creation is blocked unless the exact version pin is certified.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3781,7 +3781,7 @@
       "requirement_digest": "d176b9d09c78885ef2bcebd31b3e947868a9eb31dd359fff135fa196174e474f",
       "requirement_id": "REQ-1ED5059B615A",
       "requirement_text": "17. A version-pinned route yields the same approved execution set on predispatch and postexecution verification.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3803,7 +3803,7 @@
       "requirement_digest": "c0295ea443d05041c6731b808744490d900a392dfabbd91b39dede2d034360ea",
       "requirement_id": "REQ-F7C23DC62B6C",
       "requirement_text": "18. Tenant deletion invalidates previously consented raw shadow and derivative routing-training samples where retention rules require it.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3825,7 +3825,7 @@
       "requirement_digest": "aa0e10db202821f87d029a826e24a84516156ca634c91b43ed6ff25813134d2e",
       "requirement_id": "REQ-9A714DFB2C24",
       "requirement_text": "19. A private RAG query without evaluation consent is excluded from cross-provider shadow replay.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3847,7 +3847,7 @@
       "requirement_digest": "dc5968e5d93cca75dc3af15b6bc474cee8b9486da761a2061afd0e28b30ce68f",
       "requirement_id": "REQ-CCB8E771ACAF",
       "requirement_text": "20. User attempts to force premium route by injecting `risk=critical` or fake retrieval confidence into content; trusted policy prevails.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3869,7 +3869,7 @@
       "requirement_digest": "42689148ea1f1eb60e5adae369e4d8d0b1d4d918fafe823aedc7d067f1c1c58d",
       "requirement_id": "REQ-17D9493F9555",
       "requirement_text": "21. Adversarial long prompts cannot trigger unbounded classifier/judge/cascade spending.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3891,7 +3891,7 @@
       "requirement_digest": "9229a40f1c758b0234f53ddbdf21bd9fe60d6279f0cf20d2985c4a40df44bfe4",
       "requirement_id": "REQ-AAAAB07F13CD",
       "requirement_text": "22. Counterfactual metrics show unknown/unobserved candidates as missing, not inferred wins.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3913,7 +3913,7 @@
       "requirement_digest": "cda23329704f69577a345beb0c32c295289f2d42eaf84952376e15d35bbefa8c",
       "requirement_id": "REQ-4DDB82E1F17E",
       "requirement_text": "23. A randomized low-risk A/B cohort cannot override model lock, budget or locality.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3935,7 +3935,7 @@
       "requirement_digest": "78f6b5a458cb80e5f149bbc3f56fcb74e64d25cc30b02f2ce10b8fcecd466f3d",
       "requirement_id": "REQ-B2AE2D4EA507",
       "requirement_text": "24. Repeated model completion after a tool-effect commit returns the original effect receipt with no duplicate side effect.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3957,7 +3957,7 @@
       "requirement_digest": "c1c36d19d7bf2e97ddbec765ea2ce56082bdaa4ab1ac3de658792207d0544c09",
       "requirement_id": "REQ-F414F43D16C5",
       "requirement_text": "25. Tool handoff with missing provider tool-call mapping triggers checkpoint/replan, not silent transcript mutation.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3979,7 +3979,7 @@
       "requirement_digest": "f3336cd741a681b938e90a7a651f70ad6c1a393e149ead68a852c2a538346da0",
       "requirement_id": "REQ-A12BE84FA7D1",
       "requirement_text": "26. Gateway estimated spend and actual provider invoice mismatch remains traceable and does not cause duplicate capture.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4001,7 +4001,7 @@
       "requirement_digest": "09a434e9f62222dcc7cb085190fb5c7c3e26a98be79088a19e6a45f4125ec183",
       "requirement_id": "REQ-CC1DEBBAF278",
       "requirement_text": "27. Local-model cost policy includes device allocation while forbidding unexpected cloud charges.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4023,7 +4023,7 @@
       "requirement_digest": "6f4874a2ad7b26af91dfe5e903b99352ded6ee6cf5ee7fb14a4c538b509b8115",
       "requirement_id": "REQ-8A79E5769216",
       "requirement_text": "28. Private local inference cannot be admitted to another user's shared GPU without delegated authorization.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4045,7 +4045,7 @@
       "requirement_digest": "00d10d844244d1a6407a55392d8b82d2be2e1ad5a0288923db3821f6503e6c87",
       "requirement_id": "REQ-292FAB6D5071",
       "requirement_text": "29. Runner withdrawal/offline while `LOCAL_ONLY` work is queued yields a local-only typed outcome.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4067,7 +4067,7 @@
       "requirement_digest": "e6dda525e1bae78c807b9db1156e869b311f28b2f67bc95f9fdb9c802ebfca7a",
       "requirement_id": "REQ-1705449BADE3",
       "requirement_text": "30. Audio/video assets too large for model/tenant budgets are rejected before provider egress.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4089,7 +4089,7 @@
       "requirement_digest": "3e4db20b41077b90944ea43abd32ded4eb09d275f1845ee0bca2c794f52e136f",
       "requirement_id": "R2",
       "requirement_text": "31. Expired/revoked signed R2 asset URL cannot be refreshed without current canonical permission.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4111,7 +4111,7 @@
       "requirement_digest": "0b96b1a1b854a753837851ed03beb7de3c3d31e8e6104eddcff1e51234f86495",
       "requirement_id": "REQ-700AF9F5A0CA",
       "requirement_text": "32. Media job crash requeues through canonical `worker_jobs` and preserves the original billing cap.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4133,7 +4133,7 @@
       "requirement_digest": "ccb177e4774437d8c550b559f197320bec0cd6bb4702b17a2a1b3835af02a055",
       "requirement_id": "REQ-927CB71A8E54",
       "requirement_text": "33. Approved rollout bundle activates registry, route and safety policy coherently; partial activation is fenced.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4155,7 +4155,7 @@
       "requirement_digest": "1494c21cb03a075c93db4c37664cdb480c0f71352405d0937fb5d01a726a823e",
       "requirement_id": "REQ-90EC38EE5BE3",
       "requirement_text": "34. Rollback restores a tested compatible bundle and leaves in-flight approved plans pinned unless emergency revocation applies.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4177,7 +4177,7 @@
       "requirement_digest": "847d602da92437854fc11769e82b3990d359f3687ae854f406677c37be7fad34",
       "requirement_id": "REQ-C8FAE578F536",
       "requirement_text": "35. During concurrent Redis migration and router rollout, duplicate wakeups do not create duplicate provider submissions.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4199,7 +4199,7 @@
       "requirement_digest": "0831a4278479a5a4101d9c238d681cfdd4038fd631499821fb6f83ee4d3a4c7e",
       "requirement_id": "REQ-460D0C014D82",
       "requirement_text": "36. Emergency loss of billing authority rejects new paid attempts while read-only admin health remains accessible.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4221,7 +4221,7 @@
       "requirement_digest": "917ecd1fec4a3e06be17f2fa9a23eccea98c723457f92710d3bb51a39ffe770f",
       "requirement_id": "R2-1865",
       "requirement_text": "**Release-blocking:** unresolved spec-ID collision; cross-tenant/credential/region violation; illegal or unconsented second-model evaluation; duplicate economic capture or unapproved duplicate tool effect; uncertified state handoff; unapproved gateway route drift/model; loss of mandatory audit; unbounded cost; failure of mandatory guardrails; unsound Worker background execution; security-sensitive rollback inconsistency. **Design completeness is not production certification.** Every provider/Workers semantic and all 36 new fault fixtures must be verified against active deployed API versions, alongside all previously prescribed R2/R3 acceptance tests.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4243,7 +4243,7 @@
       "requirement_digest": "121e3052df684616d81029cc00fa27aaa503a39c8de84a6b27f4912185d3965e",
       "requirement_id": "REQ-8BC730C9844C",
       "requirement_text": "Probe separately: non-streaming and streamed text; tool arguments/delta and parallel ordering; tool result correlation and replay; native reasoning state; JSON schema strictness; SDK error envelope; prompt cache accounting; token counting; context/output limits; image understanding; PDF/Files consent; video-by-protocol; server-managed response isolation; cancellation, timeout and opaque provider response receipts. Treat `documented` as discovery only; model/version/API tuple must pass offline fixture, shadow and canary gates. `muse-spark-1.3` supports documented higher reasoning levels (including Standard-only `max`); do not pass unsupported levels to lower-tier variants. The adapter is allowed to request no external tools and no server-side state in v1 while Chat Completions is certified first.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4265,7 +4265,7 @@
       "requirement_digest": "430a8b138feb1fc2d212209a94c7d411bd27fd939060e7f8309d1c5e97d057a9",
       "requirement_id": "REQ-C4E5D8A7EB71",
       "requirement_text": "The policy-first router MUST select security/privacy/region and operation eligibility **before cost ranking**. For any private source code, sensitive data, project RAG or customer media, deny Contributor unless a separately reviewed use case genuinely permits it, with zero private retrieval and explicit data training consent. Standard's public non-training representation does not itself establish zero retention, Thailand account entitlements or all data-processor terms. Store immutable egress policy and active credential type in `InferencePlan`. `StrictModelLock` and provider-switch consent still apply; never silently fail over a locked private job into Contributor or an unrestricted external provider.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4287,7 +4287,7 @@
       "requirement_digest": "202c2b8a18eb50dac362f285db84359432aeb3eb6621906a2dea10f14725e02b",
       "requirement_id": "REQ-6F70B5B7F9BE",
       "requirement_text": "Price must be dynamic with provider source URL, checked date, billing tier and currency. As documented 2026-09-26, Standard text costs input USD 1.25/M, cached input 0.15/M, output 4.25/M; Contributor 0.10/M, 0.002/M and 0.20/M respectively. Search grounding is a separate USD 2.50/1,000 queries when invoked. These are published values, not contractual guaranteed prices; expose a quote/version and reconcile provider usage. Team-level published Standard 3,000 RPM / 4M TPM, Contributor 100 RPM / 3M TPM; all keys on the same Meta team share budgets. Client/tenant budget control remains in SmartAIHub canonical ledger. `x-ratelimit-*` headers and 429/Retry-After drive rate feedback and bounded backoff with jitter; do not broadcast one tenant's quota telemetry to another tenant. Cache key includes provider, model revision, prompt prefix, tenant context, privacy tier and prompt/cache schema. Dynamic routing is disabled for privacy-incompatible candidates.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4309,7 +4309,7 @@
       "requirement_digest": "31677eec0af5a6df8b076e39571b99e8c7a8328298a46be81a5f0404f4bc4cf5",
       "requirement_id": "REQ-672E95A42876",
       "requirement_text": "Cloudflare AI Gateway custom provider may front compatible HTTPS calls if native feature-preservation, authorization, headers and logging are tested. Direct/native Meta Responses must remain available if generic gateway translation loses reasoning/tool/multimodal semantics. Worker runtime holds no user keys in clients, no long-running stream in CPU-bound action and no provider-owned durable canonical job. Preserve direct execution alternative from current Debian and trusted Runner. Gateway cached responses are allowed only within an identical approved privacy/ACL/revision namespace and never for live personal context without strict freshness. Strip raw prompt/response from shared gateway logs by default.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4331,7 +4331,7 @@
       "requirement_digest": "db4f9893957bc51f15964f60602ec259f3df1e1f068016f8cd9ee3e39c628d6c",
       "requirement_id": "REQ-222DE083B733",
       "requirement_text": "- MR01: Chat Completions simple call via own Meta Standard key succeeds or marks `ENTITLEMENT_BLOCKED` with sanitized status; synthetic provider fixture always covered.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4353,7 +4353,7 @@
       "requirement_digest": "75dc4267f115dfba21e87616059308bbb609898ad42cf89ef61f08098b467947",
       "requirement_id": "REQ-4BDE313D5A54",
       "requirement_text": "- MR02: Responses parallel tool-call deltas exactly once with approval; malformed/out-of-order events fail safe.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4375,7 +4375,7 @@
       "requirement_digest": "9354ce7164a04a673c145534275378b87670059ea2ffd07ecd672c019aaa3ee5",
       "requirement_id": "REQ-18ED8A9621D3",
       "requirement_text": "- MR03: Mixed PDF/video with endpoint-specific unsupported capability yields `INELIGIBLE`, not modality loss.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4397,7 +4397,7 @@
       "requirement_digest": "4d45a35a6364736c4fce65ef6169d20763f7201263dde2817b13bec281778a57",
       "requirement_id": "REQ-923E145DFA54",
       "requirement_text": "- MR04: Contributor denied if any private context/RAG requested, including on failover.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4419,7 +4419,7 @@
       "requirement_digest": "9a1b9d53529a05eee63fcdccb947299b5786fd99ead8418cc52166435f132652",
       "requirement_id": "REQ-EDE2F75A023D",
       "requirement_text": "- MR05: Cached-token and search-query meters reconcile in quote and ledger with duplicate webhook/retry.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4441,7 +4441,7 @@
       "requirement_digest": "8e20857fcc7c63659b906a4e29422735313bd6a33c75cb9ff3dd493aec581610",
       "requirement_id": "REQ-3FBBA258DC3B",
       "requirement_text": "- MR06: Meta team 429 causes bounded fairness/backpressure and safe alternate provider only when approved.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4463,7 +4463,7 @@
       "requirement_digest": "e4a14502c5293e96d076abd193a5740d6bad6c35d40412d8f00895af083d1eda",
       "requirement_id": "REQ-FB51BD9A7239",
       "requirement_text": "- MR07: Response/session/file IDs from one tenant cannot be read by another tenant/user/project.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4485,7 +4485,7 @@
       "requirement_digest": "b9bbb5a5ee6f5e92086f0ecfc0982c8babcbb25ee3d4d5b25f5c1b4ebf3adefb",
       "requirement_id": "REQ-567579A320D6",
       "requirement_text": "- MR08: Kill Meta route mid-stream: no silent second-provider continuation after first response byte; preserve canonical UNKNOWN/partial state.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4507,7 +4507,7 @@
       "requirement_digest": "3d77f52b5564bcfaa6db1ef309160d6d757f89de15699d2ef935cf170bddbcc7",
       "requirement_id": "REQ-DDC2D04BA101",
       "requirement_text": "- MR09: Gateway custom-provider behavior compared to direct Meta API for tools and multimodal; incompatible gateway path excluded by route profile.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4529,7 +4529,7 @@
       "requirement_digest": "2fe5fada9c82d1a7b971ddefb447372cc779cab84b1b3457bbc0c547c947e0b5",
       "requirement_id": "REQ-185BCA59F60C",
       "requirement_text": "- MR10: Realtime model catalog drift or billing changes cannot auto-promote without new versioned probe and owner review.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4551,7 +4551,7 @@
       "requirement_digest": "e1e2aa9cad111428abb89f1029404b709457ca6085ffeb1a26710db04e6d023b",
       "requirement_id": "R3-1944",
       "requirement_text": "**Precedence:** This section supersedes only the R3–R5 *unresolved numbering assumption*, not their test, safety, budget, routing or provider requirements. In old artifacts a bare `231` is ambiguous and **must not** be auto-rewritten. Migrate each historical edge only with verified `{spec_uid, source_slug, source_digest, original_workpackage_id}`: inference edges retain 231; Redis-migration edges resolve to 232. Original audit prose is retained verbatim as provenance. A parser consuming this **R6 release** resolves new bare 231 references to inference; a parser importing **historical** ambiguous records rejects them until a title-/digest-qualified mapping exists.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4573,7 +4573,7 @@
       "requirement_digest": "b03eef115dec16151ade6c66c6497164373fa95d8d09d034e413c992f0ebf50f",
       "requirement_id": "R231-01",
       "requirement_text": "- `R231-01` canonical 231/232/245 registry uniqueness and historical alias fixture; `R231-02` ambiguous old bare-231 import fails closed; `R231-03` independent route vs Redis cutover flags.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4595,7 +4595,7 @@
       "requirement_digest": "bb0fe5529410bafe182ff7f8ffa24a3b5ca5efc24011111cb267715dcc6a112a",
       "requirement_id": "R231-04",
       "requirement_text": "- `R231-04` denied tenant/region/provider never enters model candidate set; `R231-05` model alias/API version drift quarantines the tuple; `R231-06` streaming partial Tool output never becomes authorized effect.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4617,7 +4617,7 @@
       "requirement_digest": "f07aabee53c3b64ad7b469964245d254b18db5d70ab8d590b0c0ac74c8979dd5",
       "requirement_id": "R231-07",
       "requirement_text": "- `R231-07` Meta model entitlement does not unlock Meta Personal Agent; `R231-08` 237 realtime media/session state is not forked by LLM failover; `R231-09` 247 STT/TTS unqualified locale cannot be inferred from a related LLM model.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4639,13 +4639,256 @@
       "requirement_digest": "3632605b42af86d082e6b3a651897b54cf9ac7581878787e9e963478bc83c155",
       "requirement_id": "R231-10",
       "requirement_text": "- `R231-10` approved test shadow creates no duplicate billable provider execution; `R231-11` uncertain upstream acceptance + route rollback does not double-charge or duplicate an external side effect; `R231-12` fallback remains functional during unrelated Spec 232/245 canary failure.",
-      "source_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1997"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1997",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "8c874970a26f66e36b6b8c8bbbccd1fdda4b56bd5be1f4afa3d504773c7f5ba2",
+      "requirement_id": "REQ-6C3F5D1DB6A7",
+      "requirement_text": "1. Model-only mode MUST disable native provider tools and autonomous turns. A returned tool call is an untrusted model proposal. SmartAIHub MUST validate it against current tenant/user policy, require the existing approval where applicable, and execute it only through the authorized host/Runner Tool, MCP, and Memory boundaries. The provider process MUST NOT receive a second, independent tool or approval authority, or direct Memory write authority.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1998"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1998",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "cc2c1fce735046299e39ce3e3c59d9a98821ebfecab8888b38be54d923cb3a99",
+      "requirement_id": "REQ-7B0D0D5969A5",
+      "requirement_text": "2. Subscription CLI execution MUST occur only on the initiating user's paired Runner. The platform MUST NOT copy, export, upload, log, or centrally reuse local CLI OAuth/session material or `CLAUDE_CODE_OAUTH_TOKEN`. A device-local credential handle or sanitized login/availability result may be reported; it MUST NOT resolve to reusable secret material on the server. Cross-user, cross-tenant, or shared-account reuse is prohibited by this proposed contract. The adapter MUST fail closed when inherited API-key, auth-token, base-URL, or backend configuration conflicts with the selected local-subscription mode; no fixture-only bypass may be reachable in production.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1999"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1999",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "97e2a1c90a1ec6106dcd1adf733889698c5c27c28db1e4d31cad870acf9e05a5",
+      "requirement_id": "REQ-310ABA5154FB",
+      "requirement_text": "3. The adapter MUST enter through existing route planning and, for durable/long-running work, existing `worker_jobs` plus outbox and Runner lease/receipt authority. It MUST NOT add a queue, control plane, dispatch authority, or production Hermes runtime. Spec 267/224/197 owner reconciliation and current Runner certification remain prerequisites; this paragraph does not settle those Specs' authority.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2000"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2000",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "8956efe873d0ebfaf695d4672eb238b1f89d2e0659f6249b85cf9a66d1833ea7",
+      "requirement_id": "REQ-0DA2BCCC53C8",
+      "requirement_text": "4. Admission MUST be per request, bounded by the existing plan's timeout, resource, concurrency and cancellation rules. Cancellation MUST terminate the full child process tree, close relay/stream resources, reap the child, and leave an exact terminal/unknown receipt. Retries MUST be bounded and idempotency-aware; never replay an uncertain accepted request or non-idempotent tool effect.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2001"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2001",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "199f86fd2d02b128111119d91566230cc66b5b2069a7cc1a9bcddd5fa917d61a",
+      "requirement_id": "REQ-B9B15B6328BC",
+      "requirement_text": "5. Context/history MUST be bound to the request digest, tenant/user, policy epoch, and exact projection revision. Replay behavior is upstream-version-sensitive. A transformed or incomplete replay MUST fail closed or use an explicitly approved canonical-text projection; it MUST NOT claim native signed-history parity.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2002"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2002",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "e048aa678e62b048cc09288ad4834cdac36b1b81e207a501161a6f10b406ec05",
+      "requirement_id": "REQ-34274A33AC7D",
+      "requirement_text": "6. Usage and quota records MUST keep separate fields for reported input/output/cache tokens, estimated API-equivalent cost, observed subscription allowance/error, and actual invoiced/billed amount. The adapter MUST NOT infer remaining subscription quota or represent estimated equivalent API cost as the user's actual charge. An unavailable allowance remains `UNKNOWN` unless the CLI returns authoritative evidence.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2003"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2003",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "f8344ca28f3daba9c6a17e0b76c7b16b6e65359cbb69a66d6f41e50eb4838851",
+      "requirement_id": "REQ-035552B8BC4B",
+      "requirement_text": "7. `RATE_LIMITED`, `SUBSCRIPTION_ALLOWANCE_EXHAUSTED`, `CLI_UNAVAILABLE`, `UNAUTHORIZED`, `CANCELLED`, and `UPSTREAM_OUTCOME_UNKNOWN` MUST remain distinguishable from SmartAIHub credit exhaustion and official API quota. Fallback to a different provider or paid API MUST require route-policy authorization and user-visible cost disclosure before execution; API-key fallback MUST never be silent.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2004"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2004",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "72e38858efd8aba62f0e2b1e2892f9c2523eab6ff8e6c27ab1a695ef40901893",
+      "requirement_id": "REQ-61BC0C91288E",
+      "requirement_text": "8. Commercial SaaS eligibility, consumer-plan terms, account sharing, and use on behalf of other tenants remain an external entitlement/legal gate. An individual Claude subscription MUST NOT be treated as authorization for shared commercial service.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2005"
+      ],
+      "authority_source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L2005",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC231_IDENTITY_RECONCILIATION",
+        "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+        "root_cause": "Spec 231/232/245 identity allocation remains unresolved in the canonical index; the addendum does not authorize provider activation."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Obtain owner decision, reconcile registry/history and confirm source pin plus commercial entitlement before implementation.",
+      "requirement_digest": "d58a13fd591624530176b070a341d7f2d57d8effefaec3b4ca963310f5d5df57",
+      "requirement_id": "REQ-C6D5394FE0C4",
+      "requirement_text": "9. Initial compatibility qualification is Windows-first Personal Runner, with Linux optional. The adapter MUST stay behind an experimental capability flag, a reviewed full-SHA dependency pin and CLI version allowlist. For upstream-plugin qualification only, Hermes `>=0.21.4` and the reviewed plugin `0.3.3` at full commit `4bc79c78031d1a042b5d8a7314ceea283db5c5e2` are required. Hermes runtime MUST NOT become a required production cloud dependency. Upgrades require source, license/SBOM, process isolation, history, streaming/cancellation, inherited-environment isolation, and billing-semantics review.",
+      "source_spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+  "spec_digest": "ab815f75bda31f81be73c5d1b5decc648b38197a9dbce7e7f0c323c6edcc0b36",
   "spec_id": "231"
 }

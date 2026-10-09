@@ -1,5 +1,5 @@
 {
-  "generation": 3,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -19,7 +19,7 @@
       "requirement_digest": "c16d00b0b9b32272d02a6191a404cb08c97e8fac047c8424337becc1de58724d",
       "requirement_id": "REQ-938BAB132589",
       "requirement_text": "This specification MUST NOT add callers, routes, schemas, migrations, compatibility paths or dispatch adapters for Agency, `work/request`, `work/requests`, `workpacks/*`, the retired `/workflows` custom workflow engine, OpenSandbox, `sandbox_jobs`, or Docker/OpenSandbox dispatch. In this document, `Workflow`/`workflow` means only a governed Feature 196 Goal/Plan or approved LangGraph flow; it never means the retired `/workflows` engine. Isolated server execution uses approved Cloudflare Containers, and local execution uses the Feature 197 Runner boundary.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -41,7 +41,7 @@
       "requirement_digest": "85e1be8dbf3cc0310e2135a07418a2e5749fb9b768b55a1e1a50283895c34235",
       "requirement_id": "REQ-2F8D1405C25F",
       "requirement_text": "The protected `workerJobs.taskGroups` query is a read projection and MUST",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -63,7 +63,7 @@
       "requirement_digest": "fb7b1d0bd95a84924998e71171074649e8200b294157d41659d0f6fa4fea2f87",
       "requirement_id": "REQ-721E73BBBAD7",
       "requirement_text": "- Open jobs, including `waiting_external`, MUST be grouped with this",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -85,7 +85,7 @@
       "requirement_digest": "4a0621031eeb54e1959f0abac351a322add4357a96dfb59e0ce183ae0ab92dda",
       "requirement_id": "REQ-CD6C1F2116B9",
       "requirement_text": "isolated single-job group. Malformed orchestration metadata MUST be surfaced",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -107,7 +107,7 @@
       "requirement_digest": "11c5b26254a68252606c18f4b3e90f3931faffe490dd7d80ce3d1d2717a9d9ce",
       "requirement_id": "REQ-B885D5030F12",
       "requirement_text": "as degraded metadata and MUST NOT merge unrelated jobs.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -129,7 +129,7 @@
       "requirement_digest": "7d1e1aa23c89cd0bd4c8149febb7e88093f2f4a283dfbcb2e2e14a8ad72342ff",
       "requirement_id": "REQ-0F2A6D179298",
       "requirement_text": "- A group MUST expose deterministic aggregate status, bounded progress,",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -151,7 +151,7 @@
       "requirement_digest": "2bfd3571f2f03b23bf783eaa021feb6310a70cb32adeacf265dd2ca615c2e21f",
       "requirement_id": "REQ-2AE9454C4E6B",
       "requirement_text": "expired or canceled work MUST remain visible; a group is successful only when",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -173,7 +173,7 @@
       "requirement_digest": "70fcdcf6087c11852d727c3b4e11f9cceb516a836501862b867d628cb44e7006",
       "requirement_id": "REQ-C228318FA929",
       "requirement_text": "all known required steps are successful.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -195,7 +195,7 @@
       "requirement_digest": "323fb87206a499b0b107a227a036c29f5003157a238450d8333bff42189968ec",
       "requirement_id": "REQ-7DAE36A40845",
       "requirement_text": "`dependsOnJobIds` metadata only. Dependency lookup MUST use the same tenant",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -217,7 +217,7 @@
       "requirement_digest": "6710def7e56fa7511ecdc0e5ca20200e7d2b74d6b85138d28e4cb199b2ac1f88",
       "requirement_id": "REQ-2ECE33FDCF2E",
       "requirement_text": "completed predecessors MUST appear under the active group without creating a",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -239,7 +239,7 @@
       "requirement_digest": "cf1a31526a8927bd4f4e7ede588e6ea45752fe4863b1b500a62603e74b6015fd",
       "requirement_id": "REQ-B0C3B81BBD47",
       "requirement_text": "- The source scan MUST be bounded to 500 open jobs and disclose truncation;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -261,7 +261,7 @@
       "requirement_digest": "99986c02aefac0d18b70c051efb3cc0cd557ea52986caf985745958e1d0c9b99",
       "requirement_id": "REQ-6038FCEF8668",
       "requirement_text": "group pagination MUST expose `hasMore`/`nextOffset`. The UI MUST disclose a",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -283,7 +283,7 @@
       "requirement_digest": "18fee3eae4d38005bc5a7ba5c7e1f2ae3569f2ee5c0e0864f21172ca1d0863d9",
       "requirement_id": "REQ-D275A7334B59",
       "requirement_text": "MUST expose the same task-group view inline, with expandable steps showing",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -305,7 +305,7 @@
       "requirement_digest": "59dce6fceec3a20957a30cf16c3af1dc65efd8ad703c4818328cb749f3e5641d",
       "requirement_id": "REQ-840A400058A5",
       "requirement_text": "existing cancel action. It MUST NOT navigate users to a separate Chat URL or",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -327,7 +327,7 @@
       "requirement_digest": "7c1f474138f392346d8295b97f717f9e1845a934776d3bc04fa47f064ff5696f",
       "requirement_id": "REQ-6A64AC18F73B",
       "requirement_text": "- The projection MUST redact raw input, credentials, provider payloads,",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -349,7 +349,7 @@
       "requirement_digest": "ea6a985a10e460b177e1902e3f8dcdd5ecc67cce3dd981d7ebfc7b2fc6b95383",
       "requirement_id": "REQ-1D8BB4D7377B",
       "requirement_text": "transport and MUST NOT implement a parallel task monitor; Spec 200 consumes",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -371,7 +371,7 @@
       "requirement_digest": "3d4a3fe01c38e122d7e62d4da5553055974b590a9effb4bb8a8f0de4b9db312c",
       "requirement_id": "REQ-709A3885EE96",
       "requirement_text": "`task-control-multistep-tracking/spec.md`; it MUST remain subordinate to this",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -393,7 +393,7 @@
       "requirement_digest": "c6e1caa6a4203bc273a2b0011be725bd170f564e35049491ae4736b344984e7a",
       "requirement_id": "REQ-61F62DB2A5AC",
       "requirement_text": "The Runner-known catalog and registration contract MUST recognize all six",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -415,7 +415,7 @@
       "requirement_digest": "a8abdada5488d8b0e3c2f452195ca1becda71610a3d9855b4646fb4137284ac8",
       "requirement_id": "REQ-69D383BEC962",
       "requirement_text": "non-selectable capability state; it MUST NOT be reported as executable.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -437,7 +437,7 @@
       "requirement_digest": "8019961b78862e1cda0493665da233e6b16e09c50255bf298b1895b9807c23bf",
       "requirement_id": "REQ-D5593D89247B",
       "requirement_text": "This section is **normative**. Spec 199 and Spec 200 are companion specifications inside one SmartAIHub architecture. They MUST NOT create parallel orchestration, capability, Runner, job, approval, RAG, audit, or permission systems.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -459,7 +459,7 @@
       "requirement_digest": "6f91cdc1717f37fa3f396a74c7c80dc3fa1bcad7dd272b7c36f1c60c4c69e2c7",
       "requirement_id": "REQ-5A1C6D08C349",
       "requirement_text": "| External MCP transport | **Spec 199** | owns remote/local upstream lifecycle, protocol, OAuth, schema, quarantine, MCP execution | MUST NOT reimplement upstream MCP transport |",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -481,7 +481,7 @@
       "requirement_digest": "d470cc7f5589d1b543c95db012677453b439f66f1e9f8035f3fa503b1d28d376",
       "requirement_id": "REQ-C931B06589B4",
       "requirement_text": "| Task Control monitoring | Feature 200 projection over `worker_jobs` / `worker_job_events` | MUST NOT create a parallel task ledger or monitor | owns the protected hierarchical group/step read model and shared Chat/Assistant presentation |",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -503,7 +503,7 @@
       "requirement_digest": "bfc5746b7b2cdfdef4e01ce1880bb0404c88d185ab1aabec8d7506a05bb4b043",
       "requirement_id": "REQ-48781B0AE8DC",
       "requirement_text": "Spec 199 and Spec 200 MUST NOT bypass this shared orchestration contract for ordinary product flows.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -525,7 +525,7 @@
       "requirement_digest": "b2598ce99a84cc19cf5e4c1740be347e87d2abf286b26e1a14cdfb75968909e2",
       "requirement_id": "REQ-4EF95564D642",
       "requirement_text": "When a Spec 200 external agent needs SmartAIHub capabilities, the agent MUST NOT connect directly to arbitrary upstream MCP servers or download SmartAIHub Skills.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -547,7 +547,7 @@
       "requirement_digest": "84e5a303bb024ce46aedb8c07f8f86123bb8f832535578187a580fed84cfee9c",
       "requirement_id": "REQ-F90EFF41B1CD",
       "requirement_text": "The canonical agent-facing discovery abstraction SHALL be:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -569,7 +569,7 @@
       "requirement_digest": "1d28c30c8761689fcee5a044bca1f47bb241e2bf44d921248114c36cda538e64",
       "requirement_id": "REQ-7C9C2A2967E0",
       "requirement_text": "Convenience aliases such as `skill.search` MAY exist, but they MUST be projections over the same Capability Registry/Resolver and MUST NOT create a second Skill-only search index/policy path.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -591,7 +591,7 @@
       "requirement_digest": "4fd4b92072cd267f05fe7a5830992a2d00d33011e8c6a50473b85c88766659b6",
       "requirement_id": "REQ-49E6E097C56B",
       "requirement_text": "SmartAIHub Runner and SmartAIHub Worker App SHALL use **one shared outbound",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -613,7 +613,7 @@
       "requirement_digest": "833ff74862058840e84c79ae963a28c53eef22389a6d28573e2cabd89003d8cf",
       "requirement_id": "REQ-3A283C795E9C",
       "requirement_text": "managed, ephemeral execution node and MUST NOT expose a direct user-device",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -635,7 +635,7 @@
       "requirement_digest": "1dd143274315df90835f087b3b10c7d862e04fdf8ea3fd976dc2ae567fb21441",
       "requirement_id": "REQ-188E32A75955",
       "requirement_text": "There MUST NOT be:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -657,7 +657,7 @@
       "requirement_digest": "ccce8117c1875a0395db02b53dd69072d7849bc62c47a48c5e864003b54cb04f",
       "requirement_id": "REQ-F8365734AA3E",
       "requirement_text": "Spec 199 and Spec 200 MUST extend this snapshot rather than create separate device registries.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -679,7 +679,7 @@
       "requirement_digest": "571ce69539d153c6538cb4ba86506402d716666b87501d95e5009827918079e5",
       "requirement_id": "REQ-23B585CCF265",
       "requirement_text": "Both specs SHALL use the same rule:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -701,7 +701,7 @@
       "requirement_digest": "0d6583b66f7e0208fdd93da343f2576e0fe2a747e4b52c2db935bc4880a9c114",
       "requirement_id": "REQ-11E47B98DEA7",
       "requirement_text": "Runner MUST NOT poll `worker_jobs` as the primary interactive command mechanism.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -723,7 +723,7 @@
       "requirement_digest": "f14cd79ad13f9ecf9c43cc059272ae0a699159abc1aad366ebc83d08e05bfda6",
       "requirement_id": "REQ-60C4D74C27D9",
       "requirement_text": "Spec 200 SHALL NOT build a second RAG system.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -745,7 +745,7 @@
       "requirement_digest": "b8e8bfa54985bba390b8ee30ce22577a8b1ac65d54822c0e381d20b1f4aab381",
       "requirement_id": "REQ-540D2ABD81FC",
       "requirement_text": "MCP-derived RAG content from Spec 199 MUST preserve source server/revision/resource lineage, ACL and revocation semantics before Spec 200 can retrieve it for an external agent.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -767,7 +767,7 @@
       "requirement_digest": "e18ae7ec62c4dd7de9e3ed6503278d3d5faeaa624ac21ed4e05ea8d49d085825",
       "requirement_id": "REQ-6DF07FE224B6",
       "requirement_text": "Spec 200 owns agent-facing media/task usage but MUST reuse SmartAIHub Library/Media authorization and storage.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -789,7 +789,7 @@
       "requirement_digest": "f22dc2e22a42b008d6cc8d390c6fcd3198f5a10982cf3de0f8ac02c6d1776ddf",
       "requirement_id": "REQ-5DFB802346C2",
       "requirement_text": "One approval service and UI surface shall cover:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -811,7 +811,7 @@
       "requirement_digest": "8e99d8e455661426fc3f468afb25461f203bab87e4feb9ed139aeeb4a1f87733",
       "requirement_id": "REQ-6057BF06167C",
       "requirement_text": "The following IDs SHALL propagate where applicable:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -833,7 +833,7 @@
       "requirement_digest": "67d391b89db3c988849e1f145022b59c65d35680f515e689154e8357d1b57ad8",
       "requirement_id": "REQ-8FC505670980",
       "requirement_text": "A single user request must be traceable across both specs.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -855,7 +855,7 @@
       "requirement_digest": "031804106525c600ce18ecd37d79c3184808549392daa48d34f53ef7b99430c1",
       "requirement_id": "REQ-182F5351755E",
       "requirement_text": "Spec 200 MUST NOT silently replace the platform's default cognitive executor globally.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -877,7 +877,7 @@
       "requirement_digest": "21716be3a3aab99b4cd5f4fe7ef1dea8a57cd4ca8d18accc542e1a608eb3be40",
       "requirement_id": "REQ-A9D283798F64",
       "requirement_text": "Both specs SHALL declare a shared internal contract version:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -899,7 +899,7 @@
       "requirement_digest": "08eedb3664ad63ee8ac794f73968c4689c62266e5a6ed0d53394ef0ff4cad70e",
       "requirement_id": "REQ-557C5C1F6792",
       "requirement_text": "SmartAIHub SHALL provide the agent with controlled access to:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -921,7 +921,7 @@
       "requirement_digest": "90f3508319a90905365febb9defbafe5fdb1d081c403fb53be4dc43518285eb0",
       "requirement_id": "REQ-D1FD53A1A422",
       "requirement_text": "The system MUST NOT require SmartAIHub Skill packages to be downloaded or installed into those external agents.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -943,7 +943,7 @@
       "requirement_digest": "b7870a12b7cea65887883e0131322f9ab36e043fb0069047ae9b8dabe9e91998",
       "requirement_id": "REQ-276DDA4A838B",
       "requirement_text": "The architecture SHALL explicitly separate six planes:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -965,7 +965,7 @@
       "requirement_digest": "ab8029bcc1ccd2402d93e5c2e60599077b51e5ee01e1dccbae06f92dba4ea368",
       "requirement_id": "REQ-B0F5FB4244EB",
       "requirement_text": "`worker_jobs` SHALL remain the durable global source of truth for jobs but SHALL NOT be used as the realtime transport to control a Runner.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -987,7 +987,7 @@
       "requirement_digest": "a49b3e9fed5e6fcec52e5d1424a9609169f69080181c9dbb088dfa1c3040e0b4",
       "requirement_id": "REQ-8F0161CB4D97",
       "requirement_text": "SHALL travel through a persistent authenticated Runner Control Channel.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1009,7 +1009,7 @@
       "requirement_digest": "acd462ca3d80f17beb678711cd6f700f0e433558eed70bce5429f45be07c3662",
       "requirement_id": "REQ-8DEFC54D7360",
       "requirement_text": "Runner/Worker SHALL automatically discover which external agent runtimes are actually installed on each user's device and publish a capability snapshot to SmartAIHub.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1031,7 +1031,7 @@
       "requirement_digest": "638415ffe36ff848c12d8ec74328f98cc6c71bc14298843354690898eb9cd570",
       "requirement_id": "REQ-24D9B2F68438",
       "requirement_text": "Temporary SmartAIHub ⇄ Runner disconnection MUST NOT automatically terminate active provider processes. Runner SHALL preserve local durable state, buffer events, reconnect, replay and reconcile.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1053,7 +1053,7 @@
       "requirement_digest": "9e31b985fe18c9c7a7d8a0c383d530d31b7603f160403c178ffe7141bd7f7e67",
       "requirement_id": "REQ-506601EBBD2F",
       "requirement_text": "External agents SHALL consume SmartAIHub knowledge and capabilities through job-scoped authorization. They SHALL NOT receive unrestricted access to all tenant data, all assets, or all Skills.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1075,7 +1075,7 @@
       "requirement_digest": "5815aebc109aa17cbefede4a82f899a6ab69db667d99c83ee46371af54e33580",
       "requirement_id": "REQ-5CB9870087E0",
       "requirement_text": "For media workflows, external agents SHALL reason over selected assets, metadata, transcripts, keyframes, analysis packages, RAG context and Skill capabilities. They SHALL normally create/edit a SmartAIHub Video Edit project/timeline and call SmartAIHub media Skills rather than manipulating large raw video files directly in the model context.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1097,7 +1097,7 @@
       "requirement_digest": "f2c8855e611791e9c2e2556798baa5d73321b2a7f471fdecb5be16f38645fcee",
       "requirement_id": "REQ-A6657EC9C22A",
       "requirement_text": "Without a common control layer the user must repeatedly:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1119,7 +1119,7 @@
       "requirement_digest": "ec2bcbea1b51978524e20e024404cb89f0095657379534c0420522467c40de58",
       "requirement_id": "REQ-4EA6913FBA08",
       "requirement_text": "11. repeat with another coding agent if a second review is required.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1141,7 +1141,7 @@
       "requirement_digest": "24f2d9558976aed080130e5b65120a405b4be3c3bca34bfc663ed0df2a0f6a23",
       "requirement_id": "REQ-B21D4BBC764E",
       "requirement_text": "Those concerns SHALL be handled by SmartAIHub Runner / Worker and the Agent Runtime Core.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1163,7 +1163,7 @@
       "requirement_digest": "2864b2f619eff2747c8447ed791402fd370408668aae71934e3947571aeeb64f",
       "requirement_id": "REQ-6B0032B72387",
       "requirement_text": "Spec 200 SHALL use a provider-independent Agent Task model.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1185,7 +1185,7 @@
       "requirement_digest": "6a3fa6bdb48b0b58919d872ce30db88e05b634d4437911ae0518613a45cd75f3",
       "requirement_id": "REQ-69D6505E4F49",
       "requirement_text": "are both valid if the required SmartAIHub tools/skills/assets are available.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1207,7 +1207,7 @@
       "requirement_digest": "79faa809f9d8c67dd7ce256c9e6a83dec81162a9a527d7b9b95ab2cae167209b",
       "requirement_id": "REQ-940EC960B03F",
       "requirement_text": "Phase 1–3 SHALL support:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1229,7 +1229,7 @@
       "requirement_digest": "140a52211154d6f790d825823050e9dbba3e941fc6503b2964f79730b5831235",
       "requirement_id": "REQ-53FDF9D8ECC3",
       "requirement_text": "The architecture MUST permit adding without redesigning the core:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1251,7 +1251,7 @@
       "requirement_digest": "7a906d7d22706a97f8bd41fbb45b0198abf0b31123e3e27ab0a5d45db8cb8d0d",
       "requirement_id": "REQ-B0E954C87CFA",
       "requirement_text": "Spec 200 SHALL NOT:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1273,7 +1273,7 @@
       "requirement_digest": "cc548105e25b7b6cc8723d6cf9810af3248b2dcdae59107b2a510db04a6b2468",
       "requirement_id": "REQ-FBC4D2EA0922",
       "requirement_text": "All coding-agent work SHALL use the existing durable job system:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1295,7 +1295,7 @@
       "requirement_digest": "3c76a299d8d571143a63a1eab122e5d95a2d465182f7538ebf1a956049e319eb",
       "requirement_id": "REQ-589CEA3DE3ED",
       "requirement_text": "The backend SHALL dispatch an already-created/leased job to Runner/Worker through the Runner Control Channel.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1317,7 +1317,7 @@
       "requirement_digest": "3a45c1e7aa974b2a027b3428518b4a5a30cbe1cd98fa3b0a14010fe1f66ae3e4",
       "requirement_id": "REQ-06109B838AC1",
       "requirement_text": "The Runner SHALL NOT be required to continuously poll PostgreSQL or `worker_jobs` for interactive coding-agent work.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1340,7 +1340,7 @@
       "requirement_digest": "f0eb893abb06f7596b8a833eff885b09f321e18a9795c6446da21f1874be2d4b",
       "requirement_id": "REQ-639A66365AD5",
       "requirement_text": "SmartAIHub SHALL distinguish:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1362,7 +1362,7 @@
       "requirement_digest": "8641eeddc830a690f3b0f7a0a78c7d7081cf6c4987d3aaad31732ec4e43e5e8f",
       "requirement_id": "REQ-80172EF6C3DF",
       "requirement_text": "MCP MUST NOT be used as the only control protocol where a provider-native protocol exposes richer lifecycle data.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1384,7 +1384,7 @@
       "requirement_digest": "e374b1c52f0419edffc467cf9b6d6aa0c4f27ef65fe0c298fab5624f16c76f88",
       "requirement_id": "REQ-E915E439D44E",
       "requirement_text": "SmartAIHub Runner and SmartAIHub Worker App MUST NOT implement provider integrations independently.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1406,7 +1406,7 @@
       "requirement_digest": "2b28b8fb84d3601701ed646ea3aefe7684222ed44e99cff189c4947c8d84d066",
       "requirement_id": "REQ-2E090CA507DC",
       "requirement_text": "Both SHALL embed/use the same reusable component:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1428,7 +1428,7 @@
       "requirement_digest": "255622def0c478560fc4455b838f08b92cb55edae9dce5ca9d44f61e9ef59b6e",
       "requirement_id": "REQ-61F4D8C210BD",
       "requirement_text": "It SHALL NOT become a second independent project-management UI.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1450,7 +1450,7 @@
       "requirement_digest": "130aa7b269a288ad13441a80d53edc10bfba7095063b3c8aecef95468d1b27a6",
       "requirement_id": "REQ-21FD141EA37B",
       "requirement_text": "Normalized events SHALL coexist with raw/native provider events.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1472,7 +1472,7 @@
       "requirement_digest": "ef984c60b87bd6b9137f4a86634ca4e997a0e608e59bfef199834649f9b4ad62",
       "requirement_id": "REQ-EB219E01BBD4",
       "requirement_text": "Provider-specific information MUST NOT be discarded merely because another provider lacks the same feature.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1494,7 +1494,7 @@
       "requirement_digest": "e42e244244e851643728660d91a802cff32bf0d23f2ff405800732a640f308de",
       "requirement_id": "REQ-CA2AAB27315B",
       "requirement_text": "Runner and Worker SHALL maintain an outbound authenticated persistent connection to SmartAIHub.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1516,7 +1516,7 @@
       "requirement_digest": "5733aaeba03f19b9a5156070a4eb5fc8951c3083955e49d570d7fd05b6b82312",
       "requirement_id": "REQ-EAD06DA9D297",
       "requirement_text": "The connection SHALL support:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1538,7 +1538,7 @@
       "requirement_digest": "64c6f94d7be0cc30e25df3b79d4c5e2903119f88cc5725743a527d0c3f039ab9",
       "requirement_id": "REQ-F99B03346649",
       "requirement_text": "SmartAIHub SHALL NOT require inbound ports on the user's machine.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1560,7 +1560,7 @@
       "requirement_digest": "1fdad2a63ee3ad1c9143a49e43fb1bfaafafd3f8e99d9e35522196c0e535099a",
       "requirement_id": "REQ-DEC3B90D4969",
       "requirement_text": "Connection loss SHALL be treated as a normal distributed-systems condition.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1582,7 +1582,7 @@
       "requirement_digest": "c36e97c245823b74a667ffcd7e8294244a69cea92394da1a050c5427c9aa7709",
       "requirement_id": "REQ-37DF9614A78E",
       "requirement_text": "A WebSocket/control-channel disconnect MUST NOT by itself:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1604,7 +1604,7 @@
       "requirement_digest": "36db8ac586af573f63d624ff0863d17e61b371d0bc84a15f55b88481c3953b77",
       "requirement_id": "REQ-5CF330464B20",
       "requirement_text": "Runner SHALL maintain local durable state and replay unacknowledged events after reconnect.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1626,7 +1626,7 @@
       "requirement_digest": "34d2bae2108f038d3ed931ab9a206c381aba19ea037f0311f6d14bdb3beaed94",
       "requirement_id": "REQ-0AFC4DC3E486",
       "requirement_text": "SmartAIHub SHALL never assume that all devices have:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1648,7 +1648,7 @@
       "requirement_digest": "22855d7db07bc8d7276be9baccf8f11d326989a9b3ba8e03e7bd3e45dc77f6af",
       "requirement_id": "REQ-ADEB02091149",
       "requirement_text": "Runner SHALL discover and register what is actually available.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1670,7 +1670,7 @@
       "requirement_digest": "45098aeaf0b8d5755f3ec2fa86516bda5150e4899f8b3a544bd7b57c6a48d4a0",
       "requirement_id": "REQ-99134ABE8810",
       "requirement_text": "Selection SHALL be based on:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1692,7 +1692,7 @@
       "requirement_digest": "53eead337bee36c3804ffae88d7efc9d03debe13417373b2b996e832405ce663",
       "requirement_id": "REQ-FED8D1000A08",
       "requirement_text": "Coding agents SHALL be able to use the knowledge already held by SmartAIHub, subject to permissions.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1714,7 +1714,7 @@
       "requirement_digest": "50210375c874fcb4f9f4a2d4e3656f48ad5e43e25147a27aef54dfb6c78f228b",
       "requirement_id": "REQ-739B6F804353",
       "requirement_text": "The system SHALL NOT copy the entire RAG corpus into every prompt.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1736,7 +1736,7 @@
       "requirement_digest": "3e8fc1f9ff25bfe84d45a65b502b6c3b78ad14892c9aca3640f6b4dbfd09c3c2",
       "requirement_id": "REQ-D4096E41DF66",
       "requirement_text": "Instead it SHALL provide:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1758,7 +1758,7 @@
       "requirement_digest": "ac81ec8f9d55228db8f65ec907445f20a357cb34d9e6d07076c3bcf7c2a57d17",
       "requirement_id": "REQ-7F2E4904EC03",
       "requirement_text": "`/chat` and the Universal AI Assistant Launcher / Side Panel SHALL create and control Spec 200 agent jobs through backend APIs.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1780,7 +1780,7 @@
       "requirement_digest": "56f4e72703182d5b8eabad68d1423acff8c1b5cf3ee098f993e53192f5f64dab",
       "requirement_id": "REQ-DD2BDE727070",
       "requirement_text": "They SHALL NOT directly spawn Runner processes or know provider-specific protocols.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1802,7 +1802,7 @@
       "requirement_digest": "590d8049b82ffc94f76c3e0b86c2bb124a8092514eadaba4dd39634570fa3c48",
       "requirement_id": "REQ-A732F25A2DAE",
       "requirement_text": "All ordinary `/chat` and Side Panel requests SHALL enter the same **LangGraph System Orchestrator** defined by the Universal Assistant architecture. Spec 200's Agent Task Service is an execution/delegation service invoked by LangGraph; it is NOT a competing top-level orchestrator.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1824,7 +1824,7 @@
       "requirement_digest": "c99dacdd43e90ec540a0ada225d90987dfa3c321b01183e95db5b9831037c41e",
       "requirement_id": "REQ-04EFC32CE4E9",
       "requirement_text": "SmartAIHub Skill packages SHALL remain centrally hosted and governed.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1846,7 +1846,7 @@
       "requirement_digest": "96dc4f09cc19ca40a51f053f3fc0cf3b8a23c1ccf80c90b0b5338db51ac209ea",
       "requirement_id": "REQ-930040022C25",
       "requirement_text": "External agents SHALL NOT be required to:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1868,7 +1868,7 @@
       "requirement_digest": "3f8055945635cc3bf81b46ee27a829c62a4e347cd471612560791a73d8867758",
       "requirement_id": "REQ-D874715382BC",
       "requirement_text": "External agents SHALL use remote capability discovery and invocation.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1890,7 +1890,7 @@
       "requirement_digest": "4d750e0aff82573bce2cd1280fec002d439d00fb5420c8217f7cb7750441288c",
       "requirement_id": "REQ-2BFB0C786772",
       "requirement_text": "Large media/document assets SHALL normally be represented by secure SmartAIHub asset references.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1912,7 +1912,7 @@
       "requirement_digest": "af9376b9089632ec73a7cb00bb91e9da55e78e32d26c020e575df6d989207ca2",
       "requirement_id": "REQ-E0D9655F1261",
       "requirement_text": "SHALL be represented structurally and validated by SmartAIHub.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1934,7 +1934,7 @@
       "requirement_digest": "554d19e0647a76a7cf9fab1df9ab9fecfefb3c56730626fc3043d35830b1a42a",
       "requirement_id": "REQ-355D6BD3F0D0",
       "requirement_text": "It SHALL resolve:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1956,7 +1956,7 @@
       "requirement_digest": "e5102b8139e0089e272d7942fca032ebe14a975549bdb3b75f7d35f7991464b0",
       "requirement_id": "REQ-ED452FE77197",
       "requirement_text": "It MUST NOT create a second RAG/index/ACL system.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -1978,7 +1978,7 @@
       "requirement_digest": "0db5798a96a2a823379f0d17d3c6ca6846d3245c45c3f55084b739650622b168",
       "requirement_id": "REQ-789646BC87EB",
       "requirement_text": "The Asset Gateway SHALL:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2000,7 +2000,7 @@
       "requirement_digest": "c89cb46a5fedb720227a2e552728cbaa7c0914e1c2f69ecdb5705786e900069c",
       "requirement_id": "REQ-2110EBB515F7",
       "requirement_text": "The Skill execution branch SHALL be the governed path used when the selected canonical capability has `capability_type = skill`.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2022,7 +2022,7 @@
       "requirement_digest": "b03243d94b5dabffa62e41d3052546767255a64988a1d5f3ff428e4504d7fecc",
       "requirement_id": "REQ-F54E3F4DB3C6",
       "requirement_text": "Every adapter SHALL return a capability object.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2044,7 +2044,7 @@
       "requirement_digest": "3614d29909c03d540525cfbd728a41d86e2a8949b70663ef59836ffa4d545ba8",
       "requirement_id": "REQ-0167534E00C3",
       "requirement_text": "The UI SHALL use capability discovery instead of hard-coding provider assumptions.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2066,7 +2066,7 @@
       "requirement_digest": "12023b69506ed824484552d7d6c4671c871a5a7319f194ae896e429d1d6e7f8b",
       "requirement_id": "REQ-8CE7E76B188E",
       "requirement_text": "If a feature is unsupported, the UI MUST hide or disable it with an explicit reason.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2088,7 +2088,7 @@
       "requirement_digest": "c9bfd436b7677bd4c95ba03c2cc98232c93ccdb537730c52f7ccd92971c5076f",
       "requirement_id": "REQ-20D456BEFFBB",
       "requirement_text": "The system MUST mark reduced capability mode.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2110,7 +2110,7 @@
       "requirement_digest": "aa02dc7c59c520a0eef3593c7e612e30cd2a458f4361bba48272f24722592540",
       "requirement_id": "REQ-0E6EA029960B",
       "requirement_text": "Runner SHALL detect:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2132,7 +2132,7 @@
       "requirement_digest": "0c6926b6942410c326b70c7d62d6afd3fded229dd1431fbdc4ba05df03876852",
       "requirement_id": "REQ-294DAD679181",
       "requirement_text": "It MUST NOT automatically replace a user-managed Codex installation.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2154,7 +2154,7 @@
       "requirement_digest": "efb3777d203f9cf5177a12741923d3a92881e4fdeaa2274381873c104df85e90",
       "requirement_id": "REQ-49FE1466183F",
       "requirement_text": "Initial implementation SHALL use the existing Claude Code CLI with structured streaming:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2176,7 +2176,7 @@
       "requirement_digest": "6e1f07140a1959dcc9771026173fd4c2f2e0475e2d00f6f3131967843f6ccc0c",
       "requirement_id": "REQ-72B58F274DDB",
       "requirement_text": "The SDK adapter MUST NOT be required for MVP.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2198,7 +2198,7 @@
       "requirement_digest": "502634004d12ad36f95be9bcbaf169702fb9ecef8fb2b433da20e81b382df5a1",
       "requirement_id": "REQ-F1014603986E",
       "requirement_text": "Claude permission requests MUST map to the SmartAIHub Approval Engine wherever possible.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2220,7 +2220,7 @@
       "requirement_digest": "c88461b5cf14d556bcfc7612b8e4da6fcd8404653db03c1f5dc558bd4d2efd15",
       "requirement_id": "REQ-A07EFBF112DD",
       "requirement_text": "Runner SHALL read NDJSON line-by-line.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2242,7 +2242,7 @@
       "requirement_digest": "a51a98abd34beae6adfe7bf4f472c7719643df3bb5b699b1d2cb8a4d61b7e539",
       "requirement_id": "REQ-506B86A36D24",
       "requirement_text": "The runtime manager MUST maintain:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2264,7 +2264,7 @@
       "requirement_digest": "a6ff033edc5f8775f12c5fd70b928b5cd5be995ac8cf5cce84ae43cec6af15f2",
       "requirement_id": "REQ-3B9F6F46A1FD",
       "requirement_text": "SmartAIHub SHALL NOT recreate provider-native custom agents unless necessary.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2286,7 +2286,7 @@
       "requirement_digest": "eb6bfa3832f4c455e04cb11a2933296360c30089ed69bb7cca2b1678c5e75f19",
       "requirement_id": "REQ-E47351EE7F7F",
       "requirement_text": "Remote/cloud execution SHALL be a separate execution target.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2308,7 +2308,7 @@
       "requirement_digest": "25a08fc9026c99fa049ec9cd9bd0cad24fdc23671b2db1756996dd160f73f253",
       "requirement_id": "REQ-53F162BBEC70",
       "requirement_text": "The web UI MUST clearly show:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2330,7 +2330,7 @@
       "requirement_digest": "66bde82718451f8810774093b085eeb6c8093b222f8b74b0145a2c8e5b6d368a",
       "requirement_id": "REQ-0F8085587B5A",
       "requirement_text": "Local and cloud execution SHALL share the same normalized result format.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2352,7 +2352,7 @@
       "requirement_digest": "9c5513ce56a17e4cd0a21c940310db908483d10cab9052fd2b7afed21a715803",
       "requirement_id": "REQ-EABB415B97E0",
       "requirement_text": "Adapter MUST:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2374,7 +2374,7 @@
       "requirement_digest": "adf0efb9776824315a6ad62c8688fd7dd98a25e2b625687cafdbb4a7a9377b79",
       "requirement_id": "REQ-603E209CC8B4",
       "requirement_text": "Every provider runtime SHALL be classified as:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2396,7 +2396,7 @@
       "requirement_digest": "0e85bf70d32033e50947696d907cb5608423c06353850c525a26af8414d36e7a",
       "requirement_id": "REQ-CF34CDCBC5AB",
       "requirement_text": "Backend SHALL maintain a compatibility catalog:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2418,7 +2418,7 @@
       "requirement_digest": "980b43d28bc1cb5d815bd6a2f3a6dbc2346b630dece8d4e6106d6f6e265a7cb2",
       "requirement_id": "REQ-3B92B99BB29F",
       "requirement_text": "Unknown versions SHOULD NOT automatically be blocked if a capability handshake proves compatibility, but UI MUST warn when untested.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2440,7 +2440,7 @@
       "requirement_digest": "c711f0d4c32a642de3d6e2b7c0dae2429fd4eee8d7755abf04b6d8882a4dbc3e",
       "requirement_id": "REQ-A0754FF7673A",
       "requirement_text": "Spec 200 MUST NOT create a second Runner/device registry separate from Spec 199 local MCP runtime management.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2462,7 +2462,7 @@
       "requirement_digest": "f3b11ecfcb6418a7e56932ccd36760758fa080037ca580126c342a4b834d113e",
       "requirement_id": "REQ-D38FB0439AD0",
       "requirement_text": "Runner/Worker SHALL register itself as an execution node when connecting.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2484,7 +2484,7 @@
       "requirement_digest": "6fee5d183e03ac840eb990f40bc7a03f01b8f53a2f35c375a1fe938a8d9187d5",
       "requirement_id": "REQ-D44C42994A46",
       "requirement_text": "Required identity metadata:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2506,7 +2506,7 @@
       "requirement_digest": "f77bf7cf6d2907acbbf17a7ef511575f1b2679a8541d7d70473dc93c36b7fe74",
       "requirement_id": "REQ-28FC09E70B7A",
       "requirement_text": "Runner SHALL automatically inspect the local device for supported runtimes.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2528,7 +2528,7 @@
       "requirement_digest": "da723c64911f830df0dfceb8483fec25cecc8438fc2cb546dd381c00e3cb4bd4",
       "requirement_id": "REQ-BEC094CBBB32",
       "requirement_text": "Provider-specific discovery adapters SHALL be responsible for finding their own tools.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2550,7 +2550,7 @@
       "requirement_digest": "249b038b8872f9a1169d8d5f46b9396d937e006c5ee45ccfc483368462694d5d",
       "requirement_id": "REQ-302825B7C93D",
       "requirement_text": "Each detected runtime MUST be probed for:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2572,7 +2572,7 @@
       "requirement_digest": "02db90dc2f3dfbe20a2dd37909276d33ff0cca2ef70ae6c92874c6d28ade0d3e",
       "requirement_id": "REQ-4888DE722E9E",
       "requirement_text": "Runner SHALL publish a capability snapshot after startup and whenever capabilities materially change.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2594,7 +2594,7 @@
       "requirement_digest": "c0b8b3c688a815628fcc145a50766b346e2e6ab3eb03bc37ce4b1985c4528f8b",
       "requirement_id": "REQ-53DC70C9597C",
       "requirement_text": "Sensitive local paths SHALL NOT be published to unauthorized Web clients.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2616,7 +2616,7 @@
       "requirement_digest": "fde3eb2a523a10de01f887d6f2b5a616553ff297bd465ba6af3399693a50f799",
       "requirement_id": "REQ-215C77135B75",
       "requirement_text": "A node is eligible only if all required constraints are satisfied:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2638,7 +2638,7 @@
       "requirement_digest": "3915f3f3f43b947218e3b1cb626d619ecd940b2b94959b5df3004c5ccec50ead",
       "requirement_id": "REQ-D88FD6150409",
       "requirement_text": "Every external-agent task SHALL be represented by a provider-independent manifest.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2660,7 +2660,7 @@
       "requirement_digest": "914c7a8021dd3136d0e0dc2dcdac6a41a797f5109408e3b8b21b3f87dfa9e6ba",
       "requirement_id": "REQ-793A9513754E",
       "requirement_text": "These tables support agent-domain metadata but MUST NOT replace `worker_jobs` as the execution source of truth.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2682,7 +2682,7 @@
       "requirement_digest": "5c606d00a29848702bb543bd051c0e65ece9453c717eb479a2490be841823a60",
       "requirement_id": "REQ-79CCFC51B645",
       "requirement_text": "All provider adapters SHALL emit a common envelope.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2704,7 +2704,7 @@
       "requirement_digest": "c89c5cbdead64d9e93f5e457f915bacb97e9cf648c7b57948218fc70e74ef598",
       "requirement_id": "REQ-F71B34269FC5",
       "requirement_text": "SmartAIHub MUST NOT unnecessarily replace provider-native subagent orchestration with external SmartAIHub jobs.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2726,7 +2726,7 @@
       "requirement_digest": "fb53997ee0fa79c1fa9b5362acf443a6c4a212048b5633593beb23651c2438c0",
       "requirement_id": "REQ-0A9E339D891F",
       "requirement_text": "The implementation MUST NOT default to provider flags equivalent to unrestricted permission bypass.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2748,7 +2748,7 @@
       "requirement_digest": "51ab8ecb45d14fc78ba9390e15bb92beaeabbe8fe49ef342d74b4c99324893c1",
       "requirement_id": "REQ-5B874F3D2A38",
       "requirement_text": "This feature creates a remote-to-local execution channel and therefore MUST be treated as high-risk infrastructure.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2770,7 +2770,7 @@
       "requirement_digest": "bf904a750238a4bc40cf830a3df6e65a7579580fae89d0e21ae2a7cf63741637",
       "requirement_id": "REQ-92BA3181E7B5",
       "requirement_text": "Runner/Worker MUST have a persistent device identity.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2792,7 +2792,7 @@
       "requirement_digest": "ca131e9a7314080832fcebffc38a52abbc5cfe841f26212f9de72a73ba00d6f6",
       "requirement_id": "REQ-CDA33A93A1A9",
       "requirement_text": "Jobs SHALL only be delivered to authorized devices.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2814,7 +2814,7 @@
       "requirement_digest": "e60cc8d847877fb49d3383097f72b2889357946dfa66a2eee1195a048f282c39",
       "requirement_id": "REQ-6BDA85E87725",
       "requirement_text": "Every dispatched coding-agent job MUST be authenticated and bound to:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2836,7 +2836,7 @@
       "requirement_digest": "98e44d30ea0900f0badf6c9e1da0623bd3166ae5a7ad4a49d4ebb02be7ae5836",
       "requirement_id": "REQ-A720CD570E33",
       "requirement_text": "Runner SHALL only access configured/approved project roots.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2858,7 +2858,7 @@
       "requirement_digest": "82c146966d2a5b43f66176ad8623ab9b632737f3364c435b99183a1781436f70",
       "requirement_id": "REQ-B6762A0F0245",
       "requirement_text": "Sensitive provider tokens SHALL remain:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2880,7 +2880,7 @@
       "requirement_digest": "d7aa3b6f986fd215e5f1db17033b21a0b141b0bf0227214236bd7c9b5787fe6e",
       "requirement_id": "REQ-39798AC782D6",
       "requirement_text": "Raw credentials MUST NOT appear in:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2902,7 +2902,7 @@
       "requirement_digest": "94715296c11342ad9353f970f70ee522fcf30ac6bde5067bd8612512296238fd",
       "requirement_id": "REQ-F18E9B20905C",
       "requirement_text": "Runner SHALL record:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2924,7 +2924,7 @@
       "requirement_digest": "ada0ba2b432917aa2c22769c4b1422b4c292bb977383a240303694233be45c1a",
       "requirement_id": "REQ-465C9DF106A8",
       "requirement_text": "The platform MUST permit policy-based blocking.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2946,7 +2946,7 @@
       "requirement_digest": "f1b4b64a8e1e8c61d5809361db485fb0596d45ab7e934af3ef159a6c03761a81",
       "requirement_id": "REQ-FA5569F3742C",
       "requirement_text": "Each agent session receives only the Skill scope required for the job.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2968,7 +2968,7 @@
       "requirement_digest": "7fcca270322eaa9561da3b4ac7faf63fb549b2ecae09b6c4099d2e7d0354a7e5",
       "requirement_id": "REQ-A1AB15C2215F",
       "requirement_text": "Every `skill.invoke` MUST re-check:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -2990,7 +2990,7 @@
       "requirement_digest": "654351a74a395573df686cadad289877ac86d5e6a98d5b8425b379f7f90aabd9",
       "requirement_id": "REQ-6F7A88B7217B",
       "requirement_text": "Asset references MUST NOT imply authorization.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3012,7 +3012,7 @@
       "requirement_digest": "aec62fbb5d145b780c0fd8a709f2c103913d7748bd91a8943c39223f9dc33638",
       "requirement_id": "REQ-BEAF8D322A11",
       "requirement_text": "Short-lived execution URLs/tokens SHALL be scoped to:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3034,7 +3034,7 @@
       "requirement_digest": "113e02810536aa89d401dc4fcd157ebb6c656ece207ee5544cda53648597bcde",
       "requirement_id": "REQ-9A5C6FBBC6E1",
       "requirement_text": "Agent self-report MUST NOT be treated as sufficient proof of success.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3056,7 +3056,7 @@
       "requirement_digest": "4925a86d8ce356a55be610345c6b9bcff394802ebec77d9df0423456186b5696",
       "requirement_id": "REQ-922FF9B711E6",
       "requirement_text": "After provider execution, SmartAIHub SHALL independently collect:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3078,7 +3078,7 @@
       "requirement_digest": "e10ba46c362a67f2559174c4376daa50b65c87721f185268f3db5ffe2d133026",
       "requirement_id": "REQ-AF8F09874C2D",
       "requirement_text": "Commands MUST be approved under project policy.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3100,7 +3100,7 @@
       "requirement_digest": "424f88a6877a97cd143ab3e11953598fddb54e0f2049dd910b2274848dffede8",
       "requirement_id": "REQ-FB72A06872A4",
       "requirement_text": "Web SHALL display Runner-advertised status but SHOULD NOT expose local sensitive filesystem paths.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3122,7 +3122,7 @@
       "requirement_digest": "714315f6853ee4f01a827cc33061de6f77231c68493dcd74cda1e9741c023480",
       "requirement_id": "REQ-9BE520C3A3B2",
       "requirement_text": "Merge/commit controls MUST obey repository policy.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3144,7 +3144,7 @@
       "requirement_digest": "2a3d963dd69ddd1b5cf447c1e6ead4c3e6dc4926db00cca9af751418e6fabe12",
       "requirement_id": "REQ-E0E768D83682",
       "requirement_text": "SmartAIHub Chat SHALL support coding-agent jobs as first-class conversation objects.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3166,7 +3166,7 @@
       "requirement_digest": "830dff787013511a65e9bdf1f15e1d6bab36986c4e33581a84e3ae63ebcf50f4",
       "requirement_id": "REQ-4988E07799FC",
       "requirement_text": "The Side Panel SHALL use the same backend Agent Task API and the same conversations/session model as `/chat`.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3188,7 +3188,7 @@
       "requirement_digest": "f327df4415fac890d08c69fae3c43cb8fd4d4f85d8d84b147b5baae5482b52b7",
       "requirement_id": "REQ-8164E1F0CF41",
       "requirement_text": "It SHALL pass current-page semantic context.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3210,7 +3210,7 @@
       "requirement_digest": "8806dc08da42bdbf0d07ee952b8bb47c0c554316e625dc16bac505aa8173750c",
       "requirement_id": "REQ-BFF6374D100A",
       "requirement_text": "Universal Assistant SHALL distinguish:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3232,7 +3232,7 @@
       "requirement_digest": "6fe08046abce0c39f25ba9ab728eb690d0d822338fb588904544cc3dbc8c291e",
       "requirement_id": "REQ-752C4C167154",
       "requirement_text": "the Assistant SHALL receive selected asset IDs as structured context.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3254,7 +3254,7 @@
       "requirement_digest": "ab27f72c8c54e218c113614295049df23266ccba14a019726c05803f538a0ab1",
       "requirement_id": "REQ-D2479C42C1EC",
       "requirement_text": "Runner/Worker local UI SHALL include:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3276,7 +3276,7 @@
       "requirement_digest": "2d4ab7a91f8a3153c1a406c2c7ad57681fbf8f6eb4d5446b8df3b38206c087f4",
       "requirement_id": "REQ-13C69203374D",
       "requirement_text": "Actual route naming SHALL follow existing API conventions.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3298,7 +3298,7 @@
       "requirement_digest": "51e83a0e84b53450f8ca71c13ad727d4a57d5c6777428073a2cbfd8293a4e13f",
       "requirement_id": "REQ-4B847F8EC38B",
       "requirement_text": "Credential ownership SHALL be explicit:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3320,7 +3320,7 @@
       "requirement_digest": "a067a80fc98322f8d377a20bbcd7592cd39829a21dff10a1f8a1830c8f27bb45",
       "requirement_id": "REQ-F18AD681ABCE",
       "requirement_text": "External agents SHALL connect to **SmartAIHub-governed MCP/tool surfaces only** for platform capability access. If the selected capability originates from an external MCP upstream, SmartAIHub routes the invocation through **Spec 199 External MCP Gateway**. Provider runtimes MUST NOT be configured by Spec 200 to bypass Spec 199 and connect directly to arbitrary upstream MCP servers for SmartAIHub-managed capability execution.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3342,7 +3342,7 @@
       "requirement_digest": "3f714b7e1e87febe92e1106e5d673e3c2787b255dcb37993fb727d9fd3fe24a3",
       "requirement_id": "REQ-C46433A45DD4",
       "requirement_text": "Provider MCP configuration SHALL be generated automatically by Runner where supported.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3364,7 +3364,7 @@
       "requirement_digest": "b48e83f94f16743a1126c8751f6c65e276006efde0c0347dfc5fcc293fa73a78",
       "requirement_id": "REQ-13670FBD767C",
       "requirement_text": "External agents SHALL be able to benefit from those Skills without downloading or installing Skill packages into the provider runtime.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3386,7 +3386,7 @@
       "requirement_digest": "f63821803e3fbaf6ba1b4138b1a94af74886bf0834a358070cf40d482ec49f17",
       "requirement_id": "REQ-5B870AB031B8",
       "requirement_text": "Required rule:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3408,7 +3408,7 @@
       "requirement_digest": "ed6539f73bec766fe904e4214a1e3c68d16e67a7391ac5fad4848b65527951cd",
       "requirement_id": "REQ-F1CC9BD66F4D",
       "requirement_text": "External agents MUST NOT require:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3430,7 +3430,7 @@
       "requirement_digest": "408404fab6060c5fe2151ddd6a5f1ca0b552ade008b5a1d7a7aa0b26a3b3c730",
       "requirement_id": "REQ-31E4F5B82B6A",
       "requirement_text": "but they MUST resolve through the same Capability Registry/Resolver, ACL, health/risk filtering, version projection, audit and invocation path.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3452,7 +3452,7 @@
       "requirement_digest": "caf76eae74b9a9fae951dbe371733d82d1e66b8192a2f4ad181fd4f9e367a509",
       "requirement_id": "REQ-5CE676709F1A",
       "requirement_text": "External agents SHALL NOT bypass SmartAIHub billing by copying Skill implementation locally.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3474,7 +3474,7 @@
       "requirement_digest": "1cd91bdb42cb1b6f3e3ba8d28047bc4e3914f35e3788bb7ec9fbf22c7bf4be83",
       "requirement_id": "REQ-DAD93D720586",
       "requirement_text": "Coding agents MUST be able to use the knowledge SmartAIHub already possesses.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3496,7 +3496,7 @@
       "requirement_digest": "92be3c43f7e32cf2d43cd93e52a231bcaf8cebc5d052facd62e4f6551d247e15",
       "requirement_id": "REQ-E6BB33BEBD79",
       "requirement_text": "The system MUST NOT inject all available RAG data into the initial prompt.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3518,7 +3518,7 @@
       "requirement_digest": "13cd439504708e96fdf5f58f6e38f9a5871b76b8dd0564a8daf62fcae195a59a",
       "requirement_id": "REQ-783759F2AFE7",
       "requirement_text": "The package MUST contain source/provenance identifiers rather than losing where information came from.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3540,7 +3540,7 @@
       "requirement_digest": "528aae0f38555baeb7140ab10308b73470c5d346c28b9dae57ada98b6bcfd3a8",
       "requirement_id": "REQ-3130BA199182",
       "requirement_text": "The token SHALL bind:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3562,7 +3562,7 @@
       "requirement_digest": "f2c2cafb879e02c5f98f007b51e1cdda7b2d140db5921c6bd04aeafc4d7e1b80",
       "requirement_id": "REQ-98DC421A64C7",
       "requirement_text": "Every Context/MCP request MUST re-check authorization server-side.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3584,7 +3584,7 @@
       "requirement_digest": "f97e1da850af7130b4597629ed42f4c7645ab362c2f12a996b1cbb538738ed21",
       "requirement_id": "REQ-FC97C1766219",
       "requirement_text": "Retrieval MUST enforce:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3606,7 +3606,7 @@
       "requirement_digest": "421850526e71ca3bf6a77b4e971cd7aa95f5305b0d19b5824fe38c18d1ebcfbb",
       "requirement_id": "REQ-A7F362A2FA3F",
       "requirement_text": "A similarity score MUST never bypass authorization.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3628,7 +3628,7 @@
       "requirement_digest": "518c1e798fc82c46871266c0cf3827d8f28dd42b3497d2b4eb6c721f75179306",
       "requirement_id": "REQ-9E3335BC7FD1",
       "requirement_text": "- provenance must distinguish versions.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3650,7 +3650,7 @@
       "requirement_digest": "1ab85e77c427bd5bb30f1468aa758de197ffd57cdfb2759c1af473763ac64f8c",
       "requirement_id": "REQ-0E24CAC5E97B",
       "requirement_text": "It MUST NOT silently broaden access or fabricate missing SmartAIHub knowledge.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3672,7 +3672,7 @@
       "requirement_digest": "efe57ec267a65f149e24d4eef78ebad9316c16a041904a07c911dd2cd2901bf3",
       "requirement_id": "REQ-529F5CD46DE6",
       "requirement_text": "Spec 200 SHALL support tasks where the user selects existing SmartAIHub assets and asks an external agent to reason over and transform them.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3694,7 +3694,7 @@
       "requirement_digest": "ad7e2a8853280fcb20f1270e9b3bd17a0bff2341586112e2b0fe3cd055a2da52",
       "requirement_id": "REQ-FD8976558476",
       "requirement_text": "External agents SHALL use the same SmartAIHub Video Edit project/timeline model used by the Web Video Editor.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3716,7 +3716,7 @@
       "requirement_digest": "6dce92b7a29834e57ddbd65e457560ea73decb2be2660a253a27a419b04a1761",
       "requirement_id": "REQ-D1F29AA5F63A",
       "requirement_text": "Timeline/project validators SHALL reject invalid outputs and return structured violations to the agent.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3738,7 +3738,7 @@
       "requirement_digest": "7913012c5238946f961bf88f1d69d3770547b595fbeda9a78e68e29e30d6f175",
       "requirement_id": "REQ-12AD4EEAAADA",
       "requirement_text": "Final media outputs SHALL be registered back into SmartAIHub Library with provenance:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3760,7 +3760,7 @@
       "requirement_digest": "530a6e2f47c4a337785d80bd1ef9fd9a0d3fb9e9799bd7a6f78779c34248c82d",
       "requirement_id": "REQ-B828598E117F",
       "requirement_text": "The system SHALL be designed under the assumption that SmartAIHub ⇄ Runner connectivity will occasionally fail.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3782,7 +3782,7 @@
       "requirement_digest": "b7c4fbb465edd40015c265a56089a3f89f699bdfcf6cfd84ee57b38687dd1a18",
       "requirement_id": "REQ-C5063DB27B95",
       "requirement_text": "Actual durations SHALL be configurable.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3804,7 +3804,7 @@
       "requirement_digest": "778a5c7d575562e3cddfec1cdbd7b41bc2b1f504f08ffc594208b7b490ce3e65",
       "requirement_id": "REQ-A4A60B893C75",
       "requirement_text": "Runner MUST maintain a local durable store; SQLite is recommended.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3826,7 +3826,7 @@
       "requirement_digest": "007a22592c95ed343f969ebcbabbb7ce8e34413d835ab213211541d2f64b0a6c",
       "requirement_id": "REQ-822E10894564",
       "requirement_text": "Critical execution state MUST NOT exist only in process memory.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3848,7 +3848,7 @@
       "requirement_digest": "fa805e8be9ce0ea7150d2a29d69f4c792124203fd4e597751549878d1ff6d3b6",
       "requirement_id": "REQ-380CF17D9294",
       "requirement_text": "Provider processes SHALL be supervised independently from the network connection.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3870,7 +3870,7 @@
       "requirement_digest": "decad03685b1fd7860f40a7c29ddc0057414bb316d05bacfb4710da7800b44b1",
       "requirement_id": "REQ-2E52D1C20A20",
       "requirement_text": "Loss of Control Channel MUST NOT kill the provider by default.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3892,7 +3892,7 @@
       "requirement_digest": "e0aa21162151a6709cce3ac0001813f6124e82fe3cb5eb694611ab479c17fabb",
       "requirement_id": "REQ-AAEF15BDB1B1",
       "requirement_text": "Every Runner→Backend event SHALL include:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3914,7 +3914,7 @@
       "requirement_digest": "b69d49316bbacbcbbe41c54af653f4219749a597f80f0d219300e7220e645c5e",
       "requirement_id": "REQ-4F20B6BAF36A",
       "requirement_text": "Sequences SHALL be monotonic within the defined stream scope.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3936,7 +3936,7 @@
       "requirement_digest": "a006c53b5a4cc882aec4c45c3c32f43f4168a8592b08140b4f7fab179047a476",
       "requirement_id": "REQ-2F6EF2F50963",
       "requirement_text": "Backend SHALL deduplicate repeated event IDs/sequences.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3958,7 +3958,7 @@
       "requirement_digest": "b3aa610ba3dbc7f45fd6708dfe5d51e39b29f9801ca0119ef6503f3b6a6a3279",
       "requirement_id": "REQ-3FF3427F937C",
       "requirement_text": "On reconnect Runner SHALL send a reconciliation report.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -3980,7 +3980,7 @@
       "requirement_digest": "f2fde74a37b4fa2f4d90e4487c101eef97dafbe08f5882b5b198d1289646f54b",
       "requirement_id": "REQ-F75851C42948",
       "requirement_text": "Live connection maps may be in memory, but durable assignment/state MUST be rebuildable from PostgreSQL.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4002,7 +4002,7 @@
       "requirement_digest": "36446aed1f7a9104823822485cf46d15710194f821bc82de73f496da8c638017",
       "requirement_id": "REQ-35924888EADE",
       "requirement_text": "Adapter SHALL:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4024,7 +4024,7 @@
       "requirement_digest": "d7b472f2d711473f259513c04c9e65c42edc191951dec3e5345aaa8f4c6aba80",
       "requirement_id": "REQ-878021BBBBAB",
       "requirement_text": "If Runner becomes unreachable, Backend MUST NOT automatically run the same coding job on another device.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4046,7 +4046,7 @@
       "requirement_digest": "116e8dbf630c06fced0294a45409a622b6679bf86fdb2e0ef02ff5ce2b133de8",
       "requirement_id": "REQ-EC6157FDDB43",
       "requirement_text": "Architecture MUST nevertheless allow later workflow:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4068,7 +4068,7 @@
       "requirement_digest": "ed2ecb1b77fbc74fdc82adafef051aa37e61245957a6be6f4c6ad622e5600afd",
       "requirement_id": "REQ-75C2CE357944",
       "requirement_text": "Audit records SHALL be immutable according to existing platform policy.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4090,7 +4090,7 @@
       "requirement_digest": "8f0485160909e48042ae85de0962f7a0bcbb1b2c520b70d3a73b792b814948fa",
       "requirement_id": "REQ-CA22E030BA52",
       "requirement_text": "Secrets MUST be redacted before persistence.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4112,7 +4112,7 @@
       "requirement_digest": "0ebe1ee3ce2bf81ffa46a9bd4865e00db4f23f8d5039f0926326894116ca37ab",
       "requirement_id": "REQ-BAF0B7A8E456",
       "requirement_text": "These messages SHALL be transported through the existing Runner/Worker control mechanism rather than introducing an unrelated connection protocol.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4134,7 +4134,7 @@
       "requirement_digest": "dd1dfad954cd249a8890f45d51a0a433defa9e3130bb7cf3aaf84e0866be4dca",
       "requirement_id": "REQ-F21F087AAE9E",
       "requirement_text": "The Provider Adapter SHALL convert native output into the common event protocol while preserving native payloads.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4156,7 +4156,7 @@
       "requirement_digest": "2e7245883534edd6a862d1dfdba7c5e73452d6ae9441427f961837340646cef8",
       "requirement_id": "REQ-492A370532C7",
       "requirement_text": "Native provider output SHALL first cross the Runner reliability boundary:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4178,7 +4178,7 @@
       "requirement_digest": "6b122562465cbf24fc45055f3c0bca912b353d7af653b97c5709d65866934e01",
       "requirement_id": "REQ-241CBB3AB9C3",
       "requirement_text": "A provider MUST NOT depend on a direct connection to the SmartAIHub backend.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4200,7 +4200,7 @@
       "requirement_digest": "9f2bd3a2d250f09d7d091021f984f65bf1ef82ee6c306d7765349bea6f663747",
       "requirement_id": "REQ-D780AE5DE799",
       "requirement_text": "6. requests provider-native login if required.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4222,7 +4222,7 @@
       "requirement_digest": "1307bdae71d1f35948b3fdf5bec53a3c36ee52d7efaa59dc3201423d78e2c44c",
       "requirement_id": "REQ-6B11647D1AF5",
       "requirement_text": "DeepSeek dependencies SHALL be isolated in a managed environment.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4244,7 +4244,7 @@
       "requirement_digest": "94397b2e7dad88e4649ea90d7b80f3b1caba2603c96d3875a5ea61e602d77356",
       "requirement_id": "REQ-CDC2C93FAB59",
       "requirement_text": "Runner SHALL report a version mismatch instead of silently changing user-managed runtimes.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4266,7 +4266,7 @@
       "requirement_digest": "d39562986846de550edd53475689952ad5460cb2ab3b21b9939fab7e60e4c179",
       "requirement_id": "REQ-5F83B659CBD5",
       "requirement_text": "CI MUST NOT require paid live provider accounts for most adapter tests.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4288,7 +4288,7 @@
       "requirement_digest": "5de693b9430ff2612d04d82a8a8cf50df15d0dc44d731c12ba4717d265deed9b",
       "requirement_id": "REQ-15AF4BD0C00B",
       "requirement_text": "Required:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4310,7 +4310,7 @@
       "requirement_digest": "0233d2f0f0ecc89f90be6d58f84eba43a9ac660d61b2faff10e2451ac8983417",
       "requirement_id": "REQ-AF97DD7387EA",
       "requirement_text": "Spec 200 Phase 1 SHALL NOT be considered complete unless all of the following work end-to-end.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4332,7 +4332,7 @@
       "requirement_digest": "f8ddea65781906e233ce33dbf185ecf6e459affa14dcb5fd9f953568cb67defc",
       "requirement_id": "REQ-E45E808633DF",
       "requirement_text": "- agent result;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4354,7 +4354,7 @@
       "requirement_digest": "45e67cc7d4aab2d3e34521cd095107d7c7231f7dcc5681ec4b2e0617625add3c",
       "requirement_id": "REQ-68AAC8B347AA",
       "requirement_text": "- files changed;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4376,7 +4376,7 @@
       "requirement_digest": "5b10c069366c4f8e98d0f79a34306198363ed4dd3ee74209291cac84a64a724c",
       "requirement_id": "REQ-C03FD12264D1",
       "requirement_text": "- diff;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4398,7 +4398,7 @@
       "requirement_digest": "5712c1024fdb5f0a32f2655147f4d7841856aa949517a82f16c77d01f94dff8a",
       "requirement_id": "REQ-FE3859DB2E30",
       "requirement_text": "- verification;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4420,7 +4420,7 @@
       "requirement_digest": "1fce19b5e9dd9c81343d75280df0f4d678f393881d974592ad9f7b57e08b3522",
       "requirement_id": "REQ-2F51FED02C1A",
       "requirement_text": "- logs/artifacts;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4442,7 +4442,7 @@
       "requirement_digest": "138f54f34bd29e0004b21e92f965bf12ef813e4449f52d8283d31c52dc3e8f14",
       "requirement_id": "REQ-1716F58870DE",
       "requirement_text": "- session state.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4464,7 +4464,7 @@
       "requirement_digest": "506e5223f2b47b0d2bb719b04b789483a3874325defc43dfda7fed76de3f4843",
       "requirement_id": "REQ-5E4589DEE7CF",
       "requirement_text": "No live provider required to complete core unit tests.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4486,7 +4486,7 @@
       "requirement_digest": "99d9449e6d7dcfd57679e0927b27d20ad7a89a400c8dfcda961e378bab72b472",
       "requirement_id": "REQ-945029DCC58B",
       "requirement_text": "Existing SmartAIHub Worker functionality SHALL continue during rollout.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4508,7 +4508,7 @@
       "requirement_digest": "0f8da0382f5239bfd3b72a6967c796eb9a227d9b74938da9388e59e50b31f659",
       "requirement_id": "REQ-0882EA5D8EA9",
       "requirement_text": "SmartAIHub billing for orchestration, if introduced, SHALL be separate from provider billing.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4530,7 +4530,7 @@
       "requirement_digest": "a3813c564f77118a272f5805b52c2d77cde1b9455bbc7bcc96d1e1974c29d28b",
       "requirement_id": "REQ-E4F89DAA3DA3",
       "requirement_text": "Repository config MUST NOT override stronger platform security policy.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4552,7 +4552,7 @@
       "requirement_digest": "439bc91b71bbfc6dc4a98aea5efbe5e271e99f9162c50c5a9faa4622c7b2a7fa",
       "requirement_id": "REQ-7871FDF14B4E",
       "requirement_text": "A provider SHALL only be marked **Full Support** when SmartAIHub can:",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4574,7 +4574,7 @@
       "requirement_digest": "5e24de443c6acc6ad6e0e92c4ac2ad26ed44f48a0874373a366f8bf895cfb4d3",
       "requirement_id": "REQ-0B25AF107642",
       "requirement_text": "**A coding agent saying “done” is not sufficient; independent workspace/result verification is required.**",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4596,7 +4596,7 @@
       "requirement_digest": "9b71a0c0d2fc4d7b1f2f14e16d0f5e736bc680631269b1cdd2406a31960b68e4",
       "requirement_id": "REQ-0956A79C3874",
       "requirement_text": "- no duplicate job execution under normal lease recovery;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4618,7 +4618,7 @@
       "requirement_digest": "2a8706054fe5dd64df42fa39ad27a47023d2430020d2f17ef365b209f4dd4536",
       "requirement_id": "REQ-E0B886929019",
       "requirement_text": "- ordered event replay;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4640,7 +4640,7 @@
       "requirement_digest": "0cc4fa238d3c5db20016884a6f227026a3e7a1c76ce6682d93fc460b3be2aaa3",
       "requirement_id": "REQ-348E29829DAB",
       "requirement_text": "- crash-safe session metadata;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4662,7 +4662,7 @@
       "requirement_digest": "bc17829596bc78d2d7efd893c4f5739143af4c1eb1f4cdc105829f8c6231b86d",
       "requirement_id": "REQ-2710334B522F",
       "requirement_text": "- recoverable Runner reconnect.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4684,7 +4684,7 @@
       "requirement_digest": "9b3e4abb931e69b35caa83bde0402567868cc687ffbf2c602a9fe66a010916aa",
       "requirement_id": "REQ-7AD2BFC261BA",
       "requirement_text": "- live event latency target: normally < 2 seconds excluding provider/network delay;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4706,7 +4706,7 @@
       "requirement_digest": "534dd78e3f56de2574bc4133c193663b6895b4e4e4c720aa92bf6f6c2f484094",
       "requirement_id": "REQ-320CAEA56A7F",
       "requirement_text": "- Runner should not buffer full provider output before streaming;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4728,7 +4728,7 @@
       "requirement_digest": "0a4fae3ee3f831d0c7096c0994c7236aabcb0025a8dd644debe04924cd00cd27",
       "requirement_id": "REQ-8E473A39D1FD",
       "requirement_text": "- parsing must be incremental.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4750,7 +4750,7 @@
       "requirement_digest": "3ce7d474fede35f6045357416c28eb9aef1eeb0de5bdd88e9f6693689da153ff",
       "requirement_id": "REQ-62E060532EEC",
       "requirement_text": "Backend MUST support many Runner nodes and many concurrent sessions.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4772,7 +4772,7 @@
       "requirement_digest": "a26ceccda3ea1e703a500d347f2d6d26b2bdae0d934bb4f9345c13534fd39f35",
       "requirement_id": "REQ-FCD5405E05CC",
       "requirement_text": "Provider code must remain isolated behind adapters.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4794,7 +4794,7 @@
       "requirement_digest": "87159b9a7e9311a4f2c0b1a44e660ccc97b888045ddcaed9247feea786acb377",
       "requirement_id": "REQ-72A5B5FFD816",
       "requirement_text": "- core job lifecycle;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4816,7 +4816,7 @@
       "requirement_digest": "61d7a66df5efc9c78361a482d907cac10de0e3888765f2db0ef6025d1c5364b5",
       "requirement_id": "REQ-F837C2384991",
       "requirement_text": "- workspace manager;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4838,7 +4838,7 @@
       "requirement_digest": "5074b005da9400899ff70ad33b13ec3d3e564d7cbcb816341741fc142ac8133f",
       "requirement_id": "REQ-DAD60D25C4BC",
       "requirement_text": "- approval UI;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4860,7 +4860,7 @@
       "requirement_digest": "9d7099b7b2ba217b0f31728d597745b1874b4de02bfc04ebff6de9cfef32906e",
       "requirement_id": "REQ-E463BFBE8EBB",
       "requirement_text": "- main event model;",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4882,7 +4882,7 @@
       "requirement_digest": "3c61cf38d812a5953c006ada7ae072468f57aaea73f04fb3b4ffd878f82b55bc",
       "requirement_id": "REQ-F83C18AC9849",
       "requirement_text": "- verification subsystem.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4904,7 +4904,7 @@
       "requirement_digest": "9528c7ca7ac94d0955b3b8be9ab649ad9a136861f06e1f5969532c12c5f9f252",
       "requirement_id": "REQ-82E527048FE0",
       "requirement_text": "Spec 200 SHALL be implemented as a **Universal External Agent Infrastructure capability**, not merely a Coding Agent feature.",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4926,7 +4926,7 @@
       "requirement_digest": "6654b198763f6cd4c4600fbdf13acb93475457ee52997493309636706cb1679b",
       "requirement_id": "REQ-02F91AA95EC9",
       "requirement_text": "| MCP capability surface | `apps/web/server/_core/mcpRegistry.ts`, `mcpRoutes.ts`, `mcpPublicServer.ts`, `mcpOAuthServer.ts` | Existing hosted MCP surface; Feature 199 owns external upstream MCP lifecycle and Spec 200 MUST consume it through shared Capability Gateway |",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4948,7 +4948,7 @@
       "requirement_digest": "89d14213e05080cbb48a6112ef13d73daf25b82f33b8f7b2b37444f514673e58",
       "requirement_id": "REQ-E2752E4986C4",
       "requirement_text": "| Durable execution | `worker_jobs`, `worker_job_events`, `worker_job_attempts`, `worker_job_outbox`, `worker_job_dispatches` and provider reservations in `apps/web/drizzle/schema.ts` | Feature 195/186 canonical baseline; Spec 200 MUST reuse it and MUST NOT create `coding_agent_jobs` or another queue |",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4970,7 +4970,7 @@
       "requirement_digest": "1249515f067c73bc1f0593293140d1c2acad4d73ebfcea3564d3e793f4dedf1f",
       "requirement_id": "REQ-F98D1698B350",
       "requirement_text": "| Context, assets and Skills | `contextRetrievalService.ts`, `libraryContextPacks`, asset APIs and Skill/Agent runtime services | Shared partial foundations; Spec 200 must use Feature 198/196 Retrieval/Context and Asset/Skill contracts rather than create copies |",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -4992,7 +4992,7 @@
       "requirement_digest": "a87676646fb1623a41c62064c72afdd0163c61e60829a24ca94feef19e279fad",
       "requirement_id": "REQ-6F1BB5398748",
       "requirement_text": "| Proposed Agent APIs | No exact `/api/coding-agents/*`, `/api/agent-tasks`, `/api/context/search` or `/api/context/fetch` route family was found | Target API surface; actual implementation must follow existing SmartAIHub router/API conventions and avoid duplicate endpoints |",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5014,7 +5014,7 @@
       "requirement_digest": "ed8ad4056872cee2dba90264b77fd2779af7dcc20b7c6dd5d40065a4b48be957",
       "requirement_id": "REQ-AA70E5D3C28E",
       "requirement_text": "Existing repository adapters and compatibility paths must be treated as partial",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -5036,13 +5036,40 @@
       "requirement_digest": "b2405b03a6a06e1c1cd43769988f9c162be796fbdda60eda158a5cb4643fdc82",
       "requirement_id": "REQ-FFE04E586883",
       "requirement_text": "The implementation must support provider-independent Agent Tasks, runtime and",
-      "source_spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
       "successor_mapping": [],
       "verification_evidence": [],
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+    },
+    {
+      "applicability": "CONDITIONAL",
+      "authority_refs": [
+        "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6394"
+      ],
+      "authority_source": "specs/feature/200-universal-coding-agent-control-plane/spec.md#L6394",
+      "blocker": {
+        "class": "AUTHORITY",
+        "id": "SPEC200_OWNER_RECONCILIATION",
+        "next_action": "Resolve canonical Spec 200 authority and confirm Runner, policy, tool, and durable-job owners before implementation.",
+        "root_cause": "Spec 200 remains DORMANT_UNRESOLVED; this conditional model/provider boundary is not an approved Agent Task or dispatch route."
+      },
+      "current_relevance": "CONDITIONAL_DESIGN",
+      "evidence_freshness": "UNKNOWN",
+      "evidence_sha": null,
+      "final_state": "OPEN",
+      "implementation_evidence": [],
+      "implementation_status": "NOT_STARTED",
+      "next_action": "Resolve canonical Spec 200 authority and confirm Runner, policy, tool, and durable-job owners before implementation.",
+      "requirement_digest": "4addda0a1c2e2678b1ccc5c566a1669ca67c37bd4a57d8242cd69fc2405f7b6d",
+      "requirement_id": "REQ-FEB6E80A1181",
+      "requirement_text": "The Claude subscription DirectSDK candidate is a **model-only local CLI provider surface**, not an autonomous external-agent execution. It MUST NOT be registered as a Spec 200 agent or delegated task merely because the Claude CLI runs in a subprocess. In model-only mode, native provider tools and autonomous turns remain disabled; returned tool requests go through SmartAIHub's existing Tool/Policy/Approval, MCP, Memory, and host execution paths. If a user separately selects an autonomous agent, that remains a distinct Spec 200 task with existing Runner authorization, durable `worker_jobs` control, and receipt/finality requirements. See the conditional routing contract in Spec 231 §102; no unresolved Spec identity or approval gate is waived by this cross-reference.",
+      "source_spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
+      "successor_mapping": [],
+      "verification_evidence": [],
+      "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
     }
   ],
   "schema_version": 1,
-  "spec_digest": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa",
+  "spec_digest": "0bc42e83fe400ffb3809b98050ce8346c2f61223322e1881b9dd1235594d809a",
   "spec_id": "200"
 }

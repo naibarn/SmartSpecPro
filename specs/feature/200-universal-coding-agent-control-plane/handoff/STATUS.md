@@ -2,11 +2,11 @@
 # 200 — Spec 200 — SmartAIHub Universal External Agent Control Plane, Knowledge, Asset & Skill Gateway
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 229 unresolved of 229
+- Requirements: 0 pass / 230 unresolved of 230
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 8
+- Manifest generation: 13
 
 ## Source-declared status and relationship claims
 

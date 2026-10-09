@@ -2,8 +2,8 @@
 # 277 — CURRENT CUMULATIVE REVISION — R1.8
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 429 unresolved of 429
+- Requirements: 0 pass / 430 unresolved of 430
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 7

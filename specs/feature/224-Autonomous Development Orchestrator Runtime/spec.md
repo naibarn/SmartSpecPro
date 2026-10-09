@@ -17246,3 +17246,9 @@ This additive conformance layer makes evidence-driven autonomous execution indep
 - [ ] A repair loop stops or replans at its configured bound and identifies no progress without erasing prior evidence.
 - [ ] Tests exercise successful, denied, stale-precondition, event-loss/recovery, independent-verifier failure, and bounded no-progress paths against the exact candidate revision.
 - [ ] Existing queue, registry, permission, handoff, Runner, UAT, and learning authorities remain the sole owners for their respective contracts.
+
+## Conditional DirectSDK boundary note (2026-10-09)
+
+This is a design note only. The canonical handoff remains `WAITING_APPROVAL` and `RECONCILIATION_REQUIRED`; this note grants no DevelopmentRun, dispatch, certification, or production authority.
+
+A local Claude subscription CLI call, if separately authorized under the existing user-owned Runner contract, is one model invocation and does not itself create, approve, verify, or finalize a `DevelopmentRun` or delegated external-agent task. Existing Runner approval/certification, source-SHA binding, durable job control, and receipt requirements remain in force. Do not add a Hermes-specific dispatch path or infer completion from a successful CLI response. See the conditional Spec 231 §102 proposal.

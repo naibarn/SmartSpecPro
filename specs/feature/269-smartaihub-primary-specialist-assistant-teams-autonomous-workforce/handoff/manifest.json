@@ -34,7 +34,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
-    "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
+    "expected_spec_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f"
   },
   "continuation": {
     "next_action": null,
@@ -117,13 +117,13 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 10,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-    "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+    "digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-07T04:14:02.325224Z",
+      "last_evidence_at": "2026-10-09T02:04:06.945444Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-07T11:19:51+07:00",
       "spec_last_changed_at": "2026-10-07T11:19:51+07:00"
@@ -217,20 +217,76 @@
     "reconciliation_confidence": {
       "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
       "value": "HIGH"
+    },
+    "requirements": {
+      "REQ-60D90DF6D4B9": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L18186"
+        ],
+        "authority_source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L18186",
+        "blocker": {
+          "class": "ENTITLEMENT",
+          "id": "CLAUDE_SUBSCRIPTION_ENTITLEMENT_AND_RUNTIME",
+          "next_action": "Obtain explicit commercial/account entitlement and complete existing Spec 269 runtime-context acceptance before enabling a user-facing route.",
+          "root_cause": "Commercial/account entitlement is UNKNOWN and Spec 269 runtime context acceptance remains open."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain explicit commercial/account entitlement and complete existing Spec 269 runtime-context acceptance before enabling a user-facing route.",
+        "requirement_digest": "1bc88bf29da08cdcc4770532828af3c2c0f5cb976737bd7933895c503d2e38f1",
+        "requirement_id": "REQ-60D90DF6D4B9",
+        "requirement_text": "This additive design does not close Spec 269's existing runtime context or acceptance blocker. For a future, explicitly enabled local CLI provider, the Primary Assistant may present the user's paired Runner as an eligible model source only when device availability, account login status, policy, privacy, and commercial entitlement checks permit it. The user-facing result MUST distinguish local subscription CLI from official API and delegated agent modes.",
+        "source_spec_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      },
+      "REQ-E4ED2E0E2B85": {
+        "applicability": "CONDITIONAL",
+        "authority_refs": [
+          "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L18188"
+        ],
+        "authority_source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L18188",
+        "blocker": {
+          "class": "ENTITLEMENT",
+          "id": "CLAUDE_SUBSCRIPTION_ENTITLEMENT_AND_RUNTIME",
+          "next_action": "Obtain explicit commercial/account entitlement and complete existing Spec 269 runtime-context acceptance before enabling a user-facing route.",
+          "root_cause": "Commercial/account entitlement is UNKNOWN and Spec 269 runtime context acceptance remains open."
+        },
+        "current_relevance": "CONDITIONAL_DESIGN",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "NOT_STARTED",
+        "next_action": "Obtain explicit commercial/account entitlement and complete existing Spec 269 runtime-context acceptance before enabling a user-facing route.",
+        "requirement_digest": "8ba0be704aa36df88ace689d33296816d933b87bcb5bec94b3c1f5857923ec96",
+        "requirement_id": "REQ-E4ED2E0E2B85",
+        "requirement_text": "If the Runner is offline, the local CLI is unauthorized, or its allowance is exhausted, the Assistant MUST report that state without claiming remaining quota. It MUST NOT silently switch to a paid API or another provider; fallback requires explicit route authorization and user-visible cost disclosure. Provider selection does not grant the CLI native tool, memory, approval, project, or budget authority. Those remain SmartAIHub-owned, under existing assistant/Runner/job contracts. Detailed behavior is proposed conditionally in Spec 231 §102.",
+        "source_spec_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "After the authority and entitlement gates pass, execute the Spec 231 §102 acceptance for the exact upstream pin and candidate source SHA; bind receipts and results to the integrated SHA."
+      }
     }
   },
   "reconciliation": {
-    "confidence": "HIGH",
+    "confidence": "LOW",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
       "continuation_assessment.decision"
     ],
-    "mode": "EVIDENCE_RECONCILED",
-    "reconciled_at": "2026-10-07T04:14:02.325224Z",
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-09T02:04:06.945444Z",
     "sources": [
       {
-        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       },
@@ -242,8 +298,13 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 8,
         "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-        "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "source_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
         "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
+      },
+      {
+        "digest": "befd7a5e9cf07a0ec1f80e5e1107e67f323542b80a6a40e0e0354c6da9cd96c0",
+        "kind": "TASK_EVIDENCE",
+        "path": "orchestra/tasks/hermes-claude-subscription-directsdk-20261009/upstream-source-review.md"
       }
     ],
     "stale_fields": [
@@ -261,7 +322,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "UNASSESSED",
+    "conflict_duplication_risk": "REVIEW_REQUIRED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -273,14 +334,14 @@
         "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER",
         "line": 8,
         "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-        "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "source_digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
         "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "digest": "d15b7dba2c92ef1d938fa27cb8820ddb0f727a2982cc6e60df91d7635651a30f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       }
@@ -288,7 +349,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "UNASSESSED"
+    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -296,11 +357,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1677,
-    "unresolved": 1677
+    "total": 1679,
+    "unresolved": 1679
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:25:29.789920Z",
+  "updated_at": "2026-10-09T02:05:02.653654Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
