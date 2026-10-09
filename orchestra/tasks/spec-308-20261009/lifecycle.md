@@ -1,10 +1,18 @@
 # SPEC-308 Lifecycle
 
+## Latest verified checkpoint — wave 7 (2026-10-10)
+- Canonical `origin/main`: `6dcd7934332db7929904f8da642915751a6bb79`.
+- PR #399 head `7325a117b2f342ef54af82fdb9b52235ae81adbe`: SPEC-308 focused/browser workflow `37986151623` passed 8 files / 144 tests and 18/18 Chromium simulations with mocked APIs on UI-only Vite. This is not live authenticated acceptance.
+- PR #399 MCP workflow `37986151602` failed baseline test fixtures (missing DB-backed session state and retired-service test imports) and live smoke due missing approved endpoint/token. PR #403 owns the fixture repair but remains based on older canonical and its exact audit/live gates are not cleared. PR #405 compatibility regressions passed 18 files / 238 tests; full audit remains failed for one Moderate `sprintf-js@1.1.3` pending owner disposition.
+- All 66 requirement rows remain OPEN. No row can close from PR-head mock evidence; integration SHA is still null. Production flags remain OFF.
+- Earliest resume stage: reconcile PR #405 authority/mandatory audit, then refresh #403, then re-evaluate #399 on the integrated candidate. Independently retain the approved non-production runtime/user and Feature-049 tenant/revision contract as external prerequisites for live acceptance.
+- Evidence: `evidence/implementation-gap-update-20261010-wave7.md`, `evidence/pr-ci-37986151623.json`, Actions run `37986151623`, MCP run `37986151602`, #403 run `37967358012`, and #405 run `37967353996`.
+
 Goal: deliver SPEC-308 R1.2 with existing notification/chat/task/feedback authority preserved.
 Scope/risk: large/high.
-Current stage: IMPLEMENT
-Resume from: IMPLEMENT
-Stop reason: implementation checkpoint da4d7d8214ffa0e144ccf89988e503663956a9f0 recorded; one consolidated exact-head verification pending
+Current stage: VERIFY
+Resume from: VERIFY
+Stop reason: test-fixture follow-up f0fa060c55779beb6d55c7baeba727d9dd3a517c recorded; focused unit and mocked browser workflow 37984601979 is running on the exact head
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
@@ -19,10 +27,12 @@ Stage ledger:
     status: COMPLETE
   - stage: IMPLEMENT
     status: IN_PROGRESS
-    exit_evidence: source checkpoint da4d7d8214ffa0e144ccf89988e503663956a9f0; see evidence/implementation-gap-update-20261010-wave3.md
-    next_action: publish the frozen implementation checkpoint to PR #399 and run one consolidated exact-head CI round
+    exit_evidence: source checkpoint f0fa060c55779beb6d55c7baeba727d9dd3a517c; Bell responsive/accessibility hardening, local mascot fallback, and focused test fixture repair committed
+    next_action: inspect run 37984601979 focused tests and mocked browser artifacts, then repair only proven candidate failures
   - stage: VERIFY
-    status: PENDING
+    status: IN_PROGRESS
+    entry_evidence: PR #399 exact source candidate f0fa060c55779beb6d55c7baeba727d9dd3a517c; workflow run 37984601979
+    next_action: complete focused units and browser simulation, inspect artifacts and exact-SHA test summary
   - stage: DEBUG_FIX
     status: PENDING
   - stage: REVIEW
@@ -135,3 +145,66 @@ Completion invariants:
     waiting_predicate: consolidated exact-head browser run has an artifact for Thai dialog and feedback assertions
     reactivation_predicate: browser workflow completes on the candidate SHA
     progress_delta: translation keys and Thai dialog/form assertions added
+  - gap_id: GAP-006
+    discovered_at_stage: IMPLEMENT
+    earliest_affected_stage: VERIFY
+    classification: MUST_FIX
+    severity: MEDIUM
+    condition: Chat, Task Control and Feedback controls used tab roles without complete tab-panel relationships or keyboard arrow/Home/End focus navigation
+    evidence: source review of FeedbackButton.tsx before checkpoint 2d554f2097d230d957cbfbacfcd822bdb62b9568
+    owner: conductor
+    action: verify manual-activation keyboard navigation, tab-panel naming, focus behavior, and no Chat request on focus in the focused FeedbackButton suite
+    attempts: 0/3
+    stale_gates: [focused FeedbackButton unit suite, browser dialog flow]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: source and test changes await the current exact-head CI run
+    root_cause: dialog tabs had selected state but no full keyboard-operable ARIA tab pattern
+    decision_class: FIX_NOW
+    attempted_strategies: [manual activation, arrow/Home/End focus without implicit conversation creation]
+    prohibited_retries: [auto-activate Chat on arrow focus]
+    waiting_predicate: focused FeedbackButton and Bell accessibility suites complete on eee0fa4cc389590d378307fff3af5a15f74c42e0
+    reactivation_predicate: workflow run 37984108309 completes
+    progress_delta: source now exposes roving selected tab and associated tabpanel IDs; a unit regression asserts focus navigation causes no Chat conversation request
+  - gap_id: GAP-007
+    discovered_at_stage: VERIFY
+    earliest_affected_stage: DEBUG_FIX
+    classification: TEST_FIXTURE_AND_ACCESSIBILITY
+    severity: HIGH
+    condition: focused run 37984108309 found stale EN translation mocks/aria selectors and jsdom-incompatible dock style assertions after the earlier mutation/settings/Bell issues were corrected
+    evidence: exact log from run 37984108309 on eee0fa4cc389590d378307fff3af5a15f74c42e0; corrections in f0fa060c55779beb6d55c7baeba727d9dd3a517c
+    owner: conductor
+    action: confirm the corrected focused suites pass on run 37984601979 before browser stage proceeds
+    attempts: 2/5
+    stale_gates: [Bell English aria fixture, authenticated Feedback translations, safe-area dock style]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: latest focused run has not completed exact-head CI
+    root_cause: test mocks returned raw i18n keys, Bell dock tests expected numeric inline offsets, and the prior source used jsdom-unsupported max() values
+    decision_class: FIX_NOW
+    attempted_strategies: [add reset to the tRPC mutation mock, query radio by accessible name and preload valid scoped settings, derive Bell status from actual data, map EN strings in focused mocks, preserve numeric dock offsets and safe-area padding]
+    prohibited_retries: [weaken assertions or claim the skipped browser stage passed]
+    waiting_predicate: focused unit step completes on f0fa060c55779beb6d55c7baeba727d9dd3a517c
+    reactivation_predicate: workflow run 37984601979 completes
+    progress_delta: prior test causes corrected; localized Bell truthful state and no-history badge suppression remain in source
+  - gap_id: GAP-008
+    discovered_at_stage: IMPLEMENT
+    earliest_affected_stage: VERIFY
+    classification: RESPONSIVE_ACCESSIBILITY
+    severity: HIGH
+    condition: Notification popover could overflow the viewport and its programmatic open/close flow did not manage focus
+    evidence: source review of GlobalAlerts.tsx and new narrow-viewport/keyboard regression in spec-308-dual-surface.spec.ts
+    owner: conductor
+    action: verify 320px visual bounds, viewport resize/keyboard positioning, and focus return in run 37984601979
+    attempts: 0/3
+    stale_gates: [narrow viewport, visual viewport, Escape focus return]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: CSS/visual viewport placement has not been observed in the browser runner
+    root_cause: popover was fixed to the Bell's right edge with static dimensions and did not have a focus lifecycle
+    decision_class: FIX_NOW
+    attempted_strategies: [clamp using visualViewport geometry, safe-area offsets, resize/scroll recalculation, focus dialog on open and Bell on Escape/close]
+    prohibited_retries: [remove viewport bounds assertion]
+    waiting_predicate: exact-head browser simulation completes and includes Bell popover bounds/focus assertions
+    reactivation_predicate: workflow run 37984601979 completes
+    progress_delta: responsive popover positioning, localized names, and keyboard focus lifecycle implemented

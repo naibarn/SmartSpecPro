@@ -3,23 +3,25 @@
 Loop policy:
   orchestra_id: fable_style_coding_orchestra
   purpose: coding webapp with an agent loop
-  current_stage: IMPLEMENTATION
-  resume_from: IMPLEMENTATION
-  iteration: 14/14
+  continuation_cycle: implementation-wave-5-20261010
+  current_stage: VERIFY
+  resume_from: VERIFY
+  iteration: 5/12
   tool_call_batches: unknown/30
-  estimated_cost_usd: unknown <= 0.50
-  dispatch_waves: 2/6
+  estimated_cost_usd: unknown (not measured; soft ceiling 0.50)
+  dispatch_waves: 1/6
   active_subagents: 0/4
   parallel_writers: 0/2
+  parallel_writers_peak: 3/2 (policy overrun recorded; no further writer fan-out)
   required_subagent_wait: 0/10 minutes
   background_subagent_wait: <10 minutes
-  repair_rounds: 0/5
-  stop_conditions: implementation_checkpoint_recorded
-  stop_reason: partial_runtime_gate
+  repair_rounds: 2/5
+  stop_conditions: lifecycle_converged, tests_passed, no_open_blockers
+  stop_reason: focused_fixture_and_dock_assertions_repaired_on_f0fa060_and_exact_head_ci_running
 
 ## Baseline
-- Configured canonical before refresh: `origin/main` `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`; latest fetched `origin/main` is `c7a4fbd1ff09214b462e8660b2626049d87f01c7`.
-- Task worktree: `/home/dev/worktrees/spec-308-dual-surface-20261009`, branch `codex/spec-308-dual-surface-20261009`.
+- Latest refresh: `origin/main` `6dcd7934332db7929904f8da642915751a6bb79`; PR #399 head `f0fa060c55779beb6d55c7baeba727d9dd3a517c`; PR #403 `74a482e8fe38a131bdbe41bfee0e53ad90347e4c`; PR #405 `868a5600ff770be91885666b7f584835e03fc690`.
+- Active implementation worktree: `/home/dev/worktrees/spec308-browser-ci-20261010`, branch `codex/spec308-browser-ci-20261010`; PR #399 was advanced through a normal fast-forward push to its existing branch. The older `/home/dev/worktrees/spec-308-dual-surface-20261009` is clean but stale and was not modified.
 - Canonical workspace user-uploaded untracked files preserved in `/home/dev/projects/SmartSpecPro`; all implementation occurs in task worktree.
 - WP0 scout: `/root/wp0_source_audit`, read-only, returned; no files changed.
 - WP0 import checkpoint is `e6a7243fa871f1999f1e6f6e835d32d1df81135f`; implementation source checkpoint is `a430a747cf4991cbb7fbbdf5351dad984f29231b`; latest branch merge tip is `5ff91647b53d040ea93c59e90e208d27b645b568`.
@@ -35,7 +37,7 @@ Loop policy:
 | WP0 | conductor | canonical spec/handoff and source audit | CHECKPOINTED_PARTIAL | importer commit and handoff generated |
 | WP1 | subagent A | mascot renderer/tests only | COMPLETE | five original variants + 5 focused tests |
 | WP2 | subagent B | pure attention reducer/tests only | COMPLETE | trust-gated reducer + 7 fake-time tests |
-| WP3–WP7 | conductor | bell, launcher, settings, coordinator, responsive, QA | PARTIAL | focused gates pass; authenticated runtime evidence is open |
+| WP3–WP7 | conductor | bell, launcher, settings, coordinator, responsive, QA | PARTIAL | source implementation advanced; focused exact-head CI is pending; authenticated runtime remains blocked |
 
 ## Dispatch batch 1
 - Required: `wp0_source_audit` (read-only scout), returned at 2026-10-09 UTC.
@@ -143,3 +145,36 @@ Loop policy:
 - Static locale parity/key coverage and `git diff --check` pass. No tests/build/typecheck run; one consolidated exact-head verification is queued.
 - Requirement rows AC-308-026 and AC-308-035 are individually mapped to PARTIAL implementation with verification pending; no row is PASS. Other ledger rows remain OPEN/UNVERIFIED.
 - Next: update generated canonical handoff, push this checkpoint to PR #399, and review the exact-SHA consolidated CI.
+
+## Implementation continuation — 2026-10-10 (wave 4)
+- Reconciled PR heads and `origin/main` before edits: canonical `6dcd7934332db7929904f8da642915751a6bb79`; PR #399 current candidate `583f65404dddc9b722d9abc4b63b41e10c44c728`; PR #403 `74a482e8fe38a131bdbe41bfee0e53ad90347e4c`; PR #405 `868a5600ff770be91885666b7f584835e03fc690`.
+- Parallel implementation packets returned for Bell, Settings, and mascot paths. The dispatch briefly exceeded the recorded two-writer cap (three scoped writers); this is recorded and no further writer fan-out is planned in this cycle. All agents returned and were closed without committing.
+- Integrated source checkpoint `2d554f2097d230d957cbfbacfcd822bdb62b9568`: Bell Recent summary now uses the existing bounded polling rows; unverified SSE remains silent; Settings validates preference patches and waits for identity hydration; invalid mascot runtime values fall back to the chat/32px/calm renderer; Chat/Task Control/Feedback tabs now have tab-panel relationships and manual keyboard navigation that does not create a conversation merely on focus.
+- Added focused SPEC-308 unit suites to `.github/workflows/spec-308-browser.yml`; corrected the Bell test path before its test step ran. Latest candidate is `583f65404dddc9b722d9abc4b63b41e10c44c728`.
+- The local focused test command did not execute because this isolated worktree has no `node_modules`; no dependency installation was attempted because shared disk capacity was low. Focused unit tests and mocked browser simulation are queued together on exact PR #399 SHA `583f65404dddc9b722d9abc4b63b41e10c44c728`, workflow run `37981327003`.
+- The concurrent PR #399 workflow `37981327020` confirms only the pre-existing PR #403 MCP fixture defects (`DATABASE_URL` dependent tests and stale retired `agencyMcpService` import) and missing live `MCP_SMOKE_URL`/`MCP_SMOKE_TOKEN`; mandatory security and live gates were not skipped. PR #403/#405 worktrees were not changed.
+- Remaining authority blockers are unchanged: approved non-production authenticated app/runtime identity, Feature-049 tenant authorization plus grouped occurrence revision authority, MCP live smoke secrets/endpoint, and Security/Runtime Owner disposition for residual `sprintf-js` Moderate.
+
+## Implementation continuation — 2026-10-10 (wave 5)
+- Added local Bell popover viewport clamping, visualViewport resize/scroll repositioning, safe-area-aware dock padding, translated truthful unread/recent/empty status, and focus management on open/Escape/close. Added local mascot error isolation and privacy-safe discoverability metric definitions without telemetry collection.
+- Source commit `eee0fa4cc389590d378307fff3af5a15f74c42e0` was tested by run `37984108309`: 120 passed / 20 failed in two of eight focused suites; browser stage skipped. Log analysis identified stale test mock translations/aria selectors plus jsdom unsupported safe-area `max()` values. Source/test follow-up `f0fa060c55779beb6d55c7baeba727d9dd3a517c` corrects these; exact-head run `37984601979` is pending.
+- Current PR #399 head is `f0fa060c55779beb6d55c7baeba727d9dd3a517c`; canonical `origin/main` remains `6dcd7934332db7929904f8da642915751a6bb79`. PR #403/#405 heads are unchanged; all their worktrees remain untouched.
+- Requirement rows AC-308-007, -021, -022, -024 and -033 now have individually recorded PARTIAL source evidence at the current source SHA. They remain OPEN and await exact-head verification; all 66 requirements remain unresolved.
+
+## Implementation continuation — 2026-10-10 (wave 6)
+- Refreshed canonical `origin/main` at `6dcd7934332db7929904f8da642915751a6bb79`; PR #399 now points to `7325a117b2f342ef54af82fdb9b52235ae81adbe`. PR #403 (`74a482e8fe38a131bdbe41bfee0e53ad90347e4c`) and PR #405 (`868a5600ff770be91885666b7f584835e03fc690`) remain unchanged; their worktrees were not modified.
+- Added viewport-aware assistant hint geometry, localized Bell detail/action and empty-list copy, a user-facing `prefers-reduced-motion` override note, and deterministic tests for all five styles, dialog tabs, balloon side effects, and draft preservation while decorative hints are suppressed.
+- Run `37985593546` on `f4f3733` failed 3/144 focused tests; `37985921704` on `c8be83e7` passed 143/144 and identified duplicated Bell empty-state content. Fixed the UI copy and assertion in `7325a117`. Current exact-SHA workflows `37986151623` (SPEC-308) and `37986151602` (MCP) are queued; no local tests/typecheck/build were run.
+- MCP run `37985921716` failed 44/120 due missing `DATABASE_URL`-backed MCP state and the obsolete retired `agencyMcpService` test import; the live smoke job also lacks authorized `MCP_SMOKE_URL`/`MCP_SMOKE_TOKEN`. These are PR #403-owned gates, not altered here.
+- The canonical requirement ledger now evaluates all 66 rows individually: 63 `PARTIAL`, 3 `UNVERIFIED`, all 66 `OPEN`; no verification evidence or PASS is recorded. Production flags remain OFF. Approved non-production runtime/test identity and Feature-049 tenant/occurrence authority remain unavailable; PR #405 residual `sprintf-js` Moderate still needs Security/Runtime Owner disposition.
+
+## Reconciliation and exact-head evidence — 2026-10-10 (wave 7)
+- Refreshed remote refs with REST/API after GitHub GraphQL rate limiting. Canonical `origin/main` is `6dcd7934332db7929904f8da642915751a6bb79`. PR #399 is open/mergeable at `7325a117b2f342ef54af82fdb9b52235ae81adbe` and based on current main. PR #403 (`74a482e8fe38a131bdbe41bfee0e53ad90347e4c`) and #405 (`868a5600ff770be91885666b7f584835e03fc690`) remain open/mergeable but based on `338adeb0605d160081a2ee995d0f639ad3850d9a`; neither was rebased or modified.
+- Exact PR #399 SPEC-308 workflow `37986151623` checked out `7325a117` and passed: 8 Vitest files / 144 tests, Chromium 18/18 (61.1s), 0 unexpected / flaky. Artifact ID `11643651233` is saved in the CI evidence note; the workflow used mocked identity/API against UI-only Vite and is not live authenticated acceptance. Screenshot files in that artifact are repository evidence files, not evidence of live runtime captures.
+- The separate PR #399 MCP workflow `37986151602` failed: 76/120 MCP tests passed and 44 failed in baseline MCP server suites due absent DB-backed session state and three stale imports of retired `agencyMcpService`; logs confirm no SPEC-308 production-source delta causes these. Its live smoke gate failed closed because `MCP_SMOKE_URL`/`MCP_SMOKE_TOKEN` are unset. `check:mcp146`, `security:mcp146`, and audit steps were skipped after the focused-test failure.
+- PR #403 run `37967358012` on its older base passed focused MCP tests, `check:mcp146`, and `security:mcp146`; its mandatory production audit failed on the old dependency set and live smoke lacked authorized endpoint/token. PR #405 run `37967353996` passed compatibility regressions (18 files / 238 tests), while the full audit correctly failed on one Moderate `sprintf-js@1.1.3` with no patched version. The old-base audit on #403 is not a verdict on the #405 candidate.
+- Sub-agent read-only reconciliation found no safe dependency/native-runtime change without Security and media/runtime owner authority. The decision remains: approved ONNX 1.30.0/WSL2 compatibility test or a documented scoped/expiring residual-risk disposition; no advisory suppression, gate reduction, or runtime change.
+- Exact run `37986151623` gives partial mocked support only to tested portions of `AC-308-002/003/004/005/006/007/008/014/015/016/017/019/021/022/023/025/026/027/035/036`. No row closes because integrated-SHA freshness and broader/live evidence remain missing. The ledger stays 63 `PARTIAL`, 3 `UNVERIFIED`, 66 `OPEN`; production flags remain OFF.
+- Primary checkout `/home/dev/projects/SmartSpecPro` remains behind canonical and contains the user's untracked SPEC-308 ZIP/extracted folder; it was not changed. Work continued only in this SPEC-308 worktree. Existing handoff documents had stale pending-run references and are being reconciled via `tools.spec_handoff`; no source behavior changed in this evidence wave.
+- A separate docs-only worktree attempt from `origin/main` failed during checkout with `No space left on device` (filesystem had 462 MB free); Git removed the partial directory, leaving no uncommitted work there. No files in the primary checkout or other task worktrees were touched. The safe evidence checkpoint will stay on the existing PR #399 branch pending required gates rather than attempting a second checkout on the full disk.
+- Next: prepare/record the external security disposition without contacting owners or changing runtime; after a valid disposition/remediation, refresh #405 and its mandatory gates, then reconcile #403 and #399 in sequence. Live MCP and SPEC-308 authenticated runtime still require approved authority.

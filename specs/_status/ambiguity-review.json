@@ -116364,17 +116364,17 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PENDING_CONSOLIDATED_ROUND",
+      "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
-      "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Run the consolidated exact-head PR #399 CI once after publishing the implementation checkpoint; then repair only failures supported by current logs.",
+      "lifecycle": "VALIDATING",
+      "next_action": "Continue evidence-backed work while awaiting authority. Resolve WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first; refresh and verify PR #405, then #403, then #399 in sequence. Do not merge, deploy, close requirements, or claim COMPLETE while mandatory gates or live acceptance remain blocked.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
         "id": "SPEC308_NONPROD_APP_RUNTIME",
-        "next_action": "Project/runtime owner provisions an isolated non-production endpoint and authorizes a test tenant/user through approved secret management.",
-        "root_cause": "No approved non-production SmartAIHub endpoint and authorized persistent test identity are available in this worktree."
+        "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent test tenant/user through approved secret management.",
+        "root_cause": "No approved non-production endpoint and authorized persistent acceptance identity are available; mocked CI is not live acceptance."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",

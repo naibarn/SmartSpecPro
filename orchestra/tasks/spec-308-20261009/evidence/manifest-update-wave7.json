@@ -1,0 +1,137 @@
+{
+  "implementation.source_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+  "implementation.checkpoint_shas": [
+    "9432a1ec4dbb4412c06d8cb49d6da426831d1ada",
+    "cfaf435a87f528ca3360a4be99405641b8059ccf",
+    "fcbda4737fa3ce899c9d7f81924917c2fb901447",
+    "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
+    "0287181e53accb9303151a2ad0d42f890a22064a",
+    "d2ad4f240e8853c717583481e6c0b95d9ba7df3f",
+    "dd6a42f82ba1452dcc7a58a7626455b31970ee4d",
+    "a5093fdcf2641939deb8afd1891cb4a9b05d8608",
+    "da4d7d8214ffa0e144ccf89988e503663956a9f0",
+    "2d554f2097d230d957cbfbacfcd822bdb62b9568",
+    "4ef64feffd275225dc6df050f01e7c8cf225b803",
+    "583f65404dddc9b722d9abc4b63b41e10c44c728",
+    "eee0fa4cc389590d378307fff3af5a15f74c42e0",
+    "f0fa060c55779beb6d55c7baeba727d9dd3a517c",
+    "f4f3733f13f06f7fe9568f1012cbd75bf6895dfd",
+    "c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503",
+    "7325a117b2f342ef54af82fdb9b52235ae81adbe"
+  ],
+  "implementation.mapping": [
+    {
+      "coverage": "PARTIAL; exact PR-head workflow 37986151623 passed 8 focused test files / 144 tests and 18/18 mocked Chromium simulations at 7325a117. Supports only the specific sub-behaviors in the wave 7 row-level audit; no live runtime acceptance and no requirement closure before integration.",
+      "scope": "Gated dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until tenant/revision proof, localized hints, responsive placement, draft-safe Chat/Feedback/Task Control, and bounded local preferences.",
+      "source_paths": [
+        "apps/web/client/src/components/GlobalAlerts.tsx",
+        "apps/web/client/src/components/assistant-mascot/AssistantMascot.tsx",
+        "apps/web/client/src/components/guardian/FeedbackButton.tsx",
+        "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+        "apps/web/client/src/lib/notificationAttention.ts",
+        "apps/web/client/src/lib/assistantMascotPreferences.ts",
+        "apps/web/client/src/index.css",
+        "apps/web/client/src/locales/en/chat.json",
+        "apps/web/client/src/locales/th/chat.json",
+        "apps/web/client/src/locales/en/settings.json",
+        "apps/web/client/src/locales/th/settings.json",
+        "apps/web/tests/e2e/spec-308-dual-surface.spec.ts",
+        ".github/workflows/spec-308-browser.yml",
+        "apps/web/client/src/components/settings/AssistantAppearancePreferences.test.tsx",
+        "apps/web/client/src/lib/notificationAttention.test.ts",
+        "apps/web/client/src/lib/assistantMascotPreferences.test.ts",
+        "apps/web/client/src/components/assistant-mascot/AssistantMascotErrorBoundary.tsx",
+        "apps/web/client/src/components/assistant-mascot/AssistantMascot.test.tsx",
+        "apps/web/client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx",
+        "apps/web/client/src/locales/en/admin.json",
+        "apps/web/client/src/locales/th/admin.json",
+        "orchestra/tasks/spec-308-20261009/evidence/discoverability-metrics.md",
+        "apps/web/client/src/components/guardian/__tests__/FeedbackButton.test.tsx"
+      ],
+      "source_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe"
+    }
+  ],
+  "verification.status": "PARTIAL",
+  "verification.sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+  "verification.freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+  "verification.evidence": [
+    "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
+    "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md",
+    "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
+    "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261009.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-continuation-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/attention-authority-fail-closed-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-399-ci-failure-379744-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426321.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426476.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172614.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172582.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971044599.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave2.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave5.md",
+    "orchestra/tasks/spec-308-20261009/evidence/discoverability-metrics.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave6.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151623.json",
+    "orchestra/tasks/spec-308-20261009/evidence/requirement-batch-update-wave7.json",
+    "GitHub Actions artifact 11643651233 (14-day retention); downloaded under orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/37986151623",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623"
+  ],
+  "verification.baseline_issues": [
+    "PR #399 MCP focused run 37986151602 fails on canonical-main baseline fixtures: PostgreSQL-backed session state is not configured and tests retain retired agencyMcpService imports; PR #403 owns the fixture repair.",
+    "PR #399 and #403 live MCP smoke fail closed because authorized MCP_SMOKE_URL and MCP_SMOKE_TOKEN are unavailable.",
+    "PR #405 compatibility tests pass but mandatory full production audit remains failed on Moderate sprintf-js@1.1.3 pending authorized remediation/disposition."
+  ],
+  "lifecycle.current_state": "VALIDATING",
+  "lifecycle.state_evidence": [
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave6.md",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921704",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921716",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151623.json",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151602"
+  ],
+  "blockers": [
+    {
+      "class": "AUTHENTICATED_RUNTIME",
+      "id": "SPEC308_NONPROD_APP_RUNTIME",
+      "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent test tenant/user through approved secret management.",
+      "root_cause": "No approved non-production endpoint and authorized persistent acceptance identity are available; mocked CI is not live acceptance."
+    },
+    {
+      "class": "LIVE_CONTRACT_AUTHORITY",
+      "id": "SPEC308_MCP_LIVE_CI",
+      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN through approved GitHub secret management, then reruns the required live gate.",
+      "root_cause": "Both #399 and #403 live smoke gates fail closed because the authorized endpoint/token are absent."
+    },
+    {
+      "class": "BASELINE_CI_FAILURE",
+      "id": "MCP_CONTRACT_TEST_FIXTURES",
+      "next_action": "After security baseline clears, reconcile PR #403 to current main, verify its fixture repair on the refreshed dependency candidate, and integrate only through required gates.",
+      "root_cause": "PR #399 exact-head MCP tests still fail because canonical tests rely on unavailable PostgreSQL session state and import a retired service; #403 focused tests passed only on its stale base."
+    },
+    {
+      "class": "SECURITY_GATE_BASELINE",
+      "id": "SPEC308_PRODUCTION_DEPENDENCY_AUDIT",
+      "next_action": "Security and media/runtime owners must authorize a compatible ONNX/WSL2 remediation or a scoped expiring disposition under policy. Keep the full audit failure visible; do not suppress it.",
+      "root_cause": "PR #405 mandatory production audit retains Moderate sprintf-js@1.1.3 through hyperframes > onnxruntime-node > global-agent > roarr; no patched version exists and native runtime changes need approval."
+    },
+    {
+      "class": "FEATURE_AUTHORITY",
+      "id": "SPEC308_FEATURE049_NOTIFICATION_TENANT_REVISION",
+      "next_action": "Feature-049 owner confirms tenant-scoped source authorization and monotonic grouped-occurrence revision through an existing authorized query/stream; until then keep live cosmetic attention static.",
+      "root_cause": "Existing authenticated notification query/SSE are user-wide and do not expose proof for active-tenant grouped notification arrivals."
+    }
+  ],
+  "continuation.next_action": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION is first: obtain owner-authorized disposition or compatible remediation, then refresh #405 and rerun mandatory gates. After it clears, reconcile #403, then re-evaluate #399 on the exact integrated SHA. Continue independent source/evidence reconciliation while external approvals are pending.",
+  "continuation.next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
+  "continuation.reactivation_predicate": "Security and media/runtime owners record an approved remediation path or policy-valid disposition through the authorized channel; resume by refreshing #405 against current main, then run full audit and compatibility gates on the exact candidate.",
+  "continuation.resume_point": "PR #399 head 7325a117 passed exact-head SPEC-308 focused/browser CI 37986151623 (8 files/144 tests and 18/18 mocked Chromium simulations). All 66 requirements remain OPEN: 63 PARTIAL, 3 UNVERIFIED; PR-head mocks are not integrated/live evidence. PR #399 MCP run 37986151602 fails on baseline DB/session fixtures and retired test imports; #403 is on stale base. PR #405 compatibility tests pass while mandatory audit retains one Moderate sprintf-js advisory. Production flags remain OFF.",
+  "continuation.waiting_predicate": "Security/media-runtime owners provide an approved decision for sprintf-js remediation or documented scoped/expiring disposition; live MCP and SPEC-308 acceptance continue to require approved endpoint/token and non-production test identity/Feature-049 authorization separately.",
+  "continuation_assessment.next_action": "Continue evidence-backed work while awaiting authority. Resolve WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first; refresh and verify PR #405, then #403, then #399 in sequence. Do not merge, deploy, close requirements, or claim COMPLETE while mandatory gates or live acceptance remain blocked.",
+  "continuation_assessment.rationale": "Exact PR-head mocked SPEC-308 CI now passes and its artifact is recorded. This establishes bounded UI simulation only. Security audit, MCP baseline/live gates, Feature-049 authority, approved runtime identity, and integration-SHA freshness are still unresolved."
+}

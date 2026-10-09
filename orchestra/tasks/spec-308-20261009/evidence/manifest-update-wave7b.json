@@ -1,0 +1,64 @@
+{
+  "verification.evidence": [
+    "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
+    "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md",
+    "orchestra/tasks/spec-308-20261009/evidence/isolated-browser-simulation.md",
+    "orchestra/tasks/spec-308-20261009/evidence/requirement-map.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261009.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-continuation-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/attention-authority-fail-closed-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-399-ci-failure-379744-20261010.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426321.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426476.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172614.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37975172582.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971044599.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave2.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave5.md",
+    "orchestra/tasks/spec-308-20261009/evidence/discoverability-metrics.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave6.md",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151623.json",
+    "orchestra/tasks/spec-308-20261009/evidence/requirement-batch-update-wave7.json",
+    "GitHub Actions artifact 11643651233 (14-day retention); downloaded under orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/37986151623",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151602.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967358012.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967353996.json",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37967358012",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37967353996",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151602"
+  ],
+  "lifecycle.state_evidence": [
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave6.md",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921704",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921716",
+    "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151623.json",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151602",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151602.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967358012.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967353996.json",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37967358012",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37967353996"
+  ],
+  "continuation_assessment.evidence": [
+    {
+      "kind": "USER_DIRECTIVE",
+      "path": "orchestra/tasks/spec-308-20261009/plan.md"
+    },
+    {
+      "kind": "QA_AUDIT",
+      "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
+    },
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151602.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967358012.json",
+    "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967353996.json",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37967358012",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37967353996",
+    "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151602"
+  ]
+}
