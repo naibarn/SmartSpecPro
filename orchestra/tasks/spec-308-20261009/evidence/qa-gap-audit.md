@@ -43,7 +43,7 @@ These are separate requirement lenses. They establish focused source/test eviden
 
 ## Continuation QA — isolated browser, 2026-10-09
 
-Exact source tree tested: the SPEC-308 candidate tree committed by the task checkpoint. Nine Chromium tests passed; the test fixture and screenshots are bound in `evidence/isolated-browser-simulation.md`.
+Exact source SHA `02fe8ea64145b1222f68e87801ce32efa2ece5aa`: the full 10-test Chromium spec passed after commit.
 
 | Dimension | Result | Evidence / boundary |
 |---|---|---|
@@ -57,13 +57,14 @@ Exact source tree tested: the SPEC-308 candidate tree committed by the task chec
 | 8. Reduced-motion animation behavior | PASS | Under `prefers-reduced-motion: reduce`, computed greeting animation is `none` / `0s`; launcher remains available. |
 | 9. Settings preference scope | PASS | Settings simulation saves the selected style under user+tenant key; switching mocked tenant does not reuse it. Server-side isolation remains unverified. |
 | 10. Balloon CTA routing | PASS | Demo reminder CTA opens the existing Bell and deterministic notification row. No live read or API call is established. |
-| 11. 320px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
-| 12. 360px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
-| 13. 390px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
-| 14. 767px breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
-| 15. 768px tablet breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
-| 16. 1440px desktop geometry | PASS | No document horizontal overflow; screenshot captured. |
+| 11. Bell arrival animation | PASS | Deterministic mock SSE event adds `assistant-bell-ring`; existing Bell click opens its notification row. |
+| 12. 320px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 13. 360px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 14. 390px mobile geometry | PASS | No document horizontal overflow; full-page screenshot captured. |
+| 15. 767px breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
+| 16. 768px tablet breakpoint edge | PASS | No document horizontal overflow; screenshot captured. |
+| 17. 1440px desktop geometry | PASS | No document horizontal overflow; screenshot captured. |
 
-Command: isolated Playwright Chromium spec; result **9 tests passed**. Exact command, synthetic identity, screenshot paths, and evidence limits are in `evidence/isolated-browser-simulation.md`.
+Command: isolated Playwright Chromium spec; result **10 tests passed**. Exact command, synthetic identity, screenshot paths, and evidence limits are in `evidence/isolated-browser-simulation.md`.
 
 These dimensions are simulated UI checks, not live authenticated acceptance. Settings storage and Bell CTA routing were exercised only with deterministic mocks; server tenant authorization, Bell live read behavior, authenticated runtime, and settings server persistence remain open. No ledger row is closed by this continuation because the requirements require additional live, integrated, accessibility, security, or performance evidence.
