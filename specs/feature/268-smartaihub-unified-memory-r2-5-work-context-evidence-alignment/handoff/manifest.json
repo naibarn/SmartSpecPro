@@ -33,8 +33,8 @@
     {
       "class": "IMPLEMENTATION",
       "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
-      "next_action": "Bind legacy team-room project identity to the canonical project authority and prove source-level memory provenance before re-enabling persistent team-room memory.",
-      "root_cause": "The existing team-room project field is an integer and entity-memory records have no project filter/provenance; this checkpoint therefore fails closed by disabling persistent team-room memory."
+      "next_action": "Establish an authorized durable team-room-to-canonical-project binding and source-level memory provenance before enabling project-scoped team-room memory.",
+      "root_cause": "The room project field is a legacy integer and SPEC-302 currently provides an advisory resolver without an authenticated durable domain binding or receipt. Chat now requests only user-global entity memory; team-room persistent memory remains disabled."
     },
     {
       "class": "NOT_STARTED",
@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
+    "expected_canonical_sha": "343a885ec61b3e52ef785b644228c71115ec2262",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": "Implement a canonical room-to-project binding and provenance-aware team memory retrieval, or keep the existing fail-closed memory suppression if the authoritative identity path is unavailable.",
-    "next_ready_workunit": "SPEC268_PROJECT_IDENTITY_AND_MEMORY_PROVENANCE",
+    "next_action": "Define and implement the authorized durable domain binding for team rooms using the existing SPEC-302 ownership and migration contract; keep project-scoped memory denied until binding, ACL, provenance, and isolation tests pass.",
+    "next_ready_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
     "reactivation_predicate": null,
-    "resume_point": "Inspect existing SPEC-302 canonical project identity and memory provenance contracts; do not change the reserved SPEC-269 promptComposer paths.",
+    "resume_point": "Inspect SPEC-302's current durable identity/binding authority and migration ownership; do not use advisory suggestions or modify the reserved SPEC-269 promptComposer paths.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -64,10 +64,10 @@
         "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
       }
     ],
-    "next_action": "Continue with canonical room-to-project identity and source-level memory provenance; retain team-room memory suppression until focused isolation tests pass.",
+    "next_action": "Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.",
     "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
     "residual_requirements": [
-      "Canonical room-to-project identity and resolution-receipt integration",
+      "Authorized durable canonical project binding for team rooms",
       "Source-level tenant/project provenance for persistent team-room memory",
       "Cross-App/Project isolation acceptance",
       "Legacy Chat memory migration evidence",
@@ -147,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -166,7 +166,9 @@
   "implementation": {
     "checkpoint_shas": [
       "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
-      "3c1671e2cba1984ebe649f1d975e283949f72185"
+      "3c1671e2cba1984ebe649f1d975e283949f72185",
+      "cd39cbd48007f1d436b20873d1e0bfa5e616a0b4",
+      "343a885ec61b3e52ef785b644228c71115ec2262"
     ],
     "mapping": [],
     "source_paths": [
@@ -184,9 +186,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
+    "canonical_sha": "343a885ec61b3e52ef785b644228c71115ec2262",
     "integrated": true,
-    "integrated_at": "2026-10-09T23:41:59Z"
+    "integrated_at": "2026-10-09T23:51:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -230,10 +232,10 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
         }
       ],
-      "next_action": "Continue with canonical room-to-project identity and source-level memory provenance; retain team-room memory suppression until focused isolation tests pass.",
+      "next_action": "Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.",
       "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
       "residual_requirements": [
-        "Canonical room-to-project identity and resolution-receipt integration",
+        "Authorized durable canonical project binding for team rooms",
         "Source-level tenant/project provenance for persistent team-room memory",
         "Cross-App/Project isolation acceptance",
         "Legacy Chat memory migration evidence",
@@ -365,17 +367,17 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T23:45:02.537450Z",
+  "updated_at": "2026-10-09T23:52:46.780128Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/evidence/provider-boundary-context-3c1671e.json"
+      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/evidence/provider-boundary-context-343a885.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "3c1671e2cba1984ebe649f1d975e283949f72185",
+    "sha": "343a885ec61b3e52ef785b644228c71115ec2262",
     "status": "PASS",
     "task_regressions": []
   }
