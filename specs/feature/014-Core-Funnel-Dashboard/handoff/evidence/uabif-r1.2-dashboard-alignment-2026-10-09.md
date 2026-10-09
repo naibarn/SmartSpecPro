@@ -5,6 +5,8 @@
 **Source:** uploaded `SPEC-299-SmartAIHub-Unified-Analytics-BI-Fabric-R1.2-Dashboard-Alignment.md`, SHA-256 `62a3f65c095cb01e3da34fa8bc0487531d5549e0dda36a95cfe8d900da92288e`
 
 **Workspace:** `/home/dev/worktrees/uabif-dashboard-align-20261009` (`TASK_WORKTREE`)
+
+**Reconciled verification candidate:** `466e5332285814de8b289e19ea5ae8c90c3e3eed` (after merging latest `origin/main` `05ffe1c9640fda1e3324514daaa456cb3f0d020a`)
 **Scope:** owner reconciliation and a bounded freshness-transparency improvement to Feature 014; this evidence does not claim general BI runtime completion.
 
 ## Canonical identity and implementation baseline
