@@ -1121,5 +1121,19 @@
   "contentProtection.loading": "กำลังโหลดค่าความต้องการคุ้มครองของคุณ...",
   "contentProtection.error": "โหลดค่าความต้องการคุ้มครองไม่ได้ ลองใหม่หรือเปิด workspace Content Protection",
   "contentProtection.saved": "บันทึกค่าความต้องการลายน้ำดิจิทัลแล้ว",
-  "contentProtection.openWorkspace": "เปิด workspace Content Protection"
+  "contentProtection.openWorkspace": "เปิด workspace Content Protection",
+  "assistantAppearance.title": "รูปลักษณ์ผู้ช่วย",
+  "assistantAppearance.description": "เลือกรูปลักษณ์ปุ่ม Chat และ Feedback โดยไม่เปลี่ยนการตั้งค่าการส่งการแจ้งเตือน",
+  "assistantAppearance.enabled": "แสดงมาสคอตผู้ช่วย",
+  "assistantAppearance.style": "รูปแบบมาสคอต",
+  "assistantAppearance.reminders": "แสดงข้อความเตือนการแจ้งเตือนแบบทั่วไป",
+  "assistantAppearance.label": "แสดงป้าย Chat และ Feedback",
+  "assistantAppearance.motion": "การเคลื่อนไหวของมาสคอต",
+  "assistantAppearance.off": "ปิด",
+  "assistantAppearance.subtle": "เล็กน้อย",
+  "assistantAppearance.normal": "ปกติ",
+  "assistantAppearance.demo": "ทดลองบอลลูนเตือน",
+  "assistantAppearance.reminderCopy": "มีแจ้งเตือนใหม่ อย่าลืมเข้าดู",
+  "assistantAppearance.viewNotifications": "ดูแจ้งเตือน",
+  "assistantAppearance.dismissReminder": "ปิดข้อความเตือน"
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useState, useRef, useCallback, useReducer, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -44,6 +44,14 @@ import {
   type ReportErrorEventDetail,
 } from "@/lib/systemErrorMonitor";
 import { EMERGENCY_MAP_CHAT_EVENT, parseEmergencyMapChatRequest } from "@/components/emergency/mapChatHandoff";
+import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
+import { ASSISTANT_MASCOT_GLOBAL_ALLOW, isAssistantMascotEnabled } from "@/lib/assistantMascotFeatureGate";
+import { AssistantMascot } from "@/components/assistant-mascot/AssistantMascot";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
+import { loadAssistantMascotPreferences, assistantMascotStorageKey, DEFAULT_ASSISTANT_MASCOT_PREFERENCES } from "@/lib/assistantMascotPreferences";
+import { ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, ASSISTANT_NOTIFICATION_BASELINE_EVENT, ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT, OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, SHOW_ASSISTANT_MASCOT_DEMO_EVENT, type AssistantNotificationProjection } from "@/lib/assistantMascotEvents";
+import { createInitialAttentionState, reduceNotificationAttention } from "@/lib/notificationAttention";
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -150,9 +158,28 @@ function getFileIcon(name: string) {
 }
 
 export function FeedbackButton() {
+  return ASSISTANT_MASCOT_GLOBAL_ALLOW
+    ? <FeedbackButtonFeatureGate />
+    : <FeedbackButtonContent mascotEnabled={false} />;
+}
+
+function FeedbackButtonFeatureGate() {
+  const flag = useTenantFeatureFlagStatus("livingMascotDualSurface");
+  const enabled = isAssistantMascotEnabled({
+    globalAllowed: ASSISTANT_MASCOT_GLOBAL_ALLOW,
+    tenantEnabled: flag.enabled,
+    tenantResolved: flag.isResolved,
+    tenantError: flag.isError,
+  });
+  return <FeedbackButtonContent mascotEnabled={enabled} />;
+}
+
+function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const [, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const mascotIdentity = user?.id && user.currentTenantId ? assistantMascotStorageKey(user.id, user.currentTenantId) : null;
   const { t } = useScopedTranslation("chat");
+  const { t: settingsT } = useScopedTranslation("settings");
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<HelpPanel>("chat");
@@ -175,6 +202,13 @@ export function FeedbackButton() {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1024 : window.innerWidth,
   );
+  const [mascotPreferences, setMascotPreferences] = useState(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+  const [showMascotDemo, setShowMascotDemo] = useState(false);
+  const [attention, dispatchAttention] = useReducer(
+    reduceNotificationAttention,
+    undefined,
+    () => createInitialAttentionState({ scopeGeneration: 1, enabled: false }),
+  );
   // Holds the ticket ID when ticket was created but file upload failed
   const [pendingUploadTicketId, setPendingUploadTicketId] = useState<number | null>(null);
   // Diagnostics bundle from a "แจ้งปัญหา" system-error-toast report, if this
@@ -188,6 +222,104 @@ export function FeedbackButton() {
   const openRef = useRef(open);
   const pasteImageCounterRef = useRef(0);
   const chatConversationPromiseRef = useRef<Promise<number> | null>(null);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotIdentity || typeof window === "undefined") {
+      setMascotPreferences(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+      return;
+    }
+    setMascotPreferences(loadAssistantMascotPreferences(window.localStorage, mascotIdentity));
+  }, [mascotEnabled, mascotIdentity]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotIdentity) return;
+    const syncPreferences = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; preferences?: typeof DEFAULT_ASSISTANT_MASCOT_PREFERENCES }>).detail;
+      if (detail?.key !== mascotIdentity || !detail.preferences) return;
+      setMascotPreferences(detail.preferences);
+    };
+    window.addEventListener(ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, syncPreferences);
+    return () => window.removeEventListener(ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, syncPreferences);
+  }, [mascotEnabled, mascotIdentity]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) {
+      setShowMascotDemo(false);
+      return;
+    }
+    const showDemo = () => setShowMascotDemo(true);
+    window.addEventListener(SHOW_ASSISTANT_MASCOT_DEMO_EVENT, showDemo);
+    return () => window.removeEventListener(SHOW_ASSISTANT_MASCOT_DEMO_EVENT, showDemo);
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders]);
+
+  useEffect(() => {
+    dispatchAttention({ type: "SET_ENABLED", enabled: mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders, now: Date.now() });
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders || !mascotIdentity) return;
+    const acceptBaseline = (event: Event) => {
+      const detail = (event as CustomEvent<AssistantNotificationProjection>).detail;
+      if (detail?.scopeKey !== mascotIdentity || !Array.isArray(detail.signals)) return;
+      dispatchAttention({ type: "BASELINE", signals: detail.signals });
+    };
+    const acceptArrival = (event: Event) => {
+      const detail = (event as CustomEvent<AssistantNotificationProjection>).detail;
+      if (detail?.scopeKey !== mascotIdentity || !Array.isArray(detail.signals)) return;
+      for (const signal of detail.signals) {
+        dispatchAttention({ type: "NEW_NOTIFICATION", signal, source: "live", now: Date.now(), viewport: window.innerWidth < 768 ? "mobile" : "desktop" });
+      }
+    };
+    window.addEventListener(ASSISTANT_NOTIFICATION_BASELINE_EVENT, acceptBaseline);
+    window.addEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, acceptArrival);
+    window.dispatchEvent(new Event(ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT));
+    return () => {
+      window.removeEventListener(ASSISTANT_NOTIFICATION_BASELINE_EVENT, acceptBaseline);
+      window.removeEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, acceptArrival);
+    };
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, mascotIdentity]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
+    const hidden = document.visibilityState === "hidden";
+    if (open || isButtonDragging || hidden) {
+      dispatchAttention({ type: "SUSPEND", now: Date.now() });
+      return;
+    }
+    dispatchAttention({ type: "SET_VISIBLE", visible: true, now: Date.now() });
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
+    const syncVisibility = () => {
+      const now = Date.now();
+      if (document.visibilityState === "hidden" || open || isButtonDragging) {
+        dispatchAttention({ type: "SUSPEND", now });
+      } else {
+        dispatchAttention({ type: "SET_VISIBLE", visible: true, now });
+      }
+    };
+    document.addEventListener("visibilitychange", syncVisibility);
+    window.addEventListener("focus", syncVisibility);
+    window.addEventListener("blur", syncVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", syncVisibility);
+      window.removeEventListener("focus", syncVisibility);
+      window.removeEventListener("blur", syncVisibility);
+    };
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging]);
+
+  useEffect(() => {
+    if (attention.deadlineAt === null) return;
+    const timer = window.setTimeout(() => dispatchAttention({ type: "ADVANCE", now: Date.now() }), Math.max(0, attention.deadlineAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [attention.deadlineAt, attention.status]);
+
+  useEffect(() => {
+    if (!showMascotDemo) return;
+    const timer = window.setTimeout(() => setShowMascotDemo(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [showMascotDemo]);
 
   const createChatConversationMutation =
     trpc.chat.createConversation.useMutation({
@@ -687,7 +819,7 @@ export function FeedbackButton() {
           size="sm"
           variant="outline"
           aria-label="Open AI Chat and Feedback"
-          className="z-50 h-11 w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:h-8 sm:w-auto sm:gap-2 sm:px-3"
+          className="z-50 h-11 w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-8 md:w-auto md:gap-2 md:px-3"
           style={{
             position: "fixed",
             touchAction: "none",
@@ -697,10 +829,26 @@ export function FeedbackButton() {
           onPointerDown={handleFeedbackPointerDown}
           onClick={handleFeedbackClick}
         >
-          <MessageSquarePlus className="h-4 w-4" />
-          <span className="hidden sm:inline">AI Chat &amp; Feedback</span>
+          {mascotEnabled && mascotPreferences.enabled
+            ? <AssistantMascot style={mascotPreferences.style} size={24} />
+            : <MessageSquarePlus className="h-4 w-4" />}
+          <span className={mascotEnabled && !mascotPreferences.chatOnboarding ? "hidden" : "hidden md:inline"}>AI Chat &amp; Feedback</span>
         </Button>
       </DialogTrigger>
+      {showMascotDemo && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
+        <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon" role="status" aria-live="polite">
+          <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
+          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => setShowMascotDemo(false)}>×</Button>
+        </HStack>
+      )}
+      {attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders && (
+        <HStack as="aside" gap={2} align="start" className="assistant-reminder-balloon" role="status" aria-live="polite" onFocus={() => dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() })} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
+          <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
+          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dispatchAttention({ type: "DISMISS", now: Date.now() }); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => dispatchAttention({ type: "DISMISS", now: Date.now() })}>×</Button>
+        </HStack>
+      )}
       <DialogContent
         className={
           activePanel === "chat" && (authLoading || !user)

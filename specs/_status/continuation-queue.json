@@ -3867,10 +3867,10 @@
       "spec_id": "307"
     },
     {
-      "authority": "UNRESOLVED",
+      "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4932,6 +4932,15 @@
       "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
       "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "spec_id": "304"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
+      "priority": "P1",
+      "rationale": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
+      "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
+      "spec_id": "308"
     },
     {
       "confidence": "HIGH",

@@ -16,6 +16,7 @@ export interface TenantFeatureFlags {
   webhookTriggers: boolean; // F06 — Inbound webhook triggers
   costDisplay: boolean; // F07 — Per-response cost display
   personaSystem: boolean; // F08 — AI persona system
+  livingMascotDualSurface: boolean; // SPEC-308 opt-in presentation only
   crossAgency: boolean; // F09 — Cross-agency communication
   channelRouter: boolean; // F10 — Channel routing rules
   automationCopilot: boolean; // F11 — Automation Copilot (LLM-driven browser tasks)
@@ -288,6 +289,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "webhookTriggers",
   "costDisplay",
   "personaSystem",
+  "livingMascotDualSurface",
   "crossAgency",
   "channelRouter",
   "automationCopilot",
@@ -550,6 +552,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   webhookTriggers: true,
   costDisplay: true,
   personaSystem: true,
+  livingMascotDualSurface: false,
   crossAgency: false,
   channelRouter: true,
   automationCopilot: true,

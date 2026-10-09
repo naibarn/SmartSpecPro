@@ -20,6 +20,16 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
 import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
+import { assistantMascotStorageKey, loadAssistantMascotPreferences } from "@/lib/assistantMascotPreferences";
+import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
+import { ASSISTANT_MASCOT_GLOBAL_ALLOW, isAssistantMascotEnabled } from "@/lib/assistantMascotFeatureGate";
+import {
+  ASSISTANT_NOTIFICATION_ARRIVAL_EVENT,
+  ASSISTANT_NOTIFICATION_BASELINE_EVENT,
+  ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT,
+  OPEN_GLOBAL_NOTIFICATION_BELL_EVENT,
+  type AssistantNotificationProjection,
+} from "@/lib/assistantMascotEvents";
 
 const BELL_STORAGE_KEY = "global-notification-bell-position";
 const BELL_MARGIN = 12;
@@ -352,7 +362,7 @@ export function GlobalAlerts() {
         claimUrgentSurface={claimUrgentSurface}
         releaseUrgentSurface={releaseUrgentSurface}
       />
-      <GlobalNotificationBell />
+      <GlobalNotificationBellGate />
     </>
   );
 }
@@ -1383,7 +1393,23 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
   );
 }
 
-function GlobalNotificationBell() {
+function GlobalNotificationBellGate() {
+  if (!ASSISTANT_MASCOT_GLOBAL_ALLOW) return <GlobalNotificationBell mascotEnabled={false} />;
+  return <GlobalNotificationBellTenantGate />;
+}
+
+function GlobalNotificationBellTenantGate() {
+  const flag = useTenantFeatureFlagStatus("livingMascotDualSurface");
+  const enabled = isAssistantMascotEnabled({
+    globalAllowed: ASSISTANT_MASCOT_GLOBAL_ALLOW,
+    tenantEnabled: flag.enabled,
+    tenantResolved: flag.isResolved,
+    tenantError: flag.isError,
+  });
+  return <GlobalNotificationBell mascotEnabled={enabled} />;
+}
+
+function GlobalNotificationBell({ mascotEnabled }: { mascotEnabled: boolean }) {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
@@ -1396,8 +1422,15 @@ function GlobalNotificationBell() {
   const suppressNextClickRef = useRef(false);
   const shownJobCompletionToastKeysRef = useRef<Set<string>>(new Set());
   const pollingBaselineReadyRef = useRef(false);
+  const assistantAttentionSeenRef = useRef<Set<string>>(new Set());
+  const assistantAttentionVersionRef = useRef(0);
+  const assistantAttentionBaselineRef = useRef(false);
+  const assistantAttentionScope = user?.id && user.currentTenantId
+    ? assistantMascotStorageKey(user.id, user.currentTenantId)
+    : null;
   const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
+  const [bellAttention, setBellAttention] = useState(false);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -1461,6 +1494,12 @@ function GlobalNotificationBell() {
   }, [bellPlacement]);
 
   useEffect(() => {
+    if (!bellAttention) return;
+    const timer = window.setTimeout(() => setBellAttention(false), 850);
+    return () => window.clearTimeout(timer);
+  }, [bellAttention]);
+
+  useEffect(() => {
     const handleResize = () => {
       const rect = bellRootRef.current?.getBoundingClientRect();
       setBellPlacement((current) => {
@@ -1507,6 +1546,38 @@ function GlobalNotificationBell() {
       refetchIntervalInBackground: false,
     },
   );
+
+  useEffect(() => {
+    assistantAttentionSeenRef.current = new Set();
+    assistantAttentionVersionRef.current = 0;
+    assistantAttentionBaselineRef.current = false;
+  }, [assistantAttentionScope]);
+
+  useEffect(() => {
+    if (!assistantAttentionScope || !recentNotifications) return;
+    const publishBaseline = () => {
+      const signals = recentNotifications.flatMap((notification: any) => {
+      const id = notification?.id;
+      if ((typeof id !== "number" && typeof id !== "string") || String(id).length === 0) return [];
+      const key = String(id);
+      assistantAttentionSeenRef.current.add(key);
+      return [{
+        opaqueStableKey: key,
+        trustedCategory: "general" as const,
+        trustedSeverity: "normal" as const,
+        version: ++assistantAttentionVersionRef.current,
+        scopeGeneration: 1,
+        authorization: "verified" as const,
+      }];
+      });
+      assistantAttentionBaselineRef.current = true;
+      const detail: AssistantNotificationProjection = { scopeKey: assistantAttentionScope, signals };
+      window.dispatchEvent(new CustomEvent(ASSISTANT_NOTIFICATION_BASELINE_EVENT, { detail }));
+    };
+    if (!assistantAttentionBaselineRef.current) publishBaseline();
+    window.addEventListener(ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT, publishBaseline);
+    return () => window.removeEventListener(ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT, publishBaseline);
+  }, [assistantAttentionScope, recentNotifications]);
 
   const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
     onSuccess: () => {
@@ -1566,8 +1637,34 @@ function GlobalNotificationBell() {
     if (showDropdown) {
       utils.scheduledMessages.getNotifications.invalidate();
     }
-    showJobCompletionToast(parseNotificationSSEEvent(event) ?? {});
-  }, [showDropdown, showJobCompletionToast, utils]);
+    const notification = parseNotificationSSEEvent(event);
+    showJobCompletionToast(notification ?? {});
+    if (!assistantAttentionScope || !assistantAttentionBaselineRef.current || !notification?.id) return;
+    // The existing authenticated SSE stream is user-scoped. Use only its stable row ID;
+    // notification content and metadata never enter the attention projection.
+    const key = String(notification.id);
+    if (assistantAttentionSeenRef.current.has(key)) return;
+    assistantAttentionSeenRef.current.add(key);
+    if (
+      mascotEnabled &&
+      loadAssistantMascotPreferences(window.localStorage, assistantAttentionScope).motion !== "off" &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setBellAttention(true);
+    }
+    const detail: AssistantNotificationProjection = {
+      scopeKey: assistantAttentionScope,
+      signals: [{
+        opaqueStableKey: key,
+        trustedCategory: "general",
+        trustedSeverity: "normal",
+        version: ++assistantAttentionVersionRef.current,
+        scopeGeneration: 1,
+        authorization: "verified",
+      }],
+    };
+    window.dispatchEvent(new CustomEvent(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, { detail }));
+  }, [showDropdown, showJobCompletionToast, utils, assistantAttentionScope, mascotEnabled]);
 
   useSSEReconnect({
     url: "/api/notifications/stream",
@@ -1603,6 +1700,18 @@ function GlobalNotificationBell() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
+
+  useEffect(() => {
+    const openBell = () => {
+      if (!hasUnread && !shouldShowWithoutUnread) {
+        setLocation("/notifications");
+        return;
+      }
+      setShowDropdown(true);
+    };
+    window.addEventListener(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, openBell);
+    return () => window.removeEventListener(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, openBell);
+  }, [hasUnread, shouldShowWithoutUnread, setLocation]);
 
   const formatTimeAgo = (date: string | Date) => {
     const now = Date.now();
@@ -1740,7 +1849,7 @@ function GlobalNotificationBell() {
           touchAction: "none",
         }}
       >
-        <Bell style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
+        <Bell className={bellAttention ? "assistant-bell-ring" : undefined} style={{ width: 18, height: 18, color: "var(--foreground, #e0e0e0)" }} />
         {hasUnread ? (
           <span
             style={{

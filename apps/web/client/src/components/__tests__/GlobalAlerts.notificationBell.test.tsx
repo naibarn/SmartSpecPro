@@ -37,7 +37,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: 1, role: viewerRole } }),
+  useAuth: () => ({ user: { id: 1, role: viewerRole, currentTenantId: "tenant-1" } }),
 }));
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
@@ -81,6 +81,7 @@ import {
   isJobCompletionNotification,
   parseNotificationSSEEvent,
 } from "../GlobalAlerts";
+import { OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, ASSISTANT_NOTIFICATION_ARRIVAL_EVENT } from "@/lib/assistantMascotEvents";
 
 describe("job completion notification events", () => {
   it("parses a valid SSE payload and recognizes job-completion metadata", () => {
@@ -316,6 +317,49 @@ describe("GlobalNotificationBell occurrence badge", () => {
     });
 
     expect(screen.getByText("No notifications yet")).toBeTruthy();
+  });
+
+  it("opens the existing notification surface from the explicit bell intent", async () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/dashboard";
+    notificationsData = [];
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT));
+    });
+
+    expect(screen.getByText("No notifications yet")).toBeTruthy();
+  });
+
+  it("uses the existing Notification Center route when the bell is unavailable", async () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/settings";
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT));
+    });
+
+    expect(setLocationMock).toHaveBeenCalledWith("/notifications");
+  });
+
+  it("projects only a new authorized SSE row ID to cosmetic attention", async () => {
+    const arrivals: CustomEvent[] = [];
+    const onArrival = (event: Event) => arrivals.push(event as CustomEvent);
+    window.addEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, onArrival);
+    render(<GlobalAlerts />);
+    const eventSource = (globalThis.EventSource as any).instances[0];
+
+    await act(async () => {
+      eventSource.emit("notification", { data: JSON.stringify({ id: 777, title: "Private title", content: "Private body", metadata: { source: "private" } }) });
+      eventSource.emit("notification", { data: JSON.stringify({ id: 777, title: "Private title", content: "Private body", metadata: { source: "private" } }) });
+    });
+
+    window.removeEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, onArrival);
+    expect(arrivals).toHaveLength(1);
+    expect(arrivals[0].detail.signals[0]).toMatchObject({ opaqueStableKey: "777", trustedCategory: "general", trustedSeverity: "normal", authorization: "verified" });
+    expect(JSON.stringify(arrivals[0].detail)).not.toContain("Private");
   });
 
   it("moves the bell when dragged", async () => {

@@ -6,17 +6,21 @@
   },
   "authority": {
     "claims": [],
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "conflicts": [],
     "evidence": [
       {
         "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      },
+      {
+        "kind": "USER_DIRECTIVE",
+        "path": "orchestra/tasks/spec-308-20261009/plan.md"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "ACTIVE_CANONICAL",
     "successors": []
   },
   "blockers": [],
@@ -25,25 +29,31 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
-    "reactivation_predicate": null,
-    "resume_point": null,
-    "waiting_predicate": null
+    "next_action": "Continue with authenticated browser acceptance and unresolved specification requirements once the app DB/control-plane runtime and authorized test identity are available.",
+    "next_ready_workunit": "WP_RUNTIME_AUTHENTICATED_BROWSER_ACCEPTANCE",
+    "reactivation_predicate": "The required runtime and test identity are available; refresh origin/main and exact-SHA handoff before continuing.",
+    "resume_point": "Start by reviewing the SPEC-308 PR branch checkpoint, then complete authenticated Settings/Notification/Bell/Chat/Feedback browser tests and resolve every remaining AC without enabling production.",
+    "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
-        "kind": "NORMATIVE_SPEC",
-        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+        "kind": "USER_DIRECTIVE",
+        "path": "orchestra/tasks/spec-308-20261009/plan.md"
+      },
+      {
+        "kind": "QA_AUDIT",
+        "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
+    "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
+    "residual_requirements": [
+      "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
+      "Authenticated Settings, Bell, Chat/Feedback preservation, and full responsive browser acceptance remain unverified."
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -60,18 +70,22 @@
     "status": "UNKNOWN"
   },
   "disposition": {
-    "confidence": "UNRESOLVED",
+    "confidence": "HIGH",
     "evidence": [
       {
         "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      },
+      {
+        "kind": "SOURCE_AUDIT",
+        "path": "orchestra/tasks/spec-308-20261009/plan.md"
       }
     ],
-    "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
-    "value": "DORMANT_UNRESOLVED"
+    "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
+    "value": "ACTIVE_CANONICAL"
   },
-  "generation": 1,
+  "generation": 2,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -89,10 +103,28 @@
   },
   "implementation": {
     "checkpoint_shas": [],
-    "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "mapping": [
+      {
+        "coverage": "PARTIAL; not all ACs verified and not yet integrated into origin/main.",
+        "scope": "Fail-closed opt-in presentation, five mascot renderer, Bell intent, generic new-row attention, local preference controls and responsive guest component crops.",
+        "source_paths": [
+          "apps/web/client/src/components/GlobalAlerts.tsx",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+          "apps/web/client/src/lib/notificationAttention.ts",
+          "apps/web/client/src/lib/assistantMascotPreferences.ts"
+        ]
+      }
+    ],
+    "source_paths": [
+      "apps/web/client/src/components/GlobalAlerts.tsx",
+      "apps/web/client/src/components/guardian/FeedbackButton.tsx",
+      "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+      "apps/web/client/src/lib/notificationAttention.ts",
+      "apps/web/client/src/lib/assistantMascotPreferences.ts"
+    ],
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": null,
@@ -101,10 +133,79 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
-    "updated_at": "2026-10-09T04:04:01.301528Z"
+    "current_state": "WAITING_DEPENDENCY",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
+      "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md"
+    ],
+    "updated_at": "2026-10-09T04:27:07.605340Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+        },
+        {
+          "kind": "USER_DIRECTIVE",
+          "path": "orchestra/tasks/spec-308-20261009/plan.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "kind": "USER_DIRECTIVE",
+          "path": "orchestra/tasks/spec-308-20261009/plan.md"
+        },
+        {
+          "kind": "QA_AUDIT",
+          "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
+        }
+      ],
+      "next_action": "Continue after an app runtime with DATABASE_URL and CONTROL_PLANE_API_KEY is available, and an authenticated test user/tenant fixture can exercise Settings, Bell and Feedback. Keep the feature globally off until the runtime/browser gates pass.",
+      "rationale": "User requested full implementation and acceptance. The current checkpoint is partial; required authenticated runtime/browser evidence remains open.",
+      "residual_requirements": [
+        "All 66 canonical requirement rows remain open pending exact-SHA integration and evidence.",
+        "Authenticated Settings, Bell, Chat/Feedback preservation, and full responsive browser acceptance remain unverified."
+      ]
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+        },
+        {
+          "kind": "SOURCE_AUDIT",
+          "path": "orchestra/tasks/spec-308-20261009/plan.md"
+        }
+      ],
+      "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "WAITING_DEPENDENCY",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
+        "orchestra/tasks/spec-308-20261009/evidence/ui-capture.md"
+      ],
+      "updated_at": "2026-10-09T04:27:07.605340Z"
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -182,7 +283,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T04:04:01.301528Z",
+  "updated_at": "2026-10-09T04:27:10.398992Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
