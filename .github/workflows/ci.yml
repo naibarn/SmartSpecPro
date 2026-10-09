@@ -36,6 +36,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
+      - name: Test workspace protocol package-manager selection
+        run: bash scripts/ci/tests/node_tests_selection.test.sh
       - name: Test api-generator (coverage)
         run: bash scripts/ci/node_tests.sh api-generator
       - name: Upload api-generator coverage summary
