@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.
-- Manifest generation: 24
+- Next action: Push the source repair and obtain fresh exact-head browser evidence; reconcile independent MCP/security PRs without touching their active worktrees, then continue the external authority-gated WorkUnits.
+- Manifest generation: 25
 
 ## Source-declared status and relationship claims
 

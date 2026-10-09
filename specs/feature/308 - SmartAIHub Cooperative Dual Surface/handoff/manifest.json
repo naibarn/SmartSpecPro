@@ -60,10 +60,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Complete any remaining source-only implementation gaps, then push the reconciled PR #399 candidate and run one consolidated exact-SHA verification round. Reconcile #403/#405 with canonical main and preserve the mandatory audit/live MCP gates. Obtain Feature-049 authority before re-enabling cosmetic notification arrivals; keep feature flags OFF and do not deploy.",
+    "next_action": "Publish the source repair at 0287181e, reconcile current PR head, and run one post-fix exact-SHA CI round; then continue PR #403/#405 normal workflow and external acceptance gates. Preserve mandatory security/live gates and keep production flags OFF.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Implementation sweep is frozen and one consolidated exact-head test round has completed; required PR #403 focused/security/audit gates and approved live MCP authority are satisfied; PR #405 mandatory audit passes with Security Owner disposition and any required Runtime Owner approval; Feature-049 tenant/revision authorization contract is confirmed; approved non-production SmartAIHub endpoint and authorized test identity are available for live acceptance.",
-    "resume_point": "Local PR #399 candidate 243aa5fdd3e26c7e66539e24e10a0b42ee9525ee now includes latest origin/main 6dcd7934332db7929904f8da642915751a6bb79d via normal merge; remote PR #399 remains 38945eef14f405e3606a068f457efb1820269254 until the implementation-only sweep is frozen. Source changes: fail-closed SSE-to-attention, empty query baseline until Feature-049 proves active tenant and grouped revision, browser/device-local Settings disclosure, and oversized preference rejection. No tests were run on this source; a consolidated exact-head round is intentionally pending. PR #403 remains 74a482e8fe38a131bdbe41bfee0e53ad90347e4c and PR #405 868a5600ff770be91885666b7f584835e03fc690. All 66 requirements OPEN/UNVERIFIED; no deploy or flag enablement.",
+    "resume_point": "PR #399 CI run 37974426321 tested SHA 3dd9bd064a91bca5fd10fa8ef29bfcc31e128b28 against base 6dcd7934332db7929904f8da642915751a6bb79d: browser setup passed, 15/17 Playwright passed, with the demo timeout boundary and drag anchor assertions failing. Both were repaired locally in 0287181e53accb9303151a2ad0d42f890a22064a; this repair is not yet on the remote PR head. MCP run 37974426476 reconfirmed missing DATABASE_URL/obsolete agencyMcpService tests and missing approved live MCP URL/token; later security/audit jobs skipped. Next push this repair and run the next consolidated exact-head CI. All 66 requirements OPEN/UNVERIFIED; no deployment/feature-flag enablement.",
     "waiting_predicate": "A non-production SmartSpecPro app runtime starts with DATABASE_URL and CONTROL_PLANE_API_KEY, and an authorized test tenant/user session is available."
   },
   "continuation_assessment": {
@@ -79,8 +79,8 @@
         "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
       }
     ],
-    "next_action": "Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.",
-    "rationale": "The current local checkpoint includes latest origin/main and is fast-gate checked. Source-level fixes are in place; the consolidated test round remains intentionally deferred and external Feature-049/security/MCP/runtime authorities remain unresolved.",
+    "next_action": "Push the source repair and obtain fresh exact-head browser evidence; reconcile independent MCP/security PRs without touching their active worktrees, then continue the external authority-gated WorkUnits.",
+    "rationale": "The first consolidated run exposed two browser gaps, now repaired in source but not yet verified. MCP failures remain an independent existing fixture/environment blocker and live endpoint authority is missing. No mandatory gate was skipped or weakened.",
     "residual_requirements": [
       "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
       "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
@@ -120,7 +120,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 24,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -141,12 +141,13 @@
       "9432a1ec4dbb4412c06d8cb49d6da426831d1ada",
       "cfaf435a87f528ca3360a4be99405641b8059ccf",
       "fcbda4737fa3ce899c9d7f81924917c2fb901447",
-      "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee"
+      "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
+      "0287181e53accb9303151a2ad0d42f890a22064a"
     ],
     "mapping": [
       {
-        "coverage": "PARTIAL; identity scope, localization, motion-off and browser-readiness fixes are implemented; unverified SSE cosmetic attention fails closed; oversized local preferences are rejected. Reconciled with current origin/main 6dcd7934. Consolidated exact-source verification and authenticated acceptance remain pending.",
-        "scope": "Fail-closed dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until authorized tenant/revision proof, localized hints, responsive placement, and preserved Chat/Feedback/Task Control flows.",
+        "coverage": "PARTIAL; existing implementation fixes and fail-closed attention are in place; 3dd9bd06 browser simulation passed 15/17 with two issues repaired in 0287181e. New exact-source verification is pending. External notification, security, MCP, and live runtime authorities remain unresolved.",
+        "scope": "Gated dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until tenant/revision proof, localized hints, responsive placement, draft-safe Chat/Feedback/Task Control, and bounded local preferences.",
         "source_paths": [
           "apps/web/client/src/components/GlobalAlerts.tsx",
           "apps/web/client/src/components/guardian/FeedbackButton.tsx",
@@ -161,7 +162,7 @@
           "apps/web/client/src/locales/th/settings.json",
           "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
         ],
-        "source_sha": "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee"
+        "source_sha": "0287181e53accb9303151a2ad0d42f890a22064a"
       }
     ],
     "source_paths": [
@@ -178,7 +179,7 @@
       "apps/web/client/src/locales/th/settings.json",
       "apps/web/tests/e2e/spec-308-dual-surface.spec.ts"
     ],
-    "source_sha": "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
+    "source_sha": "0287181e53accb9303151a2ad0d42f890a22064a",
     "started": true,
     "status": "PARTIAL"
   },
@@ -230,8 +231,8 @@
           "path": "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md"
         }
       ],
-      "next_action": "Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.",
-      "rationale": "The current local checkpoint includes latest origin/main and is fast-gate checked. Source-level fixes are in place; the consolidated test round remains intentionally deferred and external Feature-049/security/MCP/runtime authorities remain unresolved.",
+      "next_action": "Push the source repair and obtain fresh exact-head browser evidence; reconcile independent MCP/security PRs without touching their active worktrees, then continue the external authority-gated WorkUnits.",
+      "rationale": "The first consolidated run exposed two browser gaps, now repaired in source but not yet verified. MCP failures remain an independent existing fixture/environment blocker and live endpoint authority is missing. No mandatory gate was skipped or weakened.",
       "residual_requirements": [
         "All 66 requirements remain OPEN/UNVERIFIED pending row-level fresh evidence on an integrated SHA.",
         "The current-source browser and focused test suite is intentionally deferred to one consolidated verification round.",
@@ -343,7 +344,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T18:33:37.611656Z",
+  "updated_at": "2026-10-09T18:41:56.847400Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -355,6 +356,9 @@
       "orchestra/tasks/spec-308-20261009/evidence/implementation-continuation-20261010.md",
       "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010.md",
       "orchestra/tasks/spec-308-20261009/evidence/attention-authority-fail-closed-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-399-ci-failure-379744-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426321.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37974426476.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971044599.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37971045023.json"
     ],
@@ -362,7 +366,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
+    "sha": "3dd9bd064a91bca5fd10fa8ef29bfcc31e128b28",
     "status": "PARTIAL",
     "task_regressions": []
   }
