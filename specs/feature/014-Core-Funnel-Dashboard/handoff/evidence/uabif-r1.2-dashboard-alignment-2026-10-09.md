@@ -6,7 +6,7 @@
 
 **Workspace:** `/home/dev/worktrees/uabif-dashboard-align-20261009` (`TASK_WORKTREE`)
 
-**Reconciled verification candidate:** `135a57956b35fa83e61f71a74706150673448f7b` (after merging latest `origin/main` `51d2e57490e1fe115aeec9188c84e765e9f33fe3`)
+**Canonical reconciliation:** latest `origin/main` `51d2e57490e1fe115aeec9188c84e765e9f33fe3` is included through merge commit `135a57956b35fa83e61f71a74706150673448f7b`.
 **Scope:** owner reconciliation and a bounded freshness-transparency improvement to Feature 014; this evidence does not claim general BI runtime completion.
 
 ## Canonical identity and implementation baseline
