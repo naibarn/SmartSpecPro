@@ -19,7 +19,10 @@ const taskVerifiableAdapters = new Set([
 
 const readableReason = {
   version_probe_ok: "ตรวจคำสั่งเวอร์ชันแล้ว",
+  auth_status_ok: "ตรวจพบสถานะเข้าสู่ระบบแล้ว",
   auth_probe_required: "ยังต้องเข้าสู่ระบบในเครื่องมือก่อนใช้งาน",
+  auth_probe_deferred: "เลื่อนตรวจสอบสถานะเข้าสู่ระบบของ workload identity",
+  auth_probe_failed: "ตรวจสอบสถานะเข้าสู่ระบบไม่สำเร็จ",
   probe_timeout: "เครื่องมือไม่ตอบกลับภายในเวลาที่กำหนด ตรวจว่าติดตั้งถูกต้องแล้วลองใหม่",
   probe_launch_failed: "เปิดตรวจสอบเครื่องมือไม่ได้ ตรวจสิทธิ์และการติดตั้งแล้วลองใหม่",
   probe_executable_not_found: "ไม่พบไฟล์เริ่มต้นเครื่องมือ ตรวจการติดตั้งแล้วสแกนเครื่องมือใหม่",

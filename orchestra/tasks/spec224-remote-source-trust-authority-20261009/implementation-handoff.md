@@ -139,3 +139,30 @@ The handoff evidence correction merged as PR #393 at canonical SHA `388338d5d05f
 **Next eligible actions:** Workunit A remains `WAITING_OWNER_AUTHORITY`: the existing approval package requires exact existing issuer principal/owner, signing operation and key fingerprint, storage account/bucket/prefix, distinct writer/reader identities and permissions, trust scope/freshness/revocation/retention policy, and authenticated approval reference. Cloudflare account inventory remains unknown because this environment has no authenticated platform inventory interface; no resource is asserted absent. Workunit D remains `WAITING_AUTHENTICATED_RUNNER_EVIDENCE`: Windows usability is operator-confirmed, but this session has no supported authenticated Control Plane interface to capture a fresh Windows session/capability snapshot and Codex readiness. The existing Debian Linux Runner connection snapshot is fresh, but its Codex readiness remains `NOT_READY` (`auth_probe_required`).
 
 The task-relevant Python tests pass 10/10 when selecting away the unrelated, unchanged legacy LangGraph test. PostgreSQL-backed HTTP integration remains **NOT RUN**. The bounded 5-second Node-to-Python recovery-grant call still runs inside the protected-start transaction/fence; the Lane 1 runtime owner must resolve or explicitly accept this lock-duration issue before live dispatch. Workunit C, trusted remote admission, real Runner dispatch, settlement, and deployment remain blocked/unverified.
+
+## Combined Lane 1 + Lane 2-2 continuation — 2026-10-09
+
+**Canonical source:** `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978` (`origin/main`). This checkpoint refreshed the existing SPEC-224 manifest through the shared writer to generation 20 and this SHA; `REMOTE_TEST_TRUSTED` and `PRODUCTION_TRUSTED` remain denied.
+
+### Authority and interface status
+
+- No new authenticated owner approval, issuer principal, signing key/operation, approved evidence bucket/prefix, or storage permission proof was present in the latest canonical handoffs. `wrangler` and authenticated Cloudflare inventory access are unavailable in this session. Resource existence remains **UNKNOWN**, not absent. The existing bounded owner request remains the correct decision package; do not create resources or credentials.
+- Production caller review remains unchanged: `externalAgentTaskExecutor.ts` calls `commitSpec224ProtectedExecutionStart`; the trusted source verifier and DevelopmentRun eligibility evaluator are not wired as production admission authorities. They must stay unregistered until approved canonical evidence sources and owner authority exist.
+- P-RECOVERY validation route repair from PR #392 is integrated. The Node-to-Python validator still performs bounded HTTP I/O while the admission transaction/grant fence is held; safe lock-duration reduction and PostgreSQL race proof remain prerequisites before live dispatch. This is not a trust bypass and no dispatch occurred.
+
+### Windows Runner evidence and next action
+
+- Latest Windows review artifact is Runner Desktop `0.2.26`, source `14e705d366aa7eac5e95abd321823a6983536906`, unsigned review build SHA-256 `b9d3ae520a630458a8dd04b51e037880cc9782b53815f60bff23fa6c9cf52bf0`; evidence and Actions artifact link are in `specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md`.
+- The fix classifies HTTP 409 as requiring browser reauthorization and keeps 503 retryable. Windows runtime acceptance is still pending: install that review build, use browser reconnect once, approve replacement of the stale/conflicting session, then confirm the 30-second retry loop stops and the UI directs browser reconnect.
+- This session has no supported authenticated Control Plane interface to read a fresh Windows session/capability snapshot or Codex readiness. The user-provided pairing screenshot and earlier operator confirmation are not fresh capability or real-job evidence.
+- Debian Linux evidence remains separate and stale for live readiness: session `4840061c-df75-44e8-b96f-e3029ba13ec6`, snapshot `snapshot:local-runner:2026-10-09T00:30:10.085Z`; Codex was `auth_probe_required`. No Linux Runner paths were modified because ownership remains reserved.
+
+### Acceptance and next ready work
+
+- Trust issuer/verifier activation: **WAITING_OWNER_AUTHORITY**.
+- Windows fresh session/Codex capability: **WAITING_OPERATOR_REAUTH_AND_AUTHENTICATED_READBACK**.
+- Linux Codex execution readiness: **NOT_READY**; independent of Windows.
+- Economic grant/budget/ledger, real dispatch, receipt-backed settlement, deployment, and UAT: **NOT VERIFIED**; no protected records were changed.
+- Next executable action: operator installs Windows `0.2.26` and reconnects through the browser; in parallel, the accountable platform/security owner returns exact existing trust resource identities and approval. After either predicate resolves, continue its independent workunit without claiming the other gate passed.
+
+No implementation tests were rerun because this checkpoint changed only handoff metadata; previous verifier and P-RECOVERY test evidence remains tied to its recorded source SHAs and does not prove runtime acceptance at `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`.

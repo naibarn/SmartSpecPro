@@ -129,15 +129,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "14e705d366aa7eac5e95abd321823a6983536906",
+    "expected_canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "Install Windows unsigned review artifact 0.2.26 (SHA-256 b9d3ae520a630458a8dd04b51e037880cc9782b53815f60bff23fa6c9cf52bf0), then click 'เชื่อมต่อผ่านเบราว์เซอร์' once and approve the Runner to establish a fresh session. Verify there are no repeated automatic 30-second 409 retries and the refreshed token/session remains connected.",
+    "next_action": "On the authorized Windows host, obtain Runner-owner approval before installing unsigned review build 0.2.26 if it is not already installed; then verify browser reauthorization, refresh/session continuity, fresh heartbeat and capability snapshot. Keep Codex smoke user-triggered and non-production.",
     "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Read handoff/evidence/runner-refresh-http409-reauth-20261009.md. Source 14e705d3 is integrated, focused Rust/JS checks pass, and Windows unsigned review installer 0.2.26 built successfully from that source. Install artifact 11593701163, browser-reauthorize once, and capture Windows acceptance evidence.",
-    "waiting_predicate": "Reactivate after artifact 11593701163 is installed and the Windows Runner browser reauthorization plus subsequent refresh status are captured."
+    "resume_point": "Read handoff/evidence/codex-auth-status-probe-20261009.md and the Windows refresh evidence. Codex local login status probing is integrated at 5ce718f; Windows installation and live refresh/session acceptance remain pending.",
+    "waiting_predicate": "Reactivate when the Windows Runner owner authorizes or confirms the installed build and supplies fresh read-back evidence for refresh, session, heartbeat and capability snapshot."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -369,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 20,
+  "generation": 22,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -387,20 +387,23 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "f072ec8448884b88970310fab954c97a465fc6b9"
+      "f072ec8448884b88970310fab954c97a465fc6b9",
+      "5ce718f36f8f05c80350dcf511d1ded9ed95ef97"
     ],
     "mapping": [],
     "source_paths": [
-      "apps/runner-app/src/diagnostics.rs"
+      "apps/runner-app/src/diagnostics.rs",
+      "apps/runner-app/src/adapters.rs",
+      "apps/runner-desktop/ui/app.js"
     ],
-    "started": false,
-    "status": "UNKNOWN"
+    "started": true,
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "14e705d366aa7eac5e95abd321823a6983536906",
+    "canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
     "integrated": true,
-    "integrated_at": "2026-10-09T03:01:37Z"
+    "integrated_at": "2026-10-09T04:20:31Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -517,6 +520,35 @@
       "next_action": "For platform execution, follow the user-directed Windows-first acceptance route in handoff/evidence/windows-first-runner-routing-20261009.md and continue independent implementation WorkUnits while the Windows gate runs. In parallel, the Spec owner must still resolve the broader dormant/unresolved relevance and requirement ledger; this routing decision does not close those requirements or establish overall completion.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
+    },
+    "requirements": {
+      "REQ-663D83B30437": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362"
+        ],
+        "authority_source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md#L362",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/runner-app/src/adapters.rs",
+          "apps/runner-desktop/ui/app.js"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Verify the current Windows Runner build, local Codex auth probe, refresh/session continuity, heartbeat, and fresh capability snapshot on the authorized Windows host; do not infer server policy authorization from local login status.",
+        "requirement_digest": "44545190ce45c22a6c28995b7ccde18f49bebc51ff91050e608a0e2007700f44",
+        "requirement_id": "REQ-663D83B30437",
+        "requirement_text": "Discovery MUST distinguish installed, configured, authenticated, healthy,",
+        "source_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md"
+        ],
+        "verification_method": "Bounded local codex login status parser and WIF deferral tests; platform runtime acceptance remains a separate gate."
+      }
     }
   },
   "reconciliation": {
@@ -1264,7 +1296,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -1273,18 +1305,19 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T03:18:42.672783Z",
+  "updated_at": "2026-10-09T04:24:17.714907Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-manual-refresh-button-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "14e705d366aa7eac5e95abd321823a6983536906",
+    "sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
     "status": "PENDING",
     "task_regressions": []
   }

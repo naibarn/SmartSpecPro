@@ -78812,7 +78812,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "14e705d366aa7eac5e95abd321823a6983536906",
+      "canonical_sha": "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -78861,7 +78861,7 @@
         "requirement REQ-48401022BE5F is OPEN",
         "requirement REQ-2CA94ED480B6 is OPEN",
         "requirement REQ-B4B6638E434F is OPEN",
-        "requirement REQ-663D83B30437 is OPEN",
+        "requirement REQ-663D83B30437 is PARTIAL",
         "requirement REQ-15F8E9EE9814 is OPEN",
         "requirement REQ-E86A6FFB20C8 is OPEN",
         "requirement REQ-4CB4D9FD0107 is OPEN",
@@ -93589,7 +93589,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "65f60ae0795a30a8f95523822459c2ce42284d23",
+      "canonical_sha": "ccd4cd11c664cf81cc54fe1287c60ce7f5c36978",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
