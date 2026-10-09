@@ -30,19 +30,33 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "node",
-    environmentMatchGlobs: [
-      ["client/src/**/*.test.tsx", "jsdom"],
-    ],
-    include: [
-      "drizzle/**/*.test.ts",
-      "server/**/*.test.ts",
-      "server/**/*.spec.ts",
-      "client/src/**/*.test.ts",
-      "client/src/**/*.test.tsx",
-      "client/src/**/*.spec.ts",
-      "shared/**/*.test.ts",
-      "scripts/**/*.test.ts",
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "node",
+          environment: "node",
+          include: [
+            "drizzle/**/*.test.ts",
+            "server/**/*.test.ts",
+            "server/**/*.spec.ts",
+            "shared/**/*.test.ts",
+            "scripts/**/*.test.ts",
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "client-jsdom",
+          environment: "jsdom",
+          include: [
+            "client/src/**/*.test.ts",
+            "client/src/**/*.test.tsx",
+            "client/src/**/*.spec.ts",
+          ],
+        },
+      },
     ],
     setupFiles: ["client/src/test-setup.ts"],
     env: {

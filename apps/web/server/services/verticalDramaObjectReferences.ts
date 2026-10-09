@@ -6,6 +6,7 @@ import {
   verticalDramaEpisodeObjectReferences,
   verticalDramaObjectReferenceAssets,
   verticalDramaObjectDetectionSuggestions,
+  verticalDramaObjectReferencePromptRuns,
   verticalDramaObjectReferenceProjections,
   verticalDramaObjectReferences,
   verticalDramaSeries,
