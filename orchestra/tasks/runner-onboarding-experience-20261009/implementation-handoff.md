@@ -64,3 +64,8 @@ No implementation continuation is required for this checkpoint. If the user requ
   in this update.
 - Canonical Spec 205 evidence and the full continuation checklist are in
   `specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md`.
+- A backend route defect in bounded refresh-token replay was fixed and integrated
+  at `326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e`; the focused route regression
+  test passed. The server deployment and live Windows refresh-boundary check
+  remain pending, so the screenshot's specific runtime failure is not yet
+  confirmed resolved.

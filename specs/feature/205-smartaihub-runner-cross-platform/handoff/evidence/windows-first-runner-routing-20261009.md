@@ -67,3 +67,23 @@ Runner or the overall Spec has passed acceptance.
   readiness remains unverified.
 - Debian Linux: separate acceptance lane; no new evidence in this checkpoint.
 - Overall Spec 205 completion: not established by this routing update.
+
+## Backend retry repair — 2026-10-09
+
+- Code inspection found that `/api/runners/:runnerId/access/refresh` first
+  verified the refresh token with revocation enforced, and only afterward
+  called the service that supports a bounded replay grace window. If the server
+  rotated a refresh token but its response was lost, retrying that same token
+  was rejected before the grace handler could return the converged token set.
+- The route preflight now allows a revoked refresh token only when a matching
+  local or distributed grace record is still valid. Token audience/use, runner
+  binding, and local-device proof checks remain in place.
+- Added route regression coverage proving a same-token retry returns the same
+  execution/upload/refresh token set. Focused Vitest passed:
+  `server/routes/__tests__/runnerControl.test.ts` test
+  `rotates control credentials and refreshes execution credentials through Runner routes`.
+- Source fix is integrated at `326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e`.
+  The specific production trigger behind the Windows screenshot is not proven
+  from the generic error code alone. Backend deployment and a live Windows
+  refresh-boundary check are still required before calling the reported runtime
+  issue resolved.

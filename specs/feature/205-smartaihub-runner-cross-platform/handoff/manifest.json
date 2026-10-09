@@ -118,25 +118,25 @@
     {
       "class": "ACCEPTANCE",
       "id": "WINDOWS_HOSTED_RUNNER_VERIFY_PENDING",
-      "next_action": "Run the pending Windows-hosted Runner workflow with release publication disabled, then record its exact run and candidate revision.",
-      "root_cause": "The Windows-hosted Runner workflow for the repaired Codex shim candidate is still pending; the user-provided successful prompt smoke does not replace the platform test suite."
+      "next_action": "Run the pending Windows-hosted Runner workflow with release publication disabled and record its exact run and candidate revision.",
+      "root_cause": "The Windows-hosted Runner workflow for the repaired Codex shim candidate remains pending; the user's successful Windows Runner Codex prompt is a smoke check, not platform test-suite evidence."
     },
     {
-      "class": "RUNTIME",
-      "id": "WINDOWS_RUNNER_TOKEN_REFRESH_FAILED",
-      "next_action": "Collect fresh Windows Runner status, doctor, capabilities, and rescan evidence across the refresh/reconnect boundary, and confirm the authenticated session remains acknowledged by the Control Plane.",
-      "root_cause": "The Windows Runner Desktop screenshot reports automatic token refresh failure RUNNER_CONNECT_REQUEST_FAILED despite a successful Codex prompt smoke."
+      "class": "DEPLOYMENT",
+      "id": "WINDOWS_REFRESH_LIVE_VERIFICATION_PENDING",
+      "next_action": "Deploy the integrated backend repair through the normal release path, then verify automatic refresh and Control Plane acknowledgement on the Windows Runner. If it still fails, capture the sanitized HTTP status/error code and server correlation evidence.",
+      "root_cause": "The refresh endpoint's preflight rejected a revoked refresh token before the existing bounded replay grace handler could recover a token set after a lost response. The source defect is fixed, but the screenshot's generic RUNNER_CONNECT_REQUEST_FAILED does not prove that this exact branch was triggered."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "b3debee8430fc7c0f787a3265891fb540c8f8c56",
+    "expected_canonical_sha": "326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e",
     "expected_spec_digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
   },
   "continuation": {
-    "next_action": "Use Windows as the primary acceptance baseline. The latest user screenshots establish a successful Windows Runner-bound Codex smoke on Runner 0.2.24 with Codex CLI 0.161.0 and 5/11 tools ready. Continue independent Spec 205 implementation work against this baseline while closing two gates: rerun orchestra/runner-codex-shim-fix-20261008 Windows-hosted workflow with publication disabled, and verify automatic token refresh/session continuity after the reported RUNNER_CONNECT_REQUEST_FAILED. Keep WSL2 and Debian Linux evidence in separate acceptance lanes.",
+    "next_action": "The bounded refresh-token replay route repair is integrated at 326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e and its focused route regression test passed. Deploy the backend change through the normal release path, then verify automatic refresh and Control Plane session continuity on the Windows Runner. The Windows-hosted Runner shim workflow is also still pending; continue independent implementation work against the Windows-first baseline. Keep WSL2 and Debian evidence separate.",
     "next_ready_workunit": "WINDOWS_FIRST_RUNNER_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Read handoff/evidence/windows-first-runner-routing-20261009.md and orchestra/runner-codex-shim-fix-20261008/progress.md. Codex prompt smoke passed on Windows; resume FINAL_VERIFY and token-refresh continuity checks.",
+    "resume_point": "Read handoff/evidence/windows-first-runner-routing-20261009.md. Server-side bounded replay defect fixed and focused test passed; resume at backend deployment plus live Windows token-refresh verification and pending Windows-hosted shim workflow.",
     "waiting_predicate": "Windows-hosted Runner workflow for the repaired candidate completes; independent implementation work may proceed while it runs."
   },
   "continuation_assessment": {
@@ -369,7 +369,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
@@ -398,9 +398,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b3debee8430fc7c0f787a3265891fb540c8f8c56",
+    "canonical_sha": "326d3a9bf31a23a48ba5f3d2eb2b9341b14a2b0e",
     "integrated": true,
-    "integrated_at": "2026-10-09T01:16:43Z"
+    "integrated_at": "2026-10-09T01:20:42Z"
   },
   "lifecycle": {
     "current_state": "DISCOVERING",
@@ -1273,10 +1273,12 @@
     "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T01:16:55.451169Z",
+  "updated_at": "2026-10-09T01:21:15.182500Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
+    "evidence": [
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md"
+    ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
     "sha": null,
