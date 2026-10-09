@@ -33,6 +33,7 @@ const STYLES = new Set<AssistantMascotStyle>([
   "orbit",
 ]);
 const MOTIONS = new Set<AssistantMascotMotion>(["off", "subtle", "normal"]);
+export const MAX_ASSISTANT_MASCOT_PREFERENCES_LENGTH = 2048;
 
 export function parseAssistantMascotPreferences(
   value: unknown
@@ -74,7 +75,9 @@ export function loadAssistantMascotPreferences(
 ): AssistantMascotPreferences {
   try {
     const raw = storage.getItem(key);
-    if (!raw) return DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
+    if (!raw || raw.length > MAX_ASSISTANT_MASCOT_PREFERENCES_LENGTH) {
+      return DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
+    }
     return (
       parseAssistantMascotPreferences(JSON.parse(raw)) ??
       DEFAULT_ASSISTANT_MASCOT_PREFERENCES

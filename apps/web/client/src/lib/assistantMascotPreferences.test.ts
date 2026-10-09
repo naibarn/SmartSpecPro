@@ -4,6 +4,7 @@ import {
   DEFAULT_ASSISTANT_MASCOT_PREFERENCES,
   effectiveMascotMotion,
   loadAssistantMascotPreferences,
+  MAX_ASSISTANT_MASCOT_PREFERENCES_LENGTH,
   parseAssistantMascotPreferences,
 } from "./assistantMascotPreferences";
 
@@ -40,6 +41,16 @@ describe("assistant mascot preferences", () => {
             throw new Error("blocked");
           },
         },
+        "key"
+      )
+    ).toEqual(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+  });
+
+  it("rejects oversized local preferences before parsing", () => {
+    const validPayload = JSON.stringify(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);
+    expect(
+      loadAssistantMascotPreferences(
+        { getItem: () => `${validPayload}${" ".repeat(MAX_ASSISTANT_MASCOT_PREFERENCES_LENGTH)}` },
         "key"
       )
     ).toEqual(DEFAULT_ASSISTANT_MASCOT_PREFERENCES);

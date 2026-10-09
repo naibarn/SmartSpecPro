@@ -1123,7 +1123,7 @@
   "contentProtection.saved": "Digital watermark preference saved",
   "contentProtection.openWorkspace": "Open Content Protection workspace",
   "assistantAppearance.title": "Assistant appearance",
-  "assistantAppearance.description": "Choose how the Chat & Feedback launcher looks. Notification delivery settings stay unchanged.",
+  "assistantAppearance.description": "Choose how the Chat & Feedback launcher looks. Notification delivery settings stay unchanged. Preferences are saved only in this browser on this device.",
   "assistantAppearance.launcherLabel": "AI Chat & Feedback",
   "assistantAppearance.launcherAriaLabel": "Open AI Chat & Feedback",
   "assistantAppearance.enabled": "Show assistant mascot",

@@ -255,7 +255,7 @@ for (const width of [320, 360, 390, 767, 768, 1440]) {
   });
 }
 
-test("SPEC-308 Bell animates for a new event and retains its existing action", async ({ page }) => {
+test("SPEC-308 unauthorised SSE stays decorative-static and retains Bell action", async ({ page }) => {
   await installMockEventSource(page);
   await initializeAuthenticatedBrowser(page, 1024, 900);
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -269,14 +269,12 @@ test("SPEC-308 Bell animates for a new event and retains its existing action", a
     title: "Private notification title",
     content: "Private notification body",
   }));
-  const ringingIcon = page.locator(".assistant-bell-ring-subtle");
-  await expect(ringingIcon).toBeVisible();
-  await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring-subtle");
+  await expect(page.locator(".assistant-bell-ring-subtle, .assistant-bell-ring-normal")).toHaveCount(0);
   await bell.locator("button").click();
   await expect(page.getByText("Mock notification")).toBeVisible();
 });
 
-test("SPEC-308 normal motion uses the distinct bell animation", async ({ page }) => {
+test("SPEC-308 configured normal motion does not animate unverified SSE", async ({ page }) => {
   await installMockEventSource(page);
   await page.addInitScript(() => {
     localStorage.setItem("assistant-mascot:v2:tenant-spec-308-browser:30801", JSON.stringify({
@@ -295,9 +293,7 @@ test("SPEC-308 normal motion uses the distinct bell animation", async ({ page })
   await expect(page.getByRole("button", { name: "Open AI Chat & Feedback" }).locator("[data-mascot-style]")).toBeVisible();
   await waitForNotificationBaseline(page);
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30804 }));
-  const ringingIcon = page.locator(".assistant-bell-ring-normal");
-  await expect(ringingIcon).toBeVisible();
-  await expect.poll(() => ringingIcon.evaluate(node => getComputedStyle(node).animationName)).toBe("assistant-bell-ring");
+  await expect(page.locator(".assistant-bell-ring-subtle, .assistant-bell-ring-normal")).toHaveCount(0);
 });
 
 test("SPEC-308 manual motion off disables decorative balloon entrance", async ({ page }) => {
@@ -391,7 +387,7 @@ test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
   // This is an isolated mock API simulation; it does not prove authenticated live acceptance.
 });
 
-test("SPEC-308 live reminder replaces demo hint and mascot still opens Chat", async ({ page }) => {
+test("SPEC-308 unverified SSE does not replace demo hint and mascot still opens Chat", async ({ page }) => {
   await installMockEventSource(page);
   await page.clock.install();
   await initializeAuthenticatedBrowser(page, 390, 844);
@@ -403,10 +399,10 @@ test("SPEC-308 live reminder replaces demo hint and mascot still opens Chat", as
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   await expect(balloon).toBeVisible();
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30805 }));
-  await expect(balloon).toHaveCount(0);
+  await expect(balloon).toBeVisible();
   await page.clock.fastForward(2_100);
   await expect(balloon).toHaveCount(1);
-  await expect(launcher.locator(".assistant-mascot-greeting-subtle")).toBeVisible();
+  await expect(launcher.locator(".assistant-mascot-greeting-subtle")).toHaveCount(0);
   const launcherBox = await launcher.boundingBox();
   const balloonBox = await balloon.boundingBox();
   const launcherRight = launcherBox!.x + launcherBox!.width;
