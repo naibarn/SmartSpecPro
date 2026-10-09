@@ -99,6 +99,7 @@ jobs:
           name: spec-308-browser-simulation-${{ github.run_id }}
           path: |
             apps/web/test-results/production-director/
+            orchestra/tasks/spec-308-20261009/evidence/screenshots/*.png
             /tmp/spec-308-vite.log
           if-no-files-found: warn
           retention-days: 14
