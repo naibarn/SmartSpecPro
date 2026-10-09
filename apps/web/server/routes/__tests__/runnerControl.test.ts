@@ -1184,6 +1184,29 @@ describe("Runner control transport routes", () => {
     });
   });
 
+  it("returns a server failure for unexpected refresh errors without exposing internals", async () => {
+    const app = express();
+    app.use(express.json());
+    const gateway = new RunnerGateway(new InMemoryRunnerRepository());
+    vi.spyOn(gateway, "getStatus").mockRejectedValue(
+      new Error("storage detail must not be exposed")
+    );
+    registerRunnerControlRoutes(app, gateway);
+    const runnerId = "runner-refresh-internal-error";
+    const tokens = issueRunnerAccessTokens({
+      runnerId,
+      tenantId: "tenant-http",
+      profile: "shared_container",
+      nodeKind: "managed_container",
+    });
+    const response = await request(app)
+      .post(`/api/runners/${runnerId}/access/refresh`)
+      .set("Authorization", `Bearer ${tokens.refreshToken}`)
+      .expect(500, { error: "RUNNER_REFRESH_FAILED" });
+
+    expect(JSON.stringify(response.body)).not.toContain("storage detail");
+  });
+
   it("revokes a local Runner only for its authenticated owner", async () => {
     vi.mocked(authorizeRequest).mockResolvedValue({
       ok: true,
