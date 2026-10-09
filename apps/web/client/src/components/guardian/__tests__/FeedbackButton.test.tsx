@@ -95,7 +95,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
   }),
 }));
 
-import { FeedbackButton, isAssistantBalloonEligible } from "../FeedbackButton";
+import { FeedbackButton, isAssistantBalloonEligible, isAssistantBalloonSuppressedRoute } from "../FeedbackButton";
 
 describe("assistant reminder balloon eligibility", () => {
   const eligibleSurface = {
@@ -105,6 +105,7 @@ describe("assistant reminder balloon eligibility", () => {
     keyboardOpen: false,
     editableControlFocused: false,
     criticalOverlayOpen: false,
+    routeSuppressed: false,
   };
 
   it.each([
@@ -114,12 +115,35 @@ describe("assistant reminder balloon eligibility", () => {
     ["an open virtual keyboard", { keyboardOpen: true }],
     ["a focused editable control", { editableControlFocused: true }],
     ["a modal or critical overlay", { criticalOverlayOpen: true }],
+    ["an immersive route", { routeSuppressed: true }],
   ])("suppresses decorative balloons during %s", (_reason, blocked) => {
     expect(isAssistantBalloonEligible({ ...eligibleSurface, ...blocked })).toBe(false);
   });
 
   it("allows a balloon when no blocking surface is active", () => {
     expect(isAssistantBalloonEligible(eligibleSurface)).toBe(true);
+  });
+
+  it.each([
+    "/video-studio",
+    "/video-studio/project-123",
+    "/video-editor?projectId=123",
+    "/presentation-editor/doc-123",
+    "/presentation/123/play",
+    "/disaster/map",
+  ])("suppresses balloons on the immersive route %s", route => {
+    expect(isAssistantBalloonSuppressedRoute(route)).toBe(true);
+  });
+
+  it.each([
+    "/video-studiox/project-123",
+    "/video-editor-help",
+    "/presentation-editor",
+    "/presentation/123",
+    "/disaster",
+    "/dashboard/emergency",
+  ])("does not classify unrelated route %s as an immersive route", route => {
+    expect(isAssistantBalloonSuppressedRoute(route)).toBe(false);
   });
 });
 

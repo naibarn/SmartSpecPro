@@ -91,13 +91,25 @@ export function isAssistantBalloonEligible(input: {
   keyboardOpen: boolean;
   editableControlFocused: boolean;
   criticalOverlayOpen: boolean;
+  routeSuppressed: boolean;
 }) {
   return !input.dialogOpen
     && !input.dragging
     && input.documentVisible
     && !input.keyboardOpen
     && !input.editableControlFocused
-    && !input.criticalOverlayOpen;
+    && !input.criticalOverlayOpen
+    && !input.routeSuppressed;
+}
+
+export function isAssistantBalloonSuppressedRoute(location: string) {
+  const pathname = location.split(/[?#]/, 1)[0].replace(/\/+$/, "") || "/";
+  return pathname === "/video-studio"
+    || pathname.startsWith("/video-studio/")
+    || pathname === "/video-editor"
+    || /^\/presentation-editor\/[^/]+$/.test(pathname)
+    || /^\/presentation\/[^/]+\/play$/.test(pathname)
+    || pathname === "/disaster/map";
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -241,6 +253,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   const pasteImageCounterRef = useRef(0);
   const chatConversationPromiseRef = useRef<Promise<number> | null>(null);
   const previousLocationRef = useRef(location);
+  const routeSuppressesBalloon = isAssistantBalloonSuppressedRoute(location);
 
   useEffect(() => {
     const updateSurfaceEligibility = () => {
@@ -260,6 +273,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
         keyboardOpen,
         editableControlFocused,
         criticalOverlayOpen,
+        routeSuppressed: routeSuppressesBalloon,
       }));
     };
     updateSurfaceEligibility();
@@ -278,7 +292,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       window.visualViewport?.removeEventListener("resize", updateSurfaceEligibility);
       observer?.disconnect();
     };
-  }, [open, isButtonDragging]);
+  }, [open, isButtonDragging, routeSuppressesBalloon]);
 
   useEffect(() => {
     if (previousLocationRef.current === location) return;
@@ -346,18 +360,18 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   useEffect(() => {
     if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
     const hidden = document.visibilityState === "hidden";
-    if (open || isButtonDragging || hidden || balloonSurfaceBlocked) {
+    if (open || isButtonDragging || hidden || balloonSurfaceBlocked || routeSuppressesBalloon) {
       dispatchAttention({ type: "SUSPEND", now: Date.now() });
       return;
     }
     dispatchAttention({ type: "SET_VISIBLE", visible: true, now: Date.now() });
-  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked]);
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked, routeSuppressesBalloon]);
 
   useEffect(() => {
     if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
     const syncVisibility = () => {
       const now = Date.now();
-      if (document.visibilityState === "hidden" || open || isButtonDragging || balloonSurfaceBlocked) {
+      if (document.visibilityState === "hidden" || open || isButtonDragging || balloonSurfaceBlocked || routeSuppressesBalloon) {
         dispatchAttention({ type: "SUSPEND", now });
       } else {
         dispatchAttention({ type: "SET_VISIBLE", visible: true, now });
@@ -371,7 +385,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       window.removeEventListener("focus", syncVisibility);
       window.removeEventListener("blur", syncVisibility);
     };
-  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked]);
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked, routeSuppressesBalloon]);
 
   useEffect(() => {
     if (attention.deadlineAt === null) return;
@@ -853,7 +867,7 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   );
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
-  const canShowDecorativeBalloon = !balloonSurfaceBlocked && !open && !isButtonDragging;
+  const canShowDecorativeBalloon = !balloonSurfaceBlocked && !routeSuppressesBalloon && !open && !isButtonDragging;
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
       left: `${feedbackPlacement.x}px`,
