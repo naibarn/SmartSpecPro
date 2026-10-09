@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_DEPENDENCY`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.
-- Manifest generation: 23
+- Next action: Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.
+- Manifest generation: 24
 
 ## Source-declared status and relationship claims
 

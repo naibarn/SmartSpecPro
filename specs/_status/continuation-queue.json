@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
+      "next_action": "Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4938,7 +4938,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
+      "rationale": "Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },

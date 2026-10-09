@@ -135418,7 +135418,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "WAITING_DEPENDENCY",
-      "next_action": "Complete implementation gap audit, then reconcile current origin/main, run one consolidated exact-SHA verification, and resume external acceptance gates.",
+      "next_action": "Implementation sweep is source-complete for currently evidenced local fixes; next reconcile PR #399's candidate upstream, run the requested consolidated verification once, and continue external authority-gated acceptance.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
