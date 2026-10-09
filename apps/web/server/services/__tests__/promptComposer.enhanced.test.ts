@@ -5,6 +5,8 @@ import {
   personaTemplates,
   teamRoomParticipants,
   teamRoomMessages,
+  canonicalProjects,
+  canonicalProjectMemberships,
 } from "../../../drizzle/schema";
 
 // Mock modules before imports
@@ -24,6 +26,7 @@ vi.mock("../memoryService", () => ({
 
 // Track table results for the mock DB
 const tableResults = new Map<unknown, unknown[]>();
+let queryFailureTable: unknown;
 
 function makeChain(resolvedValue: unknown[] = []) {
   const chain: any = {};
@@ -32,13 +35,18 @@ function makeChain(resolvedValue: unknown[] = []) {
     const result = tableResults.get(table) ?? resolvedValue;
     const innerChain: any = {};
     innerChain.where = vi.fn().mockImplementation(() => {
+      const shouldFail = table === queryFailureTable;
       // Some queries go directly to result (no orderBy/limit)
       // Return object that works for all chain patterns
       const c: any = {};
       c.orderBy = vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue(result),
       });
-      c.limit = vi.fn().mockResolvedValue(result);
+      c.limit = vi.fn().mockImplementation(() =>
+        shouldFail
+          ? Promise.reject(new Error("sensitive query details"))
+          : Promise.resolve(result),
+      );
       c.then = (res: any) => Promise.resolve(result).then(res);
       // Allow direct await (for participants which have no limit/orderBy)
       c[Symbol.iterator] = function* () {
@@ -50,6 +58,9 @@ function makeChain(resolvedValue: unknown[] = []) {
       limit: vi.fn().mockResolvedValue(result),
     });
     innerChain.limit = vi.fn().mockResolvedValue(result);
+    if (table === queryFailureTable) {
+      innerChain.limit = vi.fn().mockRejectedValue(new Error("sensitive query details"));
+    }
     return innerChain;
   });
   return chain;
@@ -90,6 +101,7 @@ function setupMockDb(opts: {
   messages?: Record<string, unknown>[];
 }) {
   tableResults.clear();
+  queryFailureTable = undefined;
 
   const room =
     opts.room === undefined
@@ -513,5 +525,100 @@ describe("composePrompt -- workspace memory parity", () => {
           message.content.includes("Relevant workspace memories"),
       ),
     ).toBe(true);
+  });
+
+  it("allows canonical project context for an active member in the current tenant", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([]);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
+    });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [{ principalId: "user:42" }]);
+
+    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: 42,
+      projectId: "project-canonical",
+    });
+    expect(mockGetProjectSummaries).toHaveBeenCalledWith("project-canonical", 42, 3);
+  });
+
+  it.each([
+    ["revoked membership", [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }], []],
+    ["nonmember", [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }], []],
+    ["project owned by another tenant", [{ tenantId: "tenant-2", lifecycle: "ACTIVE" }], [{ principalId: "user:42" }]],
+    ["inactive canonical project", [{ tenantId: "tenant-1", lifecycle: "ARCHIVED" }], [{ principalId: "user:42" }]],
+  ])("suppresses canonical project context for %s without legacy fallback", async (_case, projectRows, membershipRows) => {
+    mockRetrieveForPrompt.mockResolvedValue([]);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "canonical-id" } as any,
+    });
+    tableResults.set(canonicalProjects, projectRows);
+    tableResults.set(canonicalProjectMemberships, membershipRows);
+
+    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: 42,
+      projectId: null,
+    });
+    expect(mockGetProjectSummaries).not.toHaveBeenCalled();
+  });
+
+  it("suppresses canonical project context when the initiator is absent", async () => {
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "canonical-id" } as any,
+    });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [{ principalId: "user:42" }]);
+
+    await composePrompt(baseInput);
+
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: undefined,
+      projectId: null,
+    });
+    expect(mockGetProjectSummaries).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when canonical project authorization lookup fails", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      mockRetrieveForPrompt.mockResolvedValue([]);
+      setupMockDb({
+        room: { tenantId: "tenant-1", language: "en", projectId: "canonical-id" } as any,
+      });
+      queryFailureTable = canonicalProjects;
+
+      await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+      expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+        initiatedByUserId: 42,
+        projectId: null,
+      });
+      expect(mockGetProjectSummaries).not.toHaveBeenCalled();
+      expect(warning).toHaveBeenCalledWith(
+        "Canonical project authorization lookup failed; project context omitted",
+      );
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
+  it("preserves project scope for an ID absent from the canonical registry", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([]);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
+    });
+    tableResults.set(canonicalProjects, []);
+
+    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: 42,
+      projectId: "legacy-project-id",
+    });
+    expect(mockGetProjectSummaries).toHaveBeenCalledWith("legacy-project-id", 42, 3);
   });
 });

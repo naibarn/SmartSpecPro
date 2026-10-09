@@ -13,6 +13,8 @@ import {
   teamRoomMessages,
   teamRoomParticipants,
   teamRooms,
+  canonicalProjects,
+  canonicalProjectMemberships,
   type TeamRoomMessage,
 } from "../../drizzle/schema";
 import {
@@ -321,6 +323,48 @@ export async function composePrompt(
     (room.projectId !== null && room.projectId !== undefined
       ? String(room.projectId)
       : null);
+  let authorizedProjectId = resolvedProjectId;
+  if (resolvedProjectId) {
+    // Canonical project IDs must be bound to the current tenant and member.
+    // Only IDs absent from the canonical registry retain legacy behavior.
+    try {
+      const [canonicalProject] = await db
+        .select({
+          tenantId: canonicalProjects.tenantId,
+          lifecycle: canonicalProjects.lifecycle,
+        })
+        .from(canonicalProjects)
+        .where(eq(canonicalProjects.projectId, resolvedProjectId))
+        .limit(1);
+
+      if (canonicalProject) {
+        authorizedProjectId = null;
+        if (
+          input.initiatedByUserId !== undefined &&
+          input.initiatedByUserId !== null &&
+          canonicalProject.tenantId === input.tenantId &&
+          canonicalProject.lifecycle === "ACTIVE"
+        ) {
+          const [membership] = await db
+            .select({ principalId: canonicalProjectMemberships.principalId })
+            .from(canonicalProjectMemberships)
+            .where(and(
+              eq(canonicalProjectMemberships.tenantId, input.tenantId),
+              eq(canonicalProjectMemberships.projectId, resolvedProjectId),
+              eq(canonicalProjectMemberships.principalId, `user:${input.initiatedByUserId}`),
+              eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
+            ))
+            .limit(1);
+          if (membership) authorizedProjectId = resolvedProjectId;
+        }
+      }
+    } catch {
+      // If canonical identity or ACL state cannot be checked, omit project
+      // context. Never reinterpret a possibly canonical ID as a legacy one.
+      authorizedProjectId = null;
+      console.warn("Canonical project authorization lookup failed; project context omitted");
+    }
+  }
   const promptQuery = input.currentMessage?.trim() || input.objective;
 
   // Pre-fetch history count for adaptive budget detection
@@ -413,7 +457,7 @@ export async function composePrompt(
       ? 0
       : Math.min(800, Math.floor(budget.scopedMemory * 0.25));
   const projectSummaryBudget =
-    memoryMode === "off" || !input.initiatedByUserId || !resolvedProjectId
+    memoryMode === "off" || !input.initiatedByUserId || !authorizedProjectId
       ? 0
       : Math.min(900, Math.floor(budget.scopedMemory * 0.25));
   const scopedMemoryBudget = Math.max(
@@ -435,7 +479,7 @@ export async function composePrompt(
         undefined,
         {
           initiatedByUserId: input.initiatedByUserId,
-          projectId: resolvedProjectId,
+          projectId: authorizedProjectId,
         },
       );
     } catch (err) {
@@ -502,12 +546,12 @@ export async function composePrompt(
   if (
     memoryMode !== "off" &&
     input.initiatedByUserId &&
-    resolvedProjectId &&
+    authorizedProjectId &&
     projectSummaryBudget > 0
   ) {
     try {
       projectSummaries = await getProjectSummaries(
-        resolvedProjectId,
+        authorizedProjectId,
         input.initiatedByUserId,
         3,
       );
