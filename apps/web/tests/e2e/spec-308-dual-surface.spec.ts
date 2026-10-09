@@ -503,14 +503,33 @@ test("SPEC-308 reminder follows the launcher after drag and stays inside the vie
   // asserting the final anchor geometry.
   await page.clock.runFor(32);
   await expect(balloon).toBeVisible();
-  await expect.poll(async () => {
-    const launcherBox = await launcher.boundingBox();
-    const balloonBox = await balloon.boundingBox();
-    if (!launcherBox || !balloonBox) return Number.POSITIVE_INFINITY;
-    return Math.abs(
-      launcherBox.x + launcherBox.width / 2 - balloonBox.x - balloonBox.width / 2,
-    );
-  }).toBeLessThanOrEqual(24);
+  let lastAlignment: { launcher: unknown; balloon: unknown; delta: number } | null = null;
+  try {
+    await expect.poll(async () => {
+      const launcherBox = await launcher.boundingBox();
+      const balloonBox = await balloon.boundingBox();
+      if (!launcherBox || !balloonBox) return Number.POSITIVE_INFINITY;
+      const delta = Math.abs(
+        launcherBox.x + launcherBox.width / 2 - balloonBox.x - balloonBox.width / 2,
+      );
+      const balloonLayout = await balloon.evaluate(node => {
+        const style = getComputedStyle(node);
+        return {
+          rect: node.getBoundingClientRect().toJSON(),
+          inlineLeft: (node as HTMLElement).style.left,
+          inlineTop: (node as HTMLElement).style.top,
+          computedLeft: style.left,
+          computedTop: style.top,
+          computedWidth: style.width,
+          transform: style.transform,
+        };
+      });
+      lastAlignment = { launcher: launcherBox, balloon: balloonLayout, delta };
+      return delta;
+    }).toBeLessThanOrEqual(24);
+  } catch (error) {
+    throw new Error(`Post-drag launcher/balloon geometry: ${JSON.stringify(lastAlignment)}`, { cause: error });
+  }
   const movedLauncher = await launcher.boundingBox();
   const movedBalloon = await balloon.boundingBox();
   expect(movedLauncher!.y).toBeLessThan(initialLauncher!.y - 100);
