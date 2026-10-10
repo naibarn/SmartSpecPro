@@ -451,7 +451,6 @@ test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
 test("SPEC-308 unverified SSE does not replace demo hint and mascot still opens Chat", async ({ page }) => {
   await installMockEventSource(page);
   await page.clock.install();
-  await page.clock.pauseAt(new Date("2030-01-01T00:00:00Z"));
   await initializeAuthenticatedBrowser(page, 390, 844);
   await page.goto("/chat");
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
@@ -459,6 +458,7 @@ test("SPEC-308 unverified SSE does not replace demo hint and mascot still opens 
   await expect(launcher).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
   await waitForNotificationBaseline(page);
+  await page.clock.pauseAt(new Date());
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   await expect(balloon).toBeVisible();
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30805 }));
