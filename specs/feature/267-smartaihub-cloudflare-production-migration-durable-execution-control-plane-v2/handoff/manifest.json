@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "74554a9317b506886bde154166e7750986e3b83e",
+    "expected_canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "expected_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e"
   },
   "continuation": {
     "next_action": "After capability-aware claim pagination is integrated, continue same WorkUnit with persisted no-compatible-worker and queue-stall reasons, loop/stall detection and independent-work selection using existing worker_jobs/outbox. Then run live worker-loss and process-restart UAT on isolated current-schema DB and benchmark single-machine baseline before any multi-machine default.",
     "next_ready_workunit": "WU-SPEC267-CAPABILITY-AWARE-CLAIM-PLACEMENT",
-    "reactivation_predicate": "Resume after the claim-scan checkpoint is integrated or current canonical advances; activate DB/restart obligations only when an isolated current-schema test environment exists.",
-    "resume_point": "SPEC-267 §17.10 bounded claim scanning is implemented in source commit bd52b52dd. Candidate tree 0c85c326891e2a9081ae09efe745d0755fc73602 was refreshed with current canonical 74554a9317b506886bde154166e7750986e3b83e and passed 9 focused files / 205 tests, 2 DB tests skipped. The implementation is not integrated. Existing worker_jobs/outbox/CAS remains the execution authority.",
+    "reactivation_predicate": "Resume after the claim-scan checkpoint is integrated or current canonical advances; database/restart UAT reactivates when an isolated current-schema test environment exists.",
+    "resume_point": "SPEC-267 §17.10 bounded claim scanning is implemented in source commit bd52b52dd. Candidate tree 0b7e9c859fa2fab45936c3405322d8531ab66536 was refreshed with current canonical eec45036091f1f43a215a46c643007f9f2c4ff44 and passed 9 focused files / 205 tests, 2 DB tests skipped. PR #516 is open; claim pagination is not integrated.",
     "waiting_predicate": "Continue source integration independently. Run database/restart UAT only when an isolated current-schema database and authenticated test worker are available; production data is not eligible."
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 14,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
     "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
@@ -115,9 +115,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "74554a9317b506886bde154166e7750986e3b83e",
+    "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:53:45Z"
+    "integrated_at": "2026-10-10T08:55:07Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -136,7 +136,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+        "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/jobControlPlane.ts in PR #471 merge d72bb64b9e9e8dc326b872f6bb249126591c1642",
@@ -150,7 +150,7 @@
         "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "successor_mapping": [],
         "verification_evidence": [
-          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: dependency-cycle cases passed in a 9-file, 205-test focused run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; the cycle implementation itself is already on canonical main."
+          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files, 205 passed, 2 DB-dependent skipped on refreshed candidate 0b7e9c859fa2fab45936c3405322d8531ab66536; current canonical SHA at refresh eec45036091f1f43a215a46c643007f9f2c4ff44."
         ],
         "verification_method": "Focused claim/dependency-cycle/lease regression suite on the current SPEC-267 implementation."
       },
@@ -163,7 +163,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+        "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
@@ -177,7 +177,7 @@
         "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "successor_mapping": [],
         "verification_evidence": [
-          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files passed, 205 passed, 2 DB-dependent skipped on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; includes compatible candidate after ten incompatible rows and the 100-scan cap."
+          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files, 205 passed, 2 DB-dependent skipped on refreshed candidate 0b7e9c859fa2fab45936c3405322d8531ab66536; current canonical SHA at refresh eec45036091f1f43a215a46c643007f9f2c4ff44."
         ],
         "verification_method": "Run the focused worker-registry suite and the exact nine-file control-plane/claim suite."
       },
@@ -190,7 +190,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+        "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
@@ -204,7 +204,7 @@
         "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "successor_mapping": [],
         "verification_evidence": [
-          "The 100-candidate bounded-scan test confirms no incompatible candidate reaches tryClaimJob and all remain queued; the compatible-after-ten test confirms the later eligible job is claimed. Both are in the 9-file run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602."
+          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files, 205 passed, 2 DB-dependent skipped on refreshed candidate 0b7e9c859fa2fab45936c3405322d8531ab66536; current canonical SHA at refresh eec45036091f1f43a215a46c643007f9f2c4ff44."
         ],
         "verification_method": "Verify failed compatibility candidates remain unchanged/queued and no claim CAS occurs; verify compatible independent job is claimed through existing fencing."
       }
@@ -316,15 +316,15 @@
     "unresolved": 364
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:54:04.681224Z",
+  "updated_at": "2026-10-10T08:55:32.037278Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       {
         "kind": "FOCUSED_CONTROL_PLANE_AND_CLAIM_REGRESSION",
         "path": "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md",
-        "scope": "9 focused files; 205 passed, 2 database-dependent tests skipped. Exact tested candidate tree includes current canonical main and task commit bd52b52dd; not integrated yet.",
-        "source_sha": "0c85c326891e2a9081ae09efe745d0755fc73602",
+        "scope": "9 focused files; 205 passed, 2 database-dependent tests skipped. Exact candidate tree includes current origin/main plus task commit bd52b52dd; claim-scan implementation remains pending integration.",
+        "source_sha": "0b7e9c859fa2fab45936c3405322d8531ab66536",
         "status": "PASS"
       }
     ],
@@ -332,7 +332,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "0c85c326891e2a9081ae09efe745d0755fc73602",
+    "sha": "0b7e9c859fa2fab45936c3405322d8531ab66536",
     "status": "PARTIAL",
     "task_regressions": []
   }

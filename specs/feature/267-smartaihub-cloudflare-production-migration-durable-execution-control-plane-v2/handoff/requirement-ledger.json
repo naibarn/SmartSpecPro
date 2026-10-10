@@ -1,5 +1,5 @@
 {
-  "generation": 7,
+  "generation": 8,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -4544,7 +4544,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+      "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/jobControlPlane.ts in PR #471 merge d72bb64b9e9e8dc326b872f6bb249126591c1642",
@@ -4558,7 +4558,7 @@
       "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
       "successor_mapping": [],
       "verification_evidence": [
-        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: dependency-cycle cases passed in a 9-file, 205-test focused run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; the cycle implementation itself is already on canonical main."
+        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files, 205 passed, 2 DB-dependent skipped on refreshed candidate 0b7e9c859fa2fab45936c3405322d8531ab66536; current canonical SHA at refresh eec45036091f1f43a215a46c643007f9f2c4ff44."
       ],
       "verification_method": "Focused claim/dependency-cycle/lease regression suite on the current SPEC-267 implementation."
     },
@@ -4571,7 +4571,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+      "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
@@ -4585,7 +4585,7 @@
       "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
       "successor_mapping": [],
       "verification_evidence": [
-        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files passed, 205 passed, 2 DB-dependent skipped on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; includes compatible candidate after ten incompatible rows and the 100-scan cap."
+        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files, 205 passed, 2 DB-dependent skipped on refreshed candidate 0b7e9c859fa2fab45936c3405322d8531ab66536; current canonical SHA at refresh eec45036091f1f43a215a46c643007f9f2c4ff44."
       ],
       "verification_method": "Run the focused worker-registry suite and the exact nine-file control-plane/claim suite."
     },
@@ -4598,7 +4598,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+      "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
@@ -4612,7 +4612,7 @@
       "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
       "successor_mapping": [],
       "verification_evidence": [
-        "The 100-candidate bounded-scan test confirms no incompatible candidate reaches tryClaimJob and all remain queued; the compatible-after-ten test confirms the later eligible job is claimed. Both are in the 9-file run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602."
+        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files, 205 passed, 2 DB-dependent skipped on refreshed candidate 0b7e9c859fa2fab45936c3405322d8531ab66536; current canonical SHA at refresh eec45036091f1f43a215a46c643007f9f2c4ff44."
       ],
       "verification_method": "Verify failed compatibility candidates remain unchanged/queued and no claim CAS occurs; verify compatible independent job is claimed through existing fencing."
     },
