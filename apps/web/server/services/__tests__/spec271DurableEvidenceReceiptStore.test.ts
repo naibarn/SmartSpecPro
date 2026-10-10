@@ -220,6 +220,18 @@ describe("SPEC-271 durable receipt object adapter WP2B", () => {
     }));
     await expectCode(unavailableRead.load(receiptIdentity()), "SCOPE_AUTHORIZATION_UNAVAILABLE");
     expect(readBuffer).not.toHaveBeenCalled();
+
+    let readAuthorizationChecks = 0;
+    const revokedBetweenChecks = createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      authorizeScope: async (_scope, access) => {
+        if (access !== "READ") return true;
+        readAuthorizationChecks += 1;
+        return readAuthorizationChecks === 1;
+      },
+    }));
+    await expectCode(revokedBetweenChecks.load(receiptIdentity()), "SCOPE_ACCESS_DENIED");
+    expect(readAuthorizationChecks).toBe(2);
+    expect(readBuffer).not.toHaveBeenCalled();
   });
 
   it("rechecks retention authority on read and rejects unavailable or changed policy", async () => {
