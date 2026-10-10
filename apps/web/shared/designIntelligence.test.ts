@@ -24,6 +24,97 @@ describe("provider-neutral design contracts", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("accepts multiple visual references while preserving the legacy spec-only contract", () => {
+    const base = {
+      schemaVersion: 1,
+      tenantId: "tenant-1",
+      projectId: "project-1",
+      requestId: "request-1",
+      requestedBy: "user-1",
+      intent: "mini-app-screen",
+      prompt: { text: "Create a reading list screen", trust: "user-authored" },
+      locale: "en",
+    };
+    expect(designRequestSchema.safeParse(base).success).toBe(true);
+    const parsed = designRequestSchema.safeParse({
+      ...base,
+      visualReferences: [
+        { id: "desktop", type: "image", sourceRef: "asset-image-1", pageHint: "/home", viewport: { width: 1440, height: 900 }, stateHint: "default", rights: "user_owned", assetReuseAllowed: true },
+        { id: "checkout", type: "video", sourceRef: "asset-video-1", flowHint: "checkout", importance: "high" },
+        { id: "inspiration", type: "url", url: "https://example.org/pricing", rights: "third_party_inspiration", assetReuseAllowed: false },
+      ],
+      designPreferences: { similarityMode: "close", devices: ["mobile", "desktop"], notes: "Keep the tenant logo" },
+      rights: { thirdPartyReferenceOnly: true },
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.visualReferences).toHaveLength(3);
+  });
+
+  it.each([
+    { id: "missing-source", type: "image" },
+    { id: "local-host", type: "url", url: "http://127.0.0.1/admin" },
+    { id: "numeric-host", type: "url", url: "http://2130706433/admin" },
+    { id: "local-name", type: "url", url: "http://service.local/path" },
+    { id: "credential-url", type: "url", url: "https://user:password@example.org/" },
+    { id: "signed-url", type: "url", url: "https://example.org/?signature=secret" },
+    { id: "third-party-copy", type: "url", url: "https://example.org/", rights: "third_party_inspiration", assetReuseAllowed: true },
+  ])("rejects unsafe or incomplete visual reference %#", (reference) => {
+    const base = {
+      schemaVersion: 1,
+      tenantId: "tenant-1",
+      projectId: "project-1",
+      requestId: "request-1",
+      requestedBy: "user-1",
+      intent: "mini-app-screen",
+      prompt: { text: "Create a reading list screen", trust: "user-authored" },
+      locale: "en",
+    };
+    expect(designRequestSchema.safeParse({ ...base, visualReferences: [reference] }).success).toBe(false);
+  });
+
+  it("requires cleared rights before high-fidelity mode with references", () => {
+    const base = {
+      schemaVersion: 1,
+      tenantId: "tenant-1",
+      projectId: "project-1",
+      requestId: "request-1",
+      requestedBy: "user-1",
+      intent: "mini-app-screen",
+      prompt: { text: "Create a reading list screen", trust: "user-authored" },
+      locale: "en",
+    };
+    expect(designRequestSchema.safeParse({
+      ...base,
+      visualReferences: [{ id: "inspiration", type: "url", url: "https://example.org/", rights: "third_party_inspiration" }],
+      designPreferences: { similarityMode: "high_fidelity" },
+    }).success).toBe(false);
+    expect(designRequestSchema.safeParse({
+      ...base,
+      visualReferences: [{ id: "owned", type: "image", sourceRef: "asset-owned", rights: "user_owned", assetReuseAllowed: true }],
+      designPreferences: { similarityMode: "high_fidelity" },
+    }).success).toBe(true);
+  });
+
+  it("keeps independently annotated references distinct", () => {
+    const base = {
+      schemaVersion: 1,
+      tenantId: "tenant-1",
+      projectId: "project-1",
+      requestId: "request-1",
+      requestedBy: "user-1",
+      intent: "mini-app-screen",
+      prompt: { text: "Create a reading list screen", trust: "user-authored" },
+      locale: "en",
+    };
+    expect(designRequestSchema.safeParse({
+      ...base,
+      visualReferences: [
+        { id: "same", type: "image", sourceRef: "desktop-image", pageHint: "/home" },
+        { id: "same", type: "image", sourceRef: "mobile-image", pageHint: "/home", viewport: { width: 390, height: 844 } },
+      ],
+    }).success).toBe(false);
+  });
+
   it.each([
     { schemaVersion: 2 },
     { tenantId: "   " },

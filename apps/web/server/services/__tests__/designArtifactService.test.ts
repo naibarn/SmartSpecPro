@@ -81,6 +81,7 @@ function createTestService(overrides: Partial<Parameters<typeof createDesignArti
     repository: createMemoryRepository(),
     authorization: { authorize: async () => true },
     audit: { record: async () => undefined },
+    assetReferences: { authorizeReference: async () => true },
     flags: enabledFlags,
     ...overrides,
   });
@@ -127,6 +128,40 @@ describe("native design artifact service boundary", () => {
       prompt: request.prompt,
       locale: "en",
     });
+  });
+
+  it("persists reference provenance and preferences in the immutable design draft", async () => {
+    const service = createTestService();
+    const visualReferences = [
+      { id: "dashboard", type: "image", sourceRef: "asset-dashboard", pageHint: "/dashboard", viewport: { width: 1440, height: 900 }, rights: "user_owned", assetReuseAllowed: true },
+      { id: "inspiration", type: "url", url: "https://example.org/pricing", rights: "third_party_inspiration", assetReuseAllowed: false },
+    ] as const;
+    const draft = await service.createDraft({
+      ...request,
+      visualReferences,
+      designPreferences: { similarityMode: "close", devices: ["mobile", "desktop"], notes: "Match the hierarchy" },
+      rights: { userClaimsOwnership: true, thirdPartyReferenceOnly: true },
+    }, actor);
+
+    expect(draft.payload).toMatchObject({ visualReferences, designPreferences: { similarityMode: "close" }, rights: { thirdPartyReferenceOnly: true } });
+    expect(draft.rights.assetsCleared).toBe(false);
+  });
+
+  it("denies reference handles the current tenant/project cannot read", async () => {
+    const service = createTestService({ assetReferences: { authorizeReference: async () => false } });
+    await expect(service.createDraft({
+      ...request,
+      visualReferences: [{ id: "private-image", type: "image", sourceRef: "another-tenant-asset" }],
+    }, actor)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("defaults third-party examples to inspired similarity", async () => {
+    const service = createTestService();
+    const draft = await service.createDraft({
+      ...request,
+      visualReferences: [{ id: "example-site", type: "url", url: "https://example.org/", rights: "third_party_inspiration" }],
+    }, actor);
+    expect(draft.payload).toMatchObject({ designPreferences: { similarityMode: "inspired" } });
   });
 
   it("requires fresh approval, rights clearance, and action bindings after a material append", async () => {
