@@ -11,14 +11,17 @@ import { getDb } from "../db";
 import {
   assistantProfiles,
   assistantTeams,
-  canonicalProjectMemberships,
-  canonicalProjects,
-  conversations,
+  scopedMemories,
   teamRoomParticipants,
   teamRooms,
   teamRuns,
 } from "../../drizzle/schema";
 import * as memoryService from "../services/scopedMemoryService";
+import {
+  issueProjectResolutionReceipt,
+  resolveTrustedHostAppContext,
+  validateProjectResolutionReceipt,
+} from "../services/smartAiHubRuntimeContext";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -132,80 +135,14 @@ async function canAccessAgentScope(
   return canAccessTeamScope(tenantId, userId, assistant.teamId);
 }
 
-async function canAccessProjectScope(
-  tenantId: string,
-  userId: number,
-  projectId: string,
-  access: "read" | "write",
-): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  // Canonical project IDs are globally unique. Resolve them before checking
-  // the legacy conversation projection so a foreign-tenant canonical ID can
-  // never fall through to an older conversation with a matching string ID.
-  const [canonicalProject] = await db
-    .select({ tenantId: canonicalProjects.tenantId, lifecycle: canonicalProjects.lifecycle })
-    .from(canonicalProjects)
-    .where(eq(canonicalProjects.projectId, projectId))
-    .limit(1);
-
-  if (canonicalProject) {
-    if (canonicalProject.tenantId !== tenantId || canonicalProject.lifecycle !== "ACTIVE") {
-      return false;
-    }
-
-    const [membership] = await db
-      .select({
-        tenantId: canonicalProjectMemberships.tenantId,
-        projectId: canonicalProjectMemberships.projectId,
-        principalId: canonicalProjectMemberships.principalId,
-        role: canonicalProjectMemberships.role,
-        lifecycle: canonicalProjectMemberships.lifecycle,
-      })
-      .from(canonicalProjectMemberships)
-      .where(
-        and(
-          eq(canonicalProjectMemberships.tenantId, tenantId),
-          eq(canonicalProjectMemberships.projectId, projectId),
-          eq(canonicalProjectMemberships.principalId, `user:${userId}`),
-          eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
-        ),
-      )
-      .limit(1);
-
-    return Boolean(
-      membership &&
-        membership.tenantId === tenantId &&
-        membership.projectId === projectId &&
-        membership.principalId === `user:${userId}` &&
-        membership.lifecycle === "ACTIVE" &&
-        (membership.role === "owner" || membership.role === "editor" ||
-          (access === "read" && membership.role === "viewer")),
-    );
-  }
-
-  const [conversation] = await db
-    .select({ id: conversations.id })
-    .from(conversations)
-    .where(
-      and(
-        eq(conversations.tenantId, tenantId),
-        eq(conversations.userId, userId),
-        eq(conversations.projectId, projectId),
-      ),
-    )
-    .limit(1);
-
-  return Boolean(conversation);
-}
-
 async function assertScopeAccess(params: {
   tenantId: string;
   userId: number;
   ownerType: "user" | "agent" | "team" | "room" | "project" | "run";
   ownerId: string;
   access: "read" | "write";
+  host?: string | null;
+  conversationId?: number;
 }): Promise<void> {
   switch (params.ownerType) {
     case "user":
@@ -273,18 +210,44 @@ async function assertScopeAccess(params: {
       }
       return;
     case "project":
-      if (
-        !(await canAccessProjectScope(
-          params.tenantId,
-          params.userId,
-          params.ownerId,
-          params.access,
-        ))
-      ) {
+      if (params.access === "write") {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have access to this project scope",
+          message: "Durable ProjectResolutionReceipt required for project-shared memory writes",
         });
+      }
+      if (!params.conversationId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "A server-owned conversation binding is required for Project memory reads",
+        });
+      }
+      {
+        const appContext = await resolveTrustedHostAppContext({
+          tenantId: params.tenantId,
+          host: params.host,
+        });
+        const receipt = await issueProjectResolutionReceipt({
+          tenantId: params.tenantId,
+          userId: params.userId,
+          appContext,
+          conversationId: params.conversationId,
+          selectedProjectId: params.ownerId,
+        });
+        const validation = await validateProjectResolutionReceipt({
+          receipt,
+          operation: "read",
+          tenantId: params.tenantId,
+          userId: params.userId,
+          appId: appContext?.hostAppId ?? null,
+          conversationId: params.conversationId,
+        });
+        if (!validation.authorized || validation.canonicalProjectId !== params.ownerId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You do not have current App-bound access to this Project scope",
+          });
+        }
       }
       return;
     default:
@@ -297,21 +260,37 @@ async function assertMemoryAccess(
   userId: number,
   memoryId: string,
   access: "read" | "write",
+  host?: string | null,
+  conversationId?: number,
 ) {
-  const memory = await memoryService.getMemory(memoryId, tenantId);
-  if (!memory) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [metadata] = await db
+    .select({ ownerType: scopedMemories.ownerType, ownerId: scopedMemories.ownerId })
+    .from(scopedMemories)
+    .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
+    .limit(1);
+  if (!metadata) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
   }
 
   await assertScopeAccess({
     tenantId,
     userId,
-    ownerType: memory.ownerType,
-    ownerId: memory.ownerId,
+    ownerType: metadata.ownerType,
+    ownerId: metadata.ownerId,
     access,
+    host,
+    conversationId,
   });
 
+  const memory = await memoryService.getMemory(memoryId, tenantId);
+  if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
   return memory;
+}
+
+function trustedRequestHost(ctx: { req?: { hostname?: string; get?: (name: string) => string | undefined } }): string | null {
+  return ctx.req?.hostname || ctx.req?.get?.("host")?.split(":")[0] || null;
 }
 
 export const scopedMemoryRouter = router({
@@ -346,6 +325,7 @@ export const scopedMemoryRouter = router({
         ownerType: input.ownerType,
         ownerId: input.ownerId,
         access: "write",
+        host: trustedRequestHost(ctx),
       });
       return memoryService.createMemory({
         tenantId,
@@ -363,6 +343,7 @@ export const scopedMemoryRouter = router({
       })).min(1).max(20),
       query: z.string().min(1).max(500),
       topK: z.number().int().min(1).max(100).optional(),
+      conversationId: z.number().int().positive().optional(),
     }))
     .query(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
@@ -373,6 +354,8 @@ export const scopedMemoryRouter = router({
           ownerType: scope.type,
           ownerId: scope.id,
           access: "read",
+          host: trustedRequestHost(ctx),
+          conversationId: input.conversationId,
         });
       }
       return memoryService.searchMemories({
@@ -384,7 +367,7 @@ export const scopedMemoryRouter = router({
     }),
 
   get: protectedProcedure
-    .input(z.object({ memoryId: z.string().min(1) }))
+    .input(z.object({ memoryId: z.string().min(1), conversationId: z.number().int().positive().optional() }))
     .query(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
       const memory = await assertMemoryAccess(
@@ -392,6 +375,8 @@ export const scopedMemoryRouter = router({
         ctx.user!.id,
         input.memoryId,
         "read",
+        trustedRequestHost(ctx),
+        input.conversationId,
       );
       return memory;
     }),
@@ -407,7 +392,7 @@ export const scopedMemoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
       const { memoryId, ...updates } = input;
-      await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write");
+      await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write", trustedRequestHost(ctx));
       const memory = await memoryService.updateMemory(memoryId, tenantId, updates);
       if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return memory;
@@ -417,7 +402,7 @@ export const scopedMemoryRouter = router({
     .input(z.object({ memoryId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
-      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write");
+      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write", trustedRequestHost(ctx));
       const deleted = await memoryService.deleteMemory(input.memoryId, tenantId);
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return { success: true };
@@ -430,7 +415,7 @@ export const scopedMemoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
       for (const memoryId of input.memoryIds) {
-        await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write");
+        await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write", trustedRequestHost(ctx));
       }
       const deletedCount = await memoryService.deleteMemories(input.memoryIds, tenantId);
       return { success: true, deletedCount };
@@ -445,13 +430,14 @@ export const scopedMemoryRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
-      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write");
+      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write", trustedRequestHost(ctx));
       await assertScopeAccess({
         tenantId,
         userId: ctx.user!.id,
         ownerType: input.toOwnerType,
         ownerId: input.toOwnerId,
         access: "write",
+        host: trustedRequestHost(ctx),
       });
       await memoryService.promoteMemory(
         input.memoryId,

@@ -10,6 +10,9 @@ const {
   mockPromoteMemory,
   mockRequireTenantId,
   mockGetDb,
+  mockResolveAppContext,
+  mockIssueReceipt,
+  mockValidateReceipt,
 } = vi.hoisted(() => ({
   mockCreateMemory: vi.fn(),
   mockSearchMemories: vi.fn(),
@@ -20,6 +23,9 @@ const {
   mockPromoteMemory: vi.fn(),
   mockRequireTenantId: vi.fn(() => "tenant-42"),
   mockGetDb: vi.fn(),
+  mockResolveAppContext: vi.fn(),
+  mockIssueReceipt: vi.fn(),
+  mockValidateReceipt: vi.fn(),
 }));
 
 vi.mock("../../services/scopedMemoryService", () => ({
@@ -38,6 +44,12 @@ vi.mock("../../services/tenantContext", () => ({
 
 vi.mock("../../db", () => ({
   getDb: mockGetDb,
+}));
+
+vi.mock("../../services/smartAiHubRuntimeContext", () => ({
+  resolveTrustedHostAppContext: mockResolveAppContext,
+  issueProjectResolutionReceipt: mockIssueReceipt,
+  validateProjectResolutionReceipt: mockValidateReceipt,
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -70,17 +82,20 @@ import {
   canonicalProjectMemberships,
   canonicalProjects,
   conversations,
+  scopedMemories,
 } from "../../../drizzle/schema";
 
 function configureProjectScopeDatabase(rows: {
   canonicalProjects?: unknown[];
   memberships?: unknown[];
   conversations?: unknown[];
+  memories?: unknown[];
 }) {
   const rowsByTable = new Map<unknown, unknown[]>([
     [canonicalProjects, rows.canonicalProjects ?? []],
     [canonicalProjectMemberships, rows.memberships ?? []],
     [conversations, rows.conversations ?? []],
+    [scopedMemories, rows.memories ?? [{ ownerType: "project", ownerId: "canonical-project-1" }]],
   ]);
   const selectedTables: unknown[] = [];
   mockGetDb.mockResolvedValue({
@@ -117,6 +132,7 @@ function searchProjectMemory(projectId: string) {
     input: {
       scopes: [{ type: "project", id: projectId }],
       query: "project note",
+      conversationId: 9,
     },
   });
 }
@@ -125,6 +141,7 @@ function makeCtx() {
   return {
     tenantId: "tenant-42",
     user: { id: 7, currentTenantId: 42 },
+    req: { hostname: "notes.example.com" },
   } as any;
 }
 
@@ -142,18 +159,29 @@ describe("scopedMemoryRouter", () => {
     mockDeleteMemory.mockResolvedValue(true);
     mockDeleteMemories.mockResolvedValue(2);
     mockPromoteMemory.mockResolvedValue(undefined);
+    mockResolveAppContext.mockResolvedValue({
+      version: "spec304-trusted-host-app-context.v1",
+      tenantId: "tenant-42",
+      hostAppId: "app-42",
+      publicAppId: "public-app-42",
+      routeProvenance: "verified_custom_domain_alias",
+      permissionCeiling: { projectMemoryRead: "authorized_bound_project_only", durableProjectMemoryWrite: false },
+      policyVersion: "spec269-app-project-memory.phase1.v1",
+    });
+    mockIssueReceipt.mockResolvedValue({ receiptId: "receipt-1" });
+    mockValidateReceipt.mockResolvedValue({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
     mockGetDb.mockResolvedValue({
       select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
+        from: vi.fn((table: unknown) => ({
           where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
+            limit: vi.fn().mockResolvedValue(table === scopedMemories
+              ? [{ ownerType: "user", ownerId: "7" }]
+              : []),
           }),
           innerJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([]),
-            }),
+            where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
           }),
-        }),
+        })),
       }),
     });
   });
@@ -220,17 +248,14 @@ describe("scopedMemoryRouter", () => {
     ).rejects.toThrow("Cannot access another user's scoped memory");
   });
 
-  it("allows a current canonical project member without a conversation row", async () => {
+  it("fails closed on project-shared creation until a durable receipt exists", async () => {
     const selectedTables = configureProjectScopeDatabase({
       canonicalProjects: [{ projectId: "canonical-project-1", tenantId: "tenant-42", lifecycle: "ACTIVE" }],
       memberships: [{ tenantId: "tenant-42", projectId: "canonical-project-1", principalId: "user:7", role: "editor", lifecycle: "ACTIVE" }],
     });
 
-    await createProjectMemory("canonical-project-1");
-
-    expect(mockCreateMemory).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerType: "project", ownerId: "canonical-project-1" }),
-    );
+    await expect(createProjectMemory("canonical-project-1")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockCreateMemory).not.toHaveBeenCalled();
     expect(selectedTables).not.toContain(conversations);
   });
 
@@ -244,7 +269,7 @@ describe("scopedMemoryRouter", () => {
 
     await expect(createProjectMemory("canonical-project-1")).rejects.toMatchObject({
       code: "FORBIDDEN",
-      message: "You do not have access to this project scope",
+      message: "Durable ProjectResolutionReceipt required for project-shared memory writes",
     });
     expect(mockCreateMemory).not.toHaveBeenCalled();
   });
@@ -263,17 +288,14 @@ describe("scopedMemoryRouter", () => {
     expect(mockCreateMemory).not.toHaveBeenCalled();
   });
 
-  it("preserves access to a legacy project with an owned conversation", async () => {
+  it("denies legacy project writes without selecting a canonical destination", async () => {
     configureProjectScopeDatabase({
       canonicalProjects: [],
       conversations: [{ id: 9, tenantId: "tenant-42", userId: 7, projectId: "legacy-project-1" }],
     });
 
-    await createProjectMemory("legacy-project-1");
-
-    expect(mockCreateMemory).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerType: "project", ownerId: "legacy-project-1" }),
-    );
+    await expect(createProjectMemory("legacy-project-1")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockCreateMemory).not.toHaveBeenCalled();
   });
 
   it("denies a foreign-tenant canonical project without falling back to a local conversation", async () => {
@@ -290,12 +312,13 @@ describe("scopedMemoryRouter", () => {
     expect(mockCreateMemory).not.toHaveBeenCalled();
   });
 
-  it("allows a viewer to search canonical project memory without a conversation", async () => {
+  it("permits project reads only after a fresh invocation receipt validates", async () => {
     const selectedTables = configureProjectScopeDatabase({
       canonicalProjects: [{ projectId: "canonical-project-1", tenantId: "tenant-42", lifecycle: "ACTIVE" }],
       memberships: [{ tenantId: "tenant-42", projectId: "canonical-project-1", principalId: "user:7", role: "viewer", lifecycle: "ACTIVE" }],
     });
 
+    mockValidateReceipt.mockResolvedValueOnce({ authorized: true, canonicalProjectId: "canonical-project-1" });
     await searchProjectMemory("canonical-project-1");
 
     expect(mockSearchMemories).toHaveBeenCalledWith(
@@ -304,17 +327,28 @@ describe("scopedMemoryRouter", () => {
     expect(selectedTables).not.toContain(conversations);
   });
 
-  it("allows a viewer to get canonical project memory", async () => {
+  it("rechecks an invocation receipt before reading a project memory body", async () => {
     configureProjectScopeDatabase({
       canonicalProjects: [{ projectId: "canonical-project-1", tenantId: "tenant-42", lifecycle: "ACTIVE" }],
       memberships: [{ tenantId: "tenant-42", projectId: "canonical-project-1", principalId: "user:7", role: "viewer", lifecycle: "ACTIVE" }],
     });
     mockGetMemory.mockResolvedValue({ id: "m1", ownerType: "project", ownerId: "canonical-project-1" });
+    mockValidateReceipt.mockResolvedValueOnce({ authorized: true, canonicalProjectId: "canonical-project-1" });
 
     await expect(scopedMemoryRouter.get({
       ctx: makeCtx(),
-      input: { memoryId: "m1" },
+      input: { memoryId: "m1", conversationId: 9 },
     })).resolves.toMatchObject({ id: "m1" });
+    expect(mockValidateReceipt).toHaveBeenCalledWith(expect.objectContaining({ operation: "read", appId: "app-42" }));
+    expect(mockGetMemory).toHaveBeenCalled();
+  });
+
+  it("denies project memory search without a server-owned conversation binding", async () => {
+    await expect(scopedMemoryRouter.search({
+      ctx: makeCtx(),
+      input: { scopes: [{ type: "project", id: "canonical-project-1" }], query: "project note" },
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockSearchMemories).not.toHaveBeenCalled();
   });
 
   it("denies a viewer from creating canonical project memory", async () => {
@@ -366,18 +400,15 @@ describe("scopedMemoryRouter", () => {
   });
 
   it.each(["owner", "editor"] as const)(
-    "allows an active %s membership to write project memory",
+    "fails closed for an active %s membership until durable project-write receipts exist",
     async role => {
       configureProjectScopeDatabase({
         canonicalProjects: [{ projectId: "canonical-project-1", tenantId: "tenant-42", lifecycle: "ACTIVE" }],
         memberships: [{ tenantId: "tenant-42", projectId: "canonical-project-1", principalId: "user:7", role, lifecycle: "ACTIVE" }],
       });
 
-      await createProjectMemory("canonical-project-1");
-
-      expect(mockCreateMemory).toHaveBeenCalledWith(
-        expect.objectContaining({ ownerType: "project", ownerId: "canonical-project-1" }),
-      );
+      await expect(createProjectMemory("canonical-project-1")).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(mockCreateMemory).not.toHaveBeenCalled();
     },
   );
 });
