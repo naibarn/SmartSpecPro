@@ -27,3 +27,4 @@
 {"changes": ["continuation.resume_point", "lifecycle.state_evidence"], "event_type": "CURRENT_TRANSITION", "generation": 31, "observed_at": "2026-10-10T08:36:01.822690Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.resume_point", "integration.canonical_sha"], "event_type": "CURRENT_TRANSITION", "generation": 32, "observed_at": "2026-10-10T08:37:03.026641Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.resume_point", "integration.canonical_sha"], "event_type": "CURRENT_TRANSITION", "generation": 33, "observed_at": "2026-10-10T08:38:43.988632Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action", "continuation.reactivation_predicate", "continuation.resume_point", "integration.canonical_sha", "lifecycle.state_evidence"], "event_type": "CURRENT_TRANSITION", "generation": 34, "observed_at": "2026-10-10T08:45:52.850472Z", "provenance": "OBSERVED"}
