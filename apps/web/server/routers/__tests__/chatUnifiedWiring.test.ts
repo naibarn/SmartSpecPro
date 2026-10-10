@@ -44,8 +44,11 @@ const mockCreateMessage = vi.fn().mockResolvedValue({});
 const mockGetConversationById = vi.fn();
 const mockCreateConversation = vi.fn();
 const mockCreatePersonalConversation = vi.fn();
+const mockGetRecentMessages = vi.fn().mockResolvedValue([]);
+const mockGetSummaries = vi.fn().mockResolvedValue([]);
 const mockUpdateConversation = vi.fn();
 const mockBuildChatContext = vi.fn().mockResolvedValue([]);
+const mockStartSkillTask = vi.fn().mockResolvedValue({ taskId: "queued-task-1" });
 vi.mock("../../services/chatService", () => ({
   createConversation: (...args: unknown[]) => mockCreateConversation(...args),
   createPersonalConversation: (...args: unknown[]) =>
@@ -58,7 +61,7 @@ vi.mock("../../services/chatService", () => ({
   buildChatContext: (...args: unknown[]) => mockBuildChatContext(...args),
   getConversations: vi.fn(),
   getMessages: vi.fn(),
-  getRecentMessages: vi.fn(),
+  getRecentMessages: (...args: unknown[]) => mockGetRecentMessages(...args),
   getMessageById: vi.fn(),
   updateMessage: vi.fn(),
   deleteMessage: vi.fn(),
@@ -70,7 +73,7 @@ vi.mock("../../services/chatService", () => ({
   deleteEmptyConversations: vi.fn(),
   getConversationCount: vi.fn(),
   updateConversationCredits: vi.fn(),
-  getSummaries: vi.fn(),
+  getSummaries: (...args: unknown[]) => mockGetSummaries(...args),
   getEntityMemories: vi.fn(),
   upsertEntityMemory: vi.fn(),
   deleteEntityMemory: vi.fn(),
@@ -112,6 +115,7 @@ vi.mock("../../services/roomIntentRouter", () => ({
 
 vi.mock("../../services/skillExecutor", () => ({
   executeSkill: vi.fn(),
+  startSkillTask: (...args: unknown[]) => mockStartSkillTask(...args),
   startPythonSkillTask: vi.fn(),
   estimateSkillCost: vi.fn(),
   canAutoExecute: vi.fn().mockReturnValue(true),
@@ -190,26 +194,25 @@ vi.mock("../../services/userSkillService", () => ({
 // Mock DB access
 vi.mock("../../db", () => ({
   getDb: vi.fn().mockResolvedValue({
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([
-            {
-              systemPrompt: "You are a test writer.",
-              knowledgebase: null,
-              visibleByDefault: true,
-              hasAccess: null,
-            },
-          ]),
-        }),
-        leftJoin: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([
-              { visibleByDefault: true, hasAccess: null },
-            ]),
-          }),
-        }),
-      }),
+    select: vi.fn(() => {
+      const chain: any = {};
+      chain.from = vi.fn(() => chain);
+      chain.where = vi.fn(() => chain);
+      chain.leftJoin = vi.fn(() => chain);
+      chain.innerJoin = vi.fn(() => chain);
+      chain.limit = vi.fn().mockResolvedValue([
+        {
+          id: 10,
+          visibility: "public",
+          createdBy: 99,
+          explicitVisible: null,
+          systemPrompt: "You are a test writer.",
+          knowledgebase: null,
+          visibleByDefault: true,
+          hasAccess: null,
+        },
+      ]);
+      return chain;
     }),
   }),
 }));
@@ -258,6 +261,9 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
       createdAt: new Date("2026-04-01T00:00:00.000Z"),
     });
     mockUpdateConversation.mockResolvedValue(undefined);
+    mockGetRecentMessages.mockResolvedValue([]);
+    mockGetSummaries.mockResolvedValue([]);
+    mockStartSkillTask.mockResolvedValue({ taskId: "queued-task-1" });
     mockDetectSkill.mockResolvedValue({
       detected: false,
       skill: null,
@@ -272,6 +278,68 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
       confidence: 0.5,
       source: "fallback",
     });
+  });
+
+  it("queues execution under authenticated tenant and ignores client App/Project identity fields", async () => {
+    mockGetConversationById.mockResolvedValue({
+      id: 42,
+      userId: 1,
+      model: "gpt-4o-mini",
+      activePersonaId: null,
+      skillSettings: {},
+    });
+
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      protectedSurfaceToken: null,
+      trustedAppContext: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(
+      caller.executeSkill({
+        skillId: "test-article-writer",
+        prompt: "write a short note",
+        conversationId: 42,
+        projectId: "project-attacker",
+        appId: "app-attacker",
+        hostAppId: "app-attacker",
+        tenantId: "tenant-attacker",
+      } as any)
+    ).resolves.toMatchObject({
+      success: true,
+      isAsync: true,
+      taskId: "queued-task-1",
+    });
+
+    expect(mockStartSkillTask).toHaveBeenCalledTimes(1);
+    const [, queuedParams, userId, tenantId] = mockStartSkillTask.mock.calls[0];
+    expect(userId).toBe(1);
+    expect(tenantId).toBe("tenant-1");
+    expect(queuedParams).toMatchObject({ conversationId: "42" });
+    expect(queuedParams.context).not.toHaveProperty("projectId");
+    expect(queuedParams.context).not.toHaveProperty("trustedAppContext");
+    expect(JSON.stringify(queuedParams)).not.toContain("app-attacker");
+    expect(JSON.stringify(queuedParams)).not.toContain("tenant-attacker");
+    expect(mockExecuteUnified).not.toHaveBeenCalled();
+    expect(mockExecuteSkillLlmWithFallback).not.toHaveBeenCalled();
   });
 
   it("flag=false — orchestrator NOT called, existing path used", async () => {

@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "bce088f9242025d4eafa6f52791dbe3f5924f088",
+    "expected_canonical_sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Implement per-WorkUnit evaluation jobs through the existing worker_jobs/outbox authority; classify provider/dependency/resource waits separately from stalls and loops; retain the allowlisted runEngine recovery owners; add contract and non-production UAT evidence.",
-    "next_ready_workunit": "Durable asynchronous AutoTeam evaluation and bounded recovery dispatch through worker_jobs/outbox, with restart, duplicate, stale-lease, independent-work and failure-injection contracts",
+    "next_action": "Run the focused AutoTeam recovery and AgentRuntime trace Vitest contracts in a provisioned package runner; validate worker_jobs/outbox creation, stale lease fencing, recovery state change and idempotent replay in a non-production DB; verify the configured Cloudflare scheduler invokes the recovery producer before claiming deployed autonomous completion.",
+    "next_ready_workunit": "Post-integration focused worker-job contract tests, non-production recovery UAT, and scheduler-source verification",
     "reactivation_predicate": null,
-    "resume_point": "PR #476 merged at bce088f9242025d4eafa6f52791dbe3f5924f088. Trace projection now serializes per-run Task Control event sequence allocation under a DB transaction and is idempotent on replay. Focused Vitest remains pending because vitest is absent in the isolated worktree; build-preview was SKIPPED.",
+    "resume_point": "PR #480 merged at 12000eaa372e79f7aaf172f46741d7e3aa6c6d4e. Eligible AutoTeam evaluations now dispatch per run through canonical worker_jobs/outbox and existing runEngine recovery owners. Tests were authored but not executable in this worktree (vitest missing); PR preview was SKIPPED. No actual recovery or UAT evidence exists.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -104,7 +104,8 @@
     "checkpoint_shas": [
       "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
       "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
-      "bce088f9242025d4eafa6f52791dbe3f5924f088"
+      "bce088f9242025d4eafa6f52791dbe3f5924f088",
+      "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
     ],
     "mapping": [],
     "source_paths": [
@@ -113,16 +114,20 @@
       "apps/web/client/src/components/orchestrator/AutoTeamLedgerPanel.tsx",
       "apps/web/server/services/agentRuntime/traceRepository.ts",
       "apps/web/server/services/agentRuntime/skillRuntimeOrchestrator.ts",
-      "apps/web/server/services/autoTeamTraceEventService.ts"
+      "apps/web/server/services/autoTeamTraceEventService.ts",
+      "apps/web/server/services/autoTeamRecoveryService.ts",
+      "apps/web/server/services/autoTeamRecoveryEvaluationJob.ts",
+      "apps/web/server/services/autoTeamRecoveryEvaluationExecutor.ts",
+      "apps/web/server/services/jobExecutorRegistry.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "bce088f9242025d4eafa6f52791dbe3f5924f088",
+    "canonical_sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:46:05Z"
+    "integrated_at": "2026-10-10T07:54:54Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -347,14 +352,52 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:47:24.413380Z",
+  "updated_at": "2026-10-10T07:57:07.664987Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      {
+        "command": "node --experimental-strip-types --check on changed runtime, recovery, registry, and contract test TypeScript files",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "assertions": 6,
+        "command": "node --experimental-strip-types /tmp/auto-team-recovery-contract-smoke.mjs",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "command": "pnpm exec vitest run focused AutoTeam and AgentRuntime contract suites",
+        "profile": "quick",
+        "reason": "vitest binary is not installed in the isolated worktree",
+        "result": "NOT_RUN",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "command": "non-production worker_jobs/outbox recovery UAT",
+        "profile": "integration",
+        "reason": "DATABASE_URL and API_BASE_URL are absent; no non-production environment is configured",
+        "result": "NOT_RUN",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "command": "PR preview CI",
+        "profile": "integration",
+        "pull_request": 480,
+        "result": "SKIPPED",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      }
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "quick",
+      "integration"
+    ],
+    "sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
