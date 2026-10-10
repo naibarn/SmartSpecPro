@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const runtimeAuthority = vi.hoisted(() => ({
+  issue: vi.fn(),
+  validate: vi.fn(),
+}));
+
 // --- Mocks ---
 vi.mock("../personaService", () => ({
   buildPersonaPromptSegments: vi.fn(),
@@ -12,6 +17,11 @@ vi.mock("../scopedMemoryService", () => ({
 
 vi.mock("../memoryService", () => ({
   getEntityMemoriesForContext: vi.fn(),
+}));
+
+vi.mock("../smartAiHubRuntimeContext", () => ({
+  issueProjectResolutionReceipt: runtimeAuthority.issue,
+  validateProjectResolutionReceipt: runtimeAuthority.validate,
 }));
 
 vi.mock("../promptComposer", () => ({
@@ -42,6 +52,7 @@ vi.mock("../mediaGenerationService", () => ({
 }));
 
 import {
+  CHAT_SCOPED_MEMORY_BUDGET,
   buildChatContext,
   buildTeamContext,
   buildDynamicModelRequirements,
@@ -52,6 +63,10 @@ import {
 import { buildPersonaPromptSegments, getPersonaById } from "../personaService";
 import { retrieveForPrompt } from "../scopedMemoryService";
 import { getEntityMemoriesForContext } from "../memoryService";
+import {
+  issueProjectResolutionReceipt,
+  validateProjectResolutionReceipt,
+} from "../smartAiHubRuntimeContext";
 import { composePrompt } from "../promptComposer";
 import { captureTeamProjectProviderContextBinding } from "../teamProjectProviderAuthorization";
 import {
@@ -70,6 +85,8 @@ const mockGetPersonaById = vi.mocked(getPersonaById);
 const mockBuildPersonaPromptSegments = vi.mocked(buildPersonaPromptSegments);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
 const mockGetEntityMemoriesForContext = vi.mocked(getEntityMemoriesForContext);
+const mockIssueProjectReceipt = vi.mocked(issueProjectResolutionReceipt);
+const mockValidateProjectReceipt = vi.mocked(validateProjectResolutionReceipt);
 const mockComposePrompt = vi.mocked(composePrompt);
 const mockCaptureTeamProjectProviderContextBinding = vi.mocked(
   captureTeamProjectProviderContextBinding,
@@ -94,7 +111,10 @@ function makeRequest(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRetrieveForPrompt.mockResolvedValue([]);
   mockGetEntityMemoriesForContext.mockResolvedValue([]);
+  mockIssueProjectReceipt.mockResolvedValue({ receiptId: "receipt-1" } as any);
+  mockValidateProjectReceipt.mockResolvedValue({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
     version: "team-room-provider-context.v1",
     tenantId: "t1",
@@ -111,6 +131,70 @@ beforeEach(() => {
 // ─── buildChatContext ──────────────────────────────────────
 
 describe("buildChatContext", () => {
+  it("uses an authorized host-App Project receipt for each project-aware read", async () => {
+    const trustedAppContext = {
+      version: "spec304-trusted-host-app-context.v1" as const,
+      tenantId: "t1",
+      hostAppId: "app-a",
+      publicAppId: "public-app-a",
+      routeProvenance: "verified_custom_domain_alias" as const,
+      permissionCeiling: {
+        projectMemoryRead: "authorized_bound_project_only" as const,
+        durableProjectMemoryWrite: false as const,
+      },
+      policyVersion: "spec269-app-project-memory.phase1.v1" as const,
+    };
+    mockGetPersonaById.mockResolvedValue({ id: "p1" } as any);
+    mockBuildPersonaPromptSegments.mockReturnValue({
+      prefix: "Persona prefix", styleInstructions: "", restrictionsBulletPoints: "",
+    });
+    mockValidateProjectReceipt.mockResolvedValue({
+      authorized: true, canonicalProjectId: "project-a",
+    });
+
+    await buildChatContext(makeRequest({
+      conversationContext: {
+        conversationId: 22,
+        activePersonaId: "p1",
+        trustedAppContext,
+      },
+    }), "Skill prompt", null);
+
+    expect(mockIssueProjectReceipt).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "t1", userId: 1, conversationId: 22, appContext: trustedAppContext,
+    }));
+    expect(mockValidateProjectReceipt).toHaveBeenCalledTimes(2);
+    expect(mockRetrieveForPrompt).toHaveBeenCalledWith(
+      "t1", "p1", null, null, null, "Hello world", CHAT_SCOPED_MEMORY_BUDGET,
+      undefined, { initiatedByUserId: 1, projectId: "project-a" },
+    );
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, "project-a", "p1");
+  });
+
+  it("keeps Chat global-only when the current Project read check fails", async () => {
+    const trustedAppContext = {
+      version: "spec304-trusted-host-app-context.v1" as const,
+      tenantId: "t1", hostAppId: "app-a", publicAppId: "public-app-a",
+      routeProvenance: "verified_custom_domain_alias" as const,
+      permissionCeiling: { projectMemoryRead: "authorized_bound_project_only" as const, durableProjectMemoryWrite: false as const },
+      policyVersion: "spec269-app-project-memory.phase1.v1" as const,
+    };
+    mockGetPersonaById.mockResolvedValue({ id: "p1" } as any);
+    mockBuildPersonaPromptSegments.mockReturnValue({
+      prefix: "Persona prefix", styleInstructions: "", restrictionsBulletPoints: "",
+    });
+
+    await buildChatContext(makeRequest({
+      conversationContext: { conversationId: 22, activePersonaId: "p1", trustedAppContext },
+    }), "Skill prompt", null);
+
+    expect(mockRetrieveForPrompt).toHaveBeenCalledWith(
+      "t1", "p1", null, null, null, "Hello world", CHAT_SCOPED_MEMORY_BUDGET,
+      undefined, { initiatedByUserId: 1, projectId: null },
+    );
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+  });
+
   it("requests only global entity memories when chat has no verified project binding", async () => {
     mockGetPersonaById.mockResolvedValue({ id: "p1" } as any);
     mockRetrieveForPrompt.mockResolvedValue([]);

@@ -1,5 +1,6 @@
 import type { FallbackAttempt } from "../skillModelFallback";
 import type { SkillDefinition } from "@smartspec/skills";
+import type { TrustedAppRuntimeContext } from "../smartAiHubRuntimeContext";
 
 // ---------------------------------------------------------------------------
 // Capability Families
@@ -49,6 +50,8 @@ export interface ConversationContext {
   conversationModel?: string;
   activePersonaId?: string | null;
   publicUrl?: string;
+  /** Server-resolved route identity; never populated from client input. */
+  trustedAppContext?: TrustedAppRuntimeContext | null;
 }
 
 export interface TeamContext {
