@@ -446,6 +446,10 @@ describe("unifiedOrchestrator", () => {
         );
         expect(mockRevalidateTeamProjectProviderContextBinding.mock.invocationCallOrder[0])
           .toBeLessThan((mockExecutor.execute as any).mock.invocationCallOrder[0]);
+        const executorInput = (mockExecutor.execute as any).mock.calls[0][0];
+        expect(executorInput.beforeProviderRequest).toEqual(expect.any(Function));
+        await executorInput.beforeProviderRequest();
+        expect(mockRevalidateTeamProjectProviderContextBinding).toHaveBeenCalledTimes(2);
       });
 
       it("does not dispatch when project authorization is revoked after context assembly", async () => {

@@ -6,6 +6,7 @@ import type {
   RouteDecision,
 } from "./types";
 import { registerExecutor } from "./executorRegistry";
+import { TeamProjectProviderAuthorizationError } from "../teamProjectProviderAuthorization";
 import { extractUserPrompt } from "./mediaExecutorHelpers";
 import {
   mediaGenerationService,
@@ -53,6 +54,7 @@ export class AudioGenerationExecutor implements CapabilityExecutor {
       if (!userToken) {
         console.warn("[audioExecutor] No server token available — media API call may fail");
       }
+      await input.beforeProviderRequest?.();
       const task = await mediaGenerationService.generateAudioAsync(
         request,
         userToken,
@@ -71,6 +73,7 @@ export class AudioGenerationExecutor implements CapabilityExecutor {
         totalDurationMs: Date.now() - startMs,
       };
     } catch (err: any) {
+      if (err instanceof TeamProjectProviderAuthorizationError) throw err;
       console.error("[audioExecutor] dispatch failed:", err);
       return {
         success: false,
