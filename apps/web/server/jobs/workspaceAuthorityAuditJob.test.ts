@@ -10,7 +10,7 @@ const { mockCreateJob, mockStartSchedule, mockStopSchedule, mockGetDb, mockSelec
 vi.mock("../services/jobControlPlaneGateway", () => ({ createControlPlaneJob: mockCreateJob }));
 vi.mock("./feature186SystemScheduler", () => ({ startFeature186SystemSchedule: mockStartSchedule, stopFeature186SystemSchedule: mockStopSchedule, utcMinuteOccurrence: (date: Date) => date.toISOString() }));
 vi.mock("../db", () => ({ getDb: mockGetDb }));
-import { collectLocalWorkspaceAudit, enqueueWorkspaceAuthorityAuditEvent, initializeWorkspaceAuthorityAuditJob, shutdownWorkspaceAuthorityAuditJob } from "./workspaceAuthorityAuditJob";
+import { collectLocalWorkspaceAudit, enqueueWorkspaceAuthorityAuditEvent, initializeWorkspaceAuthorityAuditJob, reconcileOwnedPullRequests, shutdownWorkspaceAuthorityAuditJob } from "./workspaceAuthorityAuditJob";
 
 describe("workspace authority audit triggers", () => {
   beforeEach(() => {
@@ -45,17 +45,75 @@ describe("workspace authority audit triggers", () => {
     await expect(collectLocalWorkspaceAudit({})).resolves.toEqual({ status: "NOT_CONFIGURED", reason: "repository_not_configured" });
   });
 
+  it("queues only an open PR whose repository, branch, SHA, task workspace and inactive Runner owner all match", async () => {
+    const enqueue = vi.fn().mockResolvedValue({ jobId: "job-pr-1" });
+    const sha = "a".repeat(40);
+    const now = new Date("2026-10-10T12:00:00.000Z");
+    const result = await reconcileOwnedPullRequests({
+      tenantId: "tenant-a", now,
+      runners: [{ runnerId: "runner-a", ownerUserId: 41, currentSnapshotJson: { workspaces: [{
+        workspaceId: "workspace-a", projectId: "project-a", repositoryId: "repository-a", gitBranch: "codex/task-a",
+        gitHead: sha, dirty: false, taskId: "task-a",
+      }] }, trustState: "trusted", status: "online", snapshotObservedAt: new Date(now.getTime() - 1_000),
+      snapshotExpiresAt: new Date(now.getTime() + 60_000), revokedAt: null, activeSessionId: null }],
+      local: { status: "OBSERVED", authority: { status: "AUTHORITY_RESOLVED", project_id: "project-a", repository_id: "repository-a",
+        canonical_ref: "refs/heads/main", workspaces: [{ workspace_id: "workspace-a", role: "TASK_WORKTREE", task_id: "task-a",
+          head_sha: sha, branch: "codex/task-a", dirty: false, session_state: "STALE_CLOSED_SESSION", lifecycle_state: "OPEN" }] } },
+    }, {
+      env: { SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY: "/tmp/repository" }, repository: async () => "naibarn/SmartSpecPro",
+      list: async () => [{ number: 37, state: "OPEN", isDraft: false, baseRefName: "main", headRefName: "codex/task-a",
+        headRefOid: sha, headRepository: "naibarn/SmartSpecPro", mergeable: true, mergeStateStatus: "CLEAN" }],
+      enqueue,
+    });
+    expect(result).toMatchObject({ status: "OBSERVED", discovered: 1, enqueued: 1 });
+    expect(enqueue).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-a", actorId: 41,
+      projectId: "project-a", repositoryId: "repository-a", workspaceId: "workspace-a", action: "INTEGRATE_COMPLETED_WORK",
+      idempotencyKey: `autonomous-pr:37:${sha}`, payload: { pullRequestNumber: 37, expectedHeadSha: sha, automatedReconciliation: true } }));
+  });
+
+  it("does not queue stale, active, dirty, draft, forked, or mismatched PR ownership facts", async () => {
+    const enqueue = vi.fn();
+    const sha = "b".repeat(40);
+    const now = new Date("2026-10-10T12:00:00.000Z");
+    const makeLocal = (overrides: Record<string, unknown> = {}) => ({ status: "OBSERVED" as const,
+      authority: { status: "AUTHORITY_RESOLVED", project_id: "project-a", repository_id: "repository-a", canonical_ref: "main",
+        workspaces: [{ workspace_id: "workspace-a", role: "TASK_WORKTREE", task_id: "task-a", head_sha: sha,
+          branch: "codex/task-a", dirty: false, session_state: "NO_ACTIVE_SESSION", lifecycle_state: "OPEN", ...overrides }] } });
+    const runner = { runnerId: "runner-a", ownerUserId: 41, currentSnapshotJson: { workspaces: [{ workspaceId: "workspace-a",
+      projectId: "project-a", repositoryId: "repository-a", gitBranch: "codex/task-a", gitHead: sha, dirty: false, taskId: "task-a" }] },
+      trustState: "trusted", status: "online", snapshotObservedAt: new Date(now.getTime() - 1_000), snapshotExpiresAt: new Date(now.getTime() + 60_000), revokedAt: null, activeSessionId: null };
+    const pr = { number: 38, state: "OPEN", isDraft: true, baseRefName: "main", headRefName: "codex/task-a", headRefOid: sha,
+      headRepository: "naibarn/SmartSpecPro", mergeable: true, mergeStateStatus: "CLEAN" };
+    for (const [local, runnerFact, pullRequest] of [
+      [makeLocal(), { ...runner, activeSessionId: "session-live" }, { ...pr, isDraft: false }],
+      [makeLocal(), { ...runner, snapshotExpiresAt: new Date(now.getTime() - 1) }, { ...pr, isDraft: false }],
+      [makeLocal({ dirty: true }), runner, { ...pr, isDraft: false }],
+      [makeLocal(), runner, pr],
+      [makeLocal(), runner, { ...pr, isDraft: false, headRefOid: "c".repeat(40) }],
+      [makeLocal(), runner, { ...pr, isDraft: false, headRepository: "fork/SmartSpecPro" }],
+      [makeLocal(), runner, { ...pr, isDraft: false, mergeStateStatus: "BLOCKED" }],
+    ] as const) {
+      await reconcileOwnedPullRequests({ tenantId: "tenant-a", now, runners: [runnerFact], local }, {
+        env: { SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY: "/tmp/repository" }, repository: async () => "naibarn/SmartSpecPro",
+        list: async () => [pullRequest], enqueue,
+      });
+    }
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
   it("runs the configured local collector in AUDIT_ONLY mode and parses its receipt", async () => {
     const temp = mkdtempSync(path.join(os.tmpdir(), "workspace-audit-exec-"));
     const executable = path.join(temp, "python-fixture");
     try {
-      writeFileSync(executable, "#!/bin/sh\nif [ \"$2\" = \"mission-control\" ]; then printf '%s\\n' '{\"status\":\"MISSION_CONTROL_SNAPSHOT_READY\",\"project_id\":\"project-a\"}'; else printf '%s\\n' '{\"status\":\"WORKTREE_AUDIT_COMPLETE\",\"mode\":\"AUDIT_ONLY\",\"workspaces\":[]}'; fi\n");
+      writeFileSync(executable, "#!/bin/sh\nif [ \"$2\" = \"mission-control\" ]; then printf '%s\\n' '{\"status\":\"MISSION_CONTROL_SNAPSHOT_READY\",\"project_id\":\"project-a\"}'; elif [ \"$2\" = \"resolve\" ]; then printf '%s\\n' '{\"status\":\"AUTHORITY_RESOLVED\",\"project_id\":\"project-a\",\"repository_id\":\"repository-a\",\"canonical_ref\":\"refs/heads/main\",\"workspaces\":[]}'; else printf '%s\\n' '{\"status\":\"WORKTREE_AUDIT_COMPLETE\",\"mode\":\"AUDIT_ONLY\",\"workspaces\":[]}'; fi\n");
       chmodSync(executable, 0o700);
       const result = await collectLocalWorkspaceAudit({
         SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY: process.cwd(),
         SMARTSPEC_PYTHON_EXECUTABLE: executable,
       });
-      expect(result).toEqual({ status: "OBSERVED", result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [] }, missionControl: { status: "OBSERVED", result: { status: "MISSION_CONTROL_SNAPSHOT_READY", project_id: "project-a" } } });
+      expect(result).toEqual({ status: "OBSERVED", result: { status: "WORKTREE_AUDIT_COMPLETE", mode: "AUDIT_ONLY", workspaces: [] },
+        authority: { status: "AUTHORITY_RESOLVED", project_id: "project-a", repository_id: "repository-a", canonical_ref: "refs/heads/main", workspaces: [] },
+        missionControl: { status: "OBSERVED", result: { status: "MISSION_CONTROL_SNAPSHOT_READY", project_id: "project-a" } } });
     } finally {
       rmSync(temp, { recursive: true, force: true });
     }

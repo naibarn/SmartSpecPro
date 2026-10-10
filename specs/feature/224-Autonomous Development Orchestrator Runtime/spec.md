@@ -3,7 +3,7 @@
 
 **Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending
 **Spec ID:** 224  
-**Revision:** 22 — Evidence-driven execution conformance overlay; preserves Revision 21 contracts
+**Revision:** 23 — Durable owned-PR reconciliation; preserves Revision 22 contracts
 **Date:** 2026-10-03
 **Target repository path:** `specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md`  
 **Primary owner:** SmartAIHub Development Orchestration / Autonomous Development Runtime  
@@ -17246,3 +17246,9 @@ This additive conformance layer makes evidence-driven autonomous execution indep
 - [ ] A repair loop stops or replans at its configured bound and identifies no progress without erasing prior evidence.
 - [ ] Tests exercise successful, denied, stale-precondition, event-loss/recovery, independent-verifier failure, and bounded no-progress paths against the exact candidate revision.
 - [ ] Existing queue, registry, permission, handoff, Runner, UAT, and learning authorities remain the sole owners for their respective contracts.
+
+## Revision 23 — Durable owned-PR reconciliation
+
+The existing durable Git lifecycle audit MAY discover and enqueue integration work only when the pull request's canonical repository, target branch, head branch and exact head SHA match a clean registered task worktree and its current trusted Runner workspace snapshot. The Runner owner must be unambiguous, its snapshot fresh, and neither the Runner nor task worktree may have an active session. Fork PRs, drafts, stale snapshots, dirty worktrees, changed heads, unknown owners, and unavailable authority evidence MUST remain untouched.
+
+Discovery MUST enqueue through the existing `worker_jobs` plus outbox control plane with stable PR/head idempotency. The existing integration action MUST re-read current authority and PR facts, evaluate repository-required checks (including skipped checks as non-passing), and use the normal GitHub merge endpoint with the expected head SHA. A successful API response is not final completion: the integrated SHA must be verified against the configured canonical ref and post-merge convergence recorded before any owned worktree can be retired through the existing ownership-aware retirement policy. CI repair and conflict repair require their own candidate-bound repair and verification evidence; a failed or blocked PR is not completion.
