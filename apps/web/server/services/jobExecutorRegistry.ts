@@ -1310,7 +1310,7 @@ defaultJobExecutorRegistry.register({
     const result = await executeWorkspaceAuthoritySafeAction({
       ...(context.input as Parameters<typeof executeWorkspaceAuthoritySafeAction>[0]),
       jobId: context.jobId,
-    });
+    }, process.env, { assertActive: () => reporter.assertActive(lease) });
     await reporter.assertActive(lease);
     return result;
   },

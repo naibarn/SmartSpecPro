@@ -247,6 +247,23 @@ describe("workspace authority safe action executor", () => {
     expect(merge).not.toHaveBeenCalled();
   });
 
+  it("rechecks the worker lease immediately before the GitHub merge side effect", async () => {
+    const runAuthority = vi.fn().mockResolvedValue(resolved);
+    const merge = vi.fn().mockResolvedValue({ merged: true, sha: "d".repeat(40) });
+    const github = {
+      repository: vi.fn().mockResolvedValue("owner/repo"),
+      inspect: vi.fn().mockResolvedValue({ state: "OPEN", isDraft: false, baseRefName: "main", headRefOid: "c".repeat(40), mergeable: true, mergeStateStatus: "CLEAN" }),
+      checkGate: vi.fn().mockResolvedValue({ state: "REQUIRED_CHECKS_PASSED", headSha: "c".repeat(40), requiredChecks: [], observedChecks: [] }),
+      merge,
+    };
+    const assertActive = vi.fn().mockRejectedValue(new Error("LEASE_FENCED"));
+    await expect(executeWorkspaceAuthoritySafeAction(request({ action: "INTEGRATE_COMPLETED_WORK", workspaceId: null,
+      payload: { pullRequestNumber: 42, expectedHeadSha: "c".repeat(40) } }), env, { runAuthority, github, assertActive }))
+      .rejects.toThrow("LEASE_FENCED");
+    expect(assertActive).toHaveBeenCalledTimes(1);
+    expect(merge).not.toHaveBeenCalled();
+  });
+
   it("integrates only the fenced head through the protected merge endpoint and emits lifecycle events", async () => {
     const runAuthority = vi.fn(async (_root: string, _env: NodeJS.ProcessEnv, args: string[]) => args[0] === "resolve"
       ? resolved : { status: "USER_WORKSPACE_CONVERGED", receipt: { receipt_id: "workspace-convergence:r1" } });
