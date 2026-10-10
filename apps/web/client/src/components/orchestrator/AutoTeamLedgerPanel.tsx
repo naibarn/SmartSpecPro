@@ -102,6 +102,24 @@ function getGateClasses(status: string): string {
   }
 }
 
+function getProgressStatusLabel(status: string, isThai: boolean): string {
+  const labels: Record<string, [string, string]> = {
+    WORKING: ["Working", "กำลังทำงาน"],
+    PROGRESSING: ["Progressing", "กำลังคืบหน้า"],
+    STALLED: ["Stalled", "ความคืบหน้าหยุดชะงัก"],
+    LOOPING: ["Repeating without progress", "ทำซ้ำโดยไม่คืบหน้า"],
+    REGRESSING: ["Evidence regressed", "หลักฐานถดถอย"],
+    RECOVERING: ["Recovering", "กำลังกู้คืน"],
+    COMPLETED: ["Verified complete", "ตรวจหลักฐานและเสร็จแล้ว"],
+    PARTIAL: ["Evidence incomplete", "หลักฐานยังไม่ครบ"],
+    BLOCKED: ["Waiting on a dependency", "รอสิ่งที่ต้องดำเนินการ"],
+    FAILED: ["Failed after recovery", "กู้คืนไม่สำเร็จ"],
+    CANCELLED: ["Cancelled", "ยกเลิกแล้ว"],
+  };
+  const pair = labels[status] ?? [status, status];
+  return pair[isThai ? 1 : 0];
+}
+
 function getStatusClasses(status: string | null | undefined): string {
   switch (status) {
     case "completed":
@@ -555,6 +573,12 @@ export function AutoTeamLedgerPanel({
 }: AutoTeamLedgerPanelProps) {
   const isThai = roomLanguage === "th";
   const currentStep = getCurrentStep(ledger);
+  const progressAssessment = ledger?.summary?.progressAssessment ?? null;
+  const progressPercent = typeof progressAssessment?.progress === "number"
+    ? Math.round(Math.max(0, Math.min(1, progressAssessment.progress)) * 100)
+    : null;
+  const progressNeedsAttention = ["STALLED", "LOOPING", "REGRESSING", "BLOCKED", "FAILED"]
+    .includes(progressAssessment?.status);
   const auditedPlanSteps = Array.isArray(ledger?.steps) ? ledger.steps : [];
   const roomPlanArtifact = extractRoomPlanArtifact(roomMessages);
   const chatPlanArtifact =
@@ -702,6 +726,15 @@ export function AutoTeamLedgerPanel({
             {ledger.summary?.terminalState ?? "running"}
           </Badge>
           <Badge variant="outline">Run: {runStatus ?? ledger.summary?.runStatus ?? "n/a"}</Badge>
+          {progressAssessment && progressPercent !== null && (
+            <Badge
+              variant={progressNeedsAttention ? "destructive" : "outline"}
+              title={isThai ? "คำนวณจาก work unit และหลักฐานผลลัพธ์ที่บันทึกไว้" : "Derived from recorded work units and outcome evidence"}
+              aria-label={`${getProgressStatusLabel(progressAssessment.status, isThai)} · ${progressPercent}%`}
+            >
+              {getProgressStatusLabel(progressAssessment.status, isThai)} · {progressPercent}%
+            </Badge>
+          )}
           {runtimeState?.currentPhase && (
             <Badge variant="outline">Phase: {runtimeState.currentPhase}</Badge>
           )}
