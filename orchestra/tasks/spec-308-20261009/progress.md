@@ -3,21 +3,21 @@
 Loop policy:
   orchestra_id: fable_style_coding_orchestra
   purpose: coding webapp with an agent loop
-  continuation_cycle: implementation-wave-5-20261010
-  current_stage: VERIFY
+  continuation_cycle: browser-ci-repair-20261010-wave15
+  current_stage: DEBUG_FIX
   resume_from: VERIFY
-  iteration: 5/12
+  iteration: 6/12
   tool_call_batches: unknown/30
   estimated_cost_usd: unknown (not measured; soft ceiling 0.50)
-  dispatch_waves: 1/6
+  dispatch_waves: 2/6
   active_subagents: 0/4
   parallel_writers: 0/2
   parallel_writers_peak: 3/2 (policy overrun recorded; no further writer fan-out)
   required_subagent_wait: 0/10 minutes
   background_subagent_wait: <10 minutes
-  repair_rounds: 2/5
+  repair_rounds: 3/5
   stop_conditions: lifecycle_converged, tests_passed, no_open_blockers
-  stop_reason: focused_fixture_and_dock_assertions_repaired_on_f0fa060_and_exact_head_ci_running
+  stop_reason: two_exact_head_browser_test_defects_repaired; rerun_pending_after_workunit_order_and_checkpoint
 
 ## Baseline
 - Latest refresh: `origin/main` `6dcd7934332db7929904f8da642915751a6bb79`; PR #399 head `f0fa060c55779beb6d55c7baeba727d9dd3a517c`; PR #403 `74a482e8fe38a131bdbe41bfee0e53ad90347e4c`; PR #405 `868a5600ff770be91885666b7f584835e03fc690`.
@@ -137,6 +137,14 @@ Loop policy:
 - Source commit: `dd6a42f82ba1452dcc7a58a7626455b31970ee4d`. Canonical handoff generation 28 records PARTIAL source progress; all 66 requirements remain OPEN/UNVERIFIED.
 - `git diff --check`, both chat-locale JSON parses, registry validation and index check passed. No tests/typecheck were run for the candidate. Local ESLint/Prettier were unavailable in this worktree; full typecheck remains prohibited by shared RAM policy.
 - Next: publish the checkpoint on PR #399 and collect its exact-head consolidated CI once source implementation is frozen. Keep PR #399 unmerged until PR #405/#403 mandatory gates clear; live Feature-049 and approved non-production identity/runtime are still required for acceptance.
+
+## Consolidated CI repair — 2026-10-10
+- Refreshed `origin/main` to `9cedee5ea2590f2671d7541244de8846f6c732f6` and merged it into the isolated PR #399 task branch before repair. No other worktree or PR branch was changed.
+- Browser run `38012035018` on `1b508beee866d1fec41ae146bfb3b59e0ce02b69` passed 21/23 tests. The two failures were test selector/readiness defects: the reminder is an `aside`, not a button named `Demo reminder balloon`; the Bell container query matched all eight popover buttons after opening. Exact logs/artifacts are recorded in `evidence/implementation-gap-update-20261010-wave15.md` and downloaded under `/tmp/spec308-run-38012035018`.
+- Repaired the browser fixture to wait for the rendered mascot marker, assert the actual reminder surface, and target the Bell trigger by `aria-controls`. Product source behavior was unchanged.
+- Run `38012034963` exposed the unchanged canonical MCP fixture/import baseline (76 passed / 44 failed) and missing live smoke authority. Its downstream security and mandatory audit steps were skipped; no gate was bypassed. PR #403's prior exact-head MCP/check/security gates passed, but its production audit remains failed on existing advisories and its live smoke lacks an authorized endpoint/token.
+- PR #405 remains the first integration workunit: compatibility regressions passed at its recorded SHA, while the mandatory audit remains failed on Moderate `sprintf-js@1.1.3`; Security and Media/Runtime owner decision is not recorded. Latest canonical refresh and exact PR states were independently checked; audit agents made no writes and did not touch other worktrees.
+- This repair has not been tested locally. Run one consolidated exact-SHA browser/unit verification after the implementation freeze and required #405 → #403 sequence. Requirement ledger remains 66/66 OPEN; all live acceptance and production flags remain gated.
 
 
 ## Implementation checkpoint — 2026-10-10 (wave 3)

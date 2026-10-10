@@ -137,7 +137,7 @@ test("SPEC-308 demo balloon show, dismiss and CTA do not cause authoritative sid
 
   await demoButton.click();
   await expect(balloon).toBeVisible();
-  const bellButton = page.getByTestId("global-notification-bell").getByRole("button");
+  const bellButton = page.getByTestId("global-notification-bell").locator('button[aria-controls="global-notification-popover"]');
   await balloon.getByRole("button", { name: /View notifications|assistantAppearance.viewNotifications/ }).click();
   await expect(bellButton).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByText("Mock notification")).toBeVisible();

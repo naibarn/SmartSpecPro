@@ -618,9 +618,10 @@ test("SPEC-308 records raw OFF/ON network, heap, CLS, timer and mascot asset met
     await page.reload();
     const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
     await expect(launcher).toBeVisible();
+    await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
     await waitForNotificationBaseline(page);
     await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
-    await expect(page.getByRole("button", { name: "Demo reminder balloon" })).toBeVisible();
+    await expect(page.locator(".assistant-reminder-balloon")).toBeVisible();
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     const flagOnCallCount = procedures.length - offCallCount;
     const flagOn = await metrics.snapshot("feature-flag-on-with-demo-balloon", flagOnCallCount);
