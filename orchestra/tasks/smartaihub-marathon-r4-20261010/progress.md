@@ -2,9 +2,10 @@
 
 **Canonical start:** `96016bd2207f65e97ef89d680d294ae633ad6bad`
 
-**Integrated checkpoint:** PR [#453](https://github.com/naibarn/SmartSpecPro/pull/453), squash SHA `f036df3745aea4bcb4cfcff18be2ce5130e0673f`, verified reachable from `origin/main`.
+**Integrated checkpoints:** PR [#453](https://github.com/naibarn/SmartSpecPro/pull/453), squash SHA `f036df3745aea4bcb4cfcff18be2ce5130e0673f`; PR [#454](https://github.com/naibarn/SmartSpecPro/pull/454), squash SHA `8126f279c13f9b7b445eb5320f7fd585619940e0`, verified reachable from `origin/main`.
 
 **Worktree:** `/home/dev/worktrees/smartaihub-r4-20261010`
+**Canonical SHA:** `8126f279c13f9b7b445eb5320f7fd585619940e0`
 **State:** `CHECKPOINT_PROMOTED_PARTIAL`; R4 remains open.
 
 ## Completed evidence
@@ -21,7 +22,12 @@
 - Final focused command on the current task candidate: 19 files passed, 257 tests passed, 1 TODO. It covered SPEC-302 Phase 1/replay, SPEC-268/269 memory/prompt, SPEC-304 ingress/App identity, SPEC-271 receipts, SPEC-224 DevelopmentRun, and `chatUnifiedWiring`.
 - Scoped TypeScript check passed for the new replay helper and its test using `tsc --noEmit --skipLibCheck --strict --target ES2022 --module ESNext --moduleResolution Bundler --types node`. Prettier check passed for both files. No repository-wide typecheck was run due the RAM policy.
 - Ten targeted review dimensions covered replay semantics, tenant/principal binding, App/Project binding, invocation binding, resolution/destination validity, provenance/policy references, operation ceilings, prompt/secret/object-shape rejection, digest determinism/privacy limits, and no storage/issuance/authorization effects. An independent reviewer found no P1/P2 issue; the unkeyed digest and caller canonicalization constraints are documented and tested.
-- These checks describe the current unintegrated candidate; the comparator remains a pure helper with no runtime caller and does not satisfy durable Phase 2 receipt persistence.
+- PR #454 merged the pure comparator and tests at `8126f279c13f9b7b445eb5320f7fd585619940e0`. The comparator still has no runtime caller and does not satisfy durable Phase 2 receipt persistence. The PR preview job was skipped, not passed. A post-merge local test rerun is pending because the task worktree does not contain linked dependencies; candidate suite evidence above is pre-merge on the same source tree.
+- Added an isolated SPEC-304 trusted-route assertion consumer candidate at `trustedAppRouteAssertion.ts`. It requires an injected server verifier contract, checks issuer/audience, bounded time claims, replay ID shape, authenticated tenant, current alias/App/public-App match, and fixes the permission ceiling to Project read only. It ignores client Host/App/Project fields and is not wired to HTTP; `createContext` remains null/fail-closed until an approved verifier is available.
+- Consumer security regression: `context.appIngress.test.ts`, `projectResolutionAuthority.test.ts`, and `trustedAppRouteAssertion.test.ts` passed: 3 files, 39 tests passed, 1 TODO. The TODO remains the valid authenticated custom-domain ingress integration. Temporary root `node_modules` symlinks to the existing primary checkout cache were removed after test execution; no packages or manifests changed.
+- Independent review of the consumer found no P1/P2 issues and confirmed safe isolated checkpoint status. P3 integration condition remains: the verifier implementation must cryptographically authenticate issuer/audience and atomically consume replay IDs; mocked tests do not establish either.
+- Ten review passes covered verifier as sole trust anchor/no HTTP wiring, issuer/audience checks, time bounds, replay semantics, authenticated tenant binding, hostname canonicality, current alias/App/revocation matching, client field exclusion, fixed permission ceiling, and fail-closed errors.
+- Scoped TypeScript check for this consumer is pending/baseline-blocked: strict compile surfaced unrelated schema circular inference errors; a bounded rerun excluding `noImplicitAny` still hit existing `server/db.ts` `SQL<unknown> -> never` type errors. No repository-wide typecheck was run.
 
 ## Lane dispositions
 
@@ -32,6 +38,6 @@
 
 ## Next executable WorkUnit
 
-Immediate action: review and integrate the pure replay-contract candidate through PR #454 after normal review. Next WorkUnit: `SPEC302_DURABLE_RECEIPT_SCHEMA_OWNER_RECONCILIATION` — assign the accountable SPEC-302 schema owner and obtain migration approval before persistence/schema work. Independently, run direct T-cases only against an authorized non-production runtime with persisted run/artifact authorities; local contract suites are supporting evidence, not direct T-01–T-23 acceptance. Resume `SPEC304_TRUSTED_INGRESS_CONSUMER` only when a server-authenticated route assertion contract or authorized ingress test authority is available.
+Immediate action: submit the isolated SPEC-304 consumer candidate for review/integration as PR #455; keep it unwired until a server-authenticated verifier is approved. Next WorkUnit: `SPEC302_DURABLE_RECEIPT_SCHEMA_OWNER_RECONCILIATION` — assign the accountable SPEC-302 schema owner and obtain migration approval before persistence/schema work. Independently, run direct T-cases only against an authorized non-production runtime with persisted run/artifact authorities; local contract suites are supporting evidence, not direct T-01–T-23 acceptance. Resume `SPEC304_TRUSTED_INGRESS_CONSUMER` only when a server-authenticated route assertion contract or authorized ingress test authority is available.
 
 **Preserved authority:** Project-shared memory writes remain DENY; SPEC-224 protected dispatch remains DENY; no production migration/deployment, grants, or credentials were issued.
