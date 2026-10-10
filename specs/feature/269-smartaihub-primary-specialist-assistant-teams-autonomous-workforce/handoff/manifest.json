@@ -34,14 +34,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "0b2eee336eb6bbddf26f3812054226ea95d5a814",
+    "expected_canonical_sha": "fc9e18afc5e271e8b898829efdf90eb20929bd3d",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
-    "next_action": "Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Keep App-bound Project reads fail-closed on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.",
+    "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
     "next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
     "reactivation_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing.",
-    "resume_point": "PR #478 merged at 0b2eee336eb6bbddf26f3812054226ea95d5a814. On that exact canonical SHA: HTTP-to-runtime spoof/client-identity regression passed (3 files / 61); Project receipt authority suite passed (1 / 12); App alias identity fixture passed 2 local contract tests while 10 runtime cases remain TODO; SPEC-271/SPEC-224 synthetic suite passed (5 / 37). Local synthetic tests do not prove deployed ingress, direct T-01–T-23 acceptance, durable restart, or protected dispatch. Continue only with direct acceptance in an authorized non-production persisted runtime; preserve Project-shared writes and SPEC-224 protected dispatch DENY.",
+    "resume_point": "PR #482 merged at 866f718fb40b14eb6782c5dda425dd7c6db6ae16. Exact post-merge chatUnifiedWiring suite: 1 file / 17 passed. The real executeSkill request enters startSkillTask / worker_jobs and returns before legacy inline unified/fallback code; client App/Project/tenant fields do not enter the queued task and authenticated user/tenant remain authoritative. Current queue path does not propagate trusted App context. Combined with PR #478 HTTP/runtime spoof tests (3 / 61), this establishes fail-closed local request/queue boundaries only. No deployed ingress, positive trusted-context propagation, direct T-01–T-23 acceptance, durable process restart, or protected dispatch is proved. Next: obtain authenticated ingress and fresh worker-side binding authorization before adding App context to queued execution; run direct acceptance only in authorized non-production persisted runtime.",
     "waiting_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing."
   },
   "continuation_assessment": {
@@ -62,7 +62,7 @@
         "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
       }
     ],
-    "next_action": "Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Keep App-bound Project reads fail-closed on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.",
+    "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
     "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
     "residual_requirements": [
       "Direct T-01 through T-23 acceptance on canonical runtime",
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 22,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0b2eee336eb6bbddf26f3812054226ea95d5a814",
+    "canonical_sha": "fc9e18afc5e271e8b898829efdf90eb20929bd3d",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:49:29Z"
+    "integrated_at": "2026-10-10T07:57:37Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -230,7 +230,7 @@
           "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
         }
       ],
-      "next_action": "Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Keep App-bound Project reads fail-closed on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.",
+      "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
       "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
       "residual_requirements": [
         "Direct T-01 through T-23 acceptance on canonical runtime",
@@ -453,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:50:35.030623Z",
+  "updated_at": "2026-10-10T07:58:17.439574Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -570,11 +570,19 @@
         "scope": "Exact canonical SHA 0b2eee336eb6bbddf26f3812054226ea95d5a814: SPEC-271 receipt/oracle/portable/durable-store unit contracts and SPEC-224 DevelopmentRun synthetic integration, 5 files / 37 tests passed. Synthetic/in-memory only; no restart durability, protected dispatch, or direct memory T-case acceptance.",
         "source_sha": "0b2eee336eb6bbddf26f3812054226ea95d5a814",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "866f718fb40b14eb6782c5dda425dd7c6db6ae16",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/routers/__tests__/chatUnifiedWiring.test.ts",
+        "scope": "PR #482 merged at 866f718. Exact integrated SHA 866f718fb40b14eb6782c5dda425dd7c6db6ae16: real chatRouter.createCaller executeSkill request enters the active startSkillTask worker-job queue. Attacker-supplied projectId/appId/hostAppId/tenantId do not enter queued params; authenticated user and tenant are used; legacy inline unified/fallback executors are not invoked because the active route returns through queue admission. 1 file / 17 tests passed. This confirms client identity rejection only; trusted App context is not propagated to the worker and no positive App context or direct T-01–T-23 acceptance is claimed.",
+        "source_sha": "866f718fb40b14eb6782c5dda425dd7c6db6ae16",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "0b2eee336eb6bbddf26f3812054226ea95d5a814",
+    "sha": "866f718fb40b14eb6782c5dda425dd7c6db6ae16",
     "status": "PARTIAL",
     "task_regressions": []
   }
