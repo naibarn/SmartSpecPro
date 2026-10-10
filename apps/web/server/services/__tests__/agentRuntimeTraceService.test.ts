@@ -30,7 +30,7 @@ describe("persistAgentRuntimeTraceEvents", () => {
     expect(events[0]?.eventName).toBe("response.output_text.delta");
   });
 
-  it("redacts trace metadata before persistence and deduplicates stable events", async () => {
+  it("archives streamed deltas without projecting internal event noise to Task Control", async () => {
     const traces: unknown[] = [];
     const teamEvents: unknown[] = [];
     const repository: AgentRuntimeTraceRepository = {
@@ -56,15 +56,42 @@ describe("persistAgentRuntimeTraceEvents", () => {
       duplicatesSkipped: 1,
     });
     expect(traces).toHaveLength(1);
-    expect(teamEvents).toHaveLength(1);
+    expect(teamEvents).toHaveLength(0);
     expect(JSON.stringify(traces[0])).not.toContain("secret-token");
     expect(JSON.stringify(traces[0])).toContain("[REDACTED]");
+  });
+
+  it("projects terminal runtime milestones with user-facing summaries", async () => {
+    const teamEvents: unknown[] = [];
+    const repository: AgentRuntimeTraceRepository = {
+      async upsertRuntimeTrace() {},
+      async upsertTeamTraceEvent(record) {
+        teamEvents.push(record);
+      },
+    };
+    const events = readJsonFixture<any[]>("duplicate-stream.json").map(event => ({
+      ...event,
+      eventName: "response.completed",
+    }));
+
+    await persistAgentRuntimeTraceEvents({
+      tenantId: "tenant-1",
+      runId: "run-1",
+      roomId: "room-1",
+      surface: "team",
+      events,
+      repository,
+    });
+
+    expect(teamEvents).toHaveLength(1);
     expect(JSON.stringify(teamEvents[0])).not.toContain("secret-token");
     expect(teamEvents[0]).toMatchObject({
       tenantId: "tenant-1",
       runId: "run-1",
       roomId: "room-1",
-      eventName: "response.output_text.delta",
+      eventName: "task.step_completed",
+      severity: "info",
+      summary: "Task step completed.",
     });
   });
 });
