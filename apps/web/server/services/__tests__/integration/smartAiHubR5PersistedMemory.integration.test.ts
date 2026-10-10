@@ -5,7 +5,7 @@ vi.mock("../../queryEmbeddingService", () => ({
   generateQueryEmbedding: vi.fn(async () => null),
 }));
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, closeDb } from "../../../db";
 import {
   appIdentities,
@@ -51,22 +51,30 @@ function assertApprovedLoopbackDatabase(): void {
 describePersisted("SPEC-269 persisted Project memory acceptance", () => {
   const suffix = randomUUID();
   const tenantId = suffix;
+  const foreignTenantId = randomUUID();
   const userOpenId = `r5-user-${suffix}`;
+  const foreignUserOpenId = `r5-foreign-user-${suffix}`;
   const appId = `r5-app-${suffix}`;
+  const foreignAppId = `r5-foreign-app-${suffix}`;
   const projectAId = crypto.randomUUID();
   const projectBId = crypto.randomUUID();
+  const foreignProjectId = crypto.randomUUID();
   const personaId = crypto.randomUUID();
+  const foreignPersonaId = crypto.randomUUID();
   const conversationId = 200_000_000 + Number.parseInt(suffix.replaceAll("-", "").slice(0, 8), 16) % 1_800_000_000;
+  const foreignConversationId = conversationId + 1;
   let userId = 0;
-  let tenantCreated = false;
+  let foreignUserId = 0;
 
   beforeAll(async () => {
     assertApprovedLoopbackDatabase();
     const db = getDb();
     await db.insert(tenants).values({ id: tenantId, slug: `r5-${suffix}`, name: "R5 synthetic acceptance tenant" });
-    tenantCreated = true;
     const [user] = await db.insert(users).values({ openId: userOpenId, name: "R5 synthetic user", currentTenantId: tenantId }).returning({ id: users.id });
     userId = user.id;
+    await db.insert(tenants).values({ id: foreignTenantId, slug: `r5-foreign-${suffix}`, name: "R5 synthetic foreign tenant" });
+    const [foreignUser] = await db.insert(users).values({ openId: foreignUserOpenId, name: "R5 synthetic foreign user", currentTenantId: foreignTenantId }).returning({ id: users.id });
+    foreignUserId = foreignUser.id;
     await db.insert(appIdentities).values({
       appId,
       publicAppId: `public-${appId}`,
@@ -75,10 +83,19 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       canonicalProductId: "r5-test-product",
       lifecycle: "active",
     });
+    await db.insert(appIdentities).values({
+      appId: foreignAppId,
+      publicAppId: `public-${foreignAppId}`,
+      tenantId: foreignTenantId,
+      publisherRef: "r5-test-publisher",
+      canonicalProductId: "r5-test-product",
+      lifecycle: "active",
+    });
     await db.insert(canonicalProjects).values([
       { projectId: projectAId, tenantId, projectType: "test", title: "R5 Project A", ownerPrincipalId: `user:${userId}` },
       { projectId: projectBId, tenantId, projectType: "test", title: "R5 Project B", ownerPrincipalId: `user:${userId}` },
     ]);
+    await db.insert(canonicalProjects).values({ projectId: foreignProjectId, tenantId: foreignTenantId, projectType: "test", title: "R5 Foreign Project", ownerPrincipalId: `user:${foreignUserId}` });
     await db.insert(canonicalProjectMemberships).values({
       tenantId,
       projectId: projectAId,
@@ -87,6 +104,8 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       lifecycle: "ACTIVE",
     });
     await db.insert(canonicalProjectAppBindings).values({ tenantId, projectId: projectAId, appId, lifecycle: "ACTIVE" });
+    await db.insert(canonicalProjectMemberships).values({ tenantId: foreignTenantId, projectId: foreignProjectId, principalId: `user:${foreignUserId}`, role: "viewer", lifecycle: "ACTIVE" });
+    await db.insert(canonicalProjectAppBindings).values({ tenantId: foreignTenantId, projectId: foreignProjectId, appId: foreignAppId, lifecycle: "ACTIVE" });
     await db.insert(personaTemplates).values({
       id: personaId,
       tenantId,
@@ -95,42 +114,82 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       systemPromptPrefix: "R5 synthetic persona",
       scope: "tenant",
     });
+    await db.insert(personaTemplates).values({ id: foreignPersonaId, tenantId: foreignTenantId, userId: foreignUserId, name: "R5 synthetic foreign assistant", systemPromptPrefix: "R5 foreign synthetic persona", scope: "tenant" });
     await db.execute(sql`
       INSERT INTO conversations (id, "userId", "tenantId", "project_id", title)
       VALUES (${conversationId}, ${userId}, ${tenantId}, ${projectAId}, 'R5 persisted Project conversation')
+    `);
+    await db.execute(sql`
+      INSERT INTO conversations (id, "userId", "tenantId", "project_id", title)
+      VALUES (${foreignConversationId}, ${foreignUserId}, ${foreignTenantId}, ${foreignProjectId}, 'R5 persisted foreign Project conversation')
     `);
     await db.insert(scopedMemories).values([
       { id: `r5-a-${suffix}`, tenantId, ownerType: "user", ownerId: String(userId), memoryKind: "fact", visibility: "private", projectId: projectAId, title: "R5 keyword marker", content: markers.projectA },
       { id: `r5-b-${suffix}`, tenantId, ownerType: "user", ownerId: String(userId), memoryKind: "fact", visibility: "private", projectId: projectBId, title: "R5 keyword marker", content: markers.projectB },
       { id: `r5-global-${suffix}`, tenantId, ownerType: "user", ownerId: String(userId), memoryKind: "fact", visibility: "private", projectId: null, title: "R5 keyword marker", content: markers.projectAGlobal },
+      { id: `r5-foreign-project-${suffix}`, tenantId: foreignTenantId, ownerType: "project", ownerId: foreignProjectId, memoryKind: "fact", visibility: "shared_project", projectId: foreignProjectId, title: "R5 keyword marker", content: "R5_FOREIGN_TENANT_PROJECT_SECRET" },
+      { id: `r5-foreign-global-${suffix}`, tenantId: foreignTenantId, ownerType: "user", ownerId: String(foreignUserId), memoryKind: "fact", visibility: "private", projectId: null, title: "R5 keyword marker", content: "R5_FOREIGN_TENANT_GLOBAL_OK" },
     ]);
     await db.insert(entityMemories).values([
       { userId, personaId, entityType: "preference", entityName: `project-a-${suffix}`, facts: [markers.entityA], projectId: projectAId },
       { userId, personaId, entityType: "preference", entityName: `project-b-${suffix}`, facts: [markers.entityB], projectId: projectBId },
       { userId, personaId, entityType: "preference", entityName: `global-${suffix}`, facts: [markers.entityGlobal], projectId: null },
+      { userId: foreignUserId, personaId: foreignPersonaId, entityType: "preference", entityName: `foreign-project-${suffix}`, facts: ["R5_FOREIGN_TENANT_ENTITY_SECRET"], projectId: foreignProjectId },
+      { userId: foreignUserId, personaId: foreignPersonaId, entityType: "preference", entityName: `foreign-global-${suffix}`, facts: ["R5_FOREIGN_TENANT_ENTITY_GLOBAL_OK"], projectId: null },
     ]);
   });
 
   afterAll(async () => {
-    if (!userId) {
-      if (tenantCreated) await getDb().delete(tenants).where(eq(tenants.id, tenantId));
-      return closeDb();
-    }
     const db = getDb();
     try {
-      await db.delete(scopedMemories).where(eq(scopedMemories.tenantId, tenantId));
-      await db.delete(entityMemories).where(eq(entityMemories.userId, userId));
-      await db.delete(conversations).where(eq(conversations.id, conversationId));
-      await db.delete(personaTemplates).where(eq(personaTemplates.id, personaId));
-      await db.delete(canonicalProjectMemberships).where(eq(canonicalProjectMemberships.tenantId, tenantId));
-      await db.delete(canonicalProjectAppBindings).where(eq(canonicalProjectAppBindings.tenantId, tenantId));
-      await db.delete(canonicalProjects).where(eq(canonicalProjects.tenantId, tenantId));
-      await db.delete(appIdentities).where(eq(appIdentities.tenantId, tenantId));
-      await db.delete(users).where(eq(users.id, userId));
-      await db.delete(tenants).where(eq(tenants.id, tenantId));
+      const tenantIds = [tenantId, foreignTenantId];
+      await db.delete(scopedMemories).where(inArray(scopedMemories.tenantId, tenantIds));
+      await db.delete(entityMemories).where(inArray(entityMemories.userId, [userId, foreignUserId].filter(id => id > 0)));
+      await db.delete(conversations).where(and(
+        inArray(conversations.id, [conversationId, foreignConversationId]),
+        inArray(conversations.tenantId, tenantIds),
+      ));
+      await db.delete(personaTemplates).where(and(
+        inArray(personaTemplates.id, [personaId, foreignPersonaId]),
+        inArray(personaTemplates.tenantId, tenantIds),
+      ));
+      await db.delete(canonicalProjectMemberships).where(inArray(canonicalProjectMemberships.tenantId, tenantIds));
+      await db.delete(canonicalProjectAppBindings).where(inArray(canonicalProjectAppBindings.tenantId, tenantIds));
+      await db.delete(canonicalProjects).where(inArray(canonicalProjects.tenantId, tenantIds));
+      await db.delete(appIdentities).where(inArray(appIdentities.tenantId, tenantIds));
+      await db.delete(users).where(inArray(users.id, [userId, foreignUserId].filter(id => id > 0)));
+      await db.delete(tenants).where(inArray(tenants.id, tenantIds));
     } finally {
       await closeDb();
     }
+  });
+
+  it("rejects a foreign-tenant App binding while preserving the foreign user's Global memory", async () => {
+    const messages = await buildChatContext({
+      channel: "chat",
+      userId: foreignUserId,
+      tenantId: foreignTenantId,
+      userMessage: "R5 keyword marker",
+      traceId: `r5-foreign-${suffix}`,
+      conversationContext: {
+        conversationId: foreignConversationId,
+        activePersonaId: foreignPersonaId,
+        trustedAppContext: {
+          version: "spec304-trusted-host-app-context.v1",
+          tenantId,
+          hostAppId: appId,
+          publicAppId: `public-${appId}`,
+          routeProvenance: "verified_custom_domain_alias",
+          permissionCeiling: { projectMemoryRead: "authorized_bound_project_only", durableProjectMemoryWrite: false },
+          policyVersion: SMARTAIHUB_RUNTIME_CONTEXT_POLICY_VERSION,
+        },
+      },
+    }, "R5 base prompt", null);
+    const prompt = messages.map(message => typeof message.content === "string" ? message.content : JSON.stringify(message.content)).join("\n");
+    expect(prompt).toContain("R5_FOREIGN_TENANT_GLOBAL_OK");
+    expect(prompt).toContain("R5_FOREIGN_TENANT_ENTITY_GLOBAL_OK");
+    expect(prompt).not.toContain("R5_FOREIGN_TENANT_PROJECT_SECRET");
+    expect(prompt).not.toContain("R5_FOREIGN_TENANT_ENTITY_SECRET");
   });
 
   it("keeps Project A memory out after ACL/binding revocation, retargeting, and NO_PROJECT", async () => {
