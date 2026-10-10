@@ -120880,7 +120880,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "e67aeaf86f81ea2645188536c3e58ec7282af662",
+      "canonical_sha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",

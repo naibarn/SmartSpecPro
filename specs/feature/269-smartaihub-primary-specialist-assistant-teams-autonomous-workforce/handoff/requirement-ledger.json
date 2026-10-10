@@ -1,5 +1,5 @@
 {
-  "generation": 6,
+  "generation": 7,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -36958,11 +36958,11 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "e67aeaf86f81ea2645188536c3e58ec7282af662",
+      "evidence_sha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
       "final_state": "PARTIAL",
       "implementation_evidence": [],
       "implementation_status": "PARTIAL",
-      "next_action": "Continue the T-01–T-23 matrix: prove same-tenant two-App private isolation and two-user shared-Project behavior; cover AMBIGUOUS, near-equal candidates, picker confirmation, pending promotion, App clone/transfer/lease, and legacy cutover/replay. Resolve the missing authoritative App-private memory dimension and production ingress producer; do not promote this partial matrix to PASS.",
+      "next_action": "Continue T-01–T-23: implement or approve an authoritative App-private memory dimension; verify production authenticated ingress and provider-context propagation; cover AMBIGUOUS/near-equal resolution, picker confirmation, pending memory promotion, App clone/transfer/lease, and legacy cutover/replay. Do not mark the matrix PASS from these partial direct cases.",
       "requirement_digest": "ffade486e05993b97f76e27be94ac23661e069be0ae19e2f175b762aa265156b",
       "requirement_id": "REQ-BD45C492BD57",
       "requirement_text": "At minimum cover: one user across two apps/projects; two users in one authorized shared project; same conversation changing Project A→B; no project and ambiguous project; near-equal semantic candidates; picker confirmation; pending memory promotion after confirmation; Chat embedded in two apps with distinct host IDs; App clone, transfer, and lease; ACL revocation during a conversation; and legacy memory cutover with replay/idempotency. Tests must prove no cross-app/project/tenant private-memory leakage and bind evidence to the exact implementation SHA.",
@@ -36972,7 +36972,9 @@
         "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/persisted-acceptance-b3267af.json",
         "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/persisted-memory-context-integration-e147.json",
         "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/postintegration-memory-acceptance-eec4503.json",
-        "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/persisted-foreign-tenant-acceptance-0f2b08b.json"
+        "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/persisted-foreign-tenant-acceptance-0f2b08b.json",
+        "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/shared-project-private-isolation-e28126e.json",
+        "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/same-tenant-two-app-isolation-0da2b46.json"
       ],
       "verification_method": "Direct persisted acceptance on the canonical prompt-building path using a new disposable PostgreSQL 17 target; no external provider call."
     }

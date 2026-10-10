@@ -10,9 +10,19 @@
   },
   "verification": {
     "persistedCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
-    "persistedResult": { "status": "PASS", "testFiles": 1, "tests": 3 },
+    "persistedResult": { "status": "PASS", "testFiles": 1, "tests": 4 },
     "regressionCommand": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/scopedMemoryService.test.ts server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts server/services/__tests__/teamRoomMemoryPolicy.test.ts server/services/__tests__/promptComposer.test.ts server/services/__tests__/promptComposer.enhanced.test.ts server/services/__tests__/contextBuilder.test.ts server/services/__tests__/projectResolutionAuthority.test.ts server/services/__tests__/integration/memoryScopeIsolation.test.ts server/services/__tests__/appIngressMemoryRuntime.test.ts server/services/__tests__/trustedAppRouteAssertion.test.ts",
     "regressionResult": { "status": "PASS", "testFiles": 10, "tests": 157 },
+    "postIntegrationVerification": {
+      "canonicalSha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
+      "verifiedAt": "2026-10-10T09:18:32Z",
+      "persistedStatus": "PASS",
+      "persistedTestFiles": 1,
+      "persistedTests": 4,
+      "regressionStatus": "PASS",
+      "regressionTestFiles": 10,
+      "regressionTests": 157
+    },
     "database": {
       "name": "miniapp_r5_test",
       "engine": "PostgreSQL 17.11",

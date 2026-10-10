@@ -17,6 +17,13 @@
     "database": "PostgreSQL 17.11, loopback-only miniapp_r5_test, synthetic fixture rows only",
     "externalProviderCalls": 0
   },
+  "postIntegrationVerification": {
+    "canonicalSha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
+    "verifiedAt": "2026-10-10T09:18:32Z",
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 4
+  },
   "reviewedSecurityLenses": [
     "Both Apps use the same canonical tenant",
     "Each App has a unique canonical and public App identity",
