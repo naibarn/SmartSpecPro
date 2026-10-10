@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
-# 092 — 092 - Thai Document OCR Routing with Typhoon OCR 1.5
+# 092 — 092 - Thai Document OCR Routing and Adaptive Processing
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 40 unresolved of 40
+- Requirements: 0 pass / 84 unresolved of 84
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 11
 
 ## Source-declared status and relationship claims
 

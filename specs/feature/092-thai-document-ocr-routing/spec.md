@@ -1,9 +1,9 @@
-# 092 - Thai Document OCR Routing with Typhoon OCR 1.5
+# 092 - Thai Document OCR Routing and Adaptive Processing
 
 Version: 1.0  
 Date: 2026-04-12  
 Status: Proposed  
-Depends-on: 091-shared-document-ocr-landingai-ade-python, 070-local-client-llm-mode  
+Depends-on: 091-shared-document-ocr-landingai-ade-python, 070-local-client-llm-mode, 240-Agent-Generated UI & Safe Interactive Surfaces, 253-Universal-Product-Command-and-Capability-Interoperability, 267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2, 229-unified-rag-retrieval-intelligence-cloudflare-ai-search-vectorize, 266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric, 272-smartaihub-credential-vault-root-of-trust-secure-provider-broker
 Audience: Product, Admin Settings, Web Control Plane, Python Backend, Library/RAG, Finance, Security, QA
 
 ---
@@ -15,7 +15,7 @@ SmartSpecPro should let admins choose which OCR provider is used for each docume
 - raster images such as `jpg`, `jpeg`, and `png`
 - PDF documents
 
-The primary Thai OCR engine for this feature is Typhoon OCR 1.5 (`typhoon-ocr`) consumed through a remote API. The product goal is to make Thai-heavy document understanding more reliable without forcing every document type through one shared provider.
+The preferred Thai OCR route is the existing Typhoon OCR integration, currently identified by the compatibility provider ID `typhoon_ocr_1_5` and hosted model name `typhoon-ocr`. These identifiers document the current integration; they do not pin future model versions. Provider model/version and capabilities are configurable. The product goal is to make Thai-heavy document extraction more reliable without forcing every document type through one provider.
 
 This feature does not replace the shared document OCR backbone. It adds a routing layer and admin settings so the platform can choose the best OCR backend per file class.
 
@@ -36,7 +36,7 @@ That creates three problems:
 2. the system cannot express a Thai-first default for document OCR
 3. future provider swaps become risky because routing is hidden inside backend logic
 
-Typhoon OCR 1.5 is a strong fit for this gap because the official Typhoon docs describe it as a document parsing model with Thai understanding and support for image and PDF input. In this feature it is treated as a remote API integration, not a local install.
+The existing Typhoon OCR integration is a strong fit for this gap because current provider documentation describes Thai document parsing with image and PDF support. It is treated as a hosted API route in the existing integration; any model/version change remains configurable and subject to revalidation.
 
 ---
 
@@ -45,7 +45,7 @@ Typhoon OCR 1.5 is a strong fit for this gap because the official Typhoon docs d
 ### 3.1 Functional goals
 
 - Let admins configure a separate OCR provider for raster images and PDFs.
-- Make Typhoon OCR 1.5 available as a first-class provider choice.
+- Keep the existing Typhoon OCR integration available as a first-class provider choice.
 - Keep the admin experience inside `/admin/settings` under the existing Document OCR section.
 - Route uploads server-side based on normalized MIME type and file signature.
 - Preserve the current document OCR crediting and audit trail behavior.
@@ -78,7 +78,7 @@ Typhoon OCR 1.5 is a strong fit for this gap because the official Typhoon docs d
 
 ## 5. Locked product decisions
 
-1. Typhoon OCR 1.5 is the recommended Thai document OCR provider for this feature.
+1. Typhoon OCR is the preferred Thai document OCR provider for this feature, while the current provider ID remains backward-compatible.
 2. OCR routing must be configurable separately for images and PDFs.
 3. Routing decisions are made on the server using MIME type plus file signature checks.
 4. Admin settings live in the existing `document_ocr` settings category.
@@ -93,12 +93,13 @@ Typhoon OCR 1.5 is a strong fit for this gap because the official Typhoon docs d
 Official Typhoon documentation for OCR indicates:
 
 - the model name is `typhoon-ocr`
-- the model is Typhoon OCR 1.5
-- it is the latest recommended OCR model in the Typhoon product line
+- the current integration identifies its model as `typhoon-ocr`
 - it accepts image and PDF inputs
 - it is intended for structured, layout-aware document parsing
 
-Operationally, this means Typhoon OCR can serve as the default Thai document OCR backend for both image and PDF uploads when admins choose it.
+This is a versioned vendor/integration evidence snapshot, not a product-level model pin. Revalidate provider capabilities and model versions before changing the configured route. The stable `typhoon_ocr_1_5` provider ID remains a compatibility alias until an explicit migration is planned.
+
+Operationally, Typhoon OCR is the preferred Thai OCR route for compatible images and PDF pages when tenant policy, provider availability, quota, and configured routing permit. Existing deployments retain their current settings and integration; this policy does not force a provider migration.
 
 References:
 
@@ -145,7 +146,7 @@ Existing keys remain valid:
 
 ### 7.3 Provider options
 
-The provider dropdown should expose the documented server-side OCR providers that the platform can actually call.
+The provider dropdown should expose the documented server-side OCR providers that the platform can actually call. Provider IDs are compatibility keys; the provider's effective model/version is resolved from current configuration/capability metadata and is not inferred from an ID suffix.
 
 Minimum expected options:
 
@@ -172,7 +173,7 @@ The new routing keys must be backward-compatible with the current single-provide
 - If `image_ocr_provider` and `pdf_ocr_provider` are missing, the backend must continue to use the legacy document OCR provider path instead of failing.
 - The legacy path is the current provider configured through `landingai_ade_api_key`.
 - Existing installations that have only the legacy LandingAI key must keep their current OCR behavior until an admin explicitly saves the new routing settings.
-- For new or freshly configured deployments, the UI may prefill Typhoon OCR 1.5 as the recommended default for both routes, but only when the Typhoon API key is configured and the tenant policy allows outbound document OCR.
+- For new or freshly configured deployments, the UI may prefill the current Typhoon OCR integration as the recommended Thai route for both classes, but only when the key is configured and tenant policy allows outbound document OCR.
 - If Typhoon is selected but the Typhoon key is missing, the save must fail closed and the UI must explain that the provider is not configured.
 
 ---
@@ -199,11 +200,11 @@ The implementation should also treat `.jpg` and `.jpeg` as image inputs even if 
 - Use file signature sniffing when MIME type is missing or ambiguous.
 - Reject mismatches where the declared type does not match the file contents.
 - Do not infer PDF routing from file name alone.
-- Do not send unsupported image formats to Typhoon OCR 1.5 unless a later phase explicitly adds conversion or a Typhoon-compatible fallback path.
+- Do not send unsupported image formats to the current Typhoon OCR route unless a later phase explicitly adds conversion or a compatible fallback path.
 
 ### 8.3 Default behavior
 
-- If the image provider and PDF provider are both set to Typhoon OCR 1.5, the system should route both classes there.
+- If the image provider and PDF provider are both set to Typhoon OCR, the system should route both classes there.
 - If the selected provider is unavailable, the backend should retry within its normal policy and then fail explicitly or fall back only if an explicit fallback provider is configured.
 - The system must not silently reroute a PDF to an image-only path or vice versa.
 - Unsupported image formats such as WebP, GIF, HEIC, and HEIF must keep using the legacy OCR path unless the admin explicitly changes the routing model in a later phase.
@@ -264,6 +265,10 @@ Update document OCR consumers so they resolve provider choice from file class:
 - finance document extraction
 - any other document OCR entry points that use the shared document OCR service
 
+### 9.5 Mini App reuse
+
+Mini Apps MUST invoke the shared SmartAIHub document processing capability and its existing background-job result contract. They MUST reuse the same tenant policy, provider eligibility, quotas/cost metering, provenance, and cancellation behavior as core consumers. A Mini App MUST NOT carry a second OCR implementation, provider credential, queue, or index. Generated Mini App surfaces and cross-product capability handoffs remain within SPEC-240 and SPEC-253 boundaries.
+
 ---
 
 ## 10. Security and operational requirements
@@ -275,7 +280,63 @@ Update document OCR consumers so they resolve provider choice from file class:
 5. Preserve audit metadata for provider choice and fallback reason.
 6. Do not broaden OCR permissions by default when enabling Typhoon OCR.
 
-Typhoon OCR rate limits should be respected by the backend scheduler and retry policy. The official Typhoon documentation lists `typhoon-ocr` at 2 requests per second and 20 requests per minute.
+Provider quotas and concurrency are configurable provider-capacity inputs. The implementation must observe provider responses such as `Retry-After` when present and defer work through the durable scheduler; values in vendor documentation or current code are evidence snapshots, not hard-coded product limits. Rate-limit policy must not lose jobs or retry an entire document when only a page or provider attempt needs recovery.
+
+### 10.1 Adaptive inspection and route selection
+
+Before extraction, inspect MIME type, file signature, document structure, language hints, and page characteristics using existing parsers and routing services:
+
+- Native-text PDF: use direct text extraction when it preserves the requested content adequately; do not OCR those pages unnecessarily.
+- Scanned PDF: OCR only pages requiring recognition.
+- Mixed PDF: classify and route pages independently, retaining one document-level manifest and page-level outcomes.
+- Complex layout or tables: use a validated structure-aware document parser or OCR-VL route and preserve headers, rows, reading order, and source locations.
+- Images: use OCR for transcription/extraction; use a document-specific or general VLM only when the requested task requires visual interpretation beyond transcription.
+
+OCR extraction and LLM reasoning MUST remain distinct stages. Preserve the immutable original, page references, reading order, text blocks, table structure, source coordinates where available, confidence/uncertainty, warnings, extraction version, and original-to-output mapping. Uncertain values remain explicitly uncertain; the system MUST NOT invent text, amounts, or table relationships.
+
+### 10.2 Durable job and quota handling
+
+All asynchronous and batch OCR uses the existing SPEC-267 `worker_jobs` plus outbox/control-plane infrastructure. The OCR feature MUST NOT introduce a separate queue engine, provider registry, or execution authority.
+
+- Schedule with provider quota/capacity awareness and tenant-level weighted fairness; keep limits and provider capability data configurable.
+- Honor provider `Retry-After`; otherwise use bounded exponential backoff with jitter and a provider/job retry budget.
+- Persist durable page checkpoints and idempotency keys so worker restarts resume unfinished pages without repeating accepted/completed work.
+- Represent partial document completion, batch progress, cancellation, and recovery explicitly. Cancellation prevents new page assignments and follows the existing execution cancellation/settlement contract.
+- Meter attempts, accepted pages, provider usage, and cost against tenant budgets. A rate-limited job waits durably or uses an explicitly approved eligible route; it is never silently dropped.
+- Use the existing provider circuit-breaker and degraded-mode behavior. Do not reroute across tenant, provider, residency, or user-intent boundaries.
+
+### 10.3 Execution routes and fallback policy
+
+The routing policy may select among these existing or optional paths, only when the route is enabled and validated for this document and tenant:
+
+1. Typhoon Hosted API (preferred Thai OCR route).
+2. Typhoon Self-host / Local Runner (optional; requires capability negotiation, compatible runtime/model, resource limits, and quality validation).
+3. A validated alternative OCR provider for the document class and language.
+4. A document-specific VLM for layout-aware extraction where OCR alone is insufficient.
+5. A general VLM only for a user-requested task that needs visual understanding or interpretation.
+
+Fallback eligibility evaluates availability, Thai-language accuracy baseline, quota, cost, latency, data residency / PDPA, tenant policy, and user intent. A provider that lacks quality, rights, or compatibility evidence remains unavailable as an automatic fallback. Self-host is never mandatory; hosted Typhoon remains usable under existing policy when no eligible Runner or GPU is available. OCR work must not require a vision model to remain resident on the Debian server.
+
+Provider credential ownership follows SPEC-272. Job dispatch, resource limits, Runner capability, receipts, and settlement follow SPEC-267 and the existing Runner contracts.
+
+### 10.4 Quality benchmark and completion policy
+
+Maintain a versioned, consented Thai-English benchmark with representative native PDFs, scanned PDFs, mixed PDFs, images, tables, receipts, invoices, and general document layouts. Compare the existing Typhoon Hosted baseline with Typhoon Self-host candidates and optional PaddleOCR, document OCR-VL, and hosted alternatives only when legally and technically eligible. Keep upstream/vendor results separate from SmartAIHub measurements.
+
+Report Character Error Rate, Word Error Rate with documented Thai segmentation, Thai diacritic accuracy, field and numeric/amount accuracy, table structure accuracy, reading order, latency, throughput, retry rate, manual correction time, and cost per accepted document. Record dataset/version, provider/model/runtime configuration, sample counts, and uncertainty. Do not infer that a newer model is better. A self-host route requires compatibility and non-inferior agreed quality evidence before production enablement.
+
+Extraction quality, retrieval usability, and action safety are evaluated independently. Partial extraction may be stored and indexed with uncertainty/provenance when useful; an OCR imperfection alone MUST NOT block the whole ordinary workflow. Apply stronger field validation only to values used for transactions or risk-sensitive decisions. Ordinary OCR does not require mandatory human approval.
+
+### 10.5 Ownership boundaries
+
+| Concern | Existing owner / contract | This Spec's boundary |
+|---|---|---|
+| OCR provider preference, document inspection, page routing, extraction quality | SPEC-091 and SPEC-092 | Specify Thai-first adaptive policy and page-level extraction contract. |
+| Durable jobs, outbox, provider capacity/quota, fair scheduling, retry, circuit breaker, cancellation, recovery | SPEC-267 | Reuse the canonical job/control plane; add no OCR queue or scheduler. |
+| Credentials and provider secret lifecycle | SPEC-272 | Use the existing credential broker and tenant policy. |
+| RAG projections, indexing, retrieval and citations | SPEC-229 | Supply normalized, versioned Markdown/tables with source/page provenance; add no index. |
+| Data/evidence identities, source lineage, rights and tenant semantics | SPEC-266 | Link extraction evidence to canonical source/document/page lineage; add no registry. |
+| Model/reasoning routing | SPEC-231 | Invoke reasoning only as a separately requested/eligible stage; OCR remains extraction. |
 
 ---
 
@@ -337,7 +398,7 @@ This lineage makes it possible to answer:
 This feature is complete when:
 
 - admins can configure image OCR and PDF OCR separately
-- Typhoon OCR 1.5 is selectable and can be the default Thai OCR backend
+- The existing Typhoon OCR integration is selectable and preferred for Thai OCR without pinning a model version
 - JPEG and PNG files route through the image OCR setting
 - PDFs route through the PDF OCR setting
 - existing deployments without the new routing keys continue to use the current legacy OCR path
@@ -345,3 +406,29 @@ This feature is complete when:
 - external OCR stays blocked when the tenant policy disables it
 - credentials remain server-side only
 - existing OCR consumers keep working without a second OCR subsystem
+
+## 14. Outcome acceptance criteria and evidence state
+
+The following criteria define the intended implementation and verification work. A Spec edit alone does not establish implementation or verification. Statuses below describe this Spec-only change at its base revision; implementation evidence must be recorded against the applicable integrated SHA in the owning lifecycle.
+
+| ID | Acceptance criterion | Specified | Implemented | Verified | Blocked |
+|---|---|---:|---:|---:|---:|
+| AC-01 | Existing Typhoon OCR integration remains compatible. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-02 | The measured Thai OCR quality baseline is preserved. | Yes | Not assessed here | Not assessed here | Benchmark evidence is absent from the inspected Specs |
+| AC-03 | Native-text PDFs avoid unnecessary OCR. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-04 | Provider rate limits cannot silently lose jobs. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-05 | Batch processing resumes from durable page checkpoints. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-06 | Self-host execution remains optional. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-07 | Fallback obeys tenant, security, provider, residency, and quality policy. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-08 | Partial extraction can remain usable for RAG with uncertainty and provenance. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-09 | Original document and extraction provenance remain available under existing retention rules. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-10 | No duplicate queue, registry, index, or execution engine is introduced. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-11 | Active implementation work remains untouched. | Yes | N/A to product implementation | Checked for this change only | None recorded |
+| AC-12 | No production configuration changes are required by this Spec update. | Yes | N/A to product implementation | Checked for this change only | None recorded |
+| AC-13 | Cost and quality metrics can be measured per accepted document. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-14 | Ordinary OCR has no mandatory human approval step. | Yes | Not assessed here | Not assessed here | None recorded |
+| AC-15 | Existing Agents and Mini Apps can reuse the shared document capability. | Yes | Not assessed here | Not assessed here | None recorded |
+
+## 15. Spec-only gap review
+
+The canonical-baseline capability inventory, evidence paths, priorities, risks, and ten-dimension review are recorded in [`reviews/typhoon-first-adaptive-gap-review-2026-10-10.md`](reviews/typhoon-first-adaptive-gap-review-2026-10-10.md). This review is planning evidence only; it does not change implementation status or replace the generated handoff.

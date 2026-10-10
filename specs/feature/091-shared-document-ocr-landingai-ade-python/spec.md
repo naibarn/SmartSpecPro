@@ -3,14 +3,14 @@
 Version: 1.0  
 Date: 2026-04-11  
 Status: Proposed  
-Depends-on: 075-unified-web-desktop-agent-platform, 078-private-personal-finance-ocr-rag  
+Depends-on: 075-unified-web-desktop-agent-platform, 078-private-personal-finance-ocr-rag, 267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2, 229-unified-rag-retrieval-intelligence-cloudflare-ai-search-vectorize, 266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric
 Audience: Product, Python Backend, Web Control Plane, Library/RAG, Finance, Security, QA
 
 ---
 
 ## Executive summary
 
-SmartSpecPro should reuse one shared document OCR / parsing backbone for all document-centric workflows by integrating LandingAI ADE Python into the existing Python backend.
+SmartSpecPro should reuse one shared document OCR / parsing backbone for all document-centric workflows through the existing Python backend and provider integrations. LandingAI ADE remains a supported document parsing candidate; it is not the mandatory or universal primary provider.
 
 The key idea is:
 
@@ -75,7 +75,7 @@ LandingAI ADE is designed around document parsing and extraction:
 - support public URL or staged-file inputs
 - support large / async document workflows
 
-That makes it a strong candidate for:
+That makes it a supported candidate, subject to tenant policy and measured suitability, for:
 
 - receipts
 - bank slips
@@ -117,7 +117,7 @@ This feature should reuse those modules instead of inventing a second document s
 
 ## Locked product decisions
 
-1. ADE is the primary provider for document-centric OCR / parse / extract flows.
+1. Provider choice is an adaptive policy decision. Typhoon OCR is the preferred OCR provider for Thai-language documents, preserving its existing integration and quality baseline. ADE and other validated providers remain available for compatible document classes; no provider migration is implied by this Spec.
 2. Non-document vision stays on the existing multimodal provider path.
 3. Private uploads must be converted to public or temporary public URLs before provider calls.
 4. Tenant / project / owner boundaries are mandatory and fail closed.
@@ -129,6 +129,17 @@ This feature should reuse those modules instead of inventing a second document s
 - `document_ocr` and finance-style documents are in scope.
 - scene photos, screenshots, and videos are out of scope for ADE routing.
 - text-only files that are already parseable by native code can remain on the existing text extractor unless they are document-like and benefit from ADE.
+
+### 6.2 Adaptive document processing policy
+
+- OCR extraction and LLM reasoning are separate capabilities. A reasoning model MUST NOT silently replace OCR transcription.
+- Typhoon Hosted API remains the preferred Thai OCR route. An optional Typhoon self-host / Local Runner route may be offered only after compatibility, quality, security, and capacity validation; hosted processing remains available when no eligible Runner is present.
+- Provider capability, supported MIME types, model/version, quota observations, and cost data are configuration or runtime observations, not hard-coded assumptions in this contract.
+- Before OCR, inspect the document: use native text extraction for text-bearing PDFs; OCR scanned pages; route mixed PDFs at page granularity; use structure-aware parsing for complex layouts and tables. Avoid OCR when reliable native extraction already meets the requested purpose.
+- Preserve the original document and bind each derived artifact to its source revision, page/source location, extraction version, provider, confidence or uncertainty, and warnings. Never invent text, table values, or amounts absent from the source.
+- Provider fallback is permitted only when the candidate is enabled and validated for quality, quota, cost, latency, data residency / PDPA, tenant policy, and user intent. Unvalidated routes remain disabled.
+- Long-running and batch work MUST use the existing SPEC-267 `worker_jobs` plus outbox/control-plane path, provider capacity admission, fairness, retry, checkpoint, cancellation, and recovery contracts. Do not add an OCR-specific queue or scheduler.
+- OCR quality, retrieval usability, and action safety are separate outcomes. Partial or uncertain extraction may be retained for retrieval with explicit provenance; high-impact transactional decisions use appropriate field-level validation. Ordinary OCR does not require human approval by default.
 
 ---
 
@@ -179,11 +190,11 @@ Consumers should be able to use the same output for:
 
 Use the following routing rules as the product contract:
 
-| Analysis profile / input class | Example inputs | ADE route | Notes |
+| Analysis profile / input class | Example inputs | Document parser route | Notes |
 |---|---|---|---|
-| `document_ocr` | receipts, invoices, slips, statements, scanned PDFs, document-style images | Yes | Primary path when tenant policy allows external processing. |
-| Finance document capture | finance uploads created from chat or library ingestion | Yes | Must preserve source tenant/project/owner context. |
-| Document-like library ingestion | multi-page or scan-like uploaded documents | Yes | Use ADE output for downstream chunking and indexing. |
+| `document_ocr` | receipts, invoices, slips, statements, scanned PDFs, document-style images | Policy-routed | Prefer Typhoon for Thai OCR; retain ADE and other validated paths only where enabled and suitable. |
+| Finance document capture | finance uploads created from chat or library ingestion | Policy-routed | Reuse the configured, validated provider route and preserve source tenant/project/owner context. |
+| Document-like library ingestion | multi-page or scan-like uploaded documents | Policy-routed | Reuse normalized output for downstream chunking and indexing; select by document class, language, and tenant policy. |
 | `real_world_vision` | scene photos, screenshots, UI captures, browser captures, video frames | No | Keep the existing multimodal path. |
 | Native text/table parsing | CSV, XLSX, TXT, other files already handled by code | No by default | Stay on native parsers unless product logic marks the file as document-like. |
 | Unsupported or risky documents | password-protected PDFs, archives, HTML, SVG, scriptable files, MIME mismatch | No | Reject or send to manual review; do not call ADE. |
@@ -200,10 +211,11 @@ The routing decision must be deterministic and based on:
 
 The system must behave as follows when ADE is unavailable or disallowed:
 
-- if the tenant policy forbids external document processing, do not call ADE
+- if the tenant policy forbids external document processing, do not call any external OCR provider
 - if a document has a supported local fallback parser, use that path only for the supported file classes
 - if no local fallback exists, fail closed with a clear, user-safe error
-- if ADE times out or returns malformed output, retry only within bounded limits and then fall back to manual review
+- provider failures, 429/Retry-After, and transient responses follow SPEC-267's durable bounded retry and capacity policy; do not restart already completed pages
+- partial or uncertain output remains attributable and resumable; manual review is reserved for policy-defined high-impact or unresolvable cases, not every OCR failure
 - non-document vision flows must continue using the existing multimodal provider path regardless of ADE status
 
 Fallback behavior must be logged with:
@@ -247,6 +259,8 @@ The lineage record must be sufficient to answer:
 - what artifact hashes were produced
 - whether the result was eligible for downstream reuse
 
+For page-aware extraction, lineage additionally binds page number, source coordinates or structural path when available, reading order, table structure, confidence/uncertainty, source-to-output mapping, and idempotency/checkpoint identity. Original bytes remain governed by the existing storage and retention owners.
+
 ---
 
 ## Security and privacy
@@ -281,6 +295,9 @@ If the tenant policy forbids external transfer, the system should fail closed or
 - Unsupported document types are rejected or routed to the documented fallback path.
 - Policy-disabled tenants do not send documents to ADE.
 - Security and scoping tests pass for personal and work projects.
+- Thai documents prefer the existing Typhoon OCR route when policy and availability allow, without removing other configured routes.
+- Native-text PDFs avoid unnecessary OCR; scanned and mixed PDFs can be processed at page granularity with resumable partial results.
+- Downstream indexing reuses SPEC-229 retrieval contracts and SPEC-266 provenance/evidence semantics without creating a second index or lineage authority.
 
 ---
 

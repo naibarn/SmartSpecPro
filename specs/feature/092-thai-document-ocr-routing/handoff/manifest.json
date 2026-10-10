@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/092-thai-document-ocr-routing/spec.md"
       },
@@ -33,6 +33,11 @@
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e965e5619ab9d029d7a85152f7bcca3f043d6505c14f30a8728c8067713be2bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/typhoon-first-adaptive-gap-review-2026-10-10.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
@@ -72,7 +77,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda"
+    "expected_spec_digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab"
   },
   "continuation": {
     "next_action": null,
@@ -86,7 +91,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/092-thai-document-ocr-routing/spec.md"
       },
@@ -109,6 +114,11 @@
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e965e5619ab9d029d7a85152f7bcca3f043d6505c14f30a8728c8067713be2bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/typhoon-first-adaptive-gap-review-2026-10-10.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
@@ -163,7 +173,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/092-thai-document-ocr-routing/spec.md"
       },
@@ -186,6 +196,11 @@
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e965e5619ab9d029d7a85152f7bcca3f043d6505c14f30a8728c8067713be2bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/typhoon-first-adaptive-gap-review-2026-10-10.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
@@ -221,13 +236,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/092-thai-document-ocr-routing/spec.md",
-    "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+    "digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.405830Z",
+      "last_evidence_at": "2026-10-10T01:12:34.231772Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-15T08:00:16+07:00",
       "spec_last_changed_at": "2026-04-15T08:00:16+07:00"
@@ -235,7 +250,7 @@
     "revision": "1.0",
     "slug": "092-thai-document-ocr-routing",
     "spec_id": "092",
-    "title": "092 - Thai Document OCR Routing with Typhoon OCR 1.5"
+    "title": "092 - Thai Document OCR Routing and Adaptive Processing"
   },
   "implementation": {
     "checkpoint_shas": [],
@@ -251,10 +266,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.405830Z"
+    "updated_at": "2026-10-10T01:12:34.231772Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -264,10 +279,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.405830Z",
+    "reconciled_at": "2026-10-10T01:12:34.231772Z",
     "sources": [
       {
-        "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/092-thai-document-ocr-routing/spec.md"
       },
@@ -290,6 +305,11 @@
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e965e5619ab9d029d7a85152f7bcca3f043d6505c14f30a8728c8067713be2bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/typhoon-first-adaptive-gap-review-2026-10-10.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
@@ -329,11 +349,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/092-thai-document-ocr-routing/spec.md",
-        "source_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "source_digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "value": "Proposed"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -355,14 +380,14 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/092-thai-document-ocr-routing/spec.md",
-        "source_digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "source_digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "value": "Proposed"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "8ecff23853765b253a3aa54859dfe6738d401b842fe59e694854a5551f3accda",
+        "digest": "a0ce8c57200e828923ffa33bd288f09430df0eebeaa7e1cbae33094d1ec45bab",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/092-thai-document-ocr-routing/spec.md"
       },
@@ -385,6 +410,11 @@
         "digest": "6be13767542c6e7217ef56f2243cfef81dc39064936b1e8803f5dcd24ae11134",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/092-thai-document-ocr-routing/reviews/self-review-round-1.md"
+      },
+      {
+        "digest": "e965e5619ab9d029d7a85152f7bcca3f043d6505c14f30a8728c8067713be2bc",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/092-thai-document-ocr-routing/reviews/typhoon-first-adaptive-gap-review-2026-10-10.md"
       },
       {
         "digest": "8e6fe3e8adab21b34db798b6f29c13ac1ab76b4b334d1274ba546319df497b3d",
@@ -428,11 +458,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 40,
-    "unresolved": 40
+    "total": 84,
+    "unresolved": 84
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.405830Z",
+  "updated_at": "2026-10-10T01:12:34.231772Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
