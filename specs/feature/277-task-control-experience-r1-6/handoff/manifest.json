@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
+    "expected_canonical_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
+    "next_action": "Run dedicated current-schema AutoTeam recovery acceptance with team_rooms/team_runs present; verify scheduler selection, stale-worker fencing, bounded no-progress behavior, provider/resource/dependency waits, and Task Control continuity projection. Keep SPEC-277 unresolved until direct requirement evidence exists.",
     "next_ready_workunit": "Actual non-production AutoTeam recovery UAT on a dedicated current-schema database, including asynchronous provider completion, restart/resume, stale lease/idempotency, and bounded no-progress suppression",
     "reactivation_predicate": "Resume when a dedicated approved current-schema non-production database and provider test capability are available; do not migrate the shared smartspec_test database.",
-    "resume_point": "PR #501 recovery implementation is integrated at 311bc1e39100a308efcadab61fa278d607a860aa; PR #503 adds a direct no-progress loop contract and is integrated at 06068ae9db6c433b9a10353f71f2becdba18218e. AutoTeam/scheduler contracts pass 6 files / 30 tests, and selected worker_jobs/outbox replay/idempotency/lease/duplicate callback contracts pass 7 tests. The new test confirms a stalled unchanged run is suppressed after three no_action evaluations without blocking an independent ready run. Actual recovery UAT remains NOT_RUN: no database/API endpoint configured, local PostgreSQL requires unavailable credentials, and known shared test schema is stale. Next run UAT on a dedicated current-schema non-production environment.",
+    "resume_point": "PR #535 merged at 55358670f0f8a58bd54ace64e3d3a10965c36b0d. R5 exercised the existing worker_jobs/outbox control plane in a disposable PostgreSQL cluster across producer, worker, retry-recovery, resumed-worker, and verifier processes; persisted SPEC and TEST progress, retry attempt 2, and consumed dispatch were confirmed. The test fixes an acceptance harness ordering bug; it does not execute the AutoTeam scheduled recovery scan, stale-lease fencing, or full SPEC-277 projection. SPEC-277 stays PARTIAL/DORMANT_UNRESOLVED.",
     "waiting_predicate": "Dedicated current-schema non-production database and safe provider test capability are provisioned; shared smartspec_test remains stale and repository-wide migrations include retired systems."
   },
   "continuation_assessment": {
@@ -98,7 +98,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 23,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -141,10 +141,10 @@
     "status": "PARTIAL"
   },
   "integration": {
-    "canonical_ref": "origin/main",
-    "canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:34:49Z"
+    "integrated_at": "2026-10-10T10:01:04Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -326,6 +326,35 @@
           "Four focused Vitest suites passed, 49 tests at source SHA 4f5a12d2d9156da694c6cab74f431062394ed4bb; CI preview was SKIPPED."
         ],
         "verification_method": "Focused projection, ledger, and panel tests; browser UAT pending."
+      },
+      "REQ-AA320B623C41": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/277-task-control-experience-r1-6/spec.md#L2001"
+        ],
+        "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L2001",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          {
+            "kind": "R5_CROSS_PROCESS_WORKER_RECOVERY",
+            "path": "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/worker-restart-recovery-5535867.json",
+            "source_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
+            "summary": "On a disposable PostgreSQL current-schema target, the canonical worker_jobs/outbox pipeline recovered useful SPEC and TEST progress across separate worker processes after an injected retryable failure; final progress and attempt 2 were reloaded from persistence. This is a worker-layer evidence slice only."
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Exercise SPEC-277 Task Control continuity projection and scheduled AutoTeam recovery directly, including fencing, no-progress suppression, and dependency/provider/resource waits; keep this requirement OPEN until that acceptance passes.",
+        "requirement_digest": "795651e0f3cf0581e5610e59169da9a0fdd39ea9e78d56b790021299f1e8d082",
+        "requirement_id": "REQ-AA320B623C41",
+        "requirement_text": "After process crash, runner reconnect, server restart, or runtime handoff, Task Control MUST reconstruct the same logical state from canonical records rather than starting a visually fresh task. The continuity projection SHOULD include references sufficient to restore:",
+        "source_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       }
     }
   },
@@ -374,7 +403,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 4,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -383,7 +412,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:35:13.416689Z",
+  "updated_at": "2026-10-10T10:02:26.859436Z",
   "verification": {
     "baseline_issues": [
       "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
@@ -391,14 +420,21 @@
     "evidence": [
       "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-scan-311bc1e.json",
       "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-scan-311bc1e.json",
-      "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-contracts-06068ae.json"
+      "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-contracts-06068ae.json",
+      {
+        "kind": "R5_CANONICAL_WORKER_RESTART_RECOVERY_SLICE",
+        "path": "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/worker-restart-recovery-5535867.json",
+        "scope": "Disposable PostgreSQL; canonical worker_jobs/outbox work ran across independent producer, worker, retry-recovery, resumed-worker and verification processes. Useful SPEC and TEST progress persisted; retry completed at attempt 2. Does not prove AutoTeam scheduled recovery, stale lease fencing, SPEC-271 authority or full Task Control projection.",
+        "source_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick",
       "integration"
     ],
-    "sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
+    "sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
     "status": "PARTIAL",
     "task_regressions": []
   }
