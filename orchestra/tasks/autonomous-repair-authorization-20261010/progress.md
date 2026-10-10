@@ -30,7 +30,7 @@ No live Runner execution, approval issuance, event ingress, merge, or cleanup is
 
 ## Follow-up checkpoint candidate (2026-10-10)
 
-Current canonical main at start of this follow-up: `66ba886c9c7e6c0e30682cd5def300214679c48d` (PR #554); latest refreshed main while working: `c3d7cef8d94f8f5c023a427cfe83d49f44e72fd8` (PR #555 also integrated). The task worktree fast-forwarded to latest main before this checkpoint; primary checkout remains untouched.
+Current canonical main at start of this follow-up: `66ba886c9c7e6c0e30682cd5def300214679c48d` (PR #554); latest refreshed main while working: `7e436e27989c6a12167a80e7c7e3e9a64a43e3ab` (PRs #555–556 integrated). The task branch merged latest main with the normal non-force path; intervening changes were limited to SPEC-271 evidence and did not overlap. Primary checkout remains untouched.
 
 - Connected the existing Goal Grant evaluator to the existing Spec 224 Runner authorization gate as an alternate, mutually exclusive authority source. It revalidates exact child job/attempt budget hold, Goal/tenant/actor/workspace/repository/source SHA/action/path/capability scope and Grant expiry/revocation, then still requires trusted online Runner session, fresh capability snapshot, tool authentication, workspace binding, and all Grant-requested capabilities on that snapshot.
 - A child job approval cannot be combined with Goal Grant evidence; no approval is created, persisted, or borrowed by this code. The Goal Grant evidence must come from the canonical Approval Authority reader at its eventual service call site.
@@ -45,4 +45,4 @@ Current canonical main at start of this follow-up: `66ba886c9c7e6c0e30682cd5def3
 3. Exercise issuance/revocation/budget/concurrent reservations against isolated current-schema PostgreSQL; enroll and verify a Linux Runner through the real trust flow; collect an execution receipt.
 4. Diagnose CI baseline failures independently. These are not caused by this follow-up and do not authorize changing required checks.
 
-Current follow-up state: `CHECKPOINT_READY`; the 45-test rerun passed, and the source/test/handoff delta is ready for normal PR integration. Do not claim Autonomous Repair dispatch or live execution until items 1–3 have evidence.
+Current follow-up state: PR #557 (`https://github.com/naibarn/SmartSpecPro/pull/557`) contains the 45-test-passing source/test/handoff delta. The branch has been reconciled with `7e436e27989c6a12167a80e7c7e3e9a64a43e3ab`. Repository API reports `main` is not protected (404), and the PR preview check is `SKIPPED` (not passed); the repository has no required checks to bypass. Next action: merge normally, verify the merge SHA in `origin/main`, then continue with the canonical Approval reader/service wiring and event ingress. Do not claim Autonomous Repair dispatch or live execution until items 1–3 have evidence.
