@@ -1,0 +1,113 @@
+{
+  "schema": "spec208.local-runtime-acceptance.v1",
+  "workUnit": "W2 partial runtime boundary proof",
+  "startingCanonicalSha": "f67106314445567ec4a5d77b89e961642315ac65",
+  "runtime": {
+    "name": "rootless systemd isolated Linux acceptance runtime",
+    "cloudflareCertified": false,
+    "productionCompatible": false,
+    "rootfsDigest": "sha256:2a0e24f1ea8e5bb7fe8a4696cde702f1ecf2bd5f5fe739c3ddbf3b3b85001fab",
+    "moliVersion": "1.1.15",
+    "moliSource": "https://github.com/lexmount/moli/releases/tag/v1.1.15",
+    "moliSourceCommit": "eaaf6f2",
+    "moliBinarySha256": "f927b72192905c092ec95c8f528e35087224f3fe8750f72fb2147efa676eab8d",
+    "nodeVersion": "v22.22.3",
+    "nodeBinarySha256": "e6ec2c188d83d813f81f2de8aea084d74dce603ac1abedd0a30ad941b10087b2",
+    "releaseAttestationVerified": false,
+    "releaseAssetSha256": "f7c9455451bffd4d3a6353431b3596c1d18ad4d9fe6725d8d4033f6fff5fa59d"
+  },
+  "command": "scripts/spec208/build-moli-acceptance-rootfs.sh /tmp/moli-v1.1.15-bin/moli-v1.1.15-x86_64-unknown-linux-gnu/moli /home/dev/.nvm/versions/node/v22.22.3/bin/node /tmp/spec208-moli-acceptance/repro-rootfs7 && scripts/spec208/run-moli-isolation-acceptance.sh /tmp/spec208-moli-acceptance/repro-rootfs7 sha256:2a0e24f1ea8e5bb7fe8a4696cde702f1ecf2bd5f5fe739c3ddbf3b3b85001fab spec208-moli-acceptance-final2",
+  "systemdLimits": {
+    "memoryMax": "1G",
+    "cpuQuota": "100%",
+    "tasksMax": 64,
+    "runtimeMax": "90s",
+    "timeoutStop": "5s",
+    "network": "PrivateNetwork=yes; no non-loopback interface/default route; fixture-only local proxy allowlist"
+  },
+  "observed": {
+    "exitCode": 0,
+    "serviceRuntime": "4.650s",
+    "cpuTime": "479ms",
+    "memoryPeak": "129.2M",
+    "uid": 1000,
+    "readOnlyRootWriteBlocked": true,
+    "isolatedProfileFilesystemType": "tmpfs (0x1021994)",
+    "hostHomeVisible": false,
+    "hostContainerdSocketVisible": false,
+    "defaultRoutePresent": false,
+    "externalDirectRouteBlocked": true,
+    "moliProcesses": [
+      {
+        "attempt": "tenant-a",
+        "pid": 2470506,
+        "exitStatus": 143,
+        "profileRemoved": true
+      },
+      {
+        "attempt": "tenant-b",
+        "pid": 2470705,
+        "exitStatus": 143,
+        "profileRemoved": true
+      }
+    ],
+    "fixtureDom": [
+      {
+        "attempt": "tenant-a",
+        "title": "SPEC208_ACCEPTANCE_tenant-a",
+        "body": "MOLI_SYNTHETIC_DOM_RESULT_tenant-a",
+        "localStorage": "tenant-a",
+        "httpOnlyCookiePresent": true
+      },
+      {
+        "attempt": "tenant-b",
+        "title": "SPEC208_ACCEPTANCE_tenant-b",
+        "body": "MOLI_SYNTHETIC_DOM_RESULT_tenant-b",
+        "localStorage": "tenant-b",
+        "httpOnlyCookiePresent": true
+      }
+    ],
+    "protocolAndEgressProbes": {
+      "CDPFromPage": "blocked by local egress proxy",
+      "WebDriverBidiFromPage": "blocked by local egress proxy",
+      "externalHost": "blocked by local egress proxy and private network namespace",
+      "metadataAddress": "blocked by local egress proxy and private network namespace",
+      "proxyAuthorizationPresent": false
+    },
+    "controlPlane": {
+      "workerJobsRowCreated": false,
+      "runnerAuthorizationLeaseFencingReceiptSettlement": "not exercised",
+      "reason": "The host exposes an externally managed app/database environment; no approved non-production worker_jobs target was identified. No live control-plane row or tenant traffic was created."
+    },
+    "swapPeak": "0B",
+    "localReceipt": {
+      "receiptId": "local-acceptance:bc503851-0a0f-4cc9-93c2-dba3b57ba39e",
+      "resultSha256": "c2d4ba9e3fd13ac04aa134cbf1c46941ada4e9ff0fd6b14a64c8f4530747c50a",
+      "settlement": "synthetic-local-harness-success",
+      "isWorkerJobsReceipt": false
+    },
+    "rootfsDigestStableAfterService": true
+  },
+  "provenanceLimitations": [
+    "The local rootfs archive digest is deterministic and pinned, but no signed publisher or build attestation for the downloaded Moli binary was verified.",
+    "This runtime is isolated acceptance evidence only. It does not establish Cloudflare binding availability, Cloudflare compatibility, or production readiness."
+  ],
+  "securityRecheck": {
+    "latestUpstreamMoliRelease": "1.1.15",
+    "sourceCommit": "eaaf6f2dbfe26bf8de33387cd3ae6c31d0931a0e",
+    "cargoLockSha256": "bc816c83f9a0a6bb5fb08497b3fb936ee1b86c524a6acd9cc5da8a29b7f329e5",
+    "advisoryRecords": 11,
+    "actionableFixedCrateCandidates": {
+      "crossbeam-epoch": "0.9.20",
+      "rand": "0.9.3",
+      "rustls": "0.23.45",
+      "rustls-webpki": "0.103.13",
+      "smallbitvec": "2.6.1",
+      "thin-vec": "0.2.16"
+    },
+    "paste": "unmaintained advisory; no fixed release identified",
+    "releaseAttestationLookup": "404; no authenticated publisher build attestation available",
+    "w4Status": "OPEN: a dependency rebuild plus tests, refreshed SBOM/advisory/license evidence and new provenance are required; authoritative deployed image inventory and complete notices review remain unavailable",
+    "dependencyGraphLimitation": "Cargo.lock edges do not prove enabled features, platform selection, or exploit-path reachability"
+  }
+}
