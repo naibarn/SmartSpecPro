@@ -225,3 +225,9 @@ Loop policy:
 - Exact MCP run `38013533460` failed 44/120 on the same canonical-main fixture/import baseline. PR #403 already contains the PostgreSQL fixture repair, and its focused suite/check/security passed on `74a482e8fe38a131bdbe41bfee0e53ad90347e4c`; no duplicate patch is needed. Live endpoint/token remain unavailable.
 - Read-only authority inventory showed only the repository `production` environment and no MCP smoke secret names; `staging` returned 404. No secret values were read.
 - Handoff now records verification SHA `724d52d`, remains PARTIAL, completion-ineligible, and keeps all 66 requirements OPEN. Security owner disposition on `sprintf-js` remains the first required action, then reconcile #403, then perform live authenticated SPEC-308 acceptance.
+
+## Exact current-head CI and handoff — 2026-10-10 (wave 19)
+- On exact PR #399 SHA `22be8dd555dbdfe62443915fb7edbd06150303ff`, browser run `38013794799` passed 23/23 mocked Chromium tests (artifact ID `11654533001`); MCP run `38013794737` failed 44/120 from PostgreSQL session fixture drift and retired `agencyMcpService` imports, and live smoke failed closed on missing authorized endpoint/token.
+- PR #403 already includes the MCP fixture repair and passed its focused test/check/security suite; no duplicate patch was created. Its merge/reconciliation remains behind PR #405's security gate.
+- Handoff generation 60 now records verification SHA `22be8dd`, remains PARTIAL/completion-ineligible, and leaves all 66 requirements OPEN with no integration SHA.
+- GitHub authority inventory found no non-production environment, MCP smoke secret names, or named CODEOWNERS; no secret values were accessed.

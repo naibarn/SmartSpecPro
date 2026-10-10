@@ -79,10 +79,15 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533419.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533460.json",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533419",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave19.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737"
     ],
     "next_action": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
-    "rationale": "Exact browser run 38013533419 passed 23/23 on current PR #399 head 724d52d0a3242265866494576cf368682158a6ed. This proves mocked UI behavior only. Independent gates remain: #405 audit/owner disposition, #403 security integration and live MCP authority, plus authenticated SPEC-308 acceptance on an approved non-production runtime.",
+    "rationale": "On exact #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff, the isolated mocked browser simulation passed 23/23, while contract/MCP and live endpoint checks remain failed/blocked. This does not meet live acceptance or security gates.",
     "residual_requirements": [
       "All 66 ledger rows remain OPEN: 63 PARTIAL implementation rows and 3 UNVERIFIED; simulated browser evidence does not close requirements.",
       "PR #405 residual sprintf-js Moderate requires Security and Media/Runtime owner disposition and approved compatibility testing if selected.",
@@ -91,7 +96,7 @@
       "Approved non-production SmartSpecPro runtime and authorized test identity are required for authenticated acceptance.",
       "Production feature flags remain OFF and no production deployment is authorized."
     ],
-    "resume_point": "Latest PR #399 head 724d52d0a3242265866494576cf368682158a6ed is based on canonical origin/main 2b497268f5a5c76c45d277cb162f59d10137f97d. Exact browser run 38013533419 passed 23/23 mocked Chromium tests; exact MCP run 38013533460 failed 44/120 on canonical-main Redis/PostgreSQL fixture drift and retired agencyMcpService imports. PR #403 already carries the fixture repair and its focused suite/check/security passed on 74a482e8fe38a131bdbe41bfee0e53ad90347e4c. PR #405 mandatory audit still fails on sprintf-js Moderate and awaits Security/Media Runtime owner decision. Only the production GitHub environment exists, no MCP smoke secret names are configured, and no secret values were read. Keep 66 requirements OPEN, integration SHA unset, and production flags OFF."
+    "resume_point": "Exact latest PR #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff is based on canonical origin/main 2b497268f5a5c76c45d277cb162f59d10137f97d. Browser Simulation 38013794799 passed 23/23 mocked Chromium tests. MCP Compatibility 38013794737 failed 44/120 on mainline PostgreSQL-session fixture drift and retired agencyMcpService imports; its downstream audit did not run, and live smoke failed closed because the approved URL/token are absent. PR #403 already contains the fixture repair and passed focused checks. PR #405 remains blocked on Moderate sprintf-js owner disposition. Only a production GitHub environment exists and no MCP smoke secret names are configured; no secret values were read. All 66 requirements stay OPEN, integration SHA unset, production flags OFF."
   },
   "dependencies": {
     "predicates": [],
@@ -123,7 +128,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 59,
+  "generation": 60,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -305,10 +310,15 @@
         "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533419.json",
         "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533460.json",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533419",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460",
+        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave19.md",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737"
       ],
       "next_action": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
-      "rationale": "Exact browser run 38013533419 passed 23/23 on current PR #399 head 724d52d0a3242265866494576cf368682158a6ed. This proves mocked UI behavior only. Independent gates remain: #405 audit/owner disposition, #403 security integration and live MCP authority, plus authenticated SPEC-308 acceptance on an approved non-production runtime.",
+      "rationale": "On exact #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff, the isolated mocked browser simulation passed 23/23, while contract/MCP and live endpoint checks remain failed/blocked. This does not meet live acceptance or security gates.",
       "residual_requirements": [
         "All 66 ledger rows remain OPEN: 63 PARTIAL implementation rows and 3 UNVERIFIED; simulated browser evidence does not close requirements.",
         "PR #405 residual sprintf-js Moderate requires Security and Media/Runtime owner disposition and approved compatibility testing if selected.",
@@ -317,7 +327,7 @@
         "Approved non-production SmartSpecPro runtime and authorized test identity are required for authenticated acceptance.",
         "Production feature flags remain OFF and no production deployment is authorized."
       ],
-      "resume_point": "Latest PR #399 head 724d52d0a3242265866494576cf368682158a6ed is based on canonical origin/main 2b497268f5a5c76c45d277cb162f59d10137f97d. Exact browser run 38013533419 passed 23/23 mocked Chromium tests; exact MCP run 38013533460 failed 44/120 on canonical-main Redis/PostgreSQL fixture drift and retired agencyMcpService imports. PR #403 already carries the fixture repair and its focused suite/check/security passed on 74a482e8fe38a131bdbe41bfee0e53ad90347e4c. PR #405 mandatory audit still fails on sprintf-js Moderate and awaits Security/Media Runtime owner decision. Only the production GitHub environment exists, no MCP smoke secret names are configured, and no secret values were read. Keep 66 requirements OPEN, integration SHA unset, and production flags OFF."
+      "resume_point": "Exact latest PR #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff is based on canonical origin/main 2b497268f5a5c76c45d277cb162f59d10137f97d. Browser Simulation 38013794799 passed 23/23 mocked Chromium tests. MCP Compatibility 38013794737 failed 44/120 on mainline PostgreSQL-session fixture drift and retired agencyMcpService imports; its downstream audit did not run, and live smoke failed closed because the approved URL/token are absent. PR #403 already contains the fixture repair and passed focused checks. PR #405 remains blocked on Moderate sprintf-js owner disposition. Only a production GitHub environment exists and no MCP smoke secret names are configured; no secret values were read. All 66 requirements stay OPEN, integration SHA unset, production flags OFF."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2151,7 +2161,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T01:35:29.703898Z",
+  "updated_at": "2026-10-10T01:39:53.381518Z",
   "verification": {
     "baseline_issues": [
       "PR #399 MCP focused run 37986151602 fails on canonical-main baseline fixtures: PostgreSQL-backed session state is not configured and tests retain retired agencyMcpService imports; PR #403 owns the fixture repair.",
@@ -2173,13 +2183,18 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533419.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533460.json",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533419",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave19.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737"
     ],
     "freshness": "PENDING_SECURITY_MCP_LIVE_ACCEPTANCE",
     "required_profiles": [
       "quick"
     ],
-    "sha": "724d52d0a3242265866494576cf368682158a6ed",
+    "sha": "22be8dd555dbdfe62443915fb7edbd06150303ff",
     "status": "PARTIAL",
     "task_regressions": []
   }
