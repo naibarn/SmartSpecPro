@@ -267,6 +267,7 @@ async function integratePullRequest(
     checkGate: (root: string, slug: string, baseBranch: string, headSha: string) => Promise<CheckGateEvidence>;
     merge: (root: string, slug: string, number: number, headSha: string) => Promise<Record<string, unknown>>;
   },
+  assertActive: () => Promise<void>,
 ) {
   const number = input.payload.pullRequestNumber;
   if (!Number.isSafeInteger(number) || (number as number) <= 0)
@@ -294,16 +295,19 @@ async function integratePullRequest(
         !["CLEAN", "HAS_HOOKS"].includes(String(pr.mergeStateStatus)))
       throw new Error("WORKSPACE_ACTION_PULL_REQUEST_NOT_MERGEABLE");
     checkGate = await github.checkGate(repository, repositorySlug, canonicalBranch, pr.headRefOid);
+    await assertActive();
     merged = await github.merge(repository, repositorySlug, number, pr.headRefOid);
   if (merged.merged !== true || typeof merged.sha !== "string" || !/^[a-f0-9]{40,64}$/.test(merged.sha))
     throw new Error("WORKSPACE_ACTION_PULL_REQUEST_MERGE_UNCONFIRMED");
   }
+  await assertActive();
   await enqueueWorkspaceAuthorityAuditEvent({
     tenantId: input.tenantId,
     eventType: "INTEGRATION_FINISH",
     eventId: `pull-request:${number}:${merged.sha}`,
   });
   const integratedSha = merged.sha as string;
+  await assertActive();
   const convergence = await executeAuthority(repository, env, ["converge", "--integrated-sha", integratedSha]);
   if (convergence.status === "USER_WORKSPACE_CONVERGED" &&
       convergence.receipt && typeof convergence.receipt === "object" &&
@@ -316,8 +320,10 @@ async function integratePullRequest(
   }
   let cleanup: Record<string, unknown> | null = null;
   if (input.payload.automatedReconciliation === true && input.workspaceId) {
+    await assertActive();
     const preview = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId]);
     if (preview.status === "RETIREMENT_DRY_RUN") {
+      await assertActive();
       cleanup = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId, "--apply"]);
     } else {
       cleanup = { status: "CLEANUP_PRESERVED", reason: "RETIREMENT_PREFLIGHT_NOT_CLEAR", preview };
@@ -341,9 +347,11 @@ export async function executeWorkspaceAuthoritySafeAction(
     };
     hostname?: () => string;
     now?: () => Date;
+    assertActive?: () => Promise<void>;
   } = {},
 ) {
   const executeAuthority = dependencies.runAuthority ?? runAuthority;
+  const assertActive = dependencies.assertActive ?? (async () => {});
   const resolveAuthority = dependencies.resolveAuthority ?? resolveOwnedWorkspaceAuthority;
   const github = dependencies.github ?? {
     repository: canonicalGithubRepository,
@@ -385,8 +393,9 @@ export async function executeWorkspaceAuthoritySafeAction(
 
   let result: Record<string, unknown>;
   if (input.action === "INTEGRATE_COMPLETED_WORK") {
-    result = await integratePullRequest(repository, input, env, executeAuthority, github);
+    result = await integratePullRequest(repository, input, env, executeAuthority, github, assertActive);
   } else if (input.action === "SYNC_WORKSPACE_SAFELY") {
+    await assertActive();
     result = await executeAuthority(repository, env, ["converge", ...(typeof input.payload.integratedSha === "string" ? ["--integrated-sha", input.payload.integratedSha] : [])]);
   } else if (input.action === "INSPECT_LOCAL_CHANGES") {
     const audit = await executeAuthority(repository, env, ["collect", "--mode", "AUDIT_ONLY"]);
@@ -397,12 +406,17 @@ export async function executeWorkspaceAuthoritySafeAction(
       repositoryId: resolved.repository_id, canonicalRef: resolved.canonical_ref,
       canonicalSha: resolved.canonical_sha, workspaceId: resolved.canonical_workspace_id };
   } else if (input.action === "RECOVER_WORK") {
+    await assertActive();
     result = await executeAuthority(repository, env, ["preserve", "--workspace-id", input.workspaceId ?? ""]);
   } else if (input.action === "RETIRE_SAFE_WORKTREE") {
+    await assertActive();
     const preview = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId ?? ""]);
-    result = preview.status === "RETIREMENT_DRY_RUN"
-      ? await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId ?? "", "--apply"])
-      : { status: "CLEANUP_PRESERVED", reason: "RETIREMENT_PREFLIGHT_NOT_CLEAR", preview };
+    if (preview.status === "RETIREMENT_DRY_RUN") {
+      await assertActive();
+      result = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId ?? "", "--apply"]);
+    } else {
+      result = { status: "CLEANUP_PRESERVED", reason: "RETIREMENT_PREFLIGHT_NOT_CLEAR", preview };
+    }
   } else {
     result = await executeAuthority(repository, env, ["verify",
       ...(typeof input.payload.integratedSha === "string" ? ["--integrated-sha", input.payload.integratedSha] : []),
