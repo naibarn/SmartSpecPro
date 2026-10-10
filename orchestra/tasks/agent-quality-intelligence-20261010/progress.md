@@ -15,8 +15,9 @@ Loop policy:
   stop_conditions: safe_checkpoint_recorded; remaining live integration handed off
   stop_reason: partial_checkpoint
 
-Baseline: `8126f279c13f9b7b445eb5320f7fd585619940e0` (`origin/main` at worktree creation).
+Baseline: `8126f279c13f9b7b445eb5320f7fd585619940e0` (`origin/main` at worktree creation). Reconciled with latest `origin/main` `cdeba4818de65e944d868feca82fa459b566f6ad` before promotion.
 Worktree: `/home/dev/worktrees/smartaihub-agent-quality-20261010`.
+Source checkpoint: `a9228bc8acb0407e662f848eca638e18f07059c5`; PR [#458](https://github.com/naibarn/SmartSpecPro/pull/458) is open and `mergeStateStatus=CLEAN`. It is not yet reachable from `origin/main`. The only reported check is `build-preview=SKIPPED`; no required verification evidence has passed.
 The user's primary checkout, SPEC-308 PR/worktrees, R4 dirty worktree, and root Orchestra artifacts are preserved.
 
 - Discovery: existing trace correlation, team response projection, CompletionContract, evidence/receipt boundaries, recovery, worker_jobs/outbox, and task-control owners mapped in `capability-matrix.md`.
@@ -26,4 +27,4 @@ The user's primary checkout, SPEC-308 PR/worktrees, R4 dirty worktree, and root 
 - Scope held: no DB/schema, queue, production learning writes, route/UI changes, or retired systems. SPEC-269 normative spec/handoff was not changed; this work reuses its current contracts and leaves the explicit spec update as follow-up.
 - Open: run Vitest and broader scoped checks once dependencies are available; integrate production event/evidence producers and Task Control; establish durable quality-evaluation job ownership; conduct non-production UAT; decide/update normative SPEC-269 and SPEC-277 requirements; create replay/retention authority for SPEC-275 before any learned-rule writes.
 
-This checkpoint is partial and is not production-ready. Remaining scope and evidence gaps are in `plan.md`, `test-design.md`, and `lifecycle.md`.
+This checkpoint is partial and is not production-ready. Promotion is pending PR #458 merge/protection; do not report `CHECKPOINT_PROMOTED_PARTIAL` until the merge SHA is reachable from `origin/main`. Remaining scope and evidence gaps are in `plan.md`, `test-design.md`, and `lifecycle.md`.
