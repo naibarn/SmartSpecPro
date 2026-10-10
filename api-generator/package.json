@@ -30,7 +30,7 @@
     "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "handlebars": "^4.7.9",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.2",
     "marked": "^11.0.0",
     "openai": "^4.20.1",
     "ora": "^5.4.1",
