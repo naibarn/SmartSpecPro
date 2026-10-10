@@ -14,6 +14,7 @@ import {
   type ProductionAgentsSdkCapabilityManifest,
   type RuntimeModelConfig,
   type AgentExecutionEnvelope,
+  type TeamProjectProviderContextBindingPayload,
 } from "../../../shared/agentRuntime/types";
 import type { OrchestraAssuranceRequest } from "../../../shared/agentRuntime/orchestraSchemas";
 import type {
@@ -35,6 +36,7 @@ import {
 export interface ResolvedContextPack {
   contextPack: ContextPack;
   contextPackRef?: string | null;
+  teamProjectProviderBinding?: TeamProjectProviderContextBindingPayload | null;
 }
 
 export interface AgentRuntimeRequestBuilderDependencies {
@@ -99,6 +101,7 @@ function normalizeContextBuildResult(
     return {
       contextPack: result.contextPack,
       contextPackRef: result.contextPackRef ?? fallbackRef,
+      teamProjectProviderBinding: result.teamProjectProviderBinding ?? null,
     };
   }
   return {
@@ -267,6 +270,8 @@ export async function buildAgentRuntimeRequest(
     tenantId: input.tenantId,
     roomId: input.roomId ?? null,
     runId: input.runId ?? null,
+    teamProjectProviderBinding:
+      resolvedContextPack.teamProjectProviderBinding ?? null,
     messageId: input.messageId ?? null,
     requestId: input.requestId,
     idempotencyKey: input.idempotencyKey,

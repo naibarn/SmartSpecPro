@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import json
+
 import pytest
 
 from app.core.config import settings
@@ -156,6 +159,62 @@ def test_gateway_client_sends_internal_auth_headers(monkeypatch):
     assert captured["default_headers"]["x-internal-token"] == "platform-attribution-token"
     assert captured["default_headers"]["x-gateway-attribution-token"] == "platform-attribution-token"
     assert captured["default_headers"]["x-tenant-id"] == "tenant-demo"
+
+
+def test_gateway_client_forwards_team_binding_only_as_internal_headers(monkeypatch):
+    captured = {}
+
+    class FakeAsyncOpenAI:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "app.services.openai_agents_gateway_model.AsyncOpenAI",
+        FakeAsyncOpenAI,
+    )
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "https://gateway.internal")
+    binding = {
+        "version": "team-room-provider-context.v1",
+        "tenantId": "tenant-demo",
+        "roomId": "room-demo",
+        "teamId": "team-demo",
+        "userId": 42,
+        "runId": "run-demo",
+        "historyScope": "run",
+        "projectId": "project-demo",
+        "projectAuthority": "canonical-member",
+    }
+
+    transport = build_gateway_transport_config(
+        surface="skill",
+        model_config=_model_config(),
+        attribution_token="platform-attribution-token",
+        tenant_id="tenant-demo",
+        team_project_provider_binding=binding,
+    )
+    create_gateway_async_openai_client(transport)
+
+    headers = captured["default_headers"]
+    assert headers["x-agent-runtime-origin-surface"] == "team"
+    encoded = headers["x-sah-team-project-provider-binding"]
+    decoded = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+    assert json.loads(decoded) == binding
+
+
+def test_team_binding_requires_responses_transport(monkeypatch):
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "https://gateway.internal")
+
+    with pytest.raises(GatewayModelConfigurationError) as exc_info:
+        build_gateway_transport_config(
+            surface="skill",
+            model_config=_model_config(),
+            attribution_token="platform-attribution-token",
+            tenant_id="tenant-demo",
+            transport="chat_completions",
+            team_project_provider_binding={"version": "team-room-provider-context.v1"},
+        )
+
+    assert exc_info.value.code == "team_provider_binding_transport_mismatch"
 
 
 def test_provider_api_key_in_request_is_rejected(monkeypatch):

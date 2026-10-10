@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../contextEngineAdapter", () => ({
   buildChatExecutionContextPack: vi.fn(),
   buildTeamExecutionContextPack: vi.fn(),
+  buildTeamExecutionContextPackWithProviderBinding: vi.fn(),
   summarizeContextPack: vi.fn((pack) => `summary:${pack.surface}`),
 }));
 
@@ -17,13 +18,21 @@ vi.mock("../libraryService", () => ({
 import {
   buildChatExecutionContextPack,
   buildTeamExecutionContextPack,
+  buildTeamExecutionContextPackWithProviderBinding,
 } from "../contextEngineAdapter";
 import { resolveLibraryContextPack } from "../libraryContextPackService";
 import { getLibraryMarkdownContent } from "../libraryService";
-import { build_context_pack, summarizeContextPack } from "../contextPackBuilder";
+import {
+  build_context_pack,
+  build_context_pack_with_provider_binding,
+  summarizeContextPack,
+} from "../contextPackBuilder";
 
 const mockBuildChatExecutionContextPack = vi.mocked(buildChatExecutionContextPack);
 const mockBuildTeamExecutionContextPack = vi.mocked(buildTeamExecutionContextPack);
+const mockBuildTeamExecutionContextPackWithProviderBinding = vi.mocked(
+  buildTeamExecutionContextPackWithProviderBinding,
+);
 const mockResolveLibraryContextPack = vi.mocked(resolveLibraryContextPack);
 const mockGetLibraryMarkdownContent = vi.mocked(getLibraryMarkdownContent);
 
@@ -138,6 +147,44 @@ describe("contextPackBuilder", () => {
     expect(mockBuildChatExecutionContextPack).toHaveBeenCalledOnce();
     expect(pack.surface).toBe("chat");
     expect(summarizeContextPack(pack)).toBe("summary:chat");
+  });
+
+  it("returns the exact authority binding captured with a TeamRoom context pack", async () => {
+    const binding = {
+      version: "team-room-provider-context.v1" as const,
+      tenantId: "tenant-1",
+      roomId: "room-1",
+      teamId: "team-1",
+      userId: 42,
+      runId: "run-1",
+      historyScope: "run" as const,
+      projectId: "project-1",
+      projectAuthority: "canonical-member" as const,
+    };
+    const contextPack = { surface: "team_room" } as never;
+    mockBuildTeamExecutionContextPackWithProviderBinding.mockResolvedValue({
+      contextPack,
+      projectAuthorizationBinding: binding,
+    } as never);
+
+    const result = await build_context_pack_with_provider_binding({
+      surface: "team_room",
+      request: {
+        channel: "team_room",
+        tenantId: "tenant-1",
+        userId: 42,
+        userMessage: "Create the plan.",
+        teamContext: {
+          teamId: "team-1",
+          roomId: "room-1",
+          assistantId: "assistant-1",
+          runId: "run-1",
+          objective: "Create the plan.",
+        },
+      } as never,
+    });
+
+    expect(result).toEqual({ contextPack, teamProjectProviderBinding: binding });
   });
 
   it("routes team builds through the team execution pack helper", async () => {

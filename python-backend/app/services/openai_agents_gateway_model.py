@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import os
 from dataclasses import dataclass
 from typing import Literal
@@ -62,6 +64,7 @@ class GatewayTransportConfig:
     base_url: str
     api_key: str
     transport: GatewayTransport = "responses"
+    team_project_provider_binding: dict[str, object] | None = None
 
 
 def _gateway_base_url_candidate(override: str | None = None) -> str | None:
@@ -116,11 +119,23 @@ def build_gateway_transport_config(
     provider_base_url: str | None = None,
     provider_api_key: str | None = None,
     transport: GatewayTransport = "responses",
+    team_project_provider_binding: dict[str, object] | None = None,
 ) -> GatewayTransportConfig:
     if not attribution_token:
         raise GatewayModelConfigurationError(
             "missing_attribution_token",
             "Gateway attribution token is required.",
+        )
+
+    if team_project_provider_binding is not None and surface not in {"team", "skill"}:
+        raise GatewayModelConfigurationError(
+            "team_provider_binding_surface_mismatch",
+            "Team project authorization binding is only valid for TeamRoom runtime requests.",
+        )
+    if team_project_provider_binding is not None and transport != "responses":
+        raise GatewayModelConfigurationError(
+            "team_provider_binding_transport_mismatch",
+            "Team project authorization binding requires the revalidated Responses gateway.",
         )
 
     base_candidate = _gateway_base_url_candidate(gateway_base_url)
@@ -163,6 +178,7 @@ def build_gateway_transport_config(
         base_url=base_url,
         api_key=attribution_token,
         transport=transport,
+        team_project_provider_binding=team_project_provider_binding,
     )
 
 
@@ -175,6 +191,15 @@ def create_gateway_async_openai_client(
     }
     if transport_config.tenant_id:
         default_headers["x-tenant-id"] = transport_config.tenant_id
+    if transport_config.team_project_provider_binding is not None:
+        binding_json = json.dumps(
+            transport_config.team_project_provider_binding,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        binding_header = base64.urlsafe_b64encode(binding_json).decode("ascii").rstrip("=")
+        default_headers["x-agent-runtime-origin-surface"] = "team"
+        default_headers["x-sah-team-project-provider-binding"] = binding_header
     return AsyncOpenAI(
         api_key=transport_config.api_key,
         base_url=transport_config.base_url,

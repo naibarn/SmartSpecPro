@@ -192,6 +192,17 @@ def test_valid_team_step_request_fixture_validates():
     payload["surface"] = "team"
     payload["originSurface"] = "team"
     payload["entryPoint"] = "team_step"
+    payload["teamProjectProviderBinding"] = {
+        "version": "team-room-provider-context.v1",
+        "tenantId": "tenant_demo",
+        "roomId": "room_demo",
+        "teamId": "team_demo",
+        "userId": 42,
+        "runId": "run_demo",
+        "historyScope": "run",
+        "projectId": "project_demo",
+        "projectAuthority": "canonical-member",
+    }
     payload["teamMembers"] = [
         {
             "memberId": "member_owner",
@@ -220,8 +231,61 @@ def test_valid_team_step_request_fixture_validates():
     request = validate_agent_runtime_request(payload)
 
     assert request.surface == "team"
+    assert request.teamProjectProviderBinding is not None
     assert request.stepAssignment.ownerDisplayLabel == "Content Director"
     assert len(request.teamMembers) == 2
+
+
+def test_team_step_without_provider_binding_fails_closed():
+    payload = _base_request()
+    payload["surface"] = "team"
+    payload["originSurface"] = "team"
+    payload["entryPoint"] = "team_step"
+
+    with pytest.raises(AgentRuntimeContractError):
+        validate_agent_runtime_request(payload)
+
+
+def test_team_provider_binding_tenant_or_room_mismatch_fails_closed():
+    payload = _base_request()
+    payload["surface"] = "team"
+    payload["originSurface"] = "team"
+    payload["entryPoint"] = "team_step"
+    payload["teamProjectProviderBinding"] = {
+        "version": "team-room-provider-context.v1",
+        "tenantId": "tenant_other",
+        "roomId": "room_demo",
+        "teamId": "team_demo",
+        "userId": 42,
+        "runId": "run_demo",
+        "historyScope": "run",
+        "projectId": "project_demo",
+        "projectAuthority": "canonical-member",
+    }
+
+    with pytest.raises(AgentRuntimeContractError):
+        validate_agent_runtime_request(payload)
+
+
+def test_team_provider_binding_cannot_claim_canonical_membership_without_project():
+    payload = _base_request()
+    payload["surface"] = "team"
+    payload["originSurface"] = "team"
+    payload["entryPoint"] = "team_step"
+    payload["teamProjectProviderBinding"] = {
+        "version": "team-room-provider-context.v1",
+        "tenantId": "tenant_demo",
+        "roomId": "room_demo",
+        "teamId": "team_demo",
+        "userId": 42,
+        "runId": "run_demo",
+        "historyScope": "run",
+        "projectId": None,
+        "projectAuthority": "canonical-member",
+    }
+
+    with pytest.raises(AgentRuntimeContractError):
+        validate_agent_runtime_request(payload)
 
 
 def test_valid_media_production_request_fixture_validates():
