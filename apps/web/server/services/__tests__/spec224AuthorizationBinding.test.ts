@@ -93,6 +93,165 @@ const baseInput = (): Spec224AuthorizationInput => ({
 });
 
 describe("Spec 224 owner authorization binding", () => {
+  it("accepts a bounded Goal Grant child binding without reusing a job approval", () => {
+    const input = baseInput();
+    input.approval = null;
+    input.run.goalDelegationScope = {
+      goalId: "goal-224",
+      repositoryRef: "repo:naibarn/SmartSpecPro",
+      sourceSha: "a".repeat(40),
+      action: "repair",
+      changedPaths: ["apps/web/server/services/fix.ts"],
+      requiredCapabilities: ["agent.external_task"],
+    };
+    input.goalDelegationAuthority = {
+      approvalRef: "goal-approval-224",
+      tenantId: "tenant-a",
+      executionId: "goal-224",
+      requesterId: 11,
+      status: "approved",
+      currentApprovals: 1,
+      requiredApprovers: 1,
+      expiresAt: "2026-09-23T10:30:00.000Z",
+      payload: {
+        kind: "spec224_goal_delegation_grant",
+        grantId: "goal-grant-224",
+        goalId: "goal-224",
+        actorId: 11,
+        workspaceId: "workspace-a",
+        repositoryRef: "repo:naibarn/SmartSpecPro",
+        sourceSha: "a".repeat(40),
+        allowedActions: ["repair", "test", "commit", "push"],
+        writeScope: ["apps/web/server/services/**"],
+        capabilities: ["agent.external_task", "git.write"],
+        budgetLimitMinorUnits: 1000,
+        currency: "USD",
+        issuedAt: "2026-09-23T09:00:00.000Z",
+        expiresAt: "2026-09-23T10:30:00.000Z",
+      },
+    };
+
+    expect(evaluateSpec224Authorization(input)).toMatchObject({
+      status: "READY_FOR_LIVE",
+      binding: {
+        approvalRef: "goal-approval-224",
+        budgetReservationRef: "hold-a",
+        budgetCapMinorUnits: 500,
+        workspaceRef: "workspace-a",
+      },
+    });
+
+    input.run.goalDelegationScope.requiredCapabilities.push("git.write");
+    expect(evaluateSpec224Authorization(input)).toMatchObject({
+      status: "RUNNER_BINDING_REQUIRED",
+      reasons: ["GOAL_GRANT_RUNNER_CAPABILITY_MISSING"],
+    });
+    input.run.goalDelegationScope.requiredCapabilities.pop();
+
+    input.budget = null;
+    expect(evaluateSpec224Authorization(input)).toMatchObject({
+      status: "BUDGET_REQUIRED",
+      reasons: ["BUDGET_RESERVATION_NOT_FOUND"],
+    });
+  });
+
+  it("denies a revoked Goal Grant and refuses ambiguous approval evidence", () => {
+    const input = baseInput();
+    input.approval = null;
+    input.run.goalDelegationScope = {
+      goalId: "goal-224",
+      repositoryRef: "repo:naibarn/SmartSpecPro",
+      sourceSha: "a".repeat(40),
+      action: "repair",
+      changedPaths: ["apps/web/server/services/fix.ts"],
+      requiredCapabilities: ["agent.external_task"],
+    };
+    input.goalDelegationAuthority = {
+      approvalRef: "goal-approval-224",
+      tenantId: "tenant-a",
+      executionId: "goal-224",
+      requesterId: 11,
+      status: "approved",
+      currentApprovals: 1,
+      requiredApprovers: 1,
+      expiresAt: "2026-09-23T10:30:00.000Z",
+      revokedAt: "2026-09-23T09:59:00.000Z",
+      payload: {
+        kind: "spec224_goal_delegation_grant",
+        grantId: "goal-grant-224",
+        goalId: "goal-224",
+        actorId: 11,
+        workspaceId: "workspace-a",
+        repositoryRef: "repo:naibarn/SmartSpecPro",
+        sourceSha: "a".repeat(40),
+        allowedActions: ["repair"],
+        writeScope: ["apps/web/server/services/**"],
+        capabilities: ["agent.external_task"],
+        budgetLimitMinorUnits: 1000,
+        currency: "USD",
+        issuedAt: "2026-09-23T09:00:00.000Z",
+        expiresAt: "2026-09-23T10:30:00.000Z",
+      },
+    };
+    expect(evaluateSpec224Authorization(input).status).toBe("REVOKED");
+
+    input.goalDelegationAuthority.revokedAt = null;
+    input.goalDelegationAuthority.status = "expired";
+    input.goalDelegationAuthority.expiresAt = "2026-09-23T09:59:59.000Z";
+    input.goalDelegationAuthority.payload.expiresAt = "2026-09-23T09:59:59.000Z";
+    expect(evaluateSpec224Authorization(input).status).toBe("EXPIRED");
+
+    input.approval = baseInput().approval;
+    expect(evaluateSpec224Authorization(input)).toMatchObject({
+      status: "APPROVAL_REQUIRED",
+      reasons: ["AMBIGUOUS_AUTHORITY_EVIDENCE"],
+    });
+  });
+
+  it("denies a delegated child whose source revision differs from the Goal Grant", () => {
+    const input = baseInput();
+    input.approval = null;
+    input.run.goalDelegationScope = {
+      goalId: "goal-224",
+      repositoryRef: "repo:naibarn/SmartSpecPro",
+      sourceSha: "b".repeat(40),
+      action: "repair",
+      changedPaths: ["apps/web/server/services/fix.ts"],
+      requiredCapabilities: ["agent.external_task"],
+    };
+    input.goalDelegationAuthority = {
+      approvalRef: "goal-approval-224",
+      tenantId: "tenant-a",
+      executionId: "goal-224",
+      requesterId: 11,
+      status: "approved",
+      currentApprovals: 1,
+      requiredApprovers: 1,
+      expiresAt: "2026-09-23T10:30:00.000Z",
+      payload: {
+        kind: "spec224_goal_delegation_grant",
+        grantId: "goal-grant-224",
+        goalId: "goal-224",
+        actorId: 11,
+        workspaceId: "workspace-a",
+        repositoryRef: "repo:naibarn/SmartSpecPro",
+        sourceSha: "a".repeat(40),
+        allowedActions: ["repair"],
+        writeScope: ["apps/web/server/services/**"],
+        capabilities: ["agent.external_task"],
+        budgetLimitMinorUnits: 1000,
+        currency: "USD",
+        issuedAt: "2026-09-23T09:00:00.000Z",
+        expiresAt: "2026-09-23T10:30:00.000Z",
+      },
+    };
+
+    expect(evaluateSpec224Authorization(input)).toMatchObject({
+      status: "APPROVAL_REQUIRED",
+      reasons: ["CHILD_SCOPE_EXCEEDS_GOAL_GRANT"],
+    });
+  });
+
   it("allows only a fresh pending bind or an exact durable binding retry", () => {
     const binding: Spec224PolicyBinding = {
       runnerId: "runner-a",

@@ -27,3 +27,22 @@ Owner: branch `codex/autonomous-repair-auth-unblock-20261010`, task worktree `/h
 5. Enroll a trusted Linux Runner through the existing enrollment flow and capture a real execution receipt before claiming live acceptance. Then test CI repair through retest/merge/verify/cleanup subject to repository policy.
 
 No live Runner execution, approval issuance, event ingress, merge, or cleanup is claimed by this checkpoint. Repository-wide typecheck and Windows Protected Execution changes remain out of scope.
+
+## Follow-up checkpoint candidate (2026-10-10)
+
+Current canonical main at start of this follow-up: `66ba886c9c7e6c0e30682cd5def300214679c48d` (PR #554); latest refreshed main while working: `c3d7cef8d94f8f5c023a427cfe83d49f44e72fd8` (PR #555 also integrated). The task worktree fast-forwarded to latest main before this checkpoint; primary checkout remains untouched.
+
+- Connected the existing Goal Grant evaluator to the existing Spec 224 Runner authorization gate as an alternate, mutually exclusive authority source. It revalidates exact child job/attempt budget hold, Goal/tenant/actor/workspace/repository/source SHA/action/path/capability scope and Grant expiry/revocation, then still requires trusted online Runner session, fresh capability snapshot, tool authentication, workspace binding, and all Grant-requested capabilities on that snapshot.
+- A child job approval cannot be combined with Goal Grant evidence; no approval is created, persisted, or borrowed by this code. The Goal Grant evidence must come from the canonical Approval Authority reader at its eventual service call site.
+- Added regression checks for successful child authorization, ambiguous authority denial, revocation, expiry, source SHA scope, missing budget, and missing Runner capability.
+- Focused Vitest on authorization binding, Goal delegation, DevelopmentRun contract, and durable economic holds: 4 files, 45 tests passed. `git diff --check` passed. No live Runner or PostgreSQL test was run for this pure binding slice.
+- Main CI remains baseline-failing on `c3d7cef8`: SmartSpecWeb broad UI suite and Python collection fail; turbo typecheck includes existing errors in `spec224AuthorizationService.ts` (same errors also present at `b422fc7d`) and `spec224DevelopmentRunContracts.ts` (also present at `b422fc7`), among many unrelated baseline TS failures. Main migration workflow also fails independently. CI is not being represented as passing.
+
+## Remaining work and blockers
+
+1. Wire an authenticated Goal Grant reference and server-loaded Approval evidence into `Spec224AuthorizationService.bind/status`; derive the bounded repair scope from durable work-unit data and reserve each attempt with `economicDurableService` before binding. Current evaluator is test-covered but not a live dispatch path yet.
+2. Add GitHub signature/replay-safe event ingress and create only canonical `worker_jobs`/outbox repair work.
+3. Exercise issuance/revocation/budget/concurrent reservations against isolated current-schema PostgreSQL; enroll and verify a Linux Runner through the real trust flow; collect an execution receipt.
+4. Diagnose CI baseline failures independently. These are not caused by this follow-up and do not authorize changing required checks.
+
+Current follow-up state: `CHECKPOINT_READY`; the 45-test rerun passed, and the source/test/handoff delta is ready for normal PR integration. Do not claim Autonomous Repair dispatch or live execution until items 1–3 have evidence.
