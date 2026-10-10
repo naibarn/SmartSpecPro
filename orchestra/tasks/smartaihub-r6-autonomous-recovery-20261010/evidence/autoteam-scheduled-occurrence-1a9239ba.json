@@ -127,5 +127,15 @@
       "exact replay returns only comparison metadata"
     ],
     "limitations": "Pure replay contract tests only. No receipt persistence, transaction race, revocation propagation, restart replay or migration was run."
+  },
+  "laneCReplayContractCandidateVerification": {
+    "sourceSha": "f48907874e99e052bbc7235c6144d2d12746c370",
+    "baseCanonicalSha": "66ba886c9c7e6c0e30682cd5def300214679c48d",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/services/__tests__/spec302ProjectResolutionReplayContract.test.ts",
+    "result": "PASS_CONTRACT_ONLY",
+    "testFiles": 1,
+    "tests": 47,
+    "verifiedAt": "2026-10-10T12:19:49Z",
+    "latestMainReconciled": true
   }
 }

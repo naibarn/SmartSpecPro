@@ -42,3 +42,5 @@
 
 - PR #552 merged at `b66c0fdaab2f76dd45b1c385e479e04269e54c1e`; PR #553 test-hardening follow-up merged at `b422fc7d10ea289b5caba01e9c69fcd9e31aee65`. Exact post-merge focused AutoTeam suite passed 7 files / 86 tests on `b422fc7d10ea289b5caba01e9c69fcd9e31aee65`; preview checks were SKIPPED.
 - Lane C independent contract slice candidate `3971a6ceaed0070d12f486f72aba88fccf2b8bec`: SPEC-302 replay test passed 47 cases, including each accepted field's digest sensitivity, malformed keys/canonical identity, unsupported ceiling, and metadata-only exact replay. This does not create durable receipt authority; Phase 2 persistence remains gated on schema owner and migration approval.
+
+- Refreshed SPEC-302 replay test branch to latest main `66ba886c9c7e6c0e30682cd5def300214679c48d`; targeted 47-case suite passed on reconciled candidate `f48907874e99e052bbc7235c6144d2d12746c370`.
