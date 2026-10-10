@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Obtain Security/Media-Runtime disposition for #405 mandatory sprintf-js audit; update existing PR #399 ref with merge commit 6e95c9ad66993d10266f5cc07cef76e77d083cb9 and collect fresh CI; then reconcile #403's existing fixture repair and live authority gate. Keep requirements open until current-head and canonical integration evidence exist.
-- Manifest generation: 63
+- Next action: Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.
+- Manifest generation: 64
 
 ## Source-declared status and relationship claims
 

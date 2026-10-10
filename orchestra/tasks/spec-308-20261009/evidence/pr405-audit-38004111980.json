@@ -1,0 +1,19 @@
+{
+  "run_id": 38004111980,
+  "workflow": "Dependency Security Compatibility",
+  "head_sha": "868a5600ff770be91885666b7f584835e03fc690",
+  "status": "completed",
+  "conclusion": "failure",
+  "compatibility_regressions": {
+    "conclusion": "success",
+    "tests": "18 files / 238 tests passed"
+  },
+  "production_audit": {
+    "conclusion": "failure",
+    "finding": "GHSA-hp3w-g68c-fv3c; Moderate; sprintf-js@1.1.3",
+    "dependency_path": "apps/web > hyperframes@0.7.109 > onnxruntime-node@1.21.1 > global-agent@3.0.0 > roarr@2.15.4 > sprintf-js@1.1.3",
+    "policy": "full production audit unchanged; no suppression or downgrade"
+  },
+  "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38004111980",
+  "observed_at": "2026-10-09T23:24:01Z"
+}

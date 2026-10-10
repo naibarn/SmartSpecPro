@@ -135436,11 +135436,11 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PENDING_EXACT_HEAD_REVERIFICATION_AFTER_CANONICAL_RECONCILIATION",
+      "evidence_freshness": "EXACT_HEAD_BROWSER_PASS_MCP_AND_SECURITY_GATES_PENDING",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Obtain Security/Media-Runtime disposition for #405 mandatory sprintf-js audit; update existing PR #399 ref with merge commit 6e95c9ad66993d10266f5cc07cef76e77d083cb9 and collect fresh CI; then reconcile #403's existing fixture repair and live authority gate. Keep requirements open until current-head and canonical integration evidence exist.",
+      "next_action": "Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
