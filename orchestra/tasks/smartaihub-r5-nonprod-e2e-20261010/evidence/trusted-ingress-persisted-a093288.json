@@ -1,8 +1,8 @@
 {
   "evidenceVersion": 1,
   "workUnit": "SmartAIHub R5 SPEC-304 trusted local ingress to persisted SPEC-269 Project memory",
-  "sourceSha": "aa7e2f332a650a221f6cb905a799a9dc0b277048",
-  "canonicalBaselineSha": "b274a2c0b63c5f61d2a481dc50e7b10cd2be30b6",
+  "sourceSha": "a093288aa2582153e380c0e84b43da9a3313d865",
+  "canonicalBaselineSha": "23e2601ecc8b0662c343c4b3f6204a4424a50899",
   "verification": {
     "persistedCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
     "persistedStatus": "PASS",
