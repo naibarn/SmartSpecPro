@@ -202,6 +202,11 @@ async function loadNodeExecutorModules(): Promise<void> {
   console.info("[Feature186] node worker executor modules ready");
 }
 
+/** Prepare server-owned executors before installing process-local worker adapters. */
+export async function initializePostgresNodeJobWorkerExecutors(): Promise<void> {
+  await loadNodeExecutorModules();
+}
+
 function boundedInteger(value: number | undefined, fallback: number, min: number, max: number): number {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, Math.trunc(value as number))) : fallback;
 }
