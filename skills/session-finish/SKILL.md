@@ -14,6 +14,7 @@ Use this skill whenever a session reaches a safe checkpoint, is about to pause/s
 ```text
 implement / partial progress
   → SAFE CHECKPOINT
+  → SLICE/REPOSITORY-REQUIRED CHECKS
   → FAST INTEGRATION GATE
   → commit
   → integrate into configured canonical ref
@@ -23,19 +24,29 @@ implement / partial progress
   → if a problem appears, repair on current canonical state and promote that repair
 ```
 
-The FAST INTEGRATION GATE checks only:
+Before promotion, satisfy every repository-required and slice-required check
+that applies to this checkpoint, including impacted tests, security/authorization,
+and API/schema compatibility when applicable. Use change-impact analysis to
+identify affected checks and invalidate evidence whose inputs changed. A
+required check failure blocks that slice; continue independent safe work.
+
+The FAST INTEGRATION GATE is an additional patch-safety check. It checks:
 
 - no syntax or compile error in the changed scope;
 - no unresolved merge conflict;
 - no damaged or unusable patch;
 - no accidental secret.
 
-Run inexpensive scoped checks that establish these facts. Do not wait for full typecheck, repository-wide build, heavy tests, integration/UAT, provider/rights checks, or production gates before promotion. Resource limits defer those checks, not the integration.
+Run inexpensive scoped checks that establish these facts. Full-repository
+typecheck/build, unrelated heavy tests, integration/UAT, provider/rights checks,
+and production gates remain post-integration unless repository policy or the
+slice contract explicitly requires them. Resource limits defer only checks
+that policy permits to run after integration; they never waive required checks.
 
 ## Steps
 
 1. Identify the repository, task, current configured canonical ref, and every changed path. Preserve unrelated dirty changes; stage only files owned by this task.
-2. Inspect the task diff for conflict markers, malformed edits, and secrets. Run the cheapest available syntax/compile check for the changed scope. Do not run forbidden or resource-heavy global checks as part of the fast gate.
+2. Inspect the task diff for conflict markers, malformed edits, and secrets. Run the slice/repository-required impacted checks, then the cheapest available syntax/compile check for the changed scope. Do not run forbidden or resource-heavy global checks as part of the fast gate unless explicitly required by policy.
    Before declaring the session complete, inspect Git state with `python3 skills/development-lifecycle/git_capabilities.py inspect`. An intentional merge/rebase/cherry-pick must be completed or handed off explicitly; unresolved paths block completion. For conflict resolution, use the shared helper with explicit owned paths and verify its staged-before/intended/staged-after sets. Do not absorb pre-existing staged paths outside task ownership. Record the expected branch, commit SHA, remote push result where required, and worktree status in the handoff; a clean-looking status alone is not proof of integration.
 3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
 4. Commit the largest safe task-owned checkpoint and integrate it into configured canonical ref using the normal non-force GitHub path. Do not wait for the whole task to complete. If only a subset can safely integrate, split that subset, promote it, and preserve the unsafe/incomplete remainder with an explicit handoff/recovery reference.

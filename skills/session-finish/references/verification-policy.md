@@ -2,7 +2,15 @@
 
 ## Before integration: FAST INTEGRATION GATE
 
-Confirm only that the changed scope has no syntax/compile error, unresolved merge conflict, damaged patch, or accidental secret. Use the cheapest available checks that establish these facts. Do not make full-repository or resource-heavy checks a prerequisite for recording safe valuable implementation progress in the configured canonical ref.
+First satisfy all repository-required and slice-required checks for the
+checkpoint, selected with targeted change-impact analysis. This includes
+impacted tests, security/authorization, and API/schema compatibility when
+applicable. Do not rerun checks whose inputs and assumptions are unchanged,
+and do not waive any required check. Then confirm the FAST INTEGRATION GATE:
+no syntax/compile error in the changed scope, unresolved merge conflict,
+damaged patch, or accidental secret. Full-repository or resource-heavy checks
+may run after integration only when repository policy and the slice contract
+permit it.
 
 If the gate fails, preserve the exact task changes durably and report the failure, owner, and next action. Do not report completion.
 
