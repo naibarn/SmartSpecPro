@@ -600,53 +600,112 @@ test("SPEC-308 Thai launcher and reminder labels are localized", async ({ page }
   await expect(dialog.getByLabel("ส่งเป็นเรื่องเร่งด่วน")).toBeVisible();
 });
 
-test("SPEC-308 records raw OFF/ON network, heap, CLS, timer and mascot asset metrics", async ({ page }) => {
+async function measureFrameIntervals(page: Page) {
+  return page.evaluate(() => new Promise<{
+    framesObserved: number;
+    meanFrameIntervalMs: number;
+    p95FrameIntervalMs: number;
+    maxFrameIntervalMs: number;
+    intervalsOver16_7ms: number;
+  }>(resolve => {
+    const start = performance.now();
+    let previous = start;
+    const intervals: number[] = [];
+    const sample = (now: number) => {
+      intervals.push(now - previous);
+      previous = now;
+      if (now - start < 1_000) {
+        requestAnimationFrame(sample);
+        return;
+      }
+      const ordered = [...intervals].sort((a, b) => a - b);
+      resolve({
+        framesObserved: intervals.length,
+        meanFrameIntervalMs: intervals.reduce((sum, value) => sum + value, 0) / intervals.length,
+        p95FrameIntervalMs: ordered[Math.max(0, Math.ceil(ordered.length * 0.95) - 1)] ?? 0,
+        maxFrameIntervalMs: ordered.at(-1) ?? 0,
+        intervalsOver16_7ms: intervals.filter(value => value > 16.7).length,
+      });
+    };
+    requestAnimationFrame(sample);
+  }));
+}
+
+test("SPEC-308 records raw OFF/ON metrics across emulated mobile, tablet and desktop profiles", async ({ page }) => {
   const procedures: string[] = [];
   const tenantFlag: TenantFlagFixture = { enabled: false };
   await installMockEventSource(page);
   const metrics = await installSpec308MetricsProbe(page);
+  const profiles = [
+    { name: "low-end-mobile-emulation", width: 360, height: 800, deviceScaleFactor: 1 as const, cpuThrottlingRate: 4, network: "slow-4g-emulation" as const },
+    { name: "tablet-emulation", width: 768, height: 1024, deviceScaleFactor: 1 as const, cpuThrottlingRate: 1, network: "baseline" as const },
+    { name: "desktop-emulation", width: 1440, height: 900, deviceScaleFactor: 1 as const, cpuThrottlingRate: 1, network: "baseline" as const },
+  ];
+  const samples: Spec308MetricsEvidence["samples"] = [];
   try {
-    await initializeAuthenticatedBrowser(page, 390, 844, TEST_IDENTITY, tenantFlag, procedures);
-    await page.goto("/chat");
-    await expect(page.getByTestId("global-notification-bell")).toBeVisible();
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    const offCallCount = procedures.length;
-    const flagOff = await metrics.snapshot("feature-flag-off", offCallCount);
+    await initializeAuthenticatedBrowser(page, profiles[0].width, profiles[0].height, TEST_IDENTITY, tenantFlag, procedures);
+    let previousProcedureCount = 0;
+    for (const profile of profiles) {
+      await page.setViewportSize({ width: profile.width, height: profile.height });
+      await metrics.setEmulationProfile(profile.name as (typeof profiles)[number]["name"]);
+      tenantFlag.enabled = false;
+      await metrics.clearBrowserCache();
+      if (profile === profiles[0]) await page.goto("/chat");
+      else await page.reload();
+      await expect(page.getByTestId("global-notification-bell")).toBeVisible();
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      const offCallCount = procedures.length - previousProcedureCount;
+      previousProcedureCount = procedures.length;
+      const flagOff = await metrics.snapshot("feature-flag-off", profile.name, offCallCount);
+      flagOff.frameRendering = await measureFrameIntervals(page);
+      samples.push(flagOff);
 
-    tenantFlag.enabled = true;
-    await metrics.clearBrowserCache();
-    await page.reload();
-    const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
-    await expect(launcher).toBeVisible();
-    await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
-    await waitForNotificationBaseline(page);
-    await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
-    await expect(page.locator(".assistant-reminder-balloon")).toBeVisible();
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    const flagOnCallCount = procedures.length - offCallCount;
-    const flagOn = await metrics.snapshot("feature-flag-on-with-demo-balloon", flagOnCallCount);
+      tenantFlag.enabled = true;
+      await metrics.clearBrowserCache();
+      await page.reload();
+      const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+      await expect(launcher).toBeVisible();
+      await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
+      await waitForNotificationBaseline(page);
+      await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
+      await expect(page.locator(".assistant-reminder-balloon")).toBeVisible();
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      const flagOnCallCount = procedures.length - previousProcedureCount;
+      previousProcedureCount = procedures.length;
+      const flagOn = await metrics.snapshot("feature-flag-on-with-demo-balloon", profile.name, flagOnCallCount);
+      flagOn.frameRendering = await measureFrameIntervals(page);
+      samples.push(flagOn);
+    }
 
     const svg = await measureMascotSvgGzip(page);
     const evidence: Spec308MetricsEvidence = {
       schemaVersion: 1,
       sourceSha: getSpec308SourceSha(),
-      comparison: "same-build, same-browser, feature-flag OFF versus ON",
-      acceptanceBoundary: "Mocked authenticated UI fixture only. This is not a main-versus-candidate commit comparison, live-network measurement, low-end device profile, or live acceptance.",
+      comparison: "same-build, same-browser, feature-flag OFF versus ON across emulated viewport profiles",
+      acceptanceBoundary: "Mocked authenticated UI fixture only; viewport/CPU/network emulation is not physical-device or QA-budget acceptance, and this is not a main-versus-candidate commit comparison or live acceptance.",
+      profiles: profiles.map(profile => ({
+        name: profile.name,
+        viewport: { width: profile.width, height: profile.height },
+        deviceScaleFactor: profile.deviceScaleFactor,
+        cpuThrottlingRate: profile.cpuThrottlingRate,
+        network: profile.network,
+      })),
       thresholds: "not defined; no budget pass/fail is asserted",
       browser: {
         engine: "Chromium",
         userAgent: await page.evaluate(() => navigator.userAgent),
       },
       mascotSvg: svg,
-      samples: [flagOff, flagOn],
+      samples,
     };
     await writeSpec308MetricsEvidence(evidence);
     expect(svg.variants).toHaveLength(5);
     expect(svg.variants.every(variant => variant.rawBytes > 0 && variant.gzipBytes > 0)).toBe(true);
-    expect(evidence.samples.map(sample => sample.phase)).toEqual([
+    expect(evidence.samples.map(sample => sample.phase)).toEqual(profiles.flatMap(() => [
       "feature-flag-off",
       "feature-flag-on-with-demo-balloon",
-    ]);
+    ]));
+    expect(evidence.samples.every(sample => sample.frameRendering.framesObserved > 0)).toBe(true);
     expect(evidence.samples.every(sample => sample.heap.source === "chromium-cdp-proxy")).toBe(true);
     expect(evidence.samples.every(sample => Number.isFinite(sample.heap.jsHeapUsedBytes))).toBe(true);
     expect(evidence.samples.every(sample => Number.isFinite(sample.layout.cumulativeLayoutShift))).toBe(true);

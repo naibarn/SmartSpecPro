@@ -18,6 +18,7 @@ type BrowserProbe = {
 
 export type Spec308MetricSnapshot = {
   phase: string;
+  profile: string;
   viewport: { width: number; height: number };
   network: {
     requestsStarted: number;
@@ -28,6 +29,13 @@ export type Spec308MetricSnapshot = {
   };
   heap: { jsHeapUsedBytes: number; source: "chromium-cdp-proxy" };
   layout: { cumulativeLayoutShift: number; qualifyingEntries: number };
+  frameRendering?: {
+    framesObserved: number;
+    meanFrameIntervalMs: number;
+    p95FrameIntervalMs: number;
+    maxFrameIntervalMs: number;
+    intervalsOver16_7ms: number;
+  };
   timers: Pick<BrowserProbe,
     | "functionTimeoutRegistrations"
     | "functionIntervalRegistrations"
@@ -42,8 +50,15 @@ export type Spec308MetricSnapshot = {
 export type Spec308MetricsEvidence = {
   schemaVersion: 1;
   sourceSha: string;
-  comparison: "same-build, same-browser, feature-flag OFF versus ON";
-  acceptanceBoundary: string;
+  comparison: "same-build, same-browser, feature-flag OFF versus ON across emulated viewport profiles";
+  acceptanceBoundary: "Mocked authenticated UI fixture only; viewport/CPU/network emulation is not physical-device or QA-budget acceptance, and this is not a main-versus-candidate commit comparison or live acceptance.";
+  profiles: Array<{
+    name: string;
+    viewport: { width: number; height: number };
+    deviceScaleFactor: 1;
+    cpuThrottlingRate: number;
+    network: "baseline" | "slow-4g-emulation";
+  }>;
   thresholds: "not defined; no budget pass/fail is asserted";
   browser: { engine: "Chromium"; userAgent: string };
   mascotSvg: {
@@ -151,7 +166,7 @@ export async function installSpec308MetricsProbe(page: Page) {
   await cdp.send("Performance.enable");
 
   return {
-    async snapshot(phase: string, mockedProcedureCalls: number): Promise<Spec308MetricSnapshot> {
+    async snapshot(phase: string, profile: string, mockedProcedureCalls: number): Promise<Spec308MetricSnapshot> {
       const [viewport, browserProbe, resources, cdpMetrics] = await Promise.all([
         page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })),
         page.evaluate(() => {
@@ -208,6 +223,7 @@ export async function installSpec308MetricsProbe(page: Page) {
 
       const result: Spec308MetricSnapshot = {
         phase,
+        profile,
         viewport,
         network: {
           requestsStarted,
@@ -241,6 +257,13 @@ export async function installSpec308MetricsProbe(page: Page) {
     async clearBrowserCache() {
       await cdp.send("Network.clearBrowserCache");
     },
+    async setEmulationProfile(profile: "low-end-mobile-emulation" | "tablet-emulation" | "desktop-emulation") {
+      const mobile = profile === "low-end-mobile-emulation";
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: mobile ? 4 : 1 });
+      await cdp.send("Network.emulateNetworkConditions", mobile
+        ? { offline: false, latency: 150, downloadThroughput: 200_000, uploadThroughput: 93_750, connectionType: "cellular4g" }
+        : { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1, connectionType: "none" });
+    },
   };
 }
 
@@ -268,7 +291,7 @@ export async function measureMascotSvgGzip(page: Page): Promise<Spec308MetricsEv
 }
 
 export async function writeSpec308MetricsEvidence(evidence: Spec308MetricsEvidence) {
-  const outputPath = path.resolve("test-results/production-director", `spec-308-metrics-${evidence.sourceSha.slice(0, 12)}.json`);
+  const outputPath = path.resolve("test-results/production-director", `spec-308-metrics-${evidence.sourceSha.slice(0, 12)}-profiles.json`);
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
   return outputPath;
