@@ -43,14 +43,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "expected_canonical_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
-    "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
+    "next_action": "Provide an approved server-authenticated ingress assertion producer and wire it to createContextWithTrustedAppIngress; retain fail-closed production default until deployed provenance, origin exclusion, and fresh Project ACL acceptance are verified.",
     "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
     "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
-    "resume_point": "PR #451 integrated fail-closed App context propagation at fe6771c1cc93cd5cf3321c417210e082a2e8f86c. Static Cloudflare Tunnel currently routes platform domains only; direct origin listens on 0.0.0.0:3000 and deployed edge/firewall restrictions are unverified. No production config was changed.",
+    "resume_point": "PR #487 merged at 223eb5f07fc69a0d7971c4cdf7b2d32a229fe560. Added server-side assertion consumer composition and synthetic HTTP-to-memory receipt issuance tests. The default production createContext remains null and no production ingress caller is configured; positive authorized Project-memory retrieval and deployed ingress remain pending.",
     "waiting_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence."
   },
   "continuation_assessment": {
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 18,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -154,9 +154,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "canonical_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
     "integrated": true,
-    "integrated_at": "2026-10-10T04:29:06Z"
+    "integrated_at": "2026-10-10T08:04:21Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -374,7 +374,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T04:30:25.427023Z",
+  "updated_at": "2026-10-10T08:15:19.687854Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -405,11 +405,39 @@
         "scope": "PR #451 integrated at fe6771c1cc93cd5cf3321c417210e082a2e8f86c; request headers cannot mint App context and project reads fail closed. 9 Vitest files, 144 passed, 11 TODO; direct authenticated ingress positive case remains TODO.",
         "source_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
         "status": "PASS"
+      },
+      {
+        "kind": "SYNTHETIC_INGRESS_CONTEXT_COMPOSITION",
+        "path": "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "scope": "PR #487 merged; injectable assertion consumer reaches HTTP-to-memory receipt issuance under synthetic verifier. 6 focused Vitest files, 102 passed. Production ingress caller, deployed provenance, and positive authorized Project-memory retrieval remain pending.",
+        "source_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_RUNTIME_REGRESSION",
+        "path": "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "scope": "Exact origin/main SHA f28ec35346a9668fc300195ec53343d350b52108: 7 focused files, 105 tests passed across assertion consumer, HTTP-to-memory boundary, receipt authority, unified wiring, context builder, and App alias repository. Synthetic only; no deployed ingress or positive authorized Project read.",
+        "source_sha": "f28ec35346a9668fc300195ec53343d350b52108",
+        "status": "PASS"
+      },
+      {
+        "kind": "APP_ALIAS_IDENTITY_CONTRACT",
+        "path": "apps/web/server/services/__tests__/tenantProductIdentityContracts.test.ts",
+        "scope": "Exact origin/main SHA f28ec35346a9668fc300195ec53343d350b52108: 3 focused files, 17 tests passed; stable App identity across aliases and fail-closed inactive/cross-tenant routing are contract-level evidence, not deployed T-15 acceptance.",
+        "source_sha": "f28ec35346a9668fc300195ec53343d350b52108",
+        "status": "PASS"
+      },
+      {
+        "kind": "R4_FOCUSED_RUNTIME_REGRESSION",
+        "path": "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: 21 focused files / 261 tests passed across trusted assertion composition, Host/XFH fail-closed memory context, alias identity, receipt ACL, worker wiring and independent evidence contracts. Synthetic only; no production ingress caller, deployed provenance, or positive authorized persisted Project-memory read.",
+        "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }
