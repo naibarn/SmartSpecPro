@@ -1,5 +1,5 @@
 {
-  "generation": 9,
+  "generation": 10,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -25,48 +25,58 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L74"
       ],
       "authority_source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L74",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "scripts/spec208/moli-isolation-acceptance.mjs",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Local Moli v1.1.15 ran through the non-production isolated harness. Production Moli remains disabled; deployed capability reporting and release gates remain open.",
       "requirement_digest": "3830162ac4e410dbf70ccfed21b497c8973ae2d66b0b868c8dbe5ab31fd3e2dd",
       "requirement_id": "REQ-B13232C12B75",
       "requirement_text": "- Moli SHALL remain optional and disabled until implementation, security review, and the SmartAIHub benchmark gates in the companion audit pass. Capability discovery SHALL report the actual engine/version and supported protocols and operations; an upstream feature list is not runtime proof.",
       "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L75"
       ],
       "authority_source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L75",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "scripts/spec208/moli-isolation-acceptance.mjs",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "The local harness owns the two bounded Moli processes for its synthetic attempts, but no worker_jobs row, lease/fencing, Runner authorization, or canonical settlement was exercised.",
       "requirement_digest": "83f2147299e76dcaf1cf6709e786c9f5ebbf47ef04b14081cb9186adb5335533",
       "requirement_id": "REQ-6B3BDC3E78E4",
       "requirement_text": "- Feature 195 `worker_jobs` plus its outbox SHALL remain the durable execution, retry, cancellation, lease/fencing, and settlement authority. Feature 197 Runner / approved Cloudflare runtime SHALL own the execution boundary. This provider SHALL NOT introduce a second queue, scheduler, permission authority, or finality ledger.",
       "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
     },
     {
       "applicability": "UNASSESSED",
@@ -91,48 +101,58 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L77"
       ],
       "authority_source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L77",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "scripts/spec208/moli-isolation-acceptance.mjs",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Separate ephemeral attempt profiles proved localStorage and cookies/HttpOnly cookies did not cross between the sequential synthetic attempts. IndexedDB and OPFS isolation remain unverified.",
       "requirement_digest": "87fe4e64e389847352e6251f6f6321e99354a4749b2c523c46d78e0493f3228e",
       "requirement_id": "REQ-11E188B44450",
       "requirement_text": "- Every session SHALL be isolated by tenant, job attempt, browser profile, and session identity with separate ephemeral storage by default. Cookies, local/session storage, IndexedDB, OPFS, credentials, and open pages MUST NOT be copied to another engine. Switching engines during a stateful task MUST stop for an explicit reauthorization and fresh session unless a separately tested and user-approved migration contract proves state equivalence.",
       "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L78"
       ],
       "authority_source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L78",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "scripts/spec208/moli-isolation-acceptance.mjs",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "The acceptance namespace had no non-loopback route and its fixture-only proxy denied CDP/WebDriver, external host, and metadata probes. Application DNS/IP/redirect policy integration remains open.",
       "requirement_digest": "b89f52827bd9b41e025e724fdb54d276a417b5ad48185e4a77be43dea35e6d90",
       "requirement_id": "REQ-6777AD15DB68",
       "requirement_text": "- Egress SHALL use the existing destination policy and enforce HTTPS where applicable, redirect revalidation, DNS/IP checks at connection time, and rejection of loopback, private, link-local, metadata, and otherwise prohibited destinations. CDP endpoints MUST be loopback/private to the isolated runtime, authenticated or protected by the runtime boundary, and never exposed as an unauthenticated public service. Secrets, cookies, authorization headers, page content, and sensitive screenshots MUST be redacted from logs/evidence.",
       "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
     },
     {
       "applicability": "UNASSESSED",
@@ -179,26 +199,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L81"
       ],
       "authority_source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L81",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "scripts/spec208/moli-isolation-acceptance.mjs",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Moli child processes were terminated and both temporary profiles removed. Canonical job cancellation, session credential revocation, and application receipt binding remain unverified.",
       "requirement_digest": "b74951224f7db1b4d57cc5ed1beeb4edd4c001491e66b6958b9bb54585a77e79",
       "requirement_id": "REQ-F8BA5E2946ED",
       "requirement_text": "- Cancellation SHALL signal the canonical job and terminate the isolated browser process/context, remove ephemeral profile material, revoke session credentials, and record cleanup outcome. Receipts SHALL bind job/attempt, tenant, session, provider/version, capability snapshot, policy/authorization references, action/evidence hashes, termination state, and timestamps without persisting raw secrets.",
       "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
     },
     {
       "applicability": "UNASSESSED",
@@ -267,26 +292,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L89"
       ],
       "authority_source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md#L89",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "scripts/spec208/moli-isolation-acceptance.mjs",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Fresh W4 review found six fixed registry version candidates; Moli v1.1.15 remains the latest release, the release artifact has no verified attestation, and complete notices/deployed-target review remain open.",
       "requirement_digest": "edb80f1281b3295e72de12550d218cdc8b8e087f9858f2741f299b0a3171d4eb",
       "requirement_id": "REQ-37A0D973D947",
       "requirement_text": "1. Inventory protocol, platform, dependency-license, and threat-model facts for the pinned release; add no runtime dependency yet.",
       "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      ],
+      "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
     },
     {
       "applicability": "UNASSESSED",
