@@ -30,16 +30,18 @@ Generated `handoff/STATUS.md` files were read as projections; no generated statu
 | PR #467 | Open RFC-only PR; preview check is `SKIPPED` | Treated as architecture input only; `SKIPPED` is not a pass. |
 | PR #438 | Open guardrail/spec PR; overlaps SPEC-276 and generated handoff/registry artifacts; preview is `SKIPPED` | No overlapping files edited. |
 | Primary checkout | `/home/dev/projects/SmartSpecPro`, local `main` at `ccd4cd11`; 109 commits behind observed canonical SHA and has unrelated staged/unstaged/untracked task work | Preserved unchanged; no checkout, reset, clean, merge, or staging performed there. |
-| This task workspace | `/home/dev/worktrees/autonomous-completion-idle-signal-20261010`, branch `codex/autonomous-completion-idle-signal-20261010`, reconciled onto `origin/main` at `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; registered as `TASK_WORKTREE` for `autonomous-completion-pr467-20261010` | Only this task's two service/test files and task evidence are owned here. |
+| Implementation PR #471 | [feat(worker-jobs): expose backlog with free capacity signal](https://github.com/naibarn/SmartSpecPro/pull/471), open, reconciled base `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; `reviewDecision` empty; `build-preview` is `SKIPPED` | PR is reviewable but not integrated. See GitHub for the current head SHA. No skipped check is counted as a pass. |
+| This task workspace | `/home/dev/worktrees/autonomous-completion-idle-signal-20261010`, branch `codex/autonomous-completion-idle-signal-20261010`, registered as `TASK_WORKTREE` for `autonomous-completion-pr467-20261010` | Only this task's two service/test files and task evidence are owned here. |
 | Existing related worktrees | SPEC-224 runner/trust, SPEC-269 acceptance, SPEC-277 evidence, skills candidates and other runner worktrees are present | Ownership could not be safely inferred from path/name. None were edited, deleted, pruned, or merged. |
 
-The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`, passed the local fast integration gate, and is being delivered through a normal protected PR path. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
+The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`, passed the local fast integration gate, and was delivered through normal PR #471. The only GitHub check observed is `build-preview: SKIPPED`; no review decision exists and no merge occurred. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
 
 ## Verification evidence and remaining work
 
 - RED: focused monitor tests failed before the helper existed (`deriveIdleWithBacklogAlert is not a function`; 5 cases failed, 2 existing unit tests passed, 2 DB integration tests skipped).
 - GREEN: `pnpm exec vitest run server/services/__tests__/jobControlPlaneMonitor.test.ts` from `apps/web` — 1 file passed, 7 passed, 2 DB integration tests skipped. Fresh run completed at 2026-10-10 14:33 Asia/Bangkok after the aggregate-capacity naming/type annotation review repairs.
-- Pending: rebase/reconcile to the latest canonical SHA, fast gate, normal PR creation, required CI/review, and post-merge ancestry verification.
+- Passed: clean rebase onto canonical SHA `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`, local fast gate, and normal PR creation (#471).
+- Pending: required CI/review and post-merge ancestry verification. Current `build-preview` is skipped, not passed.
 - Not verified: six-spec normative amendment, UI presentation of the new field, job/worker capability compatibility, full failure/retry/conflict/runner-loss/duplicate-execution scenarios, automatic PR repair/merge/cleanup, benchmark, Windows/Debian execution, deployment, production readiness.
 
 ## Next safe actions
