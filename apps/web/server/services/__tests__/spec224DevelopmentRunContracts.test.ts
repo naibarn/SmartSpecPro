@@ -143,7 +143,23 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     expect(job.definition.jobType).toBe("external_agent_task");
     expect(job.definition.contractVersion).toBe("feature-186-v1");
     expect(job.manifest.workspaceId).toBe("workspace:run-224-001");
+    expect(job.manifest.goalId).toBe("goal:run-224-001");
     expect(job.definition.input).not.toHaveProperty("apiKey");
+
+    const delegatedGoalRun = buildDevelopmentRun({
+      ...baseRun,
+      runId: "repair-child-1",
+      goalId: "goal:parent-1",
+    });
+    expect(buildDevelopmentHarnessJob({
+      run: delegatedGoalRun,
+      provider: "codex",
+      runtime: "local_runner",
+      planId: "plan-child-1",
+      planRevision: 1,
+      skillIds: [],
+      requestedCapabilities: [],
+    }).manifest.goalId).toBe("goal:parent-1");
 
     const stagedRun = buildDevelopmentRun({
       ...baseRun,

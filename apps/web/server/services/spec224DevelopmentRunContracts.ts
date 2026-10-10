@@ -41,6 +41,8 @@ export type DevelopmentRunState =
 export type DevelopmentRun = {
   contractVersion: typeof SPEC_224_RUN_CONTRACT_VERSION;
   runId: string;
+  /** Stable Goal identity shared by delegated child runs. Legacy runs derive it from runId. */
+  goalId?: string;
   tenantId: string;
   actorId: number;
   goal: string;
@@ -328,6 +330,7 @@ function assertPayload(payload: Record<string, unknown>): void {
 
 export function buildDevelopmentRun(input: {
   runId: string;
+  goalId?: string;
   tenantId: string;
   actorId: number;
   goal: string;
@@ -357,6 +360,7 @@ export function buildDevelopmentRun(input: {
   return {
     contractVersion: SPEC_224_RUN_CONTRACT_VERSION,
     runId: id(input.runId, "RUN_ID_INVALID"),
+    ...(input.goalId === undefined ? {} : { goalId: id(input.goalId, "GOAL_ID_INVALID") }),
     tenantId: id(input.tenantId, "TENANT_ID_INVALID"),
     actorId: input.actorId,
     goal: text(input.goal, "GOAL_INVALID", 4_000),
@@ -562,7 +566,7 @@ export function buildDevelopmentHarnessJob(input: {
     taskId: input.run.runId,
     tenantId: input.run.tenantId,
     actorId: input.run.actorId,
-    goalId: `goal:${input.run.runId}`,
+    goalId: input.run.goalId ?? `goal:${input.run.runId}`,
     planId: id(input.planId, "PLAN_ID_INVALID"),
     planRevision: input.planRevision,
     provider: input.provider,
