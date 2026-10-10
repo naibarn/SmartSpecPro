@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Implementation-only SPEC-308 gaps currently identified as safe are addressed in the task worktree. Keep WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first in integration sequencing: obtain the Security and Media/Runtime Owner disposition for sprintf-js, then refresh and verify PR #405; next reconcile #403; then run the consolidated exact-head SPEC-308 unit/Chromium suite for PR #399. Run no repeated local test rounds. Preserve all ledger rows OPEN until exact-candidate evidence, canonical integration, and required external acceptance exist.
-- Manifest generation: 54
+- Next action: Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.
+- Manifest generation: 55
 
 ## Source-declared status and relationship claims
 

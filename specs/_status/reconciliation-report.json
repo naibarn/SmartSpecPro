@@ -143926,7 +143926,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Implementation-only SPEC-308 gaps currently identified as safe are addressed in the task worktree. Keep WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first in integration sequencing: obtain the Security and Media/Runtime Owner disposition for sprintf-js, then refresh and verify PR #405; next reconcile #403; then run the consolidated exact-head SPEC-308 unit/Chromium suite for PR #399. Run no repeated local test rounds. Preserve all ledger rows OPEN until exact-candidate evidence, canonical integration, and required external acceptance exist.",
+      "next_action": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
