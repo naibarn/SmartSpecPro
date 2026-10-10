@@ -93,6 +93,29 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(workspace["role"], "TASK_WORKTREE")
         self.assertNotEqual(workspace["workspace_id"], canonical["workspace_id"])
 
+    def test_resolver_skips_unregistered_foreign_worktree_with_partial_safe_evidence(self) -> None:
+        foreign = self.root / "foreign-active"
+        git(self.canonical, "worktree", "add", "-b", "foreign/active", str(foreign), "HEAD")
+        original_git = authority._git
+
+        def bounded_git(repo: Path, *args: str, **kwargs: object) -> str | bytes:
+            if Path(repo) == foreign and args[:2] == ("status", "--porcelain=v1"):
+                raise subprocess.TimeoutExpired(["git", "status"], 3)
+            return original_git(repo, *args, **kwargs)
+
+        with patch.object(authority, "_git", side_effect=bounded_git):
+            result = authority.resolve_project_authority(self.canonical, self.policy)
+        self.assertEqual(result["worktree_discovery"]["skipped_foreign_or_unregistered"], 1)
+        self.assertTrue(result["worktree_discovery"]["complete"])
+
+    def test_corrupt_registry_returns_unavailable_without_rebuilding_it(self) -> None:
+        registry = authority._registry_path(self.canonical)
+        registry.write_bytes(b"not a sqlite database")
+        before = registry.read_bytes()
+        result = authority.resolve_project_authority(self.canonical, self.policy)
+        self.assertEqual(result["status"], "AUTHORITY_UNAVAILABLE")
+        self.assertEqual(registry.read_bytes(), before)
+
     def test_unknown_workspace_does_not_gain_authority_from_branch_or_path(self) -> None:
         other = self.root / "main-canonical"
         git(self.canonical, "worktree", "add", str(other), "HEAD")

@@ -71,7 +71,7 @@ type CheckGateEvidence = {
 };
 
 async function inspectPullRequest(repository: string, number: number): Promise<PullRequestFact> {
-  const { stdout } = await execFileAsync("gh", ["pr", "view", String(number), "--json", "state,isDraft,baseRefName,baseRefOid,headRefOid,mergeable,mergeStateStatus"], {
+  const { stdout } = await execFileAsync("gh", ["pr", "view", String(number), "--json", "state,isDraft,baseRefName,baseRefOid,headRefOid,mergeable,mergeStateStatus,mergedAt,mergeCommit"], {
     cwd: repository, timeout: 30_000, maxBuffer: 256 * 1024,
   });
   return JSON.parse(stdout) as PullRequestFact;
@@ -315,11 +315,13 @@ async function integratePullRequest(
     });
   }
   let cleanup: Record<string, unknown> | null = null;
-  if (input.payload.automatedReconciliation === true && input.workspaceId &&
-      convergence.status === "USER_WORKSPACE_CONVERGED" &&
-      convergence.receipt && typeof convergence.receipt === "object" &&
-      (convergence.receipt as Record<string, unknown>).integrated_sha === integratedSha) {
-    cleanup = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId, "--apply"]);
+  if (input.payload.automatedReconciliation === true && input.workspaceId) {
+    const preview = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId]);
+    if (preview.status === "RETIREMENT_DRY_RUN") {
+      cleanup = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId, "--apply"]);
+    } else {
+      cleanup = { status: "CLEANUP_PRESERVED", reason: "RETIREMENT_PREFLIGHT_NOT_CLEAR", preview };
+    }
   }
   return { status: "INTEGRATION_RECORDED", pullRequestNumber: number, integratedSha, checkGate, convergence, cleanup };
 }
@@ -397,7 +399,10 @@ export async function executeWorkspaceAuthoritySafeAction(
   } else if (input.action === "RECOVER_WORK") {
     result = await executeAuthority(repository, env, ["preserve", "--workspace-id", input.workspaceId ?? ""]);
   } else if (input.action === "RETIRE_SAFE_WORKTREE") {
-    result = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId ?? "", "--apply"]);
+    const preview = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId ?? ""]);
+    result = preview.status === "RETIREMENT_DRY_RUN"
+      ? await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId ?? "", "--apply"])
+      : { status: "CLEANUP_PRESERVED", reason: "RETIREMENT_PREFLIGHT_NOT_CLEAR", preview };
   } else {
     result = await executeAuthority(repository, env, ["verify",
       ...(typeof input.payload.integratedSha === "string" ? ["--integrated-sha", input.payload.integratedSha] : []),
