@@ -30,5 +30,6 @@ NODE
 export DATABASE_URL="$SMARTAIHUB_R5_DATABASE_URL"
 export JWT_SECRET="r5-synthetic-test-secret-32-characters-minimum"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/smartaihub-r5-persisted-memory-bootstrap.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0392_spec304_app_identity_and_route_aliases.sql
 export SMARTAIHUB_R5_PERSISTED_ACCEPTANCE=1
 pnpm --filter @smartspec/web exec vitest run server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts

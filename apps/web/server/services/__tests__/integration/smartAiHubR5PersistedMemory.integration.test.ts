@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import express from "express";
+import { request as httpRequest, type Server } from "node:http";
 
 vi.mock("../../queryEmbeddingService", () => ({
   generateQueryEmbedding: vi.fn(async () => null),
@@ -21,6 +23,10 @@ import {
 } from "../../../../drizzle/schema";
 import { buildChatContext } from "../../executors/contextBuilder";
 import { SMARTAIHUB_RUNTIME_CONTEXT_POLICY_VERSION } from "../../smartAiHubRuntimeContext";
+import { createContextWithTrustedAppIngress } from "../../../_core/context";
+import { sdk } from "../../../_core/sdk";
+import { appRouteAliases } from "../../../../drizzle/schema";
+import { resolveAppRouteForTenant } from "../../appIdentityRepository";
 
 const enabled = process.env.SMARTAIHUB_R5_PERSISTED_ACCEPTANCE === "1";
 const describePersisted = describe.skipIf(!enabled);
@@ -35,6 +41,14 @@ const markers = {
   entityB: "R5_CONTEXT_ENTITY_B_SECRET",
   entityGlobal: "R5_CONTEXT_ENTITY_GLOBAL_OK",
 };
+const TEST_INGRESS_ISSUER = "r5-local-ingress";
+const TEST_INGRESS_AUDIENCE = "smartspec-web-r5-test";
+
+function signTestIngressAssertion(claims: Record<string, unknown>, secret: Buffer): string {
+  const encoded = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const signature = createHmac("sha256", secret).update(encoded).digest("base64url");
+  return `${encoded}.${signature}`;
+}
 
 function assertApprovedLoopbackDatabase(): void {
   const raw = process.env.DATABASE_URL;
@@ -58,6 +72,8 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
   const secondUserOpenId = `r5-second-user-${suffix}`;
   const foreignUserOpenId = `r5-foreign-user-${suffix}`;
   const appId = `r5-app-${suffix}`;
+  const routeAliasId = `r5-route-${suffix}`;
+  const routeHostname = `r5-${suffix}.example.test`;
   const secondAppId = `r5-second-app-${suffix}`;
   const foreignAppId = `r5-foreign-app-${suffix}`;
   const projectAId = crypto.randomUUID();
@@ -91,6 +107,15 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       publisherRef: "r5-test-publisher",
       canonicalProductId: "r5-test-product",
       lifecycle: "active",
+    });
+    await db.insert(appRouteAliases).values({
+      aliasId: routeAliasId,
+      tenantId,
+      appId,
+      kind: "custom-domain",
+      value: routeHostname,
+      status: "ACTIVE",
+      activatedAt: new Date(),
     });
     await db.insert(appIdentities).values({
       appId: secondAppId,
@@ -183,6 +208,7 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       await db.delete(canonicalProjectMemberships).where(inArray(canonicalProjectMemberships.tenantId, tenantIds));
       await db.delete(canonicalProjectAppBindings).where(inArray(canonicalProjectAppBindings.tenantId, tenantIds));
       await db.delete(canonicalProjects).where(inArray(canonicalProjects.tenantId, tenantIds));
+      await db.delete(appRouteAliases).where(eq(appRouteAliases.tenantId, tenantId));
       await db.delete(appIdentities).where(inArray(appIdentities.tenantId, tenantIds));
       await db.delete(users).where(inArray(users.id, [userId, secondUserId, foreignUserId].filter(id => id > 0)));
       await db.delete(tenants).where(inArray(tenants.id, tenantIds));
@@ -217,6 +243,149 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
     expect(prompt).toContain("R5_FOREIGN_TENANT_ENTITY_GLOBAL_OK");
     expect(prompt).not.toContain("R5_FOREIGN_TENANT_PROJECT_SECRET");
     expect(prompt).not.toContain("R5_FOREIGN_TENANT_ENTITY_SECRET");
+  });
+
+  it("propagates a signed local ingress assertion through HTTP to persisted Project memory and rejects header-only identity", async () => {
+    const secret = Buffer.from(randomUUID().replaceAll("-", ""), "hex");
+    const consumed = new Set<string>();
+    const authSpy = vi.spyOn(sdk, "authenticateRequest").mockResolvedValue({
+      id: userId,
+      currentTenantId: tenantId,
+      name: "R5 synthetic authenticated user",
+    } as any);
+    const contextFactory = createContextWithTrustedAppIngress({
+      readAssertion: req => req.headers["x-r5-ingress-assertion"],
+      verifier: {
+        verifyAndConsume: async assertion => {
+          if (typeof assertion !== "string") return null;
+          const [encoded, signature, extra] = assertion.split(".");
+          if (!encoded || !signature || extra !== undefined) return null;
+          const expected = createHmac("sha256", secret).update(encoded).digest();
+          const supplied = Buffer.from(signature, "base64url");
+          if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
+          let claims: Record<string, unknown>;
+          try { claims = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); } catch { return null; }
+          if (typeof claims.assertionId !== "string" || consumed.has(claims.assertionId)) return null;
+          consumed.add(claims.assertionId);
+          return claims as any;
+        },
+      },
+      resolveRoute: resolveAppRouteForTenant,
+      expectedIssuer: TEST_INGRESS_ISSUER,
+      expectedAudience: TEST_INGRESS_AUDIENCE,
+    });
+    const serverApp = express();
+    serverApp.set("trust proxy", 1);
+    serverApp.get("/runtime", async (req, res) => {
+      const context = await contextFactory({ req, res } as any);
+      const messages = context.user && context.tenantId ? await buildChatContext({
+            channel: "chat",
+            userId: context.user.id,
+            tenantId: context.tenantId,
+            userMessage: "R5 keyword marker",
+            traceId: `r5-ingress-${suffix}`,
+            conversationContext: {
+              conversationId,
+              activePersonaId: personaId,
+              trustedAppContext: context.trustedAppContext,
+            },
+          }, "R5 base prompt", null) : [];
+      res.status(200).json({
+        tenantId: context.tenantId,
+        trustedAppContext: context.trustedAppContext,
+        prompt: messages.map(message => typeof message.content === "string" ? message.content : JSON.stringify(message.content)).join("\n"),
+      });
+    });
+
+    let server: Server | undefined;
+    try {
+      server = await new Promise<Server>(resolve => {
+        const listening = serverApp.listen(0, "127.0.0.1", () => resolve(listening));
+      });
+      const port = (server.address() as { port: number }).port;
+      const send = (headers: Record<string, string>) => new Promise<any>((resolve, reject) => {
+        const request = httpRequest({ hostname: "127.0.0.1", port, path: "/runtime", headers }, response => {
+          const chunks: Buffer[] = [];
+          response.on("data", chunk => chunks.push(Buffer.from(chunk)));
+          response.on("end", () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))); } catch (error) { reject(error); }
+          });
+        });
+        request.on("error", reject);
+        request.end();
+      });
+      const now = Date.now();
+      const token = signTestIngressAssertion({
+        issuer: TEST_INGRESS_ISSUER,
+        audience: TEST_INGRESS_AUDIENCE,
+        assertionId: `r5-${suffix}`,
+        tenantId,
+        appId,
+        publicAppId: `public-${appId}`,
+        routeHostname,
+        issuedAtMs: now,
+        expiresAtMs: now + 10_000,
+      }, secret);
+      const trusted = await send({
+        host: "127.0.0.1",
+        "x-forwarded-host": "attacker.example",
+        "x-r5-ingress-assertion": token,
+      });
+      expect(trusted.tenantId).toBe(tenantId);
+      expect(trusted.trustedAppContext).toMatchObject({ hostAppId: appId, publicAppId: `public-${appId}` });
+      expect(trusted.trustedAppContext).toMatchObject({
+        permissionCeiling: { projectMemoryRead: "authorized_bound_project_only", durableProjectMemoryWrite: false },
+        policyVersion: SMARTAIHUB_RUNTIME_CONTEXT_POLICY_VERSION,
+      });
+      expect(trusted.prompt).toContain(markers.projectA);
+      expect(trusted.prompt).toContain(markers.projectAGlobal);
+
+      const forged = await send({ host: routeHostname, "x-forwarded-host": routeHostname });
+      expect(forged.trustedAppContext).toBeNull();
+      expect(forged.prompt).toContain(markers.projectAGlobal);
+      expect(forged.prompt).not.toContain(markers.projectA);
+
+      const replay = await send({
+        host: "127.0.0.1",
+        "x-r5-ingress-assertion": token,
+      });
+      expect(replay.trustedAppContext).toBeNull();
+      expect(replay.prompt).toContain(markers.projectAGlobal);
+      expect(replay.prompt).not.toContain(markers.projectA);
+
+      const wrongAppToken = signTestIngressAssertion({
+        issuer: TEST_INGRESS_ISSUER,
+        audience: TEST_INGRESS_AUDIENCE,
+        assertionId: `r5-wrong-app-${suffix}`,
+        tenantId,
+        appId: secondAppId,
+        publicAppId: `public-${secondAppId}`,
+        routeHostname,
+        issuedAtMs: now,
+        expiresAtMs: now + 10_000,
+      }, secret);
+      const wrongApp = await send({ host: "127.0.0.1", "x-r5-ingress-assertion": wrongAppToken });
+      expect(wrongApp.trustedAppContext).toBeNull();
+      expect(wrongApp.prompt).not.toContain(markers.projectA);
+
+      const crossTenantToken = signTestIngressAssertion({
+        issuer: TEST_INGRESS_ISSUER,
+        audience: TEST_INGRESS_AUDIENCE,
+        assertionId: `r5-cross-tenant-${suffix}`,
+        tenantId: foreignTenantId,
+        appId: foreignAppId,
+        publicAppId: `public-${foreignAppId}`,
+        routeHostname,
+        issuedAtMs: now,
+        expiresAtMs: now + 10_000,
+      }, secret);
+      const crossTenant = await send({ host: routeHostname, "x-r5-ingress-assertion": crossTenantToken });
+      expect(crossTenant.trustedAppContext).toBeNull();
+      expect(crossTenant.prompt).not.toContain(markers.projectA);
+    } finally {
+      authSpy.mockRestore();
+      if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
+    }
   });
 
   it("shares Project memory with a second authorized user and removes it after membership revocation", async () => {
