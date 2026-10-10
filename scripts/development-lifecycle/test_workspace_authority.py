@@ -108,6 +108,25 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(result["worktree_discovery"]["skipped_foreign_or_unregistered"], 1)
         self.assertTrue(result["worktree_discovery"]["complete"])
 
+    def test_resolver_caps_linked_worktree_discovery_and_marks_partial(self) -> None:
+        paths = [self.root / f"unregistered-{index}" for index in range(24)]
+        with patch.object(authority, "_discover_worktrees", return_value=paths):
+            result = authority.resolve_project_authority(self.canonical, self.policy)
+        evidence = result["worktree_discovery"]
+        self.assertFalse(evidence["complete"])
+        self.assertEqual(evidence["reason"], "worktree_limit_reached")
+        self.assertEqual(evidence["skipped_foreign_or_unregistered"], 16)
+
+    def test_resolver_git_subprocesses_receive_remaining_deadline(self) -> None:
+        original_deadline = authority._RESOLVER_DEADLINE.set(time.monotonic() + 4.0)
+        try:
+            with patch.object(authority.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "ok", "")) as run:
+                authority._git(self.canonical, "status", "--short")
+            self.assertGreater(run.call_args.kwargs["timeout"], 0)
+            self.assertLessEqual(run.call_args.kwargs["timeout"], 3.0)
+        finally:
+            authority._RESOLVER_DEADLINE.reset(original_deadline)
+
     def test_corrupt_registry_returns_unavailable_without_rebuilding_it(self) -> None:
         registry = authority._registry_path(self.canonical)
         registry.write_bytes(b"not a sqlite database")
