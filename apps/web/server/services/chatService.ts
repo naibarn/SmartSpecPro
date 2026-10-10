@@ -1066,7 +1066,8 @@ export async function upsertEntityMemory(data: {
 export async function getEntityMemories(
   userId: number,
   entityType?: "user" | "project" | "preference" | "technical",
-  personaId?: string | null
+  personaId?: string | null,
+  projectIdFilter?: string | null
 ): Promise<EntityMemory[]> {
   const db = await getDb();
   if (!db) return [];
@@ -1082,6 +1083,16 @@ export async function getEntityMemories(
       personaId === null
         ? isNull(entityMemories.personaId)
         : eq(entityMemories.personaId, personaId),
+    );
+  }
+
+  // Callers that lack a trusted project binding may explicitly request only
+  // user-global memory while leaving memory-management queries unchanged.
+  if (projectIdFilter !== undefined) {
+    conditions.push(
+      projectIdFilter === null
+        ? isNull(entityMemories.projectId)
+        : eq(entityMemories.projectId, projectIdFilter),
     );
   }
 
@@ -1244,7 +1255,9 @@ export async function buildChatContext(
   }
 
   // 2. Add entity memories
-  const memories = await getEntityMemories(userId, undefined, activePersonaId);
+  // This legacy prompt path has no trusted active-project authorization
+  // binding, so project-scoped memories must not cross into the chat prompt.
+  const memories = await getEntityMemories(userId, undefined, activePersonaId, null);
   if (memories.length > 0) {
     const memoryContext = memories
       .slice(0, 10) // Limit to top 10 most relevant
