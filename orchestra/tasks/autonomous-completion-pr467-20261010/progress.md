@@ -19,7 +19,7 @@ Loop policy:
 
 ## Checkpoints
 
-- Canonical audit base: `26df7b3a341370063fff65b0d0ee21057ac6d232` (`origin/main` observed 2026-10-10); latest refreshed snapshot during continuation reached `72439f958…`.
+- Canonical audit base: `26df7b3a341370063fff65b0d0ee21057ac6d232` (`origin/main` observed 2026-10-10); latest refreshed snapshot merged into this task branch is `d3566cc4e0f6011c1b262bf0456fcf5c83803d1f`.
 - Primary checkout `/home/dev/projects/SmartSpecPro` was dirty and behind; preserved without edits.
 - Task worktree `/home/dev/worktrees/autonomous-completion-idle-signal-20261010` registered as `TASK_WORKTREE`, task ID `autonomous-completion-pr467-20261010`.
 - Read-only scout 1: PR/spec/registry/worktree audit; returned, no edits.
@@ -41,5 +41,5 @@ Loop policy:
 - Final canonical refresh: branch includes `origin/main` `e6d33045f0b954444349213d5de88b941a9c5167`; latest intervening SPEC-269 handoff changes do not overlap this task's files.
 - Continuation audit found an unbounded multi-job dependency-cycle wait in the existing SPEC-267 claim path. Added bounded graph inspection to the existing `worker_jobs` claim transaction: proven cycles transition once to failed/operator review; inconclusive scans remain queued. No scheduler, queue, approval engine, or runtime was added.
 - Cycle implementation tests: RED was observed before the fix. GREEN after fix: two-node, transitive, scan-budget, duplicate-event and independent-job continuation coverage. Fresh targeted run on this continuation: 1 file, 10 passed, 63 skipped. Earlier continuation verification also covered reconciler/outbox/worker/dashboard/control-plane: 8 files, 181 passed, 2 skipped.
-- Current PR snapshot: PR branch `c69e06e9…` is 18 commits ahead and 33 behind refreshed `origin/main` `72439f958…`; the user-reported 18/7 count and GitHub `CLEAN` result refer to an older base snapshot. The 18 PR-only commits are task-local (duplicate implementation patch IDs explain history noise); no unrelated changed files were found. Current task worktree merge-tree predicts a clean integration.
+- Current PR snapshot before push: GitHub still points to stale head `c69e06e9…`; it was 18 commits ahead and 33 behind refreshed `origin/main` `72439f958…` at the last exact compare. The user-reported 18/7 count and GitHub `CLEAN` result refer to an older base snapshot. The 18 PR-only commits are task-local (duplicate implementation patch IDs explain history noise); no unrelated changed files were found. Task branch has now been normally merged with current `origin/main` `d3566cc4…` and the 8-file suite passed again (181 passed, 2 skipped); exact push/PR state remains pending.
 - `build-preview` remains `SKIPPED`, review decision is empty, and no PR merge SHA exists. No CI pass, restart UAT, or final architecture completion is claimed. PR branch/worktree remain preserved while the reconciliation checkpoint is prepared.
