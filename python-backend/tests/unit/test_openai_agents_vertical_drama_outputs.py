@@ -53,6 +53,18 @@ def test_valid_output_requires_identity_and_server_issued_refs():
 
 
 def test_output_guardrail_is_bound_to_the_trusted_type():
-    guardrails = build_vertical_drama_output_guardrails(make_request())
+    class FakeGuardrailFunctionOutput:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeOutputGuardrail:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    guardrails = build_vertical_drama_output_guardrails(
+        make_request(),
+        guardrail_function_output_type=FakeGuardrailFunctionOutput,
+        output_guardrail_type=FakeOutputGuardrail,
+    )
     assert len(guardrails) == 1
     assert guardrails[0].name == "vertical_drama_assurance_output"

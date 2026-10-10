@@ -864,6 +864,8 @@ class OpenAIAgentsAdapter:
             "Agent": agents_mod.Agent,
             "Runner": agents_mod.Runner,
             "RunConfig": agents_mod.RunConfig,
+            "GuardrailFunctionOutput": agents_mod.GuardrailFunctionOutput,
+            "OutputGuardrail": agents_mod.OutputGuardrail,
             "OpenAIResponsesModel": agents_mod.OpenAIResponsesModel,
             "OpenAIChatCompletionsModel": agents_mod.OpenAIChatCompletionsModel,
             "RunState": agents_mod.RunState,
@@ -907,7 +909,11 @@ class OpenAIAgentsAdapter:
             output_type = resolve_vertical_drama_output_type(request.assurance)
             if output_type is not None:
                 agent_kwargs["output_type"] = output_type
-                agent_kwargs["output_guardrails"] = build_vertical_drama_output_guardrails(request.assurance)
+                agent_kwargs["output_guardrails"] = build_vertical_drama_output_guardrails(
+                    request.assurance,
+                    guardrail_function_output_type=sdk["GuardrailFunctionOutput"],
+                    output_guardrail_type=sdk["OutputGuardrail"],
+                )
         agent = sdk["Agent"](**agent_kwargs)
         sdk_tracing_enabled = trace_config.sdk_tracing_enabled and request.surface != "media_production"
         include_sensitive_trace_data = False if request.surface == "media_production" else trace_config.include_sensitive_data
