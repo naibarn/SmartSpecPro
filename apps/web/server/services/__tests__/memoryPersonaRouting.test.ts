@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { mockSearchMemories, mockGetRuleMemories } = vi.hoisted(() => ({
+  mockSearchMemories: vi.fn(),
+  mockGetRuleMemories: vi.fn(),
+}));
+
 vi.mock("../../db", () => ({ getDb: vi.fn() }));
+vi.mock("../scopedMemoryService", () => ({
+  searchMemories: mockSearchMemories,
+  getRuleMemories: mockGetRuleMemories,
+}));
+vi.mock("../chatMemoryFlags", () => ({
+  CHAT_MEMORY_FLAG_DEFAULTS: {},
+  getAllChatMemoryFlags: vi.fn(),
+  getChatMemoryFlag: vi.fn(async () => false),
+}));
 vi.mock("../visualStateService", () => ({
   getOrCreateState: vi.fn(),
 }));
@@ -109,6 +123,9 @@ function makeDb(limitResults: unknown[] = []) {
 describe("memoryService persona routing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchMemories.mockResolvedValue([]);
+    mockGetRuleMemories.mockResolvedValue([]);
+    mockGetDb.mockResolvedValue(null as any);
     mockGetOrCreateState.mockResolvedValue(EMPTY_STATE);
     mockResolvePersona.mockResolvedValue(null);
     mockBuildPersonaPromptSegments.mockReturnValue({
@@ -118,6 +135,42 @@ describe("memoryService persona routing", () => {
     });
     mockListPersonas.mockResolvedValue([]);
     mockMatchPersonaByNickname.mockReturnValue(null);
+  });
+
+  it("omits promoted room-derived user memories from direct chat context search", async () => {
+    mockSearchMemories.mockResolvedValue([
+      {
+        memory: {
+          id: "promoted-room-memory",
+          tenantId: "tenant-1",
+          ownerType: "user",
+          ownerId: "7",
+          memoryKind: "fact",
+          title: "Private room fact",
+          content: "Do not send this room detail to Chat",
+          summary: null,
+          sourceRoomId: "room-1",
+          metadataJson: {},
+          tags: [],
+          importance: 5,
+          reinforcementCount: 1,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+        score: 1,
+      },
+    ] as any);
+
+    const context = await buildChatContext(701, 7, "Base system prompt", {
+      currentUserMessage: "Is it right?",
+      tenantId: "tenant-1",
+    });
+
+    expect(mockSearchMemories).toHaveBeenCalled();
+    expect(mockSearchMemories).toHaveBeenCalledWith(
+      expect.objectContaining({ excludeTeamRoomPromotions: true })
+    );
+    expect(JSON.stringify(context)).not.toContain("Do not send this room detail to Chat");
   });
 
   it("passes user and tenant defaults into persona resolution", async () => {
