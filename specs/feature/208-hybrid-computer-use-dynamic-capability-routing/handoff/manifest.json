@@ -114,16 +114,42 @@
     "status": "UNRESOLVED",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "affected_requirements": [
+        "REQ-6B3BDC3E78E4",
+        "REQ-11E188B44450",
+        "REQ-6777AD15DB68",
+        "REQ-F8BA5E2946ED"
+      ],
+      "class": "IMPLEMENTATION_SECURITY",
+      "id": "SPEC208_W2_MOLI_RUNTIME_BOUNDARY",
+      "next_action": "Implement and exercise a Runner-owned per-attempt process/profile boundary with filesystem and credential isolation, private protocol access, resource caps, and egress enforcement; retain the production Moli reject guard.",
+      "recoverable": true,
+      "root_cause": "The current Moli process launcher is cfg(test) only. Production Runner does not spawn Moli, isolate its filesystem or protocol listener, enforce Moli egress, or apply Moli process resource limits."
+    },
+    {
+      "affected_requirements": [
+        "REQ-37A0D973D947",
+        "REQ-B13232C12B75"
+      ],
+      "class": "SUPPLY_CHAIN_EVIDENCE",
+      "classification": "TRUE_EXTERNAL",
+      "id": "SPEC208_W4_PROVENANCE_AND_DEPLOYED_TARGET",
+      "next_action": "Obtain authoritative deployed artifact inventory and publisher/rebuild provenance; produce a fixed, reproducible Moli artifact or document evidence-based residual risk; finish per-platform third-party notices review.",
+      "recoverable": true,
+      "root_cause": "Pinned Moli v1.1.15 still has 11 applicable advisory records; no verified fixed Moli rebuild/publisher provenance or authoritative deployed-target inventory is available, and complete notices review is unfinished."
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+    "expected_canonical_sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "Identify the approved isolated Runner runtime adapter and its source/runtime ownership. Wire the existing profile and egress primitives to actual Moli launch, listener, resolver/socket, redirect and cleanup hooks while retaining the Chromium-only guard. Then implement W3 receipt/settlement/cancellation/cleanup against that real boundary. Continue W4 artifact provenance and complete notices review when exact deployed target artifacts and inventory are available.",
+    "next_action": "Implement the smallest real Runner-owned Moli runtime boundary under the existing worker_jobs/Runner ownership: per-attempt process and profile, filesystem/credential separation, private CDP access that blocks WebDriver/BiDi bypass, resource limits, and connection-time destination/redirect policy. Keep the Moli protocol guard and production dispatch disabled. Then connect one synthetic worker_jobs attempt through actual Moli navigation, extraction, receipt, terminal settlement, cancellation, and cleanup. Resolve W4 provenance/notices separately.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
-    "reactivation_predicate": "A specific approved isolated runtime adapter and its source/runtime owner are available, with testable process launch, loopback CDP-only listener, resolved-IP pinning across redirects, receipt emission, cancellation, and profile cleanup hooks.",
-    "resume_point": "Canonical integration SHA eec45036091f1f43a215a46c643007f9f2c4ff44 includes W2 hardening PR #514 (merge SHA 74554a9317b506886bde154166e7750986e3b83e): validate absolute nonsymlink Runner-owned private profile data roots and recheck canonical identity/permissions. On eec4503, Rust isolation tests 5/5 and Chromium-only Runner guard 1/1 pass. Existing W3 executor suite passed 4/4 on 74554a9; rerun on eec4503 could not start because Vitest dependencies are absent in the clean isolated worktree. W3 inspection confirms no real Moli runtime, receipt, cancellation, or cleanup hooks; no synthetic E2E was added. W4 remains open: pinned prototype advisories still apply, publisher provenance/deployed target inventory and complete license-notice review are unresolved. W0/W1 closed. Chromium remains production default and Moli production dispatch remains disabled. Evidence: specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md.",
+    "reactivation_predicate": "A Runner-owned launcher has executable tests proving per-attempt filesystem/profile separation, loopback/private CDP access with no unauthorized WebDriver/BiDi exposure, bounded resource use, and egress enforcement; Moli remains disabled until those checks pass.",
+    "resume_point": "W0/W1 remain closed. PR #527 added only a cfg(test) Linux namespace harness (merge b7cb32964c9a8047162971ef4d0c8ee59cc77c7b). PR #531 (23e2601) added cancellable Runner-owned Chromium execution and cleanup receipts; PR #534 (12a20dc) capped active browser execution at one per Runner; PR #538 (434d494) completed cancellation binding comparisons. On exact main SHA 434d494, cargo fmt/check and eight focused Rust tests passed (evidence: specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md). This is not a Moli execution test. W2 remains open because no production Moli launcher/filesystem boundary/private listener/egress/resource enforcement is wired. W3 remains open because no real Moli job traverses receipts and settlement. W4 remains open: all 11 advisory records still apply to the pinned graph and provenance/deployed target inventory/notices are unresolved. W5/W6/W7 remain unrun. Chromium is production default and Moli dispatch remains disabled.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -331,7 +357,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -374,9 +400,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+    "canonical_sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:57:50Z"
+    "integrated_at": "2026-10-10T10:05:21Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -786,7 +812,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:59:00.161674Z",
+  "updated_at": "2026-10-10T10:10:44.048492Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -855,13 +881,23 @@
         "profile": "quick",
         "result": "PASS",
         "sha": "74554a9317b506886bde154166e7750986e3b83e"
+      },
+      {
+        "exit_code": 0,
+        "passed": 8,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md",
+        "profile": "package",
+        "result": "PASS",
+        "scope": "Rust Runner formatting, library check, browser cancellation/process cleanup/capacity/Moli guard focused tests",
+        "sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
+        "test_files": 2
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
+    "sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
     "status": "PARTIAL",
     "task_regressions": []
   }
