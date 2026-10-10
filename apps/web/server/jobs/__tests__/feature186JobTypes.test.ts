@@ -17,6 +17,16 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
     expect(isPostgresNodeJobType("gdrive.edit_session_cleanup")).toBe(true);
   });
 
+  it("admits both AutoTeam recovery jobs through the registered canonical worker path", () => {
+    for (const jobType of ["auto-team.recovery.scan", "auto-team.recovery.evaluate"]) {
+      expect(isPostgresNodeJobType(jobType)).toBe(true);
+      expect(defaultJobExecutorRegistry.resolve(
+        jobType,
+        jobType === "auto-team.recovery.evaluate" ? "auto-team-recovery-v1" : "feature-186-v1",
+      )).toBeDefined();
+    }
+  });
+
   it("routes Research Notes summaries to the server-owned canonical worker executor", () => {
     expect(isPostgresNodeJobType("research_notes.summarize")).toBe(true);
     expect(defaultJobExecutorRegistry.resolve("research_notes.summarize", "mini-app-research-v1")).toBeDefined();

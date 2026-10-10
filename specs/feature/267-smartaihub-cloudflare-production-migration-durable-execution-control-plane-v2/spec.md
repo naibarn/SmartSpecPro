@@ -2054,6 +2054,10 @@ AMBIGUOUS_EXTERNAL_EFFECT
 
 or another explicitly governed state.
 
+## 17.9 Dependency-cycle recovery
+
+The canonical job control plane SHALL inspect no more than 128 unresolved dependency nodes during a claim-time cycle check. It SHALL fail the claim root with reason `dependency_cycle`, request operator review, and emit one idempotent `FAILED` event only when that bounded scan proves a dependency cycle. If the scan reaches its budget without proof, or otherwise cannot establish a cycle, the job SHALL remain queued or waiting; independent claimable jobs MUST remain eligible to proceed.
+
 Provider integrations that lack sufficient recovery observability MAY be restricted to lower-risk job classes until a compensating control is certified.
 
 # 18. Artifact reliability

@@ -90,7 +90,7 @@ describe("AutoTeam recovery evaluation job contract", () => {
     mockGetRun
       .mockResolvedValueOnce(run)
       .mockResolvedValueOnce({ ...run, runtimeState: { currentStep: "review", version: 3 } });
-    mockSweepPendingAutoTeamRuns.mockResolvedValue(1);
+    mockSweepPendingAutoTeamRuns.mockResolvedValue({ actionsDispatched: 1, usefulWorkVerified: true, usefulWorkEvidence: ["assistant_turn_persisted"] });
     const stateFingerprint = fingerprintAutoTeamRecoveryState(run);
     const definition = buildAutoTeamRecoveryEvaluationJob({
       tenantId: "tenant-1",
@@ -110,6 +110,7 @@ describe("AutoTeam recovery evaluation job contract", () => {
       runId: run.id,
       actionsDispatched: 1,
       recoveryVerified: true,
+      usefulWorkEvidence: ["assistant_turn_persisted"],
     });
   });
 
@@ -121,7 +122,7 @@ describe("AutoTeam recovery evaluation job contract", () => {
       runtimeState: { autoTeamMediaPipeline: { status: "waiting_for_video_tasks" } },
     };
     mockGetRun.mockResolvedValue(waitingRun);
-    mockSweepPendingAutoTeamRuns.mockResolvedValue(0);
+    mockSweepPendingAutoTeamRuns.mockResolvedValue({ actionsDispatched: 0, usefulWorkVerified: false, usefulWorkEvidence: [] });
     const stateFingerprint = fingerprintAutoTeamRecoveryState(waitingRun);
     const definition = buildAutoTeamRecoveryEvaluationJob({
       tenantId: "tenant-1",

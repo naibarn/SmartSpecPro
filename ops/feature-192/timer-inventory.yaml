@@ -96,10 +96,10 @@ entries:
     source: apps/web/server/services/autoTeamMediaCompletionService.ts
     disposition: external-cloudflare-scheduler
     job_types: [team.media_reconcile]
-  - initializer: startAutoTeamRecoverySweep
-    source: apps/web/server/services/autoTeamRecoveryService.ts
-    disposition: external-cloudflare-scheduler
-    job_types: [team.run_recovery]
+  - initializer: initializeAutoTeamRecoveryScanJob
+    source: apps/web/server/jobs/autoTeamRecoveryScanJob.ts
+    disposition: canonical-control-plane
+    job_types: [auto-team.recovery.scan]
   - initializer: startMcpStaleMediaTaskReconciler
     source: apps/web/server/services/mcpMediaAdapter.ts
     disposition: external-cloudflare-scheduler
