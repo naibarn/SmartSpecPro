@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import postgres from "postgres";
 import { closeDb } from "../../db";
@@ -23,6 +23,8 @@ describe("AutoTeam recovery scheduler persistence", () => {
     }
     const fixture = await createSpec277DisposablePostgres();
     const client = postgres(fixture.databaseUrl, { max: 2, connect_timeout: 3 });
+    let interruptedWorker: ReturnType<typeof spawn> | null = null;
+    let interruptedExit: Promise<[number | null, NodeJS.Signals | null]> | null = null;
     try {
       await fixture.assertOwned();
       await installSpec277AutoTeamRuntimeSchema(client);
@@ -123,16 +125,58 @@ describe("AutoTeam recovery scheduler persistence", () => {
       expect(counts).toMatchObject({ occurrences: 1, jobs: 1, outbox_rows: 1 });
 
       const childScript = "scripts/auto-team-recovery-scheduler-child.ts";
+      childEnv.FEATURE_186_LEASE_SHORT_MS = "10000";
       const runChild = async (mode: string) => {
         try {
           await exec(process.execPath, ["--import", "tsx", childScript, mode], {
-            cwd: process.cwd(), env: childEnv, timeout: 15_000, maxBuffer: 64 * 1024,
+            cwd: process.cwd(), env: childEnv, timeout: 35_000, maxBuffer: 64 * 1024,
           });
         } catch (error) {
           const childError = error as { stderr?: string; stdout?: string; message?: string };
           throw new Error(`SPEC277_${mode.toUpperCase()}_CHILD_FAILED: ${childError.stderr ?? childError.stdout ?? childError.message}`);
         }
       };
+      interruptedWorker = spawn(process.execPath, ["--import", "tsx", childScript, "interrupt"], {
+        cwd: process.cwd(), env: childEnv, stdio: ["ignore", "ignore", "pipe"],
+      });
+      interruptedExit = new Promise(resolveExit => {
+        interruptedWorker!.once("exit", (code, signal) => resolveExit([code, signal]));
+      });
+      let interruptedStderr = "";
+      const checkpointPersisted = await new Promise<boolean>((resolveCheckpoint, rejectCheckpoint) => {
+        const timeout = setTimeout(() => rejectCheckpoint(new Error("SPEC277_SIGKILL_CHECKPOINT_TIMEOUT")), 10_000);
+        interruptedWorker.once("error", error => {
+          clearTimeout(timeout);
+          rejectCheckpoint(error);
+        });
+        interruptedWorker.once("exit", (code, signal) => {
+          if (!interruptedStderr.includes("SPEC277_SCAN_CHECKPOINT_PERSISTED")) {
+            clearTimeout(timeout);
+            rejectCheckpoint(new Error(`SPEC277_SIGKILL_WORKER_EXITED_EARLY:${code}:${signal}:${interruptedStderr}`));
+          }
+        });
+        interruptedWorker.stderr.on("data", chunk => {
+          interruptedStderr += chunk.toString();
+          if (interruptedStderr.includes("SPEC277_SCAN_CHECKPOINT_PERSISTED")) {
+            clearTimeout(timeout);
+            resolveCheckpoint(true);
+          }
+        });
+      });
+      expect(checkpointPersisted).toBe(true);
+      expect(interruptedWorker.kill("SIGKILL")).toBe(true);
+      const [, killSignal] = await interruptedExit;
+      expect(killSignal).toBe("SIGKILL");
+      const [persistedCheckpoint] = await client.unsafe(`
+        SELECT status, attempt, "progressJson" ->> 'stage' AS stage,
+               "leaseExpiresAt" AS lease_expires_at
+        FROM worker_jobs WHERE id = $1
+      `, [first.job_id]);
+      expect(persistedCheckpoint).toMatchObject({ status: "running", attempt: 1, stage: "scan_checkpoint" });
+      const leaseExpiredAt = new Date(persistedCheckpoint.lease_expires_at).getTime();
+      while (Date.now() <= leaseExpiredAt) await new Promise(resolve => setTimeout(resolve, 50));
+      expect(Date.now()).toBeGreaterThan(leaseExpiredAt);
+      await runChild("recover");
       await runChild("scan");
       const [queuedEvaluation] = await client.unsafe(`
         SELECT id, "inputJson" ->> 'runId' AS run_id
@@ -157,7 +201,7 @@ describe("AutoTeam recovery scheduler persistence", () => {
         FROM worker_jobs WHERE id = $1
       `, [queuedEvaluation.id]);
       const [scanJob] = await client.unsafe(`
-        SELECT status FROM worker_jobs WHERE id = $1
+        SELECT status, attempt FROM worker_jobs WHERE id = $1
       `, [first.job_id]);
       expect(runAfterEvaluation).toMatchObject({
         status: "paused",
@@ -173,9 +217,29 @@ describe("AutoTeam recovery scheduler persistence", () => {
       expect(futureApproval.stop_reason).toBe("awaiting_human_choice");
       expect(Date.parse(futureApproval.choice_deadline)).toBeGreaterThan(Date.now());
       expect(evaluationJob).toMatchObject({ status: "succeeded", outcome: "resource_scheduling" });
-      expect(scanJob.status).toBe("succeeded");
+      expect(scanJob).toMatchObject({ status: "succeeded", attempt: 2 });
+      const attempts = await client.unsafe(`
+        SELECT attempt, "leaseGeneration" AS lease_generation,
+               "terminalClass" AS terminal_class, "recoveryReason" AS recovery_reason
+        FROM worker_job_attempts WHERE "workerJobId" = $1 ORDER BY attempt
+      `, [first.job_id]);
+      expect(attempts).toHaveLength(2);
+      expect(attempts[0]).toMatchObject({ terminal_class: "retryable", recovery_reason: "lease_expired" });
+      expect(Number(attempts[1].lease_generation)).toBeGreaterThan(Number(attempts[0].lease_generation));
+      const [recoveredEvents] = await client.unsafe(`
+        SELECT COUNT(*)::int AS count FROM worker_job_events
+        WHERE "workerJobId" = $1 AND "eventType" = 'RECOVERED'
+      `, [first.job_id]);
+      expect(recoveredEvents.count).toBeGreaterThanOrEqual(1);
       const [allJobs] = await client.unsafe(`SELECT COUNT(*)::int AS count FROM worker_jobs`);
       expect(allJobs.count).toBe(2);
+      const [checkpointEvent] = await client.unsafe(`
+        SELECT COUNT(*)::int AS count
+        FROM worker_job_events
+        WHERE "workerJobId" = $1 AND "eventType" = 'PROGRESS'
+          AND "payloadJson" ->> 'stage' = 'scan_checkpoint'
+      `, [first.job_id]);
+      expect(checkpointEvent.count).toBe(1);
       const [workerLifecycle] = await client.unsafe(`
         SELECT COUNT(DISTINCT job.id)::int AS job_count,
                COUNT(DISTINCT attempt.id)::int AS attempt_count,
@@ -187,12 +251,16 @@ describe("AutoTeam recovery scheduler persistence", () => {
         LEFT JOIN worker_job_events event ON event."workerJobId" = job.id
         WHERE job."jobType" IN ('auto-team.recovery.scan', 'auto-team.recovery.evaluate')
       `);
-      expect(workerLifecycle).toMatchObject({ job_count: 2, attempt_count: 2, outbox_count: 2 });
+      expect(workerLifecycle).toMatchObject({ job_count: 2, attempt_count: 3, outbox_count: 3 });
       expect(Number(workerLifecycle.event_count)).toBeGreaterThanOrEqual(10);
     } finally {
+      if (interruptedWorker && interruptedWorker.exitCode === null && interruptedWorker.signalCode === null) {
+        interruptedWorker.kill("SIGKILL");
+        await interruptedExit;
+      }
       await closeDb();
       await client.end({ timeout: 2 });
       await fixture.close();
     }
-  }, 60_000);
+  }, 90_000);
 });
