@@ -46,6 +46,11 @@ jobs:
           fi
           test -n "$(find /usr/lib/postgresql -type f -name initdb -print -quit)"
           test -n "$(find /usr/lib/postgresql -type f -name pg_ctl -print -quit)"
+      - name: Build the worker runtime schema entrypoint
+        working-directory: packages/remotion-render
+        run: |
+          mkdir -p dist
+          pnpm exec esbuild src/remotionRenderVideoSchema.ts --bundle --platform=neutral --format=esm --target=es2022 --external:zod --outfile=dist/remotionRenderVideoSchema.js
       - name: Run isolated SPEC-267 native PostgreSQL recovery tests
         working-directory: apps/web
         env:
