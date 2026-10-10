@@ -45,6 +45,14 @@ describe("Moli browser engine rollout gates", () => {
     })).toEqual({ engine: "moli", reason: "MOLI_EXPLICITLY_ENABLED" });
   });
 
+  it("hard-pins production selection to Chromium for Phase 1", () => {
+    expect(selectBrowserEngine({
+      moliEligible: true,
+      environment: "production",
+      flags: { moli_enabled: true, moli_shadow_mode: false, moli_production_enabled: true },
+    })).toEqual({ engine: "chromium", reason: "MOLI_PRODUCTION_DISABLED_PHASE1" });
+  });
+
   it("parses only explicit truthy flag values", () => {
     expect(readMoliFeatureFlags({
       moli_enabled: "TRUE",

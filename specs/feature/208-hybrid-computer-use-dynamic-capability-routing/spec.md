@@ -2,7 +2,7 @@
 
 **Status:** Architecture Freeze Candidate / Ready for Implementation  
 **Spec ID:** 208  
-**Revision:** 7 — Carries Revision 6 forward and records Phase 0 Moli source pinning, SBOM/security findings, and prototype protocol evidence; production remains Chromium-only and Moli is not wired to the job executor
+**Revision:** 8 — Records Phase 1 CDP isolation hardening and verification; Moli remains unintegrated with Runner and production remains Chromium-only
 **Date:** 2026-10-08
 **Suggested repository path:** `specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md`  
 **Primary systems:** SmartAIHub Web, Universal AI Assistant, Feature 196 Goal Orchestrator, Feature 195 Unified Async Job Control Plane, Feature 197 Runner Adaptive Execution Fabric, Capability Registry/Resolver, Approval Service, Spec 207 Economic Control Plane, Spec 209 AI Workflow Studio, Spec 210 Orca Runtime Adapter under Spec 200/206, SmartAIHub Runner, SmartAIHub Worker App, Library/Asset Gateway  
@@ -98,6 +98,12 @@ The benchmark corpus, case mix, resource admission, report schema, and implement
 ### Revision 7 — Phase 0 evidence update
 
 The pinned upstream release, source/artifact digests, CycloneDX inventory, OSV query results, and bounded CDP/WebDriver smoke evidence are recorded in [`moli-phase0-prototype-2026-10-08.md`](moli-phase0-prototype-2026-10-08.md). The OSV scan returned unresolved advisories and the smoke test found that WebDriver sessions on one Moli server share storage; only separate CDP BrowserContexts isolated the tested local storage. These findings do not satisfy the security, isolation, Runner integration, or rollout gates. Chromium remains the only browser engine dispatched by the current job executor. Moli is disabled and production use remains No-Go.
+
+### Revision 8 — Phase 1 security hardening and verification
+
+Phase 1 adds job-attempt identity bindings, lease/deadline revalidation, cleanup failure receipts, a production hard pin to Chromium, and CDP isolation tests across storage surfaces and independent Moli processes. WebDriver is not an accepted isolation path: Phase 0 observed shared `localStorage` between WebDriver sessions on one server, and Phase 1 does not dispatch WebDriver. The pinned `moli serve` endpoint nevertheless exposes CDP, WebDriver Classic, and BiDi on the same listener, with no CLI switch to disable the latter protocols. Therefore application-level CDP-only use is not proof that the runtime listener is CDP-only; production Runner integration must enforce a CDP-only network boundary or remain disabled. The detailed evidence and unresolved gates are in [`moli-phase1-security-runner-verification-2026-10-08.md`](moli-phase1-security-runner-verification-2026-10-08.md).
+
+The Phase 1 adapter remains an experimental CDP-only prototype. It is not connected to the actual `worker_jobs` dispatch or Rust Runner. The Runner is present in this repository; the Phase 0 statement that its paired process was outside the checkout was inaccurate and is corrected in the Phase 1 evidence. Runner cancellation for browser jobs, live lease/fencing integration, enforced egress, and durable cleanup receipts remain prerequisites to a vertical slice. The 11 OSV records (7 distinct advisory issues) and provenance/license gaps remain unresolved, so production stays No-Go. No benchmark measurements have been executed.
 
 # 1. Executive Summary
 
