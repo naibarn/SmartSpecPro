@@ -30,7 +30,7 @@
     {"id":"AC-27","event":"dependency_wake_resume","facts":{"predicate_revalidated":true,"outbox_available":true},"expected":"RESUME_IDEMPOTENTLY"},
     {"id":"AC-28","event":"local_blocker_with_independent_work","facts":{"blocker_scoped":true,"independent_work":true},"expected":"ISOLATE_BLOCKER_AND_CONTINUE"},
     {"id":"AC-29","event":"unauthorized_action","facts":{"independent_work":true},"expected":"DENY_AND_CONTINUE_SAFE_WORK"},
-    {"id":"AC-30","event":"safe_pr_integration","facts":{"fast_gate_passed":true,"base_reconciled":true,"non_force_path":true},"expected":"INTEGRATE_NORMAL_PATH"},
+    {"id":"AC-30","event":"safe_pr_integration","facts":{"fast_gate_passed":true,"required_checks_passed":true,"base_reconciled":true,"non_force_path":true,"slice_independently_mergeable":true,"merge_authority_confirmed":true,"merge_critical_section_serialized":true,"main_buildable":true},"expected":"INTEGRATE_NORMAL_PATH"},
     {"id":"AC-31","event":"exact_sha_build","facts":{"source_sha":"sha-1","requested_sha":"sha-1","canonical_ancestor":true,"canonical_advanced":false},"expected":"BUILD_EXACT_SHA"},
     {"id":"AC-32","event":"exact_sha_build","facts":{"source_sha":"sha-1","requested_sha":"sha-1","canonical_ancestor":true,"canonical_advanced":true},"expected":"MARK_STALE_AND_REBUILD"},
     {"id":"AC-33","event":"missing_optional_runner","facts":{"compatible_fallback":false,"verification_optional":true},"expected":"WAITING_CAPABILITY"},
@@ -38,6 +38,9 @@
     {"id":"AC-35","event":"unauthorized_action","facts":{"independent_work":false},"expected":"DENY_AND_WAIT_AUTHORITY"},
     {"id":"AC-36","event":"concurrent_writer_collision","facts":{"isolated_workspace_available":false},"expected":"SERIALIZE_OWNED_PATH"},
     {"id":"AC-37","event":"exact_sha_build","facts":{"source_sha":"sha-other","requested_sha":"sha-1","canonical_ancestor":false,"canonical_advanced":false},"expected":"REJECT_SOURCE"},
-    {"id":"AC-38","event":"dependency_wake_resume","facts":{"predicate_revalidated":false,"outbox_available":true},"expected":"KEEP_WAITING_WITH_FALLBACK"}
+    {"id":"AC-38","event":"dependency_wake_resume","facts":{"predicate_revalidated":false,"outbox_available":true},"expected":"KEEP_WAITING_WITH_FALLBACK"},
+    {"id":"AC-39","event":"safe_pr_integration","facts":{"fast_gate_passed":true,"required_checks_passed":false,"base_reconciled":true,"non_force_path":true,"slice_independently_mergeable":true,"merge_authority_confirmed":true,"merge_critical_section_serialized":true,"main_buildable":true},"expected":"REPAIR_OR_RECONCILE"},
+    {"id":"AC-40","event":"safe_pr_integration","facts":{"fast_gate_passed":true,"required_checks_passed":true,"base_reconciled":true,"non_force_path":true,"slice_independently_mergeable":true,"merge_authority_confirmed":true,"merge_critical_section_serialized":true,"main_buildable":false,"baseline_failure_classified":true,"task_regression":false,"impact_analysis_disjoint":true},"expected":"INTEGRATE_NORMAL_PATH"},
+    {"id":"AC-41","event":"safe_pr_integration","facts":{"fast_gate_passed":true,"required_checks_passed":true,"base_reconciled":true,"non_force_path":true,"slice_independently_mergeable":true,"merge_authority_confirmed":true,"merge_critical_section_serialized":true,"main_buildable":false,"baseline_failure_classified":true,"task_regression":true,"impact_analysis_disjoint":true},"expected":"REPAIR_OR_RECONCILE"}
   ]
 }

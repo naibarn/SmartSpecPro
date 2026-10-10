@@ -20,7 +20,7 @@ SCENARIOS = ROOT / "skills/orchestra/references/autonomous-completion-scenarios.
 class AutonomousCompletionPolicyTests(unittest.TestCase):
     def test_required_scenarios(self):
         cases = json.loads(SCENARIOS.read_text(encoding="utf-8"))["scenarios"]
-        self.assertEqual(38, len(cases))
+        self.assertEqual(41, len(cases))
         for case in cases:
             with self.subTest(case=case["id"]):
                 self.assertEqual(case["expected"], decide_closure(case))
@@ -184,6 +184,103 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
             with self.subTest(regression=label):
                 self.assertEqual(expected, decide_closure({"event": event, "facts": facts}))
         self.assertEqual("TRUE_BLOCKER", classify_failure("CRITICAL_SECURITY_ACCEPTANCE"))
+
+    def test_safe_pr_integration_requires_slice_readiness_and_all_merge_controls(self):
+        required_facts = {
+            "fast_gate_passed": True,
+            "required_checks_passed": True,
+            "base_reconciled": True,
+            "non_force_path": True,
+            "slice_independently_mergeable": True,
+            "merge_authority_confirmed": True,
+            "merge_critical_section_serialized": True,
+            "main_buildable": True,
+        }
+        self.assertEqual(
+            "INTEGRATE_NORMAL_PATH",
+            decide_closure({"event": "safe_pr_integration", "facts": required_facts}),
+        )
+        for missing_gate in required_facts:
+            with self.subTest(missing_gate=missing_gate):
+                facts = dict(required_facts)
+                facts.pop(missing_gate)
+                self.assertEqual(
+                    "REPAIR_OR_RECONCILE",
+                    decide_closure({"event": "safe_pr_integration", "facts": facts}),
+                )
+        for failed_gate in required_facts:
+            with self.subTest(failed_gate=failed_gate):
+                facts = dict(required_facts, **{failed_gate: False})
+                self.assertEqual(
+                    "REPAIR_OR_RECONCILE",
+                    decide_closure({"event": "safe_pr_integration", "facts": facts}),
+                )
+        unrelated_baseline_failure = dict(
+            required_facts,
+            main_buildable=False,
+            baseline_failure_classified=True,
+            task_regression=False,
+            impact_analysis_disjoint=True,
+        )
+        self.assertEqual(
+            "INTEGRATE_NORMAL_PATH",
+            decide_closure({"event": "safe_pr_integration", "facts": unrelated_baseline_failure}),
+        )
+        unrelated_baseline_failure["task_regression"] = True
+        self.assertEqual(
+            "REPAIR_OR_RECONCILE",
+            decide_closure({"event": "safe_pr_integration", "facts": unrelated_baseline_failure}),
+        )
+
+    def test_open_spec_slice_integrates_then_resumes_next_ready_workunit(self):
+        integration_facts = {
+            "fast_gate_passed": True,
+            "required_checks_passed": True,
+            "base_reconciled": True,
+            "non_force_path": True,
+            "slice_independently_mergeable": True,
+            "merge_authority_confirmed": True,
+            "merge_critical_section_serialized": True,
+            "main_buildable": True,
+            "parent_spec_status": "OPEN",
+            "workunit_status": "VERIFIED",
+        }
+        self.assertEqual(
+            "INTEGRATE_NORMAL_PATH",
+            decide_closure({"event": "safe_pr_integration", "facts": integration_facts}),
+        )
+
+        merged_sha = "canonical-after-workunit-1"
+        next_unit = {
+            "id": "WU-2",
+            "status": "READY",
+            "prerequisites": ["WU-1"],
+            "completion_predicate": {"kind": "evidence_exists", "locator": "evidence/wu-2.json"},
+        }
+        completed_unit = {
+            "id": "WU-1",
+            "status": "COMPLETE",
+            "completion_evidence": ["evidence/wu-1.json"],
+            "evidence_fresh": True,
+            "canonical_sha": merged_sha,
+        }
+        continuation = decide_closure({
+            "event": "resume_after_checkpoint",
+            "facts": {
+                "canonical_sha": merged_sha,
+                "reconciled_canonical_sha": merged_sha,
+                "evidence_fresh": True,
+                "workunits": [next_unit],
+                "completed_workunits": [completed_unit],
+            },
+        })
+        self.assertEqual("RESUME_NEXT_READY", continuation)
+        self.assertEqual(
+            "WU-2",
+            next_ready_workunit(
+                [next_unit], completed_workunits=[completed_unit], canonical_sha=merged_sha
+            ),
+        )
 
 
 if __name__ == "__main__":

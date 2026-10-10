@@ -90,6 +90,14 @@ canonical SHA, then start the next ready slice from that new baseline. If
 post-merge checks identify a regression, pause only further integration,
 repair or revert through the established recovery path, and then continue.
 
+The merge decision must have explicit evidence for slice readiness, all
+repository-required checks, current-base reconciliation, normal non-force
+promotion, merge authority, and serialization of the merge-critical section
+(or the configured merge queue). Main health must either be buildable or have
+a classified pre-existing failure proven unrelated by change-impact analysis;
+a task-caused regression always blocks another integration until recovery.
+These checks apply to each WorkUnit regardless of its SPEC's lifecycle state.
+
 ## Shared states
 
 Use `DISCOVERING`, `WORKING`, `CHECKPOINT_READY`, `CANONICALIZING`, `PARTIAL_INTEGRATED`, `CONTINUATION_REQUIRED`, `WAITING_DEPENDENCY`, `WAITING_EXTERNAL`, `WAITING_RESOURCE`, `WAITING_CAPABILITY`, `WAITING_APPROVAL`, `WAITING_CANONICAL_ARTIFACT`, `IMPLEMENTATION_COMPLETE`, `VALIDATION_PENDING`, `VALIDATING`, `REPAIR_REQUIRED`, `VERIFIED`, `RELEASE_READY`, `DEPLOYING`, `DEPLOYED`, `BLOCKED_RECOVERABLE`, `FAILED_TERMINAL`, and `CANCELLED` consistently. `PARTIAL_INTEGRATED` and valid `WAITING_*` states are non-terminal.

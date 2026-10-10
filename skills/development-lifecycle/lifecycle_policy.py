@@ -289,7 +289,22 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     if event == "dirty_canonical_checkout":
         return "PRESERVE_AND_VERIFY_ISOLATED" if facts.get("exact_sha_workspace_available") else "PRESERVE_AND_WAIT"
     if event == "safe_pr_integration":
-        return "INTEGRATE_NORMAL_PATH" if facts.get("fast_gate_passed") and facts.get("base_reconciled") and facts.get("non_force_path") else "REPAIR_OR_RECONCILE"
+        baseline_health_assessed = facts.get("main_buildable") is True or (
+            facts.get("baseline_failure_classified") is True
+            and facts.get("task_regression") is False
+            and facts.get("impact_analysis_disjoint") is True
+        )
+        required_controls = (
+            "fast_gate_passed",
+            "required_checks_passed",
+            "base_reconciled",
+            "non_force_path",
+            "slice_independently_mergeable",
+            "merge_authority_confirmed",
+            "merge_critical_section_serialized",
+        )
+        ready = baseline_health_assessed and all(facts.get(key) is True for key in required_controls)
+        return "INTEGRATE_NORMAL_PATH" if ready else "REPAIR_OR_RECONCILE"
     if event == "exact_sha_build":
         if facts.get("source_sha") != facts.get("requested_sha") or not facts.get("canonical_ancestor"):
             return "REJECT_SOURCE"
