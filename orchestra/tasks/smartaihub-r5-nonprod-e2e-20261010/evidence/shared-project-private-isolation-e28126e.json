@@ -1,0 +1,59 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 SPEC-269 shared Project memory isolation",
+  "sourceSha": "e28126ea7d63e3a4fc40e4f4e9e8deb219ae9375",
+  "canonicalBaselineSha": "90106662c54ebc42bf7f02500ca714b9aa3ccec4",
+  "finding": {
+    "baselineReproduction": "At the baseline runtime SHA, the new persisted two-user case failed: user B, despite an active Project membership, received user A's private memory tagged with the shared Project.",
+    "rootCause": "searchGraphMemories ORed projectId/source relationship matches with the owner-scope filter, allowing relationship matches to bypass memory ownership.",
+    "fix": "Graph relationship conditions now execute inside buildScopeFilter's tenant and owner boundary."
+  },
+  "verification": {
+    "persistedCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+    "persistedResult": { "status": "PASS", "testFiles": 1, "tests": 4 },
+    "regressionCommand": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/scopedMemoryService.test.ts server/services/__tests__/scopedMemoryTeamRoomPromptPolicy.test.ts server/services/__tests__/teamRoomMemoryPolicy.test.ts server/services/__tests__/promptComposer.test.ts server/services/__tests__/promptComposer.enhanced.test.ts server/services/__tests__/contextBuilder.test.ts server/services/__tests__/projectResolutionAuthority.test.ts server/services/__tests__/integration/memoryScopeIsolation.test.ts server/services/__tests__/appIngressMemoryRuntime.test.ts server/services/__tests__/trustedAppRouteAssertion.test.ts",
+    "regressionResult": { "status": "PASS", "testFiles": 10, "tests": 157 },
+    "postIntegrationVerification": {
+      "canonicalSha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
+      "verifiedAt": "2026-10-10T09:18:32Z",
+      "persistedStatus": "PASS",
+      "persistedTestFiles": 1,
+      "persistedTests": 4,
+      "regressionStatus": "PASS",
+      "regressionTestFiles": 10,
+      "regressionTests": 157
+    },
+    "database": {
+      "name": "miniapp_r5_test",
+      "engine": "PostgreSQL 17.11",
+      "container": "smartaihub-r5-pg17-20261010",
+      "loopbackPort": 32784,
+      "syntheticFixturesOnly": true,
+      "schema": "Curated R5 current-schema test projection; no historical full migration chain"
+    },
+    "externalProviderCalls": 0
+  },
+  "reviewedSecurityLenses": [
+    "Tenant predicate remains mandatory in buildScopeFilter",
+    "Owner type and owner ID scopes are applied before graph relationship matching",
+    "Project ID no longer forms an OR branch that can bypass ownership",
+    "Authorized shared Project rows remain retrievable through the canonical Project owner scope",
+    "Private user-owned Project memory is not visible to another Project member",
+    "Revoking the second user's current membership removes Project memory on the next prompt build",
+    "Global user memory remains available after Project membership revocation",
+    "Cross-tenant App-context mismatch still excludes Project scoped and entity memory",
+    "App-Project binding revocation remains denied by fresh receipt validation",
+    "Conversation retargeting to an unbound Project and NO_PROJECT remain Global-only",
+    "Structured and hybrid retrieval keep their existing owner-scope filter",
+    "Team-room promotion exclusion remains an AND constraint over graph results",
+    "Empty relationship conditions retain owner-scoped graph fallback behavior",
+    "Fixture cleanup constrains deletions to generated tenant/user/conversation identities",
+    "No schema migration, provider call, durable Project write, production ingress change, or protected dispatch"
+  ],
+  "limitations": [
+    "These are direct persisted acceptance cases, not completion of SPEC-269 T-01–T-23.",
+    "Authoritative App-private memory isolation remains open because the schema lacks an appId dimension.",
+    "Production ingress producer and deployed provenance remain unverified; test context is synthetic and server-side.",
+    "SPEC-271 WP2B worker restart/recovery and SPEC-302 durable Project writes remain unverified and fail-closed respectively."
+  ]
+}

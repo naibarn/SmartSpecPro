@@ -116,14 +116,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
+    "expected_canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "Implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation in the canonical Runner path; do not dispatch Moli until these boundaries have executable tests.",
+    "next_action": "Identify the approved isolated Runner runtime adapter and its source/runtime ownership. Wire the existing profile and egress primitives to actual Moli launch, listener, resolver/socket, redirect and cleanup hooks while retaining the Chromium-only guard. Then implement W3 receipt/settlement/cancellation/cleanup against that real boundary. Continue W4 artifact provenance and complete notices review when exact deployed target artifacts and inventory are available.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
-    "reactivation_predicate": "Paired Runner source/runtime and its authorization, egress-policy, audit, cancellation, and profile-cleanup interfaces are available for scoped integration.",
-    "resume_point": "W1 safe adapter baseline is integrated at PR #445 / fe5e04015b2b947d03d41ce800948582be40c721. Scoped TypeScript typecheck and focused tests were rerun against the unchanged W1 implementation at canonical SHA 890658e999cd3020d2944d5d7c898d5e52ec8f4f: typecheck exit 0, focused tests 15 passed and 2 live-runtime skips (exit 0). W1 safe additive baseline is closed. W2 process/profile, protocol/network, tenant isolation and W3 Runner lifecycle remain open; keep Moli undispatched and production disabled.",
+    "reactivation_predicate": "A specific approved isolated runtime adapter and its source/runtime owner are available, with testable process launch, loopback CDP-only listener, resolved-IP pinning across redirects, receipt emission, cancellation, and profile cleanup hooks.",
+    "resume_point": "Canonical integration SHA eec45036091f1f43a215a46c643007f9f2c4ff44 includes W2 hardening PR #514 (merge SHA 74554a9317b506886bde154166e7750986e3b83e): validate absolute nonsymlink Runner-owned private profile data roots and recheck canonical identity/permissions. On eec4503, Rust isolation tests 5/5 and Chromium-only Runner guard 1/1 pass. Existing W3 executor suite passed 4/4 on 74554a9; rerun on eec4503 could not start because Vitest dependencies are absent in the clean isolated worktree. W3 inspection confirms no real Moli runtime, receipt, cancellation, or cleanup hooks; no synthetic E2E was added. W4 remains open: pinned prototype advisories still apply, publisher provenance/deployed target inventory and complete license-notice review are unresolved. W0/W1 closed. Chromium remains production default and Moli production dispatch remains disabled. Evidence: specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -331,7 +331,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 33,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -374,9 +374,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
+    "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "integrated": true,
-    "integrated_at": "2026-10-10T02:26:58Z"
+    "integrated_at": "2026-10-10T08:57:50Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -387,7 +387,9 @@
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md",
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md",
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md",
-      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
     ],
     "updated_at": "2026-10-10T02:28:20Z"
   },
@@ -485,7 +487,9 @@
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md",
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md",
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md",
-        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
       ],
       "updated_at": "2026-10-10T02:28:20Z"
     }
@@ -782,7 +786,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:38:43.988632Z",
+  "updated_at": "2026-10-10T08:59:00.161674Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -835,6 +839,22 @@
         "sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
         "test_files": 1,
         "warning": "Cargo global last-use metadata write failed because root filesystem was full; test exit was 0"
+      },
+      {
+        "exit_code": 0,
+        "passed": 6,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md",
+        "profile": "package",
+        "result": "PASS",
+        "sha": "eec45036091f1f43a215a46c643007f9f2c4ff44"
+      },
+      {
+        "exit_code": 0,
+        "passed": 4,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md",
+        "profile": "quick",
+        "result": "PASS",
+        "sha": "74554a9317b506886bde154166e7750986e3b83e"
       }
     ],
     "freshness": "FRESH",

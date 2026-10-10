@@ -1,0 +1,46 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 SPEC-269 same-tenant App isolation",
+  "sourceSha": "0da2b4645ded429e72ba8e015937e08aad1f0588",
+  "canonicalBaselineSha": "c860e6eb0d2ec175210e1ed048c806f503732a51",
+  "command": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+  "result": {
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 4,
+    "directCases": [
+      "App A cannot read Project B memory when only App B is bound to Project B",
+      "App B with current tenant membership and Project binding can read Project B memory",
+      "Global scoped and entity memory remain available across the App mismatch",
+      "Project context restores after the test to avoid contaminating later cases"
+    ],
+    "database": "PostgreSQL 17.11, loopback-only miniapp_r5_test, synthetic fixture rows only",
+    "externalProviderCalls": 0
+  },
+  "postIntegrationVerification": {
+    "canonicalSha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
+    "verifiedAt": "2026-10-10T09:18:32Z",
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 4
+  },
+  "reviewedSecurityLenses": [
+    "Both Apps use the same canonical tenant",
+    "Each App has a unique canonical and public App identity",
+    "Project B has one current App binding, to App B",
+    "Project membership is current for the tested principal",
+    "App A context is rejected for Project B despite same-tenant identity",
+    "App B context authorizes only its bound Project B",
+    "Project A memory is excluded from App B Project B context",
+    "Project B entity memory is excluded from App A context",
+    "Global scoped and entity memories remain permitted under existing policy",
+    "Conversation retarget is reverted in finally even when an assertion fails",
+    "Cleanup remains restricted to generated tenant and fixture identities",
+    "No client Host headers, schema migration, durable write, deployment, or protected dispatch"
+  ],
+  "limitations": [
+    "This proves App-to-Project binding isolation for the persisted prompt path; it does not prove App-private memory isolation or close T-01.",
+    "Production ingress producer and deployed route provenance remain unverified; context is synthetic and server-side.",
+    "SPEC-269 T-01–T-23 remains partial."
+  ]
+}

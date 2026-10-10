@@ -2078,6 +2078,110 @@ describe("workerRegistryService", () => {
         expect.any(Date),
       );
     });
+
+    it("pages past ten capability-incompatible jobs and claims the next compatible job", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const incompatibleJobs = Array.from({ length: 10 }, (_, index) => hermesJob({
+        id: `job-${String(index).padStart(2, "0")}`,
+        priority: 30,
+      }));
+      const compatibleJob = hermesJob({
+        id: "job-10-compatible",
+        jobType: "hyperframes_final_composite",
+        priority: 29,
+        capabilityRequirementsJson: {},
+      });
+      const jobs = [...incompatibleJobs, compatibleJob];
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          status: "online",
+          capabilitiesJson: { workerApp: { sharingMode: "tenant" } },
+        }),
+        listClaimableJobs: vi.fn().mockImplementation(async (_tenant, _runtime, _team, _hints, options) => {
+          const cursor = options?.cursor;
+          const afterCursor = cursor
+            ? jobs.filter((job) => job.priority < cursor.priority
+              || (job.priority === cursor.priority && job.createdAt > cursor.createdAt)
+              || (job.priority === cursor.priority && job.createdAt.getTime() === cursor.createdAt.getTime() && job.id > cursor.id))
+            : jobs;
+          return afterCursor.slice(0, options?.limit ?? 10);
+        }),
+        tryClaimJob: vi.fn().mockImplementation(async (jobId: string) => jobId === compatibleJob.id
+          ? {
+              ...compatibleJob,
+              workerId: "worker-1",
+              status: "claimed",
+              leaseOwnerToken: "lease-compatible-1",
+              leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+            }
+          : null),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...compatibleJob, ...values })),
+      };
+
+      const result = await claimWorkerJob({
+        auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+        workerId: "worker-1",
+        payload: { maxJobs: 1, capabilityHints: [] },
+      }, { repo } as any);
+
+      expect(result.job?.id).toBe(compatibleJob.id);
+      expect(repo.listClaimableJobs).toHaveBeenCalledTimes(2);
+      expect(repo.tryClaimJob).not.toHaveBeenCalledWith(
+        incompatibleJobs[0].id,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(repo.tryClaimJob).toHaveBeenCalledWith(
+        compatibleJob.id,
+        "worker-1",
+        expect.any(String),
+        expect.any(Date),
+      );
+    });
+
+    it("bounds incompatible candidate scans and leaves every unclaimed job queued", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const jobs = Array.from({ length: 120 }, (_, index) => hermesJob({
+        id: `job-${String(index).padStart(3, "0")}`,
+        priority: 30,
+      }));
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          status: "online",
+          capabilitiesJson: { workerApp: { sharingMode: "tenant" } },
+        }),
+        listClaimableJobs: vi.fn().mockImplementation(async (_tenant, _runtime, _team, _hints, options) => {
+          const cursor = options?.cursor;
+          const afterCursor = cursor
+            ? jobs.filter((job) => job.priority < cursor.priority
+              || (job.priority === cursor.priority && job.createdAt > cursor.createdAt)
+              || (job.priority === cursor.priority && job.createdAt.getTime() === cursor.createdAt.getTime() && job.id > cursor.id))
+            : jobs;
+          return afterCursor.slice(0, options?.limit ?? 10);
+        }),
+        tryClaimJob: vi.fn(),
+      };
+
+      const result = await claimWorkerJob({
+        auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+        workerId: "worker-1",
+        payload: { maxJobs: 1, capabilityHints: [] },
+      }, { repo } as any);
+
+      expect(result.job).toBeNull();
+      expect(repo.listClaimableJobs).toHaveBeenCalledTimes(10);
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+      expect(jobs.every((job) => job.status === "queued")).toBe(true);
+    });
   });
 
   describe("Feature 135 section 12 — terminal audit enrichment", () => {

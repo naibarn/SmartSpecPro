@@ -1,0 +1,77 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 non-production persisted acceptance",
+  "runtimeSourceSha": "e14730f45c1b1ad436dd49ede6c973c8cfed7240",
+  "testHarness": "apps/web/server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts",
+  "bootstrap": "apps/web/scripts/smartaihub-r5-persisted-memory-bootstrap.sql",
+  "runner": "apps/web/scripts/test-smartaihub-r5-persisted-memory.sh",
+  "command": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+  "target": {
+    "database": "miniapp_r5_test",
+    "engine": "PostgreSQL 17.11",
+    "container": "smartaihub-r5-pg17-20261010",
+    "volume": "smartaihub-r5-pg17-data-20261010",
+    "loopbackPort": 32784,
+    "imageDigest": "sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d",
+    "syntheticDataOnly": true
+  },
+  "result": {
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 1,
+    "scenarios": [
+      {
+        "case": "authorized Project A context includes Project A and global scoped/entity memory, excludes Project B",
+        "status": "PASS"
+      },
+      {
+        "case": "revoked Project A membership removes Project A memory from built prompt while retaining global memory",
+        "status": "PASS"
+      },
+      {
+        "case": "revoked App-Project binding removes Project A memory from built prompt while retaining global memory",
+        "status": "PASS"
+      },
+      {
+        "case": "conversation retargeted to unbound Project B does not include Project A or Project B content",
+        "status": "PASS"
+      },
+      {
+        "case": "NO_PROJECT context includes global memory only",
+        "status": "PASS"
+      }
+    ],
+    "providerCalls": 0,
+    "embeddingProvider": "mocked null result; scoped retrieval and receipt validation remained real DB-backed runtime services",
+    "fixtureCleanup": "Test removes only rows under its unique synthetic tenant/user IDs."
+  },
+  "regression": {
+    "sourceSha": "e14730f45c1b1ad436dd49ede6c973c8cfed7240",
+    "testFiles": 7,
+    "tests": 115,
+    "status": "PASS",
+    "scope": "contextBuilder, projectResolutionAuthority, scopedMemoryService, canonicalProjectContextResolver, memoryScopeIsolation, appIngressMemoryRuntime, trustedAppRouteAssertion"
+  },
+  "securityReview": {
+    "lenses": [
+      "Runner refuses inherited DATABASE_URL and JWT_SECRET to avoid accidental credential/target reuse.",
+      "Runner requires SMARTAIHUB_R5_DATABASE_URL and an explicit disposable-database confirmation flag.",
+      "Runner and test both enforce loopback host plus the exact miniapp_r5_test database name.",
+      "JWT signing dependency receives only a fixed synthetic test secret inside the child process.",
+      "No historical migration journal, production endpoint, external provider, or production secret is used.",
+      "Tenant, user, App, Project, persona, conversation, and memory fixtures use unique synthetic IDs.",
+      "Project A read checks active tenant/user/App/project binding and current membership through the actual receipt authority.",
+      "Membership and App binding revocations are re-read before each Project-aware memory query.",
+      "Conversation retarget and NO_PROJECT use persisted conversation state and require global-only prompt content.",
+      "Cleanup is scoped to the test's unique synthetic tenant/user rows; no broad truncate or database reset occurs."
+    ],
+    "durableProjectWrites": "not invoked; production durable Project writes remain DENY",
+    "SPEC224ProtectedDispatch": "DENY; not invoked"
+  },
+  "limitations": [
+    "This proves the tested persisted App/Project prompt path for the synthetic server-side TrustedAppRuntimeContext; it does not prove a production ingress assertion producer or deployed ingress provenance.",
+    "App-private memory isolation remains unproven because current memory storage lacks an authoritative appId dimension; do not mark T-01 PASS.",
+    "These direct scenarios are evidence slices for T-02/T-03/T-04/T-05/T-18, not closure of the complete SPEC-269 T-01–T-23 matrix.",
+    "SPEC-271 WP2B receipt ownership, worker execution/recovery, scheduler useful-work completion, leases, and protected Runner binding remain untested."
+  ]
+}
