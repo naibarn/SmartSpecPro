@@ -1315,3 +1315,15 @@ defaultJobExecutorRegistry.register({
     return result;
   },
 });
+
+defaultJobExecutorRegistry.register({
+  jobType: "auto-team.recovery.evaluate",
+  executionClass: "long",
+  contractVersions: new Set(["auto-team-recovery-v1"]),
+  executor: async input => {
+    const { executeAutoTeamRecoveryEvaluation } = await import(
+      "./autoTeamRecoveryEvaluationExecutor"
+    );
+    return executeAutoTeamRecoveryEvaluation(input);
+  },
+});

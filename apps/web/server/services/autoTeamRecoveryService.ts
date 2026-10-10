@@ -1,15 +1,24 @@
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
-import { teamRooms, teamRuns } from "../../drizzle/schema";
+import { teamRooms, teamRuns, workerJobs } from "../../drizzle/schema";
 import * as runEngine from "./runEngine";
 import * as automationFabricService from "./workAutomationFabricService";
 import * as autoTeamMediaCompletionService from "./autoTeamMediaCompletionService";
 import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
+import { createCanonicalJobInTransaction } from "./jobControlPlane";
+import {
+  AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS,
+  buildAutoTeamRecoveryEvaluationJob,
+  fingerprintAutoTeamRecoveryState,
+} from "./autoTeamRecoveryEvaluationJob";
 
 const AUTO_TEAM_RECOVERY_INTERVAL_MS = 30_000;
 let recoveryTimer: ReturnType<typeof setInterval> | null = null;
 
-export async function sweepPendingAutoTeamRuns(): Promise<number> {
+export async function sweepPendingAutoTeamRuns(options: {
+  onlyRunId?: string;
+  expectedStateFingerprint?: string;
+} = {}): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 
@@ -38,6 +47,7 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
             "awaiting_async_media_pipeline",
           ]),
         ),
+        options.onlyRunId ? eq(teamRuns.id, options.onlyRunId) : undefined,
       ),
     )
     .orderBy(asc(teamRuns.startedAt), asc(teamRuns.id))
@@ -51,6 +61,12 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
 
     const currentRun = await runEngine.getRun(run.id, run.tenantId).catch(() => null);
     if (!currentRun) {
+      continue;
+    }
+    if (
+      options.expectedStateFingerprint &&
+      fingerprintAutoTeamRecoveryState(currentRun) !== options.expectedStateFingerprint
+    ) {
       continue;
     }
 
@@ -335,6 +351,145 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
   return resumed;
 }
 
+export function isRecoveryEvaluationEligible(
+  run: Awaited<ReturnType<typeof runEngine.getRun>>,
+  now: Date,
+): boolean {
+  if (!run || runEngine.hasQueuedAutoAdvance(run.id)) return false;
+  if (run.status === "running") return true;
+  if (run.status !== "paused") return false;
+
+  if (["awaiting_human_choice", "awaiting_final_approval"].includes(run.stopReason ?? "")) {
+    const deadline = run.runtimeState?.choiceDeadlineAt
+      ? new Date(run.runtimeState.choiceDeadlineAt)
+      : null;
+    return !deadline || !Number.isFinite(deadline.getTime()) || deadline <= now;
+  }
+  if (run.stopReason === "runtime_dispatch_blocked:budget_cap_exceeded") {
+    return run.runtimeState?.autoReplanRequested === true;
+  }
+  if (run.stopReason === "auto_team_step_validation_failed") {
+    return (
+      String((run as unknown as Record<string, unknown>).runtimeTerminalReason ?? "")
+        .includes("media_step_missing_artifact_reference") ||
+      run.runtimeState?.capabilityGapResumeRequested === true
+    );
+  }
+  if (
+    ["auto_team_final_evidence_unresolved", "auto_team_media_final_evidence_unresolved"].includes(
+      run.stopReason ?? "",
+    )
+  ) return true;
+  if (run.stopReason !== "awaiting_async_media_pipeline") return false;
+
+  const pipeline = run.runtimeState?.autoTeamMediaPipeline;
+  if (!pipeline || typeof pipeline !== "object" || Array.isArray(pipeline)) return true;
+  const status = (pipeline as Record<string, unknown>).status;
+  return [
+    "collecting_assets",
+    "waiting_for_video_tasks",
+    "rendering_final_video",
+    "probing_final_video",
+    "finalizing_evidence",
+  ].includes(String(status));
+}
+
+/** Queue independent, durable evaluation jobs so one waiting run cannot block others. */
+export async function dispatchPendingAutoTeamEvaluations(
+  now = new Date(),
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const candidates = await db
+    .select({ id: teamRuns.id, tenantId: teamRooms.tenantId })
+    .from(teamRuns)
+    .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+    .where(and(
+      eq(teamRuns.executionMode, "auto_team"),
+      inArray(teamRuns.status, ["running", "paused"]),
+      or(
+        eq(teamRuns.status, "running"),
+        inArray(teamRuns.stopReason, [
+          "awaiting_human_choice",
+          "awaiting_final_approval",
+          "runtime_dispatch_blocked:budget_cap_exceeded",
+          "auto_team_step_validation_failed",
+          "auto_team_final_evidence_unresolved",
+          "auto_team_media_final_evidence_unresolved",
+          "awaiting_async_media_pipeline",
+        ]),
+      ),
+    ))
+    .orderBy(asc(teamRuns.startedAt), asc(teamRuns.id))
+    .limit(100);
+
+  let queued = 0;
+  const evaluationSlot = Math.floor(now.getTime() / AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS);
+  for (const candidate of candidates) {
+    try {
+      const currentRun = await runEngine.getRun(candidate.id, candidate.tenantId).catch(() => null);
+      if (!currentRun || !isRecoveryEvaluationEligible(currentRun, now)) continue;
+      if (
+        currentRun.status === "running" &&
+        !(await runEngine.isAutoTeamPlanReady(candidate.id, candidate.tenantId))
+      ) continue;
+      const stateFingerprint = fingerprintAutoTeamRecoveryState(currentRun);
+      const definition = buildAutoTeamRecoveryEvaluationJob({
+        tenantId: candidate.tenantId,
+        runId: candidate.id,
+        stateFingerprint,
+        evaluationSlot,
+      });
+      const created = await db.transaction(async tx => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`auto-team-recovery:${candidate.tenantId}:${candidate.id}`}, 0))`);
+        const failedStateJob = await tx
+          .select({ id: workerJobs.id })
+          .from(workerJobs)
+          .where(and(
+            eq(workerJobs.tenantId, candidate.tenantId),
+            eq(workerJobs.jobType, "auto-team.recovery.evaluate"),
+            inArray(workerJobs.status, ["failed", "cancelled", "expired"]),
+            like(
+              workerJobs.idempotencyKey,
+              `auto-team-recovery:${candidate.id}:${stateFingerprint}:%`,
+            ),
+          ))
+          .limit(1);
+        if (failedStateJob[0]) return false;
+
+        const [previous] = await tx
+          .select({ id: workerJobs.id })
+          .from(workerJobs)
+          .where(and(
+            eq(workerJobs.tenantId, candidate.tenantId),
+            eq(workerJobs.idempotencyKey, definition.idempotencyKey!),
+          ))
+          .limit(1);
+        if (previous) return false;
+        const job = await createCanonicalJobInTransaction({
+          query: tx,
+          definition,
+          options: {
+            runtimeType: "node_job_worker",
+            requestedBySystemComponent: "auto_team_recovery",
+          },
+          createdPayload: { source: "auto_team_recovery" },
+          queuedPayload: { source: "auto_team_recovery" },
+        });
+        return job.created;
+      });
+      if (created) queued += 1;
+    } catch (error) {
+      console.warn("[auto-team-recovery] failed to enqueue run evaluation", {
+        runId: candidate.id,
+        tenantId: candidate.tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return queued;
+}
+
 export function startAutoTeamRecoverySweep(): void {
   if (!shouldRunFeature192InProcessTimer("startAutoTeamRecoverySweep")) {
     console.info("[auto-team-recovery] in-process sweep disabled; use Cloudflare scheduler");
@@ -342,7 +497,7 @@ export function startAutoTeamRecoverySweep(): void {
   }
   if (recoveryTimer) return;
   recoveryTimer = setInterval(() => {
-    void sweepPendingAutoTeamRuns().catch((error) => {
+    void dispatchPendingAutoTeamEvaluations().catch((error) => {
       console.warn("[auto-team-recovery] sweep failed", {
         error: error instanceof Error ? error.message : String(error),
       });
