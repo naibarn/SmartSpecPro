@@ -3525,7 +3525,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Resolve overlap with open PRs #398 and #399 in the generated Spec registry projections, then integrate PR #438 and begin the Phase 2 compatibility inventory against the integrated SHA.",
       "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3",
@@ -4869,7 +4869,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "priority": "P1",
-      "rationale": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "rationale": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "spec_id": "268"
     },

@@ -2,7 +2,8 @@
 spec_id: 276
 numbering_status: VERIFIED_AVAILABLE_ON_SMARTSPECPRO_MAIN_2026-10-04
 title: SmartAIHub Runtime Efficiency, Recoverable Context, Capability Selection & Execution Authority Hardening
-revision: R1.3-third-12-pass-integrity-replay-hardening
+revision: R1.4-safe-progress-guardrail-alignment
+prepared: 2026-10-10
 status: G0_READY_ADDITIVE_SPEC_IMPLEMENTATION_REQUIRES_INVENTORY
 prepared: 2026-10-04
 target_path: specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority/spec.md
@@ -20,8 +21,8 @@ priority:
 
 # Spec 276 — SmartAIHub Runtime Efficiency, Recoverable Context, Capability Selection & Execution Authority Hardening
 
-**Revision:** R1.3 — cumulative 38-pass hardening audit (12 prior + 14 second-pass + 12 third-pass)  
-**Date:** 2026-10-04  
+**Revision:** R1.4 — safe-progress and guardrail alignment
+**Date:** 2026-10-10
 **Status:** G0-ready additive specification; implementation mutation requires inventory/reconciliation and compatibility gates first  
 **Target repository path:** `specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority/spec.md`  
 **Primary owner:** SmartAIHub Durable Orchestration Kernel / Runtime Efficiency & Correctness Hardening  
@@ -2578,3 +2579,123 @@ WP276-0 SHALL additionally identify:
 
 Each is classified `REUSE`, `EXTEND`, or `MISSING` before new persistence/runtime components are introduced.
 
+
+# 17. Safe-progress and guardrail decision contract
+
+This section aligns the existing durable execution, autonomous goal, verification,
+and task-control owners. It adds no queue, approval engine, workflow ledger,
+verification runner, or parallel orchestration authority. Spec 186 remains the
+job authority; Spec 224 owns autonomous software-development lifecycle and Final
+Verify; Spec 269 owns assistant goal-to-completion behavior; Spec 271 owns
+portable acceptance execution; Spec 277 owns task-control presentation. Existing
+identity, tenant, authorization, policy, billing, provider, and execution
+placement owners remain authoritative.
+
+## 17.1 Independent lifecycle dimensions
+
+Implementations and reports SHALL keep these dimensions distinct:
+
+- task or goal outcome;
+- assistant/session lifetime;
+- durable runtime execution;
+- workflow stage;
+- approval or authorization;
+- verification;
+- deployment and user acceptance.
+
+A browser/client disconnect, model-call end, session expiry, or worker restart
+does not imply that the task outcome succeeded, failed, or was cancelled. Durable
+execution resumes from canonical job/event and checkpoint/effect evidence, using
+existing idempotency, lease, fencing, and reconciliation contracts. A terminal
+outcome SHALL include either fresh evidence meeting its required profile or an
+explicit failure/cancellation reason.
+
+## 17.2 Guardrail classes and scope
+
+Every gate decision SHALL identify `reason_code`, `guardrail_class`,
+`affected_scope`, `required_authority`, `evidence`, `allowed_next_actions`,
+`recovery_strategy`, `escalation_condition`, and `policy_version`. Reuse an
+existing decision/receipt schema where available; this list is the semantic
+contract, not permission to create a parallel approval or policy service.
+Here `G1`–`G4` name guardrail classes; they are distinct from the G0–G4
+implementation work gates defined earlier in this specification.
+
+| Class | Decision rule | Required continuation |
+|---|---|---|
+| `G1 HARD_SAFETY` | Deny only the violating action for tenant isolation, authorization, secret access, data integrity, destructive production changes, spending limits, or explicit policy. Never bypass the boundary. | Continue independent safe WorkUnits; record the exact authority and scope that remains blocked. |
+| `G2 REMEDIATION` | Treat test/build failures, transient provider/network faults, worker crashes, compatible dependency conflicts, and context exhaustion as recoverable when authority and budget permit. | Repair, bounded retry, reroute only through an existing authorized fallback policy, checkpoint, or resume with preserved data-egress rules, idempotency, and duplicate-side-effect protection. |
+| `G3 VERIFICATION` | Qualify evidence as `VERIFIED`, `PARTIALLY_VERIFIED`, `NOT_TESTED`, `UNSUPPORTED`, or `FAILED`; never infer a pass from absent evidence. | Missing optional browsers, devices, or runners do not block unrelated work. Preserve genuinely mandatory risk-based release gates. |
+| `G4 ADVISORY` | Best practices, optional compatibility, documentation, and noncritical optimization are advisory. | Record a warning or follow-up WorkUnit; do not make it a global gate. |
+
+Blocks SHALL be scoped to `ACTION_BLOCKED`, `STAGE_BLOCKED`,
+`DEPLOYMENT_BLOCKED`, or `OUTCOME_BLOCKED` (or an existing equivalent that
+preserves that distinction). A local blocker may block dependent work, but SHALL
+NOT block independent WorkUnits without a recorded dependency or hard-safety
+reason. Human escalation is permitted only when necessary authority, budget,
+required information, a mandatory safety decision, or all authorized recovery
+paths are genuinely unavailable. Approval is not the default error-recovery
+path.
+
+## 17.3 Autonomous completion and recovery
+
+The existing goal-to-completion loop SHALL continue through
+`PLAN → EXECUTE → VERIFY → SELF_REPAIR → RE_VERIFY → DELIVER` while an authorized
+recovery path remains. On a wait or local block, the scheduler SHALL inspect the
+existing WorkUnit dependency graph and continue ready independent work. Resume
+MUST re-evaluate authority, predicates, evidence freshness, and idempotency before
+dispatch; retries MUST be bounded by the existing run budget and MUST NOT replay
+an ambiguous irreversible effect without reconciliation evidence.
+
+Disconnect, client offline, worker crash, provider rate limit, context
+exhaustion, missing optional test platform, unrelated baseline CI failure,
+temporary dependency failure, missing deployment authority, independent work
+after a local block, budget exhaustion, cross-tenant denial, secret denial, and
+resume without duplicate effects SHALL be represented in the existing job,
+verification, policy, or task-control owners. These scenarios MUST NOT create a
+new control plane. Hard-safety denials remain enforced while independent safe
+work proceeds.
+
+## 17.4 Acceptance targets and evidence
+
+The following are product targets, not claims of current performance:
+
+- at least 90% unattended completion on a defined supported-workload set;
+- zero unnecessary approval requests;
+- zero silently lost durable jobs;
+- zero global blocks caused only by optional test tools;
+- 100% enforcement of defined hard-safety boundaries in the defined test set;
+- every terminal outcome has evidence or an explicit failure/cancellation reason.
+
+Any reported rate SHALL state numerator, denominator, workload inclusion rules,
+test environment, observation window, and limitations. Benchmarks SHALL include
+browser disconnect, user device offline, worker crash, provider rate limit,
+context exhaustion, missing Safari, missing Windows Runner, existing baseline CI
+failure, temporary dependency failure, absent production deployment authority,
+independent WorkUnit continuation after a local block, budget exhaustion,
+cross-tenant denial, secret denial, and resume without duplicate side effects.
+Device/platform absence is a qualification case and MUST NOT require every user
+or test environment to possess every device.
+An approval is unnecessary only when no existing authority, policy, or user
+decision contract requires it for the proposed action; the zero target applies
+to that classification over the defined workload set.
+
+## 17.5 Phase 2–4 implementation plan
+
+1. **Phase 2 — compatibility design:** inventory existing decision schemas,
+   job/outbox state, WorkUnit predicates, idempotency/receipt semantics, evidence
+   profiles, and release gates. Map each contract field and scenario to its
+   current owner. Classify each gap `REUSE`, `EXTEND`, or `MISSING`; define
+   versioned adapters and rollback/compatibility behavior before enforcement.
+2. **Phase 3 — incremental candidates:** implement only confirmed gaps in the
+   owning Spec/workstream. Prioritize scoped gate receipts and independent
+   WorkUnit continuation, then recovery/idempotency cases and verification
+   qualification. Keep new enforcement behind an existing approved rollout
+   boundary; do not change production behavior as a planning side effect.
+3. **Phase 4 — verification and handoff:** run bounded scenario suites through
+   Spec 271 and owner-specific checks. Bind results to exact source/config and
+   environment; report each verification state separately. Update canonical
+   requirement evidence and handoff through `tools.spec_handoff`; do not edit
+   generated `STATUS.md` or registry projections by hand.
+
+These phases do not assert implementation, integration, verification, deployment,
+or user acceptance. Each remains a separate evidence-backed status.
