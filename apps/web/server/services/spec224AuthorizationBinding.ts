@@ -4,6 +4,10 @@ import type {
   RunnerCapabilitySnapshot,
   RunnerToolInventoryEntry,
 } from "./runnerContracts";
+import {
+  evaluateSpec224GoalDelegation,
+  type Spec224GoalGrantAuthorityEvidence,
+} from "./spec224GoalDelegationGrant";
 
 export const SPEC224_AUTHORIZATION_BINDING_VERSION =
   "spec-224-authorization-binding-v1" as const;
@@ -28,6 +32,15 @@ export type Spec224AuthorizationRun = {
   workspaceId: string;
   provider: "codex" | "claude_code";
   deadline: string;
+  /** Required only when authorization is delegated from an approved Goal grant. */
+  goalDelegationScope?: {
+    goalId: string;
+    repositoryRef: string;
+    sourceSha: string;
+    action: string;
+    changedPaths: string[];
+    requiredCapabilities: string[];
+  };
 };
 
 export type Spec224AuthorizationRunner = {
@@ -73,6 +86,8 @@ export type Spec224AuthorizationInput = {
   run: Spec224AuthorizationRun;
   runner: Spec224AuthorizationRunner | null;
   approval: Spec224ApprovalEvidence | null;
+  /** Canonical Approval Authority evidence; never accept this from job payload. */
+  goalDelegationAuthority?: Spec224GoalGrantAuthorityEvidence | null;
   budget: Spec224BudgetEvidence | null;
 };
 
@@ -277,45 +292,115 @@ export function evaluateSpec224Authorization(
     ]);
   }
 
-  if (!approval) return result("APPROVAL_REQUIRED", ["APPROVAL_NOT_FOUND"]);
-  if (hasRawSecret(approval.payload)) {
-    return result("APPROVAL_REQUIRED", ["APPROVAL_PAYLOAD_SECRET"]);
+  let approvalRef: string;
+  let delegatedBudgetCap: number | null = null;
+  if (approval && input.goalDelegationAuthority) {
+    return result("APPROVAL_REQUIRED", ["AMBIGUOUS_AUTHORITY_EVIDENCE"]);
   }
-  if (approval.tenantId !== run.tenantId)
-    reasons.push("APPROVAL_TENANT_MISMATCH");
-  if (approval.executionId !== run.workerJobId)
-    reasons.push("APPROVAL_EXECUTION_MISMATCH");
-  if (approval.requesterId !== run.actorId)
-    reasons.push("APPROVAL_REQUESTER_MISMATCH");
-  if (
-    approval.payload.runId !== run.runId ||
-    approval.payload.provider !== run.provider ||
-    approval.payload.workspaceId !== run.workspaceId ||
-    approval.payload.authorizationGrantRef !== tool.authorizationEvidenceRef
-  ) {
-    reasons.push("APPROVAL_BINDING_MISMATCH");
+  if (approval) {
+    if (hasRawSecret(approval.payload)) {
+      return result("APPROVAL_REQUIRED", ["APPROVAL_PAYLOAD_SECRET"]);
+    }
+    if (approval.tenantId !== run.tenantId)
+      reasons.push("APPROVAL_TENANT_MISMATCH");
+    if (approval.executionId !== run.workerJobId)
+      reasons.push("APPROVAL_EXECUTION_MISMATCH");
+    if (approval.requesterId !== run.actorId)
+      reasons.push("APPROVAL_REQUESTER_MISMATCH");
+    if (
+      approval.payload.runId !== run.runId ||
+      approval.payload.provider !== run.provider ||
+      approval.payload.workspaceId !== run.workspaceId ||
+      approval.payload.authorizationGrantRef !== tool.authorizationEvidenceRef
+    ) {
+      reasons.push("APPROVAL_BINDING_MISMATCH");
+    }
+    if (isExpired(approval.expiresAt, now) || approval.status === "expired") {
+      return result("EXPIRED", ["APPROVAL_EXPIRED", ...reasons]);
+    }
+    if (
+      approval.status !== "approved" ||
+      approval.currentApprovals < approval.requiredApprovers
+    ) {
+      return result("APPROVAL_REQUIRED", [
+        approval.status === "rejected" ? "APPROVAL_REJECTED" : "APPROVAL_PENDING",
+        ...reasons,
+      ]);
+    }
+    if (reasons.length > 0) return result("APPROVAL_REQUIRED", reasons);
+    approvalRef = approval.approvalRef;
+  } else if (input.goalDelegationAuthority) {
+    const scope = run.goalDelegationScope;
+    if (!scope || !run.workerJobId || !run.attemptId) {
+      return result("APPROVAL_REQUIRED", ["GOAL_DELEGATION_SCOPE_INCOMPLETE"]);
+    }
+    if (!budget)
+      return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
+    const delegated = evaluateSpec224GoalDelegation({
+      now,
+      authority: input.goalDelegationAuthority,
+      child: {
+        goalId: scope.goalId,
+        tenantId: run.tenantId,
+        actorId: run.actorId,
+        workspaceId: run.workspaceId,
+        repositoryRef: scope.repositoryRef,
+        sourceSha: scope.sourceSha,
+        action: scope.action,
+        changedPaths: scope.changedPaths,
+        requiredCapabilities: scope.requiredCapabilities,
+        workerJobId: run.workerJobId,
+        attemptId: run.attemptId,
+        budgetHold: {
+          reservationRef: budget.budgetReservationRef,
+          tenantId: budget.tenantId,
+          workerJobId: budget.workerJobId,
+          attemptId: budget.attemptId,
+          status: budget.status,
+          amountMinorUnits: budget.amountMinorUnits,
+          currency: budget.currency,
+        },
+      },
+    });
+    if (delegated.status !== "READY_FOR_DELEGATION") {
+      const grantExpiry =
+        typeof input.goalDelegationAuthority.payload.expiresAt === "string"
+          ? input.goalDelegationAuthority.payload.expiresAt
+          : input.goalDelegationAuthority.expiresAt;
+      const expired =
+        input.goalDelegationAuthority.status === "expired" ||
+        (grantExpiry !== null && isExpired(grantExpiry, now));
+      const revoked = Boolean(
+        input.goalDelegationAuthority.revokedAt ||
+        input.goalDelegationAuthority.payload.revokedAt
+      );
+      return result(
+        expired ? "EXPIRED" : revoked ? "REVOKED" : "APPROVAL_REQUIRED",
+        delegated.reasons
+      );
+    }
+    if (
+      delegated.binding.capabilities.some(
+        capability => !snapshot.capabilities.includes(capability)
+      )
+    ) {
+      return result("RUNNER_BINDING_REQUIRED", [
+        "GOAL_GRANT_RUNNER_CAPABILITY_MISSING",
+      ]);
+    }
+    approvalRef = delegated.binding.authorityRef;
+    delegatedBudgetCap = delegated.binding.budgetCapMinorUnits;
+  } else {
+    return result("APPROVAL_REQUIRED", ["APPROVAL_NOT_FOUND"]);
   }
-  if (isExpired(approval.expiresAt, now) || approval.status === "expired") {
-    return result("EXPIRED", ["APPROVAL_EXPIRED", ...reasons]);
-  }
-  if (
-    approval.status !== "approved" ||
-    approval.currentApprovals < approval.requiredApprovers
-  ) {
-    return result("APPROVAL_REQUIRED", [
-      approval.status === "rejected" ? "APPROVAL_REJECTED" : "APPROVAL_PENDING",
-      ...reasons,
-    ]);
-  }
-  if (reasons.length > 0) return result("APPROVAL_REQUIRED", reasons);
 
   if (!budget)
     return result("BUDGET_REQUIRED", ["BUDGET_RESERVATION_NOT_FOUND"]);
-  if (
+  if (approval && (
     approval.payload.budgetCapMinorUnits !== budget.amountMinorUnits ||
     typeof approval.payload.currency !== "string" ||
     approval.payload.currency.trim().toUpperCase() !== budget.currency.trim().toUpperCase()
-  ) {
+  )) {
     return result("BUDGET_REQUIRED", ["APPROVAL_BUDGET_BINDING_MISMATCH"]);
   }
   if (
@@ -327,6 +412,9 @@ export function evaluateSpec224Authorization(
   ) {
     return result("BUDGET_REQUIRED", ["BUDGET_BINDING_MISMATCH"]);
   }
+  if (delegatedBudgetCap !== null && delegatedBudgetCap !== budget.amountMinorUnits) {
+    return result("BUDGET_REQUIRED", ["GOAL_DELEGATION_BUDGET_BINDING_MISMATCH"]);
+  }
   if (isExpired(budget.expiresAt, now))
     return result("EXPIRED", ["BUDGET_RESERVATION_EXPIRED"]);
 
@@ -336,7 +424,7 @@ export function evaluateSpec224Authorization(
     capabilitySnapshotId: snapshot.capabilitySnapshotId,
     capabilitySnapshotRevision: snapshot.revision,
     authorizationGrantRef: tool.authorizationEvidenceRef,
-    approvalRef: approval.approvalRef,
+    approvalRef,
     budgetReservationRef: budget.budgetReservationRef,
     budgetCapMinorUnits: budget.amountMinorUnits,
     currency: budget.currency,
