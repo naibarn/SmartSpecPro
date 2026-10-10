@@ -59,22 +59,14 @@ describe("AutoTeam recovery scheduler persistence", () => {
         throw new Error("SPEC277_SCHEDULE_OCCURRENCE_TIMEOUT");
       };
 
-      await exec(process.execPath, ["--import", "tsx", "scripts/auto-team-recovery-scheduler-child.ts"], {
-        cwd: process.cwd(),
-        env: childEnv,
-        timeout: 10_000,
-        maxBuffer: 32 * 1024,
-      });
+      // Independent scheduler processes race to persist the same occurrence;
+      // PostgreSQL and canonical idempotency must converge them on one job.
+      await Promise.all([1, 2].map(() => exec(
+        process.execPath,
+        ["--import", "tsx", "scripts/auto-team-recovery-scheduler-child.ts"],
+        { cwd: process.cwd(), env: childEnv, timeout: 10_000, maxBuffer: 32 * 1024 },
+      )));
       const first = await waitForOccurrence();
-
-      // A fresh OS process must converge on the persisted occurrence even
-      // though no scheduler-local dedupe state survives the restart.
-      await exec(process.execPath, ["--import", "tsx", "scripts/auto-team-recovery-scheduler-child.ts"], {
-        cwd: process.cwd(),
-        env: childEnv,
-        timeout: 10_000,
-        maxBuffer: 32 * 1024,
-      });
       const second = await waitForOccurrence();
       const [counts] = await client.unsafe(`
         SELECT COUNT(*)::int AS occurrences,
