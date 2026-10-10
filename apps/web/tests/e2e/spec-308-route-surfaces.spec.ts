@@ -17,8 +17,8 @@ function procedureName(url: string) {
   return new URL(url).pathname.replace(/^\/trpc\//, "").split(",")[0] ?? "";
 }
 
-async function installRouteFixtures(page: Page) {
-  await page.setViewportSize({ width: 390, height: 844 });
+async function installRouteFixtures(page: Page, width = 390, height = 844) {
+  await page.setViewportSize({ width, height });
   await page.addInitScript(() => {
     localStorage.setItem("smartspec_locale", "en");
     localStorage.setItem("smartspec_locale_chosen", "true");
@@ -74,7 +74,7 @@ async function installRouteFixtures(page: Page) {
   });
 }
 
-async function expectSurfacesDoNotOverlap(page: Page) {
+async function expectSurfacesDoNotOverlap(page: Page, viewportWidth = 390) {
   const bell = page.getByTestId("global-notification-bell").getByRole("button");
   const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
   await expect(bell).toBeVisible();
@@ -86,7 +86,7 @@ async function expectSurfacesDoNotOverlap(page: Page) {
     || launcherRect!.x + launcherRect!.width <= bellRect!.x
     || bellRect!.y + bellRect!.height <= launcherRect!.y
     || launcherRect!.y + launcherRect!.height <= bellRect!.y).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);
 }
 
 test.describe("SPEC-308 route surface simulations", () => {
@@ -112,6 +112,19 @@ test.describe("SPEC-308 route surface simulations", () => {
     // unavailable-item state is the expected editor shell for this unknown id.
     await expect(page.getByRole("heading", { name: /unavailable|presentation/i })).toBeVisible();
     await expectSurfacesDoNotOverlap(page);
+  });
+
+  test("reduced layout viewport and rotated landscape keep Bell and launcher visible", async ({ page }) => {
+    // A 720 CSS-pixel viewport represents a 1440px desktop at 200% browser zoom.
+    await installRouteFixtures(page, 720, 450);
+    await page.goto("/notifications");
+    await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
+    await expectSurfacesDoNotOverlap(page, 720);
+
+    await page.setViewportSize({ width: 450, height: 720 });
+    await expectSurfacesDoNotOverlap(page, 450);
+    await page.getByRole("button", { name: "Open AI Chat & Feedback" }).click();
+    await expect(page.getByRole("dialog").getByRole("heading", { name: "AI Chat & Feedback" })).toBeVisible();
   });
 
   test("decorative balloon yields to fixed controls and returns when clear", async ({ page }) => {

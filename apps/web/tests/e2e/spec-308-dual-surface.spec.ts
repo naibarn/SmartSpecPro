@@ -422,6 +422,41 @@ test("SPEC-308 settings expose five accessible choices and appearance changes st
   expect(await page.evaluate(() => localStorage.getItem("assistant-mascot:v2:tenant-spec-308-browser:30801")).then(value => JSON.parse(value ?? "null").style)).toBe("orbit");
 });
 
+test("SPEC-308 Bell always opens Notifications across every mascot style and motion setting", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  await mockAuthenticatedApi(page);
+  await page.goto("/settings?tab=notifications");
+
+  const appearance = page.getByTestId("assistant-appearance-preferences");
+  const bell = page.getByTestId("global-notification-bell").locator("button").first();
+  const styleOptions = [
+    ["Smart Drop", "droplet"],
+    ["Smart Spark", "star"],
+    ["Smart Shield", "shield"],
+    ["Smart Chat", "chat"],
+    ["Smart Orbit", "orbit"],
+  ] as const;
+
+  for (const [styleLabel, styleValue] of styleOptions) {
+    await appearance.getByRole("radio", { name: styleLabel, exact: true }).click();
+    await expect(page.getByRole("button", { name: "Open AI Chat & Feedback" }).locator("[data-mascot-style]"))
+      .toHaveAttribute("data-mascot-style", styleValue);
+
+    for (const motion of ["off", "subtle", "normal"] as const) {
+      await appearance.getByRole("combobox", { name: "Mascot motion" }).selectOption(motion);
+      await bell.click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByText(/^Notifications/)).toBeVisible();
+      await bell.click();
+      await expect(dialog).toHaveCount(0);
+    }
+  }
+});
+
 test("SPEC-308 demo balloon dismiss is presentation-only", async ({ page }) => {
   await page.clock.install();
   const procedures: string[] = [];
