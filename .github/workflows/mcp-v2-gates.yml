@@ -20,7 +20,30 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.classify.outputs.required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            result="$(node apps/web/scripts/mcp-v2-gate-scope.mjs "$BASE_SHA" "$HEAD_SHA")"
+            echo "required=$result" >> "$GITHUB_OUTPUT"
+          fi
+
   contract-and-security:
+    needs: scope
+    if: needs.scope.outputs.required == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +76,8 @@ jobs:
       - run: pnpm audit --prod --audit-level=high
 
   live-contract-evidence:
+    needs: scope
+    if: needs.scope.outputs.required == 'true'
     runs-on: ubuntu-latest
     env:
       MCP_SMOKE_URL: ${{ secrets.MCP_SMOKE_URL }}

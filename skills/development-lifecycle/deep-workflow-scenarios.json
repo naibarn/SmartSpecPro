@@ -2,7 +2,7 @@
   "version": 1,
   "scenarios": [
     {"id":"DWF-01","event":"same_blocker_no_delta","facts":{"repeat_count":3,"meaningful_delta":false,"alternative_available":true},"expected":"STALLED_STRATEGY","must_continue":"replan; prohibit unchanged strategy"},
-    {"id":"DWF-02","event":"section_checkpoint_missing_evidence","facts":{"all_sections_checkpointed":true,"required_evidence":false},"expected":"CANONICAL_CONVERGENCE_PENDING"},
+    {"id":"DWF-02","event":"section_checkpoint_missing_evidence","facts":{"all_sections_checkpointed":true,"required_evidence":false},"expected":"VALIDATION_PENDING"},
     {"id":"DWF-03","event":"full_verification_resource_wait","facts":{"ready_independent_unit":true},"expected":"QUEUE_AND_CONTINUE"},
     {"id":"DWF-04","event":"unrelated_dirty_session_worktree","facts":{"ownership_overlap":false},"expected":"PRESERVE_AND_CONTINUE"},
     {"id":"DWF-05","event":"existing_implementation_satisfies_requirements","facts":{"requirements":[{"requirement_id":"R1","applicability":"APPLICABLE","final_state":"PASS","completion_predicate":{"kind":"test_passes","source":"tests/r1.log"},"completion_predicate_satisfied":true,"evidence":["tests/r1.log"],"evidence_fresh":true},{"requirement_id":"R2","applicability":"APPLICABLE","final_state":"PASS","completion_predicate":{"kind":"evidence_exists","locator":"evidence/r2.md"},"completion_predicate_satisfied":true,"evidence":["evidence/r2.md"],"evidence_fresh":true},{"requirement_id":"R3","applicability":"APPLICABLE","final_state":"FAIL","completion_predicate":{"kind":"test_passes","source":"tests/r3.log"},"completion_predicate_satisfied":false,"evidence":[],"evidence_fresh":false}]},"expected_remaining":["R3"]},
@@ -10,6 +10,6 @@
     {"id":"DWF-07","event":"conflicting_product_outcomes","facts":{"repository_resolves":false},"expected":"PRODUCT_AMBIGUITY"},
     {"id":"DWF-08","event":"destructive_db_change_recoverable","facts":{"backup_verified":true,"migration_policy_allows":true},"expected":"BACKUP_AND_EXECUTE"},
     {"id":"DWF-09","event":"destructive_db_change_unrecoverable","facts":{"backup_verified":false,"rollback_proven":false},"expected":"TRUE_BLOCKER"},
-    {"id":"DWF-10","event":"all_sections_checkpointed_with_requirement_failure","facts":{"all_sections_checkpointed":true,"requirements":[{"requirement_id":"R3","applicability":"APPLICABLE","final_state":"FAIL","completion_predicate":{"kind":"test_passes","source":"tests/r3.log"},"completion_predicate_satisfied":false,"evidence":[],"evidence_fresh":false}]},"expected":"CANONICAL_CONVERGENCE_PENDING"}
+    {"id":"DWF-10","event":"all_sections_checkpointed_with_requirement_failure","facts":{"all_sections_checkpointed":true,"requirements":[{"requirement_id":"R3","applicability":"APPLICABLE","final_state":"FAIL","completion_predicate":{"kind":"test_passes","source":"tests/r3.log"},"completion_predicate_satisfied":false,"evidence":[],"evidence_fresh":false}]},"expected":"VALIDATION_PENDING"}
   ]
 }

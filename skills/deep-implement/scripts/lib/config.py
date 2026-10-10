@@ -149,7 +149,7 @@ def update_outcome_state(implementation_dir: Path, outcome: dict[str, Any]) -> s
     from scripts.lib.shared_lifecycle_policy import load_shared_lifecycle_policy
 
     policy = load_shared_lifecycle_policy(config.get("plugin_root"))
-    complete = policy.outcome_complete(
+    complete = policy.implementation_outcome_complete(
         outcome.get("requirements", []),
         integrated=outcome.get("integrated", False),
         required_verification_fresh=outcome.get("required_verification_fresh", False),
@@ -160,10 +160,13 @@ def update_outcome_state(implementation_dir: Path, outcome: dict[str, Any]) -> s
         accepted=outcome.get("accepted", False),
         authority_resolved=outcome.get("authority_resolved", False),
         canonical_verified=outcome.get("canonical_verified", False),
-        user_workspace_converged=outcome.get("user_workspace_converged", False),
-        worktree_lifecycle_settled=outcome.get("worktree_lifecycle_settled", False),
     )
     config["outcome"] = outcome
-    config["outcome_state"] = "COMPLETE" if complete else "VALIDATION_PENDING"
+    config["outcome_state"] = "IMPLEMENTATION_COMPLETE" if complete else "VALIDATION_PENDING"
+    config["workspace_convergence_state"] = (
+        "COMPLETE"
+        if outcome.get("user_workspace_converged") is True and outcome.get("worktree_lifecycle_settled") is True
+        else "PENDING"
+    )
     save_session_config(implementation_dir, config)
     return config["outcome_state"]

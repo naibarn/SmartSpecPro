@@ -6,6 +6,15 @@ missing prerequisite from becoming a silent skip.
 
 ## Lifecycle stages
 
+Do not make a task's implementation milestone wait on unrelated workspace
+cleanup. Close implementation against its requirements, exact canonical SHA,
+fresh required verification, and explicit acceptance/deployment obligations.
+Track repository-level user-workspace convergence and temporary-worktree
+settlement separately when required by project policy; preserve dirty or active
+work and report that milestone as pending. Missing required evidence keeps
+implementation in validation, while missing workspace convergence after all
+task evidence passes must not send implementation back through the same work.
+
 Track every stage in `orchestra/lifecycle.md` with exactly one status:
 
 ```text
