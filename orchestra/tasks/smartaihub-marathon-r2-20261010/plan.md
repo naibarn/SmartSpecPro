@@ -27,6 +27,20 @@ The old SPEC-269 worktree is dirty at `08426194c743381a20ee45b46c6741a9d2eb9af0`
 - Shared interface and test boundary are in `orchestra/contracts.md`.
 - Dependency: test agent consumes the interface below; its new file does not overlap conductor source ownership.
 
+## Checkpoint 1 — `PROVIDER_BOUNDARY_REVALIDATION`
+
+- Integrated by PR #432 at `b3d676f22abde85c510e452b3156ce23a0c75d49`.
+- Focused verification: 9 files / 214 tests passed on the branch candidate before merge; no provider, deployment, or atomic revocation claim.
+- Team-room project context remains subject to the final-DB-read-to-remote-acceptance race. Chat remains global-only; team-room persistent memory remains disabled pending provenance.
+
+## WorkUnit: `MINI_APP_ROUTE_IDENTITY_GUARD`
+
+- Base: `b3d676f22abde85c510e452b3156ce23a0c75d49`.
+- Scope: only render the Research Notes and Project Wiki reference runtimes for their canonical App IDs; unknown active App identities show an unsupported-runtime error rather than silently rendering Research Notes.
+- Paths: `apps/web/client/src/pages/MiniAppRoute.tsx` and `apps/web/client/src/pages/__tests__/MiniAppRoute.test.tsx`.
+- Evidence: route tests cover both supported App identities and an unrelated active App ID; Research Notes/Project Wiki page behavior remains covered by their focused page suites.
+- Residual: this does not implement arbitrary App runtime hosting, migration 0392, deployment, or UAT.
+
 ## Next WorkUnit
 
-After this checkpoint, continue with an independent functional slice selected from current SPEC-303/304/240/287 ownership and authority. Do not reopen broad discovery or re-enable unproven team-room project memory.
+After this checkpoint, continue with an independent functional slice from current SPEC-269/302/303/240/287 ownership and authority. Do not reopen broad discovery or re-enable unproven team-room project memory.
