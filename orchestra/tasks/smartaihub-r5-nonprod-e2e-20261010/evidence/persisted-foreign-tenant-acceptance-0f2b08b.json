@@ -15,6 +15,14 @@
     "persistence": "PostgreSQL 17.11 via the existing loopback-only miniapp_r5_test target; actual buildChatContext, receipt validation, and persisted memory services exercised",
     "externalProviderCalls": 0
   },
+  "postIntegrationVerification": {
+    "canonicalSha": "e67aeaf86f81ea2645188536c3e58ec7282af662",
+    "verifiedAt": "2026-10-10T09:08:18Z",
+    "command": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 2
+  },
   "database": {
     "name": "miniapp_r5_test",
     "container": "smartaihub-r5-pg17-20261010",
