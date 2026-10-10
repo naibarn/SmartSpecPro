@@ -145,16 +145,28 @@ pub fn spawn_isolated_moli_command(
         .iter()
         .any(|(key, value)| key == NAMESPACE_PROBE_ENV && value == "1")
     {
-        use std::os::unix::fs::MetadataExt;
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
         let parent_user_ns = std::fs::metadata("/proc/self/ns/user")
             .map_err(|_| "RUNNER_MOLI_NAMESPACE_PROBE_FAILED".to_string())?
             .ino();
         let parent_net_ns = std::fs::metadata("/proc/self/ns/net")
             .map_err(|_| "RUNNER_MOLI_NAMESPACE_PROBE_FAILED".to_string())?
             .ino();
+        let ip_path = Path::new("/usr/bin/ip");
+        let ip_metadata = std::fs::symlink_metadata(ip_path)
+            .map_err(|_| "RUNNER_MOLI_TEST_IP_TOOL_UNAVAILABLE".to_string())?;
+        if ip_metadata.file_type().is_symlink()
+            || !ip_metadata.is_file()
+            || ip_metadata.uid() != 0
+            || ip_metadata.permissions().mode() & 0o022 != 0
+            || ip_metadata.permissions().mode() & 0o111 == 0
+        {
+            return Err("RUNNER_MOLI_TEST_IP_TOOL_UNTRUSTED".into());
+        }
         command
             .env("SAH_MOLI_PARENT_USERNS_INODE", parent_user_ns.to_string())
-            .env("SAH_MOLI_PARENT_NETNS_INODE", parent_net_ns.to_string());
+            .env("SAH_MOLI_PARENT_NETNS_INODE", parent_net_ns.to_string())
+            .env("SAH_MOLI_TEST_IP_BINARY", ip_path);
     }
     use std::os::unix::process::CommandExt;
     command.process_group(0);
@@ -732,18 +744,10 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     fn enable_loopback_for_test() -> Result<(), String> {
-        use std::os::unix::fs::PermissionsExt;
-
-        let ip = Path::new("/usr/bin/ip");
-        let metadata = std::fs::symlink_metadata(ip)
-            .map_err(|_| "RUNNER_MOLI_TEST_IP_TOOL_UNAVAILABLE".to_string())?;
-        if metadata.file_type().is_symlink()
-            || !metadata.is_file()
-            || metadata.permissions().mode() & 0o022 != 0
-            || metadata.permissions().mode() & 0o111 == 0
-        {
-            return Err("RUNNER_MOLI_TEST_IP_TOOL_UNTRUSTED".into());
-        }
+        let ip = std::env::var_os("SAH_MOLI_TEST_IP_BINARY")
+            .map(PathBuf::from)
+            .filter(|path| path == Path::new("/usr/bin/ip"))
+            .ok_or_else(|| "RUNNER_MOLI_TEST_IP_TOOL_UNAVAILABLE".to_string())?;
         let output = Command::new(ip)
             .args(["link", "set", "lo", "up"])
             .output()
