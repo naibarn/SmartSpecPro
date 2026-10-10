@@ -1,0 +1,66 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 SPEC-304 trusted local ingress to persisted SPEC-269 Project memory",
+  "sourceSha": "a093288aa2582153e380c0e84b43da9a3313d865",
+  "canonicalBaselineSha": "23e2601ecc8b0662c343c4b3f6204a4424a50899",
+  "verification": {
+    "persistedCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+    "persistedStatus": "PASS",
+    "persistedTestFiles": 1,
+    "persistedTests": 5,
+    "focusedCommand": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/trustedAppRouteAssertion.test.ts server/_core/__tests__/context.appIngress.test.ts server/services/__tests__/appIngressMemoryRuntime.test.ts server/services/__tests__/integration/memoryScopeIsolation.test.ts",
+    "focusedStatus": "PASS",
+    "focusedTestFiles": 4,
+    "focusedTests": 38,
+    "fastGate": {
+      "gitDiffCheck": "PASS",
+      "shellSyntax": "PASS",
+      "changedPaths": [
+        "apps/web/scripts/test-smartaihub-r5-persisted-memory.sh",
+        "apps/web/server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts"
+      ]
+    }
+  },
+  "acceptance": {
+    "positive": "A locally HMAC-signed, short-lived assertion from the test-only ingress producer was consumed through HTTP by createContextWithTrustedAppIngress; the active DB custom-domain alias resolved to the canonical App and buildChatContext read that App-bound Project memory from PostgreSQL.",
+    "negativeCases": [
+      "Host and X-Forwarded-Host alone yielded trustedAppContext=null; Global memory remained available and Project memory was absent.",
+      "A replayed assertion was rejected and Project memory was absent.",
+      "A validly signed same-tenant assertion binding another App to this App's alias was rejected.",
+      "A validly signed cross-tenant identity was rejected against the authenticated tenant."
+    ],
+    "permissionCeiling": "authorized_bound_project_only; durableProjectMemoryWrite=false",
+    "providerCalls": 0,
+    "durableProjectWrites": 0
+  },
+  "database": {
+    "name": "miniapp_r5_test",
+    "engine": "PostgreSQL 17.11 with pgvector 0.8.7",
+    "container": "smartaihub-r5-pg17-20261010",
+    "access": "loopback-only",
+    "fixtures": "synthetic only",
+    "schema": "Curated R5 current-schema test projection plus existing additive SPEC-304 migration 0392; no historical migration chain",
+    "migrationScope": "0392 was applied only to the authorized disposable miniapp_r5_test database."
+  },
+  "reviewedSecurityLenses": [
+    "Assertion HMAC uses 32 random bytes per test; no production or repository secret is read.",
+    "Signature comparison is constant-time after length validation; malformed encodings fail closed.",
+    "Assertion IDs are consumed once; replay cannot regain App context.",
+    "Issuer and audience are exact server-owned expectations and timestamps are validated by the canonical assertion consumer.",
+    "Authenticated user and tenant come from the server-side SDK test binding; request Host and X-Forwarded-Host do not select tenant or App.",
+    "Custom-domain resolution uses the canonical database alias repository, current tenant, alias status, and App lifecycle.",
+    "A signed App identity that conflicts with the currently resolved alias is rejected even within the same tenant.",
+    "Cross-tenant assertion claims are rejected against the authenticated tenant before memory access.",
+    "Fresh Project membership and App-Project binding checks remain in the persisted runtime path; existing revocation cases still pass.",
+    "Untrusted contexts retain permitted Global memory while Project-scoped memory stays out of the prompt.",
+    "The context permission ceiling keeps durable Project-shared writes disabled; this test performs reads only.",
+    "The runner requires the exact loopback database and explicit disposable confirmation, uses only synthetic fixtures, and applies only the existing additive 0392 schema there."
+  ],
+  "limitations": [
+    "The signing producer is a test-only local boundary; this is not evidence of a production Cloudflare or external-edge assertion producer.",
+    "The SDK authentication result is bound to a synthetic account fixture; no production authentication or public ingress was exercised.",
+    "No worker-crossing App context was tested.",
+    "App-private memory isolation remains unavailable in the current persistence model.",
+    "SPEC-269 T-01 through T-23 remain partial; this evidence does not close any full Spec."
+  ]
+}
