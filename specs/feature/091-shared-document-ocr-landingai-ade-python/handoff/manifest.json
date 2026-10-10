@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
       },
@@ -52,7 +52,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728"
+    "expected_spec_digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b"
   },
   "continuation": {
     "next_action": null,
@@ -66,7 +66,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
       },
@@ -123,7 +123,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
       },
@@ -161,13 +161,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
-    "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+    "digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:15.399992Z",
+      "last_evidence_at": "2026-10-10T01:11:16.341799Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-04-11T19:21:32+07:00",
       "spec_last_changed_at": "2026-04-11T19:21:32+07:00"
@@ -191,10 +191,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:15.399992Z"
+    "updated_at": "2026-10-10T01:11:16.341799Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -204,10 +204,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:15.399992Z",
+    "reconciled_at": "2026-10-10T01:11:16.341799Z",
     "sources": [
       {
-        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
       },
@@ -249,11 +249,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
-        "source_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "source_digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "value": "Proposed"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -275,14 +280,14 @@
         "excerpt": "Status: Proposed",
         "line": 5,
         "source": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md",
-        "source_digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "source_digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "value": "Proposed"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "ffab4c5c204b5d5cb526a662d627986223eaa0c32b77b03399ad011b95a2d728",
+        "digest": "30c9e89667eea13aa796e761415f6d2c4d8f17bf94fbae64cb9689aac6e9462b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/091-shared-document-ocr-landingai-ade-python/spec.md"
       },
@@ -328,11 +333,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 24,
-    "unresolved": 24
+    "total": 28,
+    "unresolved": 28
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:15.399992Z",
+  "updated_at": "2026-10-10T01:11:16.341799Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

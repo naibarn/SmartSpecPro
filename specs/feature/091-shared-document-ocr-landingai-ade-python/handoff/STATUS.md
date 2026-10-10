@@ -2,11 +2,11 @@
 # 091 — 091 - Shared Document OCR Backbone with LandingAI ADE Python
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 24 unresolved of 24
+- Requirements: 0 pass / 28 unresolved of 28
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 
