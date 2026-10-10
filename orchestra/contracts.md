@@ -50,7 +50,7 @@
 | Surface | Handling |
 |---|---|
 | Dirty SPEC-269 copy of `promptComposer.ts` | preserve unchanged; current-main `promptComposer.ts` is owned by the conductor for this isolated fix |
-| Team-room entity memories | use `getEntityMemoriesForContext` with the server-authorized project ID; defer project context until final membership revalidation |
+| Team-room entity memories | use `getEntityMemoriesForContext`; project-scoped retrieval requires a canonical project with active membership, and project context is deferred until final membership revalidation |
 | Standard Chat entity memories | without a verified project binding, request global-only memory |
 | Conversation project attribution | binding is immutable after creation; a project change requires a new conversation until durable message/segment provenance exists |
 | Provider transport | guard invoked before request; remote acceptance cannot be atomic with PostgreSQL revalidation |
