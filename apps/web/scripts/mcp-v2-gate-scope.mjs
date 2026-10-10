@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const SHARED_FLAGS = "apps/web/shared/featureFlags.ts";
 const MCP_FLAG_LINE = /^[+-].*\b(?:mcp[A-Z_]|browserTool\b)/;
-const MCP_PATH = /^(?:apps\/web\/server\/_core\/(?:mcp.*\.ts|authz\.ts)|apps\/web\/server\/services\/(?:mcpDownloadBrokerService|tenantFeatureFlagService)\.ts|apps\/web\/scripts\/mcp-.*\.mjs|apps\/web\/scripts\/mcp-v2-gate-scope\.mjs|apps\/web\/server\/.*\/__tests__\/(?:mcp.*\.test\.ts|authz\.mcpOAuth\.test\.ts)|apps\/web\/server\/services\/__tests__\/mcpDownloadBrokerService\.test\.ts|load-tests\/scenario-mcp-v2\.js|\.github\/workflows\/mcp-v2-gates\.yml)$/;
+const MCP_PATH = /^(?:apps\/web\/server\/_core\/(?:mcp.*\.ts|authz\.ts)|apps\/web\/server\/services\/(?:mcpDownloadBrokerService|tenantFeatureFlagService)\.ts|apps\/web\/scripts\/(?!mcp-v2-gate-scope(?:\.test)?\.mjs)mcp-.*\.mjs|apps\/web\/server\/.*\/__tests__\/(?:mcp.*\.test\.ts|authz\.mcpOAuth\.test\.ts)|apps\/web\/server\/services\/__tests__\/mcpDownloadBrokerService\.test\.ts|load-tests\/scenario-mcp-v2\.js)$/;
 
 export function requiresMcpV2Gates(changedPaths, sharedFlagsDiff = "") {
   const paths = [...changedPaths];

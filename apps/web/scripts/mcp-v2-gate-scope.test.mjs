@@ -10,6 +10,9 @@ test("UI-only mascot flag edits do not inherit MCP gates", () => {
 
 test("MCP source changes keep all MCP gates", () => {
   assert.equal(requiresMcpV2Gates([flags, "apps/web/server/_core/mcpRegistry.ts"]), true);
+  assert.equal(requiresMcpV2Gates([".github/workflows/mcp-v2-gates.yml"]), false);
+  assert.equal(requiresMcpV2Gates(["apps/web/scripts/mcp-v2-gate-scope.mjs"]), false);
+  assert.equal(requiresMcpV2Gates(["apps/web/scripts/mcp-v2-gate-scope.test.mjs"]), false);
 });
 
 test("MCP and browser flag changes keep all MCP gates", () => {
