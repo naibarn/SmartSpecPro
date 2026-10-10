@@ -140,7 +140,8 @@ describe("AutoTeam recovery scheduler persistence", () => {
         cwd: process.cwd(), env: childEnv, stdio: ["ignore", "ignore", "pipe"],
       });
       interruptedExit = new Promise(resolveExit => {
-        interruptedWorker!.once("exit", (code, signal) => resolveExit([code, signal]));
+        interruptedWorker!.once("close", (code, signal) => resolveExit([code, signal]));
+        interruptedWorker!.once("error", () => resolveExit([null, null]));
       });
       let interruptedStderr = "";
       const checkpointPersisted = await new Promise<boolean>((resolveCheckpoint, rejectCheckpoint) => {
@@ -149,7 +150,7 @@ describe("AutoTeam recovery scheduler persistence", () => {
           clearTimeout(timeout);
           rejectCheckpoint(error);
         });
-        interruptedWorker.once("exit", (code, signal) => {
+        interruptedWorker.once("close", (code, signal) => {
           if (!interruptedStderr.includes("SPEC277_SCAN_CHECKPOINT_PERSISTED")) {
             clearTimeout(timeout);
             rejectCheckpoint(new Error(`SPEC277_SIGKILL_WORKER_EXITED_EARLY:${code}:${signal}:${interruptedStderr}`));
@@ -226,11 +227,16 @@ describe("AutoTeam recovery scheduler persistence", () => {
       expect(attempts).toHaveLength(2);
       expect(attempts[0]).toMatchObject({ terminal_class: "retryable", recovery_reason: "lease_expired" });
       expect(Number(attempts[1].lease_generation)).toBeGreaterThan(Number(attempts[0].lease_generation));
-      const [recoveredEvents] = await client.unsafe(`
-        SELECT COUNT(*)::int AS count FROM worker_job_events
+      const recoveredEvents = await client.unsafe(`
+        SELECT "eventIdempotencyKey" AS idempotency_key,
+               "payloadJson" ->> 'nextStatus' AS next_status
+        FROM worker_job_events
         WHERE "workerJobId" = $1 AND "eventType" = 'RECOVERED'
+        ORDER BY "createdAt", id
       `, [first.job_id]);
-      expect(recoveredEvents.count).toBeGreaterThanOrEqual(1);
+      expect(recoveredEvents).toHaveLength(2);
+      expect(new Set(recoveredEvents.map(event => event.idempotency_key)).size).toBe(2);
+      expect(recoveredEvents.filter(event => event.next_status === "retry_scheduled")).toHaveLength(1);
       const [allJobs] = await client.unsafe(`SELECT COUNT(*)::int AS count FROM worker_jobs`);
       expect(allJobs.count).toBe(2);
       const [checkpointEvent] = await client.unsafe(`
