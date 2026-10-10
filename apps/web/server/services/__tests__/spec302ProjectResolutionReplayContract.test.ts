@@ -43,6 +43,16 @@ function expectContractError(value: unknown, code: string): void {
   }
 }
 
+function expectReplayContractError(action: () => unknown, code: string): void {
+  try {
+    action();
+    throw new Error("EXPECTED_CONTRACT_ERROR");
+  } catch (error) {
+    expect(error).toBeInstanceOf(Spec302ReceiptReplayContractError);
+    expect(error).toMatchObject({ code });
+  }
+}
+
 describe("SPEC-302 durable receipt replay contract", () => {
   it("produces a stable digest independent of object property order", () => {
     const reordered = Object.fromEntries(
@@ -54,6 +64,32 @@ describe("SPEC-302 durable receipt replay contract", () => {
     );
   });
 
+  it.each([
+    ["tenant", { tenantId: "tenant-other" }],
+    ["principal", { principalId: "user:99" }],
+    ["App", { appId: "app-other" }],
+    ["Project", { canonicalProjectId: "project-other" }],
+    ["session", { sessionId: "session-other" }],
+    ["conversation", { conversationId: "conversation-other" }],
+    [
+      "no-session selection",
+      { sessionId: null, conversationId: null, noSessionSelection: true },
+    ],
+    ["resolution state", { resolutionState: "RESOLVED_CONTEXTUAL" as const }],
+    ["provenance", { provenance: "explicit_user_selection" }],
+    ["resolver policy", { resolverPolicyVersion: "resolver-v2" }],
+    ["authorization policy", { authorizationPolicyVersion: "acl-v3" }],
+    ["authorization reference", { authorizationReference: "auth-check-2" }],
+    ["operation ceiling", { operationCeiling: "PROJECT_WRITE" as const }],
+  ] as Array<[string, Partial<Spec302ProjectResolutionReplayPayload>]>)(
+    "binds the normalized digest to changed %s",
+    (_field, change) => {
+      expect(
+        digestSpec302ProjectResolutionReplayPayload({ ...payload, ...change })
+      ).not.toBe(digestSpec302ProjectResolutionReplayPayload(payload));
+    }
+  );
+
   it("requires identity values to be canonicalized by the caller", () => {
     expectContractError(
       { ...payload, tenantId: " tenant-r4" },
@@ -61,13 +97,50 @@ describe("SPEC-302 durable receipt replay contract", () => {
     );
   });
 
+  it.each(["", " ", "idem-1 "])(
+    "rejects a malformed idempotency key (%j)",
+    idempotencyKey => {
+      expectReplayContractError(
+        () =>
+          compareSpec302ProjectResolutionReplay(candidate(), {
+            idempotencyKey,
+            payload,
+          }),
+        "IDEMPOTENCY_KEY_INVALID"
+      );
+    }
+  );
+
+  it.each([
+    ["appId", "APP_ID_INVALID"],
+    ["canonicalProjectId", "PROJECT_ID_INVALID"],
+    ["sessionId", "SESSION_ID_INVALID"],
+    ["conversationId", "CONVERSATION_ID_INVALID"],
+  ] as const)("rejects an empty canonical %s", (field, code) => {
+    expectContractError({ ...payload, [field]: "" }, code);
+  });
+
+  it("rejects unsupported operation ceilings and non-boolean session bindings", () => {
+    expectContractError(
+      { ...payload, operationCeiling: "ADMIN" },
+      "OPERATION_CEILING_INVALID"
+    );
+    expectContractError(
+      { ...payload, noSessionSelection: "false" },
+      "SESSION_BINDING_INVALID"
+    );
+  });
+
   it("classifies an identical key and payload as an exact replay without authority", () => {
-    expect(
-      compareSpec302ProjectResolutionReplay(candidate(), candidate())
-    ).toMatchObject({
+    const result = compareSpec302ProjectResolutionReplay(candidate(), candidate());
+    expect(result).toMatchObject({
       outcome: "EXACT_REPLAY",
       normalizedPayloadDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
+    expect(Object.keys(result).sort()).toEqual([
+      "normalizedPayloadDigest",
+      "outcome",
+    ]);
   });
 
   it.each([
