@@ -2,11 +2,11 @@
 # 267 — SmartAIHub Cloudflare Production Migration & Durable Execution Control Plane V2
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 362 unresolved of 362
+- Requirements: 1 pass / 362 unresolved of 363
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 6
 
 ## Source-declared status and relationship claims
 
