@@ -1,8 +1,8 @@
 {
   "evidenceVersion": 1,
   "workUnit": "R6 AutoTeam persisted scheduled occurrence and duplicate coalescing",
-  "sourceSha": "1a9239bace5c40c2202ff012d7be45a29450345c",
-  "canonicalRefAtTest": "origin/main at f67106314445567ec4a5d77b89e961642315ac65; test changes were the only source delta",
+  "sourceSha": "238741241a68f079ee0916b2d5fe64c05a39dd0d",
+  "canonicalRefAtTest": "origin/main at 00e15e57f5054785f32789b34147f802272e7502; SIGKILL test changes were the only source delta",
   "database": {
     "engine": "PostgreSQL disposable task-owned cluster",
     "databaseName": "randomized autoteam_<12 hex>_test",
@@ -17,11 +17,11 @@
     "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
     "result": "PASS_PARTIAL_ACCEPTANCE",
     "testFiles": 7,
-    "tests": 85,
-    "verifiedAt": "2026-10-10T11:42:29Z",
+    "tests": 86,
+    "verifiedAt": "2026-10-10T12:08:35Z",
     "autoTeamProcesses": 2,
     "autoTeamProcessType": "two concurrent independent Node OS processes racing through the actual Feature186 AutoTeam recovery scheduler",
-    "processExit": "normal scheduler shutdown; SIGKILL not tested",
+    "processExit": "scheduler processes exited normally; scan worker process was explicitly SIGKILLed after persisted checkpoint; replacement process reclaimed expired lease and completed attempt 2",
     "persistedAssertions": {
       "scheduleOccurrences": 1,
       "canonicalScanJobs": 1,
@@ -29,21 +29,39 @@
       "scanJobType": "auto-team.recovery.scan",
       "lifecycleEvents": "at least CREATED, QUEUED, DISPATCH_REQUESTED"
     },
-    "cleanup": "owned cluster stopped and removed; no spec277-autoteam-pg-* directory remained"
+    "cleanup": "owned cluster stopped and removed; no spec277-autoteam-pg-* directory remained",
+    "sourceSha": "238741241a68f079ee0916b2d5fe64c05a39dd0d",
+    "workerLifecycle": {
+      "scanAttempts": 2,
+      "totalAttempts": 3,
+      "outboxRows": 3,
+      "recoveredEvents": "at least one"
+    },
+    "sigkillAssertions": [
+      "persisted progress stage scan_checkpoint before kill",
+      "job remained running at attempt 1 immediately after SIGKILL",
+      "lease expired before recovery call",
+      "attempt 1 recorded retryable/lease_expired",
+      "attempt 2 leaseGeneration advanced",
+      "replacement scan completed and evaluation completed"
+    ]
   },
   "postIntegrationVerification": {
-    "canonicalSha": "ea84aab960830a0c3fd8438621bae19edf9358ea",
+    "canonicalSha": "00e15e57f5054785f32789b34147f802272e7502",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/551",
+    "mergeCommit": "00e15e57f5054785f32789b34147f802272e7502",
     "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
-    "result": "PASS",
+    "result": "PASS_PARTIAL_ACCEPTANCE",
     "testFiles": 7,
-    "tests": 85,
-    "verifiedAt": "2026-10-10T11:43:46Z"
+    "tests": 86,
+    "verifiedAt": "2026-10-10T12:00:45Z",
+    "previewCheck": "SKIPPED (not counted as pass)"
   },
   "acceptanceMatrix": {
     "A_scheduler_selection": "PARTIAL: duplicate occurrence coalesced; direct scan selected one capacity-wait run and skipped future approval and terminal run; broader authorization/stall selection not covered",
     "B_scan_evaluation_workers": "PASS for bounded path: persisted scan and evaluation jobs were claimed/completed in independent processes; capacity-wait outcome was recorded without run mutation",
-    "C_sigkill_restart": "NOT_TESTED",
-    "D_lease_reclaim_and_stale_worker_fencing": "NOT_TESTED",
+    "C_sigkill_restart": "PARTIAL: actual Node worker was SIGKILLed after persisted progress; a new process recovered the expired lease, advanced attempt generation and completed scan/evaluation. Does not prove stale still-running worker mutation fencing.",
+    "D_lease_reclaim_and_stale_worker_fencing": "PARTIAL: persisted lease expiry/reclaim and retry generation are verified; stale worker post-reclaim TeamRun side-effect denial remains NOT_TESTED because the worker was killed before reclaim.",
     "E_useful_work_recovery": "NOT_TESTED",
     "F_provider_resource_dependency_waits": "PARTIAL: capacity_wait passed across the runtime boundary and no provider job was created; other provider/dependency waits are untested",
     "G_no_progress_suppression": "NOT_TESTED",
@@ -58,17 +76,17 @@
     "No runEngine mutation, hard worker kill, lease reclaim race, Final Verify, or Task Control parent-run projection is exercised.",
     "No production deployment, migration, grant, or SPEC-224 protected dispatch was performed.",
     "The capacity_wait test is a focused service regression, not a process-boundary evaluation-worker acceptance.",
-    "The process-boundary acceptance does not hard-kill a worker or force a lease reclaim; scan/evaluation workers complete normally.",
-    "It does not prove run-scoped fencing at runEngine mutation boundaries, useful-work recovery, Final Verify, or Task Control continuity."
+    "It does not prove run-scoped fencing at runEngine mutation boundaries, useful-work recovery, Final Verify, or Task Control continuity.",
+    "The scan worker process was SIGKILLed after persisting progress and a replacement process recovered the lease and completed attempt 2. The stale-worker post-reclaim TeamRun mutation race, atomic run-scoped fence, useful work, Final Verify, and Task Control continuity remain untested."
   ],
   "candidateVerification": {
-    "sourceSha": "a063157f8fd2109ab0e55e1edd01c99c0c394df8",
-    "baseCanonicalSha": "df0873f3be10a65748b921d28b6dfa77b93c8997",
+    "sourceSha": "238741241a68f079ee0916b2d5fe64c05a39dd0d",
+    "baseCanonicalSha": "00e15e57f5054785f32789b34147f802272e7502",
     "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
     "result": "PASS_PARTIAL_ACCEPTANCE",
     "testFiles": 7,
     "tests": 86,
-    "verifiedAt": "2026-10-10T11:59:20Z",
+    "verifiedAt": "2026-10-10T12:08:35Z",
     "processBoundary": {
       "scheduler": "two independent processes coalesced to one persisted schedule occurrence, scan job and outbox row",
       "scan": "new process claimed and completed the scan job through executeCanonicalJob; queued one evaluation for run-r6-capacity",
@@ -79,6 +97,7 @@
       "workerLifecycle": "2 jobs, 2 attempts, 2 outbox rows, and at least 10 lifecycle events"
     },
     "schema": "Current Drizzle projections for worker control plane, team_rooms, team_runs, run_snapshots and agent_activity_events; foreign keys omitted explicitly; no migration chain.",
-    "scope": "Proves scheduled scan and resource-wait evaluation over persisted Team state across independent OS processes. Does not prove hard worker restart, stale run-side-effect fencing, useful work or Task Control continuity."
+    "scope": "Proves scheduled scan and resource-wait evaluation over persisted Team state across independent OS processes. Does not prove hard worker restart, stale run-side-effect fencing, useful work or Task Control continuity.",
+    "sigkillProcessBoundary": "A scan process persisted scan_checkpoint, was SIGKILLed, then a replacement process recovered the expired lease, observed attempt 1 retryable/lease_expired, advanced leaseGeneration on attempt 2, completed scan and evaluation."
   }
 }

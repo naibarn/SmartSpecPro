@@ -1,7 +1,7 @@
 # R6 Progress
 
 - Current state: IMPLEMENTING.
-- Latest verified canonical SHA: `df0873f3be10a65748b921d28b6dfa77b93c8997` (`origin/main`).
+- Latest verified canonical SHA: `00e15e57f5054785f32789b34147f802272e7502` (`origin/main`).
 - Clean isolated task branch/worktree: `/home/dev/worktrees/smartaihub-r6-autoteam-20261010`, branch `codex/r6-autoteam-recovery-20261010`.
 - User's dirty primary checkout is preserved and not synchronized.
 - Prior R5 evidence reviewed: `orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/worker-restart-recovery-5535867.json`.
@@ -35,3 +35,7 @@
 - Direct acceptance: one schedule/scan job/outbox; scan queued one evaluation for `run-r6-capacity`; future approval and terminal runs were skipped; evaluation job completed with `resource_scheduling`; `team_runs` remained paused with unchanged capacity wait; only scan/evaluation jobs existed, with 2 attempts, 2 outbox rows and >=10 events.
 - The integration exposed `runEngine.getRun()` dropping `team_runs.runtimeStateJson`; runtime merge fix now preserves stored media status and future choice deadline. Ten targeted review aspects checked: tenant-scoped run loading; persisted-state provenance; snapshot precedence; current lease claim; state fingerprint; duplicate schedule coalescing; terminal/future-approval selection; resource-wait no-dispatch; worker-job idempotent persistence; fixture isolation/cleanup. No atomic run-scoped fence exists, so SIGKILL/reclaim/stale side-effect denial remain open.
 - Next: synthetic SIGKILL/restart and exact mutation-boundary fencing. Do not claim autonomous completion or Task Control continuity.
+
+- PR #551 merged by normal merge at `00e15e57f5054785f32789b34147f802272e7502`; focused 7-file / 86-test suite rerun on that exact canonical SHA passed. Build preview and cleanup were SKIPPED.
+
+- SIGKILL acceptance on candidate `238741241`: disposable PostgreSQL worker process persisted `scan_checkpoint`, was SIGKILLed, lease expired, replacement process recovered it and completed attempt 2; the attempt ledger records retryable / lease_expired and advanced leaseGeneration. Focused 7-file / 86-test suite passed. This proves process restart/retry recovery only; stale-worker post-reclaim TeamRun mutation fencing remains untested.
