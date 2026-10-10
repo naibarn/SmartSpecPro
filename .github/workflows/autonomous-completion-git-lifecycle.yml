@@ -11,6 +11,9 @@ on:
       - "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts"
       - "apps/web/server/jobs/workspaceAuthoritySafeActionJob.test.ts"
       - "apps/web/server/services/jobExecutorRegistry.ts"
+      - "apps/web/server/services/__tests__/spec267NativeWorkerRecovery.integration.test.ts"
+      - "apps/web/server/services/__tests__/support/spec267NativePostgres.ts"
+      - "apps/web/server/services/__tests__/support/spec267WorkerClaimSchema.ts"
       - ".github/workflows/autonomous-completion-git-lifecycle.yml"
 
 permissions:
@@ -35,6 +38,19 @@ jobs:
         run: python -m unittest scripts.development-lifecycle.test_workspace_authority
       - name: Install web package dependencies
         run: pnpm install --frozen-lockfile --filter @smartspec/web...
+      - name: Ensure native PostgreSQL test binaries are available
+        run: |
+          if ! find /usr/lib/postgresql -type f -name initdb -print -quit 2>/dev/null | grep -q .; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends postgresql
+          fi
+          test -n "$(find /usr/lib/postgresql -type f -name initdb -print -quit)"
+          test -n "$(find /usr/lib/postgresql -type f -name pg_ctl -print -quit)"
+      - name: Run isolated SPEC-267 native PostgreSQL recovery tests
+        working-directory: apps/web
+        env:
+          RUN_NATIVE_WORKER_POSTGRES_TESTS: "true"
+        run: pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/services/__tests__/spec267NativeWorkerRecovery.integration.test.ts
       - name: Run Git lifecycle adapter and safe action tests
         working-directory: apps/web
         run: pnpm exec vitest run --maxWorkers=1 server/jobs/workspaceAuthorityGithub.test.ts server/jobs/workspaceAuthorityGithubList.test.ts server/jobs/workspaceAuthoritySafeActionJob.test.ts
