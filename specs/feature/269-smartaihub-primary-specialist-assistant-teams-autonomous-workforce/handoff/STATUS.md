@@ -2,11 +2,11 @@
 # 269 — SmartAIHub Primary Assistant, Specialist Assistant Teams & Autonomous Workforce Runtime
 
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
-- Lifecycle: `VALIDATION_PENDING`
+- Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1677 unresolved of 1677
-- Next action: Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.
-- Manifest generation: 10
+- Next action: Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.
+- Manifest generation: 11
 
 ## Source-declared status and relationship claims
 

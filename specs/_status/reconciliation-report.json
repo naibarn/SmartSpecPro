@@ -128134,7 +128134,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "1d970c5a3925bf8f8f32516005d2a9be7bb67ae8",
+      "canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -129239,7 +129239,7 @@
         "requirement REQ-EA40FDE33EAD is OPEN",
         "requirement REQ-E8F70441ADF8 is OPEN",
         "requirement REQ-233CE93441E3 is OPEN",
-        "required verification evidence is missing"
+        "verification evidence is not bound to the canonical SHA"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
@@ -129277,17 +129277,17 @@
       "deployment": "UNKNOWN",
       "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T05:05:37.875870Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
-        "id": "SPEC268_RUNTIME_ACCEPTANCE",
-        "next_action": "Implement and test additive runtime integration.",
-        "root_cause": "R2.6 defines contract but does not implement runtime resolver/context binding or direct acceptance suite."
+        "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
+        "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+        "root_cause": "Team-room entity memory is now scoped to a canonical project with active membership, but durable room-to-project binding and source-level persistent-memory provenance remain unverified. Project reassignment is blocked for new conversation updates; historical conversations may have been retargeted before that guard and messages carry no project scope."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
@@ -129344,12 +129344,12 @@
       "successors": [],
       "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+      "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -131068,17 +131068,18 @@
       "deployment": "UNKNOWN",
       "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "STALE",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.325224Z",
-      "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
+      "lifecycle": "PARTIAL_INTEGRATED",
+      "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "primary_blocker": {
-        "class": "IMPLEMENTATION",
-        "id": "RUNTIME_CONTEXT_ACCEPTANCE",
-        "next_action": "Implement resolver/context bindings and run direct acceptance.",
-        "root_cause": "App/Project-aware runtime resolution and executable T acceptance are not implemented."
+        "class": "DEPENDENCY_AND_OWNERSHIP",
+        "id": "APP_PROJECT_RUNTIME_CONTEXT_AUTHORITY",
+        "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+        "recoverable": true,
+        "root_cause": "PR #443 binds TeamRoom project authority to AgentRuntime provider attempts, but the current contract does not supply the canonical App-aware MemoryContext and ProjectResolutionReceipt needed for full App/Project runtime acceptance. Candidate paths remain shared/reserved under SPEC-302/SPEC-304. The old dirty SPEC-269 worktree remains preserved; its delta removes PR #426 authorization checks and is not reusable."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
@@ -142738,7 +142739,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
+      "canonical_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",

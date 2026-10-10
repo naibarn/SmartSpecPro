@@ -64,6 +64,18 @@ The old SPEC-269 worktree is dirty at `08426194c743381a20ee45b46c6741a9d2eb9af0`
 - Focused verification: 12 Vitest files / 135 tests passed from `apps/web` after the direct `buildChatContext` regression, promotion-audit exclusion, graph-OR correction, and run-scope filter; `git diff --check` passed. No full typecheck, broad build, deployment, or runtime acceptance was run.
 - Residual: pre-existing entity rows that merged room-derived facts while retaining an older `auto`/null source cannot be identified from current row-level provenance. Durable room-to-project binding, message-level source provenance, App-switch isolation, production/runtime acceptance, and explicit manual scoped-memory API policy remain separate requirements. This checkpoint does not reopen or claim SPEC-224 dispatch.
 
+## Checkpoint 5 — `TEAM_AGENT_RUNTIME_PROJECT_PROVIDER_BOUNDARY`
+
+- PR #443 merged at `0379c7d66de00b5c43892358459c7c51357012ca` from source commit `1a056785eadea0b9a46487c97e51849d7d9a0f86`.
+- The canonical TeamRoom project binding now crosses the AgentRuntime request contract and is revalidated against server authority before each JSON or streaming provider attempt. The legacy/shadow direct-provider fallback uses the same binding and fails closed on denial.
+- Focused verification: 10 Vitest files / 189 tests and 71 Python AgentRuntime tests passed on the candidate tree; its tree hash matched the merged `origin/main` tree. No full build, deployment, direct T acceptance, or production dispatch is claimed.
+- SPEC-269 remains partial. App-aware `MemoryContext`, `ProjectResolutionReceipt`, and direct T-01 through T-23 acceptance are not established. The dirty legacy SPEC-269 and SPEC-268 worktrees remain untouched; the old SPEC-269 delta is not reusable because it removes PR #426 authorization checks.
+- SPEC-224 protected dispatch remains `DENY`; production deployment remains unauthorized.
+
 ## Next WorkUnit
 
-Next WorkUnit: `SPEC269_PROJECT_PROVIDER_BOUNDARY_REVALIDATION`. Recheck the existing inactive-owner evidence for the old dirty SPEC-269 worktree, preserve it unchanged, and do not recover the two-file delta that removes PR #426 authorization checks. Starting from latest `origin/main`, trace canonical project membership through prompt composition to each physical provider attempt; reuse the existing trusted server-side authority and provider guard contracts where equivalent, and fail closed before provider dispatch if project authorization cannot be revalidated. Continue to keep team-room persistent memory disabled pending source provenance.
+Next WorkUnit: `SPEC269_APP_PROJECT_MEMORY_CONTEXT_BINDING_AND_T01_T23_ACCEPTANCE`.
+
+Current state: no additional source WorkUnit in the inspected R2 candidate set is independently eligible. The TeamRoom and AgentRuntime project-provider boundary, Mini App route identity guard, and team-room persistent-memory fail-closed work are already integrated. SPEC-302/SPEC-304 identity/context paths remain shared/reserved; Feature 287 is blocked by its Factory-owned UI contract; Feature 014 still needs migration ownership; SPEC-038's remaining CMS KPIs require authoritative CMS records or external Rich Results evidence; and Feature 161 is Factory-reserved.
+
+Do not repeat ownership recovery, provider-boundary wiring, route identity checks, or team-room memory-disable work. Resume only after the SPEC-302/SPEC-304 owners publish the canonical App identity and ProjectResolutionReceipt binding contract and release exact shared paths. Then implement from latest `origin/main`, add App/Project-bound runtime context without weakening project membership checks, and execute direct T-01 through T-23 acceptance. Keep team-room persistent memory disabled until provenance and isolation are accepted. Do not claim SPEC-269 completion, deployment, or SPEC-224 live dispatch.
