@@ -1,0 +1,57 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 non-production persisted acceptance",
+  "sourceSha": "b3267afed557162c49cfa5894e634ca0d1d461a3",
+  "canonicalRef": "origin/main",
+  "database": {
+    "engine": "PostgreSQL 17.11",
+    "databaseName": "miniapp_r5_test",
+    "container": "smartaihub-r5-pg17-20261010",
+    "volume": "smartaihub-r5-pg17-data-20261010",
+    "loopbackPort": 32784,
+    "imageDigest": "sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d",
+    "schemaBootstrap": "Curated mini-app fresh-baseline migration journal from source 06068ae9db6c433b9a10353f71f2becdba18218e, followed by test-only scoped_memories DDL derived from drizzle/0086_supreme_speedball.sql and tenant_identity_actions DDL derived from drizzle/0316_feature_189_tenant_identity_and_data_transfer.sql. Full historical migration chain was not run.",
+    "syntheticDataOnly": true
+  },
+  "acceptance": [
+    {
+      "case": "persisted scoped-memory Project filter",
+      "outcome": "PASS_SUBSYSTEM_SLICE",
+      "runtime": "server/services/scopedMemoryService.searchMemories",
+      "evidence": "Real PostgreSQL-backed runtime query returned the global and project-a synthetic memories and excluded project-b memory for project-a context. This proves the scoped-memory query filter only, not end-to-end prompt/provider authorization."
+    },
+    {
+      "case": "ProjectResolutionReceipt fresh ACL and revocation",
+      "outcome": "PASS_SUBSYSTEM_SLICE",
+      "runtime": "server/services/smartAiHubRuntimeContext.issueProjectResolutionReceipt + validateProjectResolutionReceipt",
+      "evidence": "Synthetic current ACL produced ALLOW_READ. Fresh validation denied cross-tenant and wrong-App scopes, then denied after project membership revocation and after App-Project binding revocation. Trusted App context was injected as a synthetic server-side test value; this does not verify an ingress producer. Conversation-bound path was unavailable in this scoped schema."
+    },
+    {
+      "case": "SPEC-304 HTTP-to-runtime assertion consumer",
+      "outcome": "PASS_TEST_BOUNDARY_ONLY",
+      "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/appIngressMemoryRuntime.test.ts server/services/__tests__/trustedAppRouteAssertion.test.ts",
+      "result": "2 files passed, 24 tests passed",
+      "evidence": "Loopback Express request boundary exercised synthetic verifier-authenticated context propagation and forged Host/X-Forwarded-Host negative cases. The verifier/issuer is test-local and mocked; production ingress remains unverified and fail-closed."
+    },
+    {
+      "case": "focused SmartAIHub Project and memory regression",
+      "outcome": "PASS_TESTS",
+      "command": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/contextBuilder.test.ts server/services/__tests__/projectResolutionAuthority.test.ts server/services/__tests__/scopedMemoryService.test.ts server/services/__tests__/canonicalProjectContextResolver.test.ts server/services/__tests__/integration/memoryScopeIsolation.test.ts",
+      "result": "5 files passed, 91 tests passed",
+      "sourceSha": "b3267afed557162c49cfa5894e634ca0d1d461a3"
+    },
+    {
+      "case": "SPEC-277-compatible canonical job persistence and process reopen",
+      "outcome": "PASS_PERSISTENCE_ONLY",
+      "runtime": "createJobControlPlane().create deferred synthetic test_job; fresh Node process getJobSnapshot",
+      "evidence": "Canonical worker_jobs row and pending state were recovered in a separate process; repeat idempotency returned the existing row; no worker_job_outbox entry was created. No worker execution, scheduler recovery, useful-work completion, lease fencing, or SPEC-271 receipt acceptance was exercised."
+    }
+  ],
+  "limitations": [
+    "T-01 App-private memory isolation is not proven: current scoped-memory storage has no authoritative appId dimension.",
+    "Do not mark T-02 or the full SPEC-269 matrix PASS: receipt authorization and memory retrieval were separately exercised, not through the complete prompt/provider request path.",
+    "Production ingress assertion producer, deployed ingress provenance, conversation retargeting, ambiguous/no-project persisted scenarios, and full ACL/session acceptance remain open.",
+    "SPEC-271 WP2B owner assignments remain required; the job probe is not worker restart/recovery acceptance.",
+    "No production migration, deployment, protected SPEC-224 dispatch, or durable Project-memory write was performed."
+  ]
+}
