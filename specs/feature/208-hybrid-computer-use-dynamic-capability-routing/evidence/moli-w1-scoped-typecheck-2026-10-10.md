@@ -1,7 +1,8 @@
 # W1 scoped TypeScript verification — 2026-10-10
 
 - WorkUnit: W1 safe additive baseline integration
-- Source SHA: `06068ae9db6c433b9a10353f71f2becdba18218e` (current `origin/main`; W1 implementation arrived in PR #445 at `fe5e04015b2b947d03d41ce800948582be40c721`)
+- W1 implementation canonical SHA: `890658e999cd3020d2944d5d7c898d5e52ec8f4f` (`origin/main` at verification time;
+- Final verification checkout SHA: `19dedbd41b54f2a828f98d849b5cd13c5ed5317b` (same implementation, documentation-only descendants); W1 implementation arrived in PR #445 at `fe5e04015b2b947d03d41ce800948582be40c721`)
 - Scope: `computerUseCapabilityRouting.ts`, `moliCdpBrowserAdapter.ts`, and their imported TypeScript dependency graph.
 - Typecheck command: `node /home/dev/projects/SmartSpecPro/node_modules/typescript/bin/tsc --project apps/web/tsconfig.spec208-w1.tmp.json --pretty false`; the temporary config extended `apps/web/tsconfig.json`, listed only the two changed implementation files, and directed build info to `/tmp`.
 - Typecheck output: no diagnostics.
