@@ -116,14 +116,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "fe5e04015b2b947d03d41ce800948582be40c721",
+    "expected_canonical_sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
     "next_action": "Implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation in the canonical Runner path; do not dispatch Moli until these boundaries have executable tests.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
     "reactivation_predicate": "Paired Runner source/runtime and its authorization, egress-policy, audit, cancellation, and profile-cleanup interfaces are available for scoped integration.",
-    "resume_point": "W1 is integrated at fe5e04015b2b947d03d41ce800948582be40c721. Its focused adapter/job-executor suite passed 17 tests with 2 live Moli tests skipped due to missing verified runtime. Continue with W2 against the existing apps/runner-app and Feature 195/197 authority; preserve Chromium default and Moli production OFF.",
+    "resume_point": "W1 adapter baseline is integrated at fe5e04015b2b947d03d41ce800948582be40c721. W2 guard PR #447 is integrated at 1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e. On that exact canonical SHA, focused web tests passed 16/16 and Runner library tests passed 174/174. The guard rejects non-Chromium browser engine constraints; it does not establish Moli process/profile, protocol, network, tenant, cancellation or receipt isolation. Continue W2 with a defensible OS-enforced isolation boundary; keep Moli undispatched and production disabled.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -331,7 +331,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 27,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -349,7 +349,8 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "82da2e8a81193a9b2eaaf974c843489313dd659c"
+      "82da2e8a81193a9b2eaaf974c843489313dd659c",
+      "7aeaa0109912a74a89f268e177aea7eaf204fbff"
     ],
     "mapping": [],
     "source_paths": [
@@ -360,24 +361,29 @@
       "tools/moli-prototype/generate_sbom.py",
       "tools/moli-prototype/license_inventory.py",
       "tools/moli-prototype/scan_osv.py",
-      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-phase0-prototype-2026-10-08.md"
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/moli-phase0-prototype-2026-10-08.md",
+      "apps/runner-app/src/control_channel.rs",
+      "apps/runner-app/src/protocol.rs",
+      "apps/web/server/services/runnerJobCommandContracts.ts",
+      "apps/web/server/services/__tests__/runnerJobCommandContracts.test.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fe5e04015b2b947d03d41ce800948582be40c721",
+    "canonical_sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
     "integrated": true,
-    "integrated_at": "2026-10-10T02:17:22Z"
+    "integrated_at": "2026-10-10T02:22:56Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [
-      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-post-integration-2026-10-10.md"
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-post-integration-2026-10-10.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md"
     ],
-    "updated_at": "2026-10-10T02:18:48.585399Z"
+    "updated_at": "2026-10-10T02:23:50Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -468,9 +474,10 @@
       "current_state": "PARTIAL_INTEGRATED",
       "previous_state": "VALIDATION_PENDING",
       "state_evidence": [
-        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-post-integration-2026-10-10.md"
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-post-integration-2026-10-10.md",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md"
       ],
-      "updated_at": "2026-10-10T02:18:48.585399Z"
+      "updated_at": "2026-10-10T02:23:50Z"
     }
   },
   "reconciliation": {
@@ -765,7 +772,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T02:19:23.097873Z",
+  "updated_at": "2026-10-10T02:24:06.922315Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -799,13 +806,32 @@
         "sha": "fe5e04015b2b947d03d41ce800948582be40c721",
         "skipped": 2,
         "test_files": 3
+      },
+      {
+        "exit_code": 0,
+        "passed": 16,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md",
+        "profile": "quick",
+        "result": "PASS",
+        "sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
+        "test_files": 2
+      },
+      {
+        "exit_code": 0,
+        "passed": 174,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md",
+        "profile": "package",
+        "result": "PASS",
+        "sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
+        "test_files": 1,
+        "warning": "Cargo global last-use metadata write failed because root filesystem was full; test exit was 0"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "fe5e04015b2b947d03d41ce800948582be40c721",
+    "sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
     "status": "PARTIAL",
     "task_regressions": []
   }
