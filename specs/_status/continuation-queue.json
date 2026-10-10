@@ -2955,7 +2955,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 15,
-      "next_action": "Windows owner acceptance of review artifact 11612928361 followed by fresh authenticated session/capability/Codex and workspace/source readback.",
+      "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/205-smartaihub-runner-cross-platform",
@@ -2985,7 +2985,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
+      "next_action": "Continue Issue #435 with W2: implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation using the existing Feature 195 worker_jobs and Feature 197 Runner boundaries. Keep Moli undispatched until those gates pass.",
       "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
@@ -4869,18 +4869,9 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "priority": "P1",
-      "rationale": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "rationale": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "spec_id": "268"
-    },
-    {
-      "confidence": "HIGH",
-      "decision": "CONTINUE_REQUIRED",
-      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
-      "priority": "P1",
-      "rationale": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
-      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
-      "spec_id": "269"
     },
     {
       "confidence": "LOW",
@@ -4935,6 +4926,15 @@
       "rationale": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "priority": "P3",
+      "rationale": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "spec_id": "269"
     },
     {
       "confidence": "MEDIUM",

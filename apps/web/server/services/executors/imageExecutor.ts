@@ -6,6 +6,7 @@ import type {
   RouteDecision,
 } from "./types";
 import { registerExecutor } from "./executorRegistry";
+import { TeamProjectProviderAuthorizationError } from "../teamProjectProviderAuthorization";
 import { extractUserPrompt } from "./mediaExecutorHelpers";
 import {
   mediaGenerationService,
@@ -55,6 +56,7 @@ export class ImageGenerationExecutor implements CapabilityExecutor {
       if (!userToken) {
         console.warn("[imageExecutor] No server token available — media API call may fail");
       }
+      await input.beforeProviderRequest?.();
       const response = await mediaGenerationService.generateImage(request, userToken);
       if (!input.tenantId) {
         throw new Error("Tenant context is required before publishing generated media");
@@ -83,6 +85,7 @@ export class ImageGenerationExecutor implements CapabilityExecutor {
         totalDurationMs: Date.now() - startMs,
       };
     } catch (err: any) {
+      if (err instanceof TeamProjectProviderAuthorizationError) throw err;
       console.error("[imageExecutor] dispatch failed:", err);
       return {
         success: false,

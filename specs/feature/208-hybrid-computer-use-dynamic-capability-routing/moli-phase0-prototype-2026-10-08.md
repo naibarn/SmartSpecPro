@@ -56,6 +56,10 @@ Focused tests run from `apps/web`: `moliBrowserEngine.test.ts`, `moliCdpBrowserA
 
 No Moli production job was enabled or replayed in this audit.
 
+## Phase 1 correction
+
+The Phase 0 statement above that the paired Runner process was outside this checkout was inaccurate. The SmartAIHub Runner implementation is present under `apps/runner-app`; Phase 1 inspected its command, browser, cancellation, and cleanup paths. The Runner still lacks the browser-job cancellation and verified Moli process/profile lifecycle needed for a safe vertical slice. See [`moli-phase1-security-runner-verification-2026-10-08.md`](moli-phase1-security-runner-verification-2026-10-08.md) for the corrected integration assessment. This correction does not mean Moli is integrated.
+
 ## QA review passes
 
 The Lane B review checked (1) latest release selection, (2) immutable tag-to-commit resolution, (3) source archive digest, (4) binary archive and executable digests, (5) Cargo.lock digest, (6) Cargo metadata graph and SBOM reference integrity, (7) OSV query coverage and dependency paths, (8) Cargo license metadata gaps, (9) CDP navigation/DOM/JavaScript/form behavior, (10) WebDriver Classic status/session/element behavior, (11) separate CDP BrowserContext storage isolation versus shared WebDriver session storage, (12) cancellation listener shutdown and Runner cleanup callback, (13) non-loopback/authorization/navigation-policy gates, (14) default-off/shadow/production flag behavior, and (15) the unchanged executor's Chromium constraint. The review found the documented WebDriver storage leak and unresolved reachable advisories; no production route was enabled.

@@ -6,7 +6,19 @@
  * 3. Entity Memory: Persistent facts about user/project
  */
 
-import { eq, desc, asc, and, or, sql, lt, gte, inArray, isNull } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  asc,
+  and,
+  or,
+  sql,
+  lt,
+  gte,
+  inArray,
+  isNull,
+  ne,
+} from "drizzle-orm";
 import { getDb } from "../db";
 import {
   assistantProfiles,
@@ -34,6 +46,10 @@ import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { auditLogger } from "./auditLogger";
 import { getRuleMemories, searchMemories } from "./scopedMemoryService";
+import {
+  isTeamRoomMemoryEnabled,
+  isTeamRoomMemoryPromptEligible,
+} from "./teamRoomMemoryPolicy";
 import { CHAT_MEMORY_FLAG_DEFAULTS, getAllChatMemoryFlags, getChatMemoryFlag } from "./chatMemoryFlags";
 
 // ==================== Multimodal Types ====================
@@ -1396,6 +1412,8 @@ export async function upsertEntityMemory(
     const existingFacts = existing.facts || [];
     const newFacts = [...new Set([...existingFacts, ...filteredFacts])];
 
+    const preserveTeamRoomProvenance =
+      existing.source === "team_room" || source === "team_room";
     await db
       .update(entityMemories)
       .set({
@@ -1406,10 +1424,17 @@ export async function upsertEntityMemory(
         // Set projectId if existing memory has none and we now know the project
         ...(resolvedProjectId && !existing.projectId ? { projectId: resolvedProjectId } : {}),
         ...(existing.personaId !== resolvedPersonaId ? { personaId: resolvedPersonaId } : {}),
+        // Provenance is monotonic: merging room-derived facts quarantines the row.
+        ...(preserveTeamRoomProvenance ? { source: "team_room" } : {}),
       })
       .where(eq(entityMemories.id, existing.id));
 
-    return { ...existing, facts: newFacts, personaId: resolvedPersonaId };
+    return {
+      ...existing,
+      facts: newFacts,
+      personaId: resolvedPersonaId,
+      source: preserveTeamRoomProvenance ? "team_room" : existing.source,
+    };
   }
 
   // Create new entity memory
@@ -1446,6 +1471,12 @@ export async function getEntityMemoriesForContext(
   if (!db) return [];
 
   const conditions = [eq(entityMemories.userId, userId)];
+
+  // Older team-room extraction rows lack message-level source provenance.
+  // Keep them out of prompt context until SPEC-268 isolation acceptance passes.
+  conditions.push(
+    or(isNull(entityMemories.source), ne(entityMemories.source, "team_room"))!
+  );
 
   if (personaId !== undefined) {
     conditions.push(
@@ -1961,14 +1992,21 @@ export async function buildChatContext(
         ]);
 
         const queryEmbedding = useVectorSearch ? await generateQueryEmbedding(activeRetrievalQuery) : null;
-        const rules = await getRuleMemories(tenantIdForMemory!, userId, activePersonaId);
-        const l1Results = await searchMemories({
+        const rules = await getRuleMemories(
+          tenantIdForMemory!,
+          userId,
+          activePersonaId,
+          options?.projectId ?? null,
+        );
+        const l1Results = (await searchMemories({
           tenantId: tenantIdForMemory!,
           scopes: [{ type: "user", id: String(userId) }],
           query: activeRetrievalQuery,
           topK: useVectorSearch ? 10 : 5,
           embedding: queryEmbedding ?? undefined,
-        });
+          projectId: options?.projectId ?? null,
+          excludeTeamRoomPromotions: !isTeamRoomMemoryEnabled(),
+        })).filter((result) => isTeamRoomMemoryPromptEligible(result.memory));
 
         let l2Results: Array<{ chunk: { id: string; content: string; tokenCount: number } }> = [];
         if (useVectorSearch && l1Results.length < 3) {

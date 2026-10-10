@@ -9,10 +9,15 @@ import {
 } from "./executors/contextBuilder";
 import {
   buildChatExecutionContextPack,
-  buildTeamExecutionContextPack,
+  buildTeamExecutionContextPackWithProviderBinding,
   summarizeContextPack,
   type ContextPack,
 } from "./contextEngineAdapter";
+import {
+  revalidateTeamProjectProviderContextBinding,
+  TeamProjectProviderAuthorizationError,
+  type TeamProjectProviderContextBinding,
+} from "./teamProjectProviderAuthorization";
 import { recordContextEngineMetric } from "./monitoringService";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
@@ -287,6 +292,7 @@ export async function executeUnified(
     // ─── Step 4: Build Execution Context ────────────────────
     let messages: Array<{ role: string; content: string | unknown[] }>;
     let contextPack: ContextPack | null = null;
+    let projectAuthorizationBinding: TeamProjectProviderContextBinding | null = null;
     const contextAssemblyStartMs = Date.now();
 
     // Check prompt enhancement first
@@ -329,7 +335,7 @@ export async function executeUnified(
             SYSTEM_PROMPT_MAX_CHARS,
           )
         : null;
-      contextPack = await buildTeamExecutionContextPack(
+      const teamContextResult = await buildTeamExecutionContextPackWithProviderBinding(
         request,
         request.tenantId,
         {
@@ -340,6 +346,8 @@ export async function executeUnified(
             : "team_room",
         },
       );
+      contextPack = teamContextResult.contextPack;
+      projectAuthorizationBinding = teamContextResult.projectAuthorizationBinding;
       messages = contextPack.messages;
     }
 
@@ -355,8 +363,11 @@ export async function executeUnified(
         conversationId: request.conversationContext?.conversationId ?? null,
         roomId: request.teamContext?.roomId ?? null,
         runId: request.teamContext?.runId ?? null,
-        projectId:
-          typeof request.dynamicParams?.projectId === "string"
+        projectId: projectAuthorizationBinding
+          ? projectAuthorizationBinding.projectAuthority === "canonical-member"
+            ? projectAuthorizationBinding.projectId
+            : null
+          : typeof request.dynamicParams?.projectId === "string"
             ? request.dynamicParams.projectId
             : null,
         skillId: skill.id,
@@ -485,6 +496,30 @@ export async function executeUnified(
       maxTokens: maxTokensHint,
       temperature: temperatureHint,
     };
+
+    const providerBinding = projectAuthorizationBinding;
+    const beforeProviderRequest = providerBinding
+      ? async () => {
+          const teamContext = request.teamContext;
+          if (!teamContext) throw new TeamProjectProviderAuthorizationError();
+          await revalidateTeamProjectProviderContextBinding(
+            providerBinding,
+            {
+              tenantId: request.tenantId,
+              roomId: teamContext.roomId,
+              teamId: teamContext.teamId,
+              userId: request.userId,
+              runId: teamContext.runId,
+            },
+          );
+        }
+      : undefined;
+
+    // Keep the pre-executor check, then carry the same server-owned guard to
+    // the actual LLM/media request boundary. The second check catches revocation
+    // during model routing or executor preparation.
+    await beforeProviderRequest?.();
+    executorInput.beforeProviderRequest = beforeProviderRequest;
 
     const executorResult = await executor.execute(executorInput);
 
@@ -657,13 +692,17 @@ export async function executeUnified(
 
     return result;
   } catch (err) {
+    const safeReason =
+      err instanceof TeamProjectProviderAuthorizationError
+        ? "project_authorization_denied"
+        : "orchestrator_error";
     // Unrecoverable error — log full details server-side only
     const errorDetail = String(err);
     auditLogger.log({
       eventType: "unified_error",
       userId: request.userId,
       requestPayload: {
-        error: errorDetail,
+        error: safeReason === "project_authorization_denied" ? safeReason : errorDetail,
         channel: request.channel,
         traceId,
       },
@@ -672,7 +711,7 @@ export async function executeUnified(
     // U02: Sanitize error — do not expose internal details to caller
     return makeErrorResult(
       request,
-      "orchestrator_error",
+      safeReason,
       "An internal error occurred during execution",
       startMs,
     );
@@ -686,6 +725,7 @@ export const ERROR_REASONS = new Set([
   "skill_resolution_failed",
   "executor_not_found",
   "capability_not_allowed",
+  "project_authorization_denied",
   "orchestrator_error",
   "rate_limited",
 ]);

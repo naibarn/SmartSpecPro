@@ -149,6 +149,46 @@ describe("chatService personal lock", () => {
     expect(dbMocks.mockDb.update).not.toHaveBeenCalled();
   });
 
+  it("rejects retargeting an existing work conversation to preserve history provenance", async () => {
+    dbMocks.setSelectedRows([
+      {
+        id: 44,
+        projectId: "project-a",
+      },
+    ]);
+
+    await expect(
+      updateConversation(44, 7, {
+        projectId: "project-b",
+      } as any),
+    ).rejects.toMatchObject<Partial<TRPCError>>({
+      code: "FORBIDDEN",
+      message: "Conversation project binding is immutable; create a new conversation to change projects",
+    });
+
+    expect(dbMocks.mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects assigning an unscoped existing conversation to a project", async () => {
+    dbMocks.setSelectedRows([
+      {
+        id: 45,
+        projectId: null,
+      },
+    ]);
+
+    await expect(
+      updateConversation(45, 7, {
+        projectId: "project-b",
+      } as any),
+    ).rejects.toMatchObject<Partial<TRPCError>>({
+      code: "FORBIDDEN",
+      message: "Conversation project binding is immutable; create a new conversation to change projects",
+    });
+
+    expect(dbMocks.mockDb.update).not.toHaveBeenCalled();
+  });
+
   it("resolves the active personal conversation directly for the tenant", async () => {
     dbMocks.setSelectedRows([
       {

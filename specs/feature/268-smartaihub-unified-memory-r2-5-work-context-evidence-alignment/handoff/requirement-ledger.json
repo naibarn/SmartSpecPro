@@ -1,5 +1,5 @@
 {
-  "generation": 1,
+  "generation": 3,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -24050,26 +24050,37 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8782"
       ],
       "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8782",
-      "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
+      "blocker": "Project-scoped entity memory and future conversation project reassignment are constrained, but durable room-to-project binding and persistent source provenance remain open. Historical conversations may have been retargeted before the guard; messages lack project-level provenance, so their original scope cannot be inferred. App-switch isolation and downstream provider-use boundaries remain separate obligations.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/server/services/promptComposer.ts (PR #426; merge SHA 1d970c5a3925bf8f8f32516005d2a9be7bb67ae8)",
+        "apps/web/server/services/__tests__/promptComposer.enhanced.test.ts",
+        "apps/web/server/services/promptComposer.ts (PR #434 and #436; merge SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0)",
+        "apps/web/server/services/chatService.ts (PR #434; project binding change rejected; merge SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0)"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "requirement_digest": "ae9fd8a682a371e0f503342746785ac7d8ca888725481ef7f2aa4618e5123bde",
       "requirement_id": "REQ-CF6F62069953",
       "requirement_text": "An App switch MUST NOT expose another App's private memory. A Project switch MUST NOT expose another Project's private or shared memory. Shared Project memory requires current Project authorization and the policy for the selected memory class. Revocation MUST be rechecked at the read/write boundary, including during a long-lived conversation.",
       "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "orchestra/tasks/implementation-marathon-20261010/test-design.md",
+        "https://github.com/naibarn/SmartSpecPro/pull/426",
+        "4 focused Vitest files / 79 tests passed on tree 341200801fce5a69d7a838069d9d6c08a9e95ee1, identical to origin/main 224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+        "https://github.com/naibarn/SmartSpecPro/pull/434",
+        "https://github.com/naibarn/SmartSpecPro/pull/436"
+      ],
+      "verification_method": "Focused prompt-composer, context-builder, memory-persona, and conversation-binding tests; validate canonical tenant/project/member authorization and final prompt-context insertion. This is local source verification, not deployed-runtime acceptance."
     },
     {
       "applicability": "UNASSESSED",

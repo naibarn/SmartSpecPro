@@ -10,12 +10,17 @@ vi.mock("../scopedMemoryService", () => ({
   retrieveForPrompt: vi.fn(),
 }));
 
-vi.mock("../chatService", () => ({
-  getEntityMemories: vi.fn(),
+vi.mock("../memoryService", () => ({
+  getEntityMemoriesForContext: vi.fn(),
 }));
 
 vi.mock("../promptComposer", () => ({
   composePrompt: vi.fn(),
+}));
+
+vi.mock("../teamProjectProviderAuthorization", () => ({
+  captureTeamProjectProviderContextBinding: vi.fn(),
+  TeamProjectProviderAuthorizationError: class TeamProjectProviderAuthorizationError extends Error {},
 }));
 
 vi.mock("../webSearchToolInjector", () => ({
@@ -46,8 +51,9 @@ import {
 
 import { buildPersonaPromptSegments, getPersonaById } from "../personaService";
 import { retrieveForPrompt } from "../scopedMemoryService";
-import { getEntityMemories } from "../chatService";
+import { getEntityMemoriesForContext } from "../memoryService";
 import { composePrompt } from "../promptComposer";
+import { captureTeamProjectProviderContextBinding } from "../teamProjectProviderAuthorization";
 import {
   buildWebSearchParams,
   detectProviderFamily,
@@ -63,8 +69,11 @@ import type { UnifiedExecutionRequest } from "../executors/types";
 const mockGetPersonaById = vi.mocked(getPersonaById);
 const mockBuildPersonaPromptSegments = vi.mocked(buildPersonaPromptSegments);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
-const mockGetEntityMemories = vi.mocked(getEntityMemories);
+const mockGetEntityMemoriesForContext = vi.mocked(getEntityMemoriesForContext);
 const mockComposePrompt = vi.mocked(composePrompt);
+const mockCaptureTeamProjectProviderContextBinding = vi.mocked(
+  captureTeamProjectProviderContextBinding,
+);
 const mockBuildWebSearchParams = vi.mocked(buildWebSearchParams);
 const mockDetectProviderFamily = vi.mocked(detectProviderFamily);
 const mockGetProviderForModel = vi.mocked(getProviderForModel);
@@ -85,11 +94,55 @@ function makeRequest(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetEntityMemoriesForContext.mockResolvedValue([]);
+  mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+    version: "team-room-provider-context.v1",
+    tenantId: "t1",
+    roomId: "r1",
+    teamId: "t1",
+    userId: 1,
+    runId: null,
+    historyScope: "room",
+    projectId: "canonical-project-1",
+    projectAuthority: "canonical-member",
+  });
 });
 
 // ─── buildChatContext ──────────────────────────────────────
 
 describe("buildChatContext", () => {
+  it("requests only global entity memories when chat has no verified project binding", async () => {
+    mockGetPersonaById.mockResolvedValue({ id: "p1" } as any);
+    mockRetrieveForPrompt.mockResolvedValue([]);
+    mockBuildPersonaPromptSegments.mockReturnValue({
+      prefix: "Persona prefix",
+      styleInstructions: "",
+      restrictionsBulletPoints: "",
+    });
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        id: 1,
+        userId: 1,
+        personaId: "p1",
+        entityType: "preference",
+        entityName: "global preference",
+        facts: ["Use concise answers"],
+        projectId: null,
+      } as any,
+    ]);
+
+    const messages = await buildChatContext(
+      makeRequest({ conversationContext: { activePersonaId: "p1" } }),
+      "You are a helpful assistant",
+      null,
+    );
+
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(messages.some((message) =>
+      typeof message.content === "string" && message.content.includes("Use concise answers"),
+    )).toBe(true);
+  });
+
   it("with persona -- loads persona, builds segments, retrieves memory", async () => {
     const persona = {
       id: "p1",
@@ -109,7 +162,7 @@ describe("buildChatContext", () => {
     mockRetrieveForPrompt.mockResolvedValue([
       { memory: { content: "User prefers short answers" }, score: 0.9, matchType: "keyword" } as any,
     ]);
-    mockGetEntityMemories.mockResolvedValue([
+    mockGetEntityMemoriesForContext.mockResolvedValue([
       { entityName: "User", facts: ["Works in marketing"], entityType: "user" } as any,
     ]);
 
@@ -125,7 +178,7 @@ describe("buildChatContext", () => {
     expect(mockGetPersonaById).toHaveBeenCalledWith("p1");
     expect(mockBuildPersonaPromptSegments).toHaveBeenCalledWith(persona);
     expect(mockRetrieveForPrompt).toHaveBeenCalled();
-    expect(mockGetEntityMemories).toHaveBeenCalled();
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
 
     // Should have 3 messages: persona+memory system, skill system, user
     expect(messages).toHaveLength(3);
@@ -153,7 +206,7 @@ describe("buildChatContext", () => {
       restrictionsBulletPoints: null,
     });
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
 
     const req = makeRequest({
       conversationContext: { activePersonaId: "p1" },
@@ -264,7 +317,7 @@ describe("buildChatContext", () => {
       restrictionsBulletPoints: null,
     });
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
 
     const req = makeRequest({
       conversationContext: { activePersonaId: "p1" },
@@ -283,6 +336,17 @@ describe("buildChatContext", () => {
 
 describe("buildTeamContext", () => {
   it("delegates to composePrompt with correct parameters", async () => {
+    mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+      version: "team-room-provider-context.v1",
+      tenantId: "t1",
+      roomId: "r1",
+      teamId: "t1",
+      userId: 7,
+      runId: "run1",
+      historyScope: "run",
+      projectId: "canonical-project-1",
+      projectAuthority: "canonical-member",
+    });
     mockComposePrompt.mockResolvedValue({
       messages: [{ role: "system", content: "composed" }],
       estimatedTokens: 100,
@@ -302,7 +366,7 @@ describe("buildTeamContext", () => {
       },
     });
 
-    const messages = await buildTeamContext(req, "tenant1");
+    const messages = await buildTeamContext(req, "t1");
 
     expect(mockComposePrompt).toHaveBeenCalledWith({
       assistantId: "a1",
@@ -310,10 +374,18 @@ describe("buildTeamContext", () => {
       roomId: "r1",
       teamId: "t1",
       objective: "Write an article",
-      tenantId: "tenant1",
+      tenantId: "t1",
       initiatedByUserId: 7,
+      projectId: "canonical-project-1",
       currentMessage: "Latest guided message",
-      memoryMode: "full",
+      memoryMode: "off",
+    });
+    expect(mockCaptureTeamProjectProviderContextBinding).toHaveBeenCalledWith({
+      tenantId: "t1",
+      roomId: "r1",
+      teamId: "t1",
+      userId: 7,
+      runId: "run1",
     });
   });
 
@@ -337,8 +409,37 @@ describe("buildTeamContext", () => {
       },
     });
 
-    const messages = await buildTeamContext(req, "tenant1");
+    const messages = await buildTeamContext(req, "t1");
     expect(messages).toEqual(expectedMessages);
+  });
+
+  it("pins an unprojected room to no project scope even if the room changes during assembly", async () => {
+    mockCaptureTeamProjectProviderContextBinding.mockResolvedValue({
+      version: "team-room-provider-context.v1",
+      tenantId: "t1",
+      roomId: "r1",
+      teamId: "t1",
+      userId: 1,
+      runId: null,
+      historyScope: "room",
+      projectId: null,
+      projectAuthority: "room-only",
+    });
+    mockComposePrompt.mockResolvedValue({ messages: [], estimatedTokens: 0 });
+    await buildTeamContext(makeRequest({
+      channel: "team_room",
+      teamContext: {
+        assistantId: "a1",
+        roomId: "r1",
+        teamId: "t1",
+        objective: "Do work",
+      },
+    }), "t1");
+
+    expect(mockComposePrompt).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: "",
+      memoryMode: "off",
+    }));
   });
 });
 

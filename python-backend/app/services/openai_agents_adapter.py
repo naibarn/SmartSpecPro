@@ -81,6 +81,13 @@ def _gateway_transport_for_request(request: AgentRuntimeRequest) -> GatewayTrans
     return "responses"
 
 
+def _team_provider_binding_for_request(request: AgentRuntimeRequest) -> dict[str, object] | None:
+    binding = request.teamProjectProviderBinding
+    if binding is None:
+        return None
+    return binding.model_dump(mode="json", by_alias=True)
+
+
 def _maybe_await(value: Any) -> Awaitable[Any] | Any:
     if hasattr(value, "__await__"):
         return value
@@ -620,6 +627,7 @@ class OpenAIAgentsAdapter:
             tenant_id=validated_request.tenantId,
             gateway_base_url=gateway_base_url,
             transport=_gateway_transport_for_request(validated_request),
+            team_project_provider_binding=_team_provider_binding_for_request(validated_request),
         )
         prepared_tools = prepare_allowed_tools(validated_request, (components or OpenAIAgentsRuntimeComponents()).tools)
         prepared_handoffs = prepare_allowed_handoffs(
@@ -676,6 +684,7 @@ class OpenAIAgentsAdapter:
             tenant_id=validated_request.tenantId,
             gateway_base_url=gateway_base_url,
             transport=_gateway_transport_for_request(validated_request),
+            team_project_provider_binding=_team_provider_binding_for_request(validated_request),
         )
         prepared_tools = prepare_allowed_tools(validated_request, runtime_components.tools)
         prepared_handoffs = prepare_allowed_handoffs(validated_request, runtime_components.handoffs)
@@ -746,6 +755,7 @@ class OpenAIAgentsAdapter:
             tenant_id=validated_request.tenantId,
             gateway_base_url=gateway_base_url,
             transport=_gateway_transport_for_request(validated_request),
+            team_project_provider_binding=_team_provider_binding_for_request(validated_request),
         )
         trace_metadata = {
             "resumedFromCheckpointId": validated_request.approvalCheckpointId,

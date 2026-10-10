@@ -45,6 +45,7 @@ export class TextSkillExecutor implements CapabilityExecutor {
 
     const llmResult = await executeSkillLlmWithFallback({
       messages: input.messages,
+      beforeProviderRequest: input.beforeProviderRequest,
       skillSlug: input.skillSlug,
       userId: input.userId,
       executionPolicy: policy as any,

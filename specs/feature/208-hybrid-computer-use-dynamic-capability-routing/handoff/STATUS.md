@@ -2,11 +2,11 @@
 # 208 — Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `VALIDATION_PENDING`
+- Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 357 unresolved of 357
-- Next action: Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.
-- Manifest generation: 24
+- Requirements: 0 pass / 358 unresolved of 358
+- Next action: Continue Issue #435 with W2: implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation using the existing Feature 195 worker_jobs and Feature 197 Runner boundaries. Keep Moli undispatched until those gates pass.
+- Manifest generation: 30
 
 ## Source-declared status and relationship claims
 

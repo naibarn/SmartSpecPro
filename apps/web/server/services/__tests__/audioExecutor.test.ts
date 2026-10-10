@@ -14,6 +14,7 @@ vi.mock("../executors/executorRegistry", () => ({
 
 import { AudioGenerationExecutor } from "../executors/audioExecutor";
 import { mediaGenerationService } from "../mediaGenerationService";
+import { TeamProjectProviderAuthorizationError } from "../teamProjectProviderAuthorization";
 
 const mockGenerateAudio = vi.mocked(mediaGenerationService.generateAudioAsync);
 
@@ -130,6 +131,20 @@ describe("AudioGenerationExecutor", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("media_generation_failed");
       expect(result.mediaJob).toBeUndefined();
+    });
+
+    it("fails closed before media dispatch when project authority is revoked", async () => {
+      const denied = new TeamProjectProviderAuthorizationError();
+      const beforeProviderRequest = vi.fn(async () => {
+        throw denied;
+      });
+
+      await expect(
+        executor.execute(makeInput({ beforeProviderRequest })),
+      ).rejects.toBe(denied);
+
+      expect(beforeProviderRequest).toHaveBeenCalledOnce();
+      expect(mockGenerateAudio).not.toHaveBeenCalled();
     });
 
     it("passes auditContext with traceId", async () => {

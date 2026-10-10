@@ -5,9 +5,11 @@ import type {
   LibraryContextPackRuntimeTier,
 } from "../../shared/libraryContextPacks";
 import type { UnifiedExecutionRequest } from "./executors/types";
+import type { TeamProjectProviderContextBinding } from "./teamProjectProviderAuthorization";
 import {
   buildChatExecutionContextPack,
   buildTeamExecutionContextPack,
+  buildTeamExecutionContextPackWithProviderBinding,
   summarizeContextPack,
 } from "./contextEngineAdapter";
 import {
@@ -340,9 +342,16 @@ async function buildLibraryContextState(
   };
 }
 
-export async function build_context_pack(
+async function buildContextPackInternal(
   input: BuildContextPackRequest,
-): Promise<ContextPack> {
+  includeTeamProviderBinding: boolean,
+): Promise<
+  | ContextPack
+  | {
+      contextPack: ContextPack;
+      teamProjectProviderBinding: TeamProjectProviderContextBinding;
+    }
+> {
   const libraryContextState = await buildLibraryContextState(input);
   const mergedDynamicParams = (() => {
     const base = input.dynamicParams ?? input.request.dynamicParams ?? null;
@@ -393,8 +402,39 @@ export async function build_context_pack(
   }
 
   const tenantId = input.tenantId ?? input.request.tenantId;
+  if (includeTeamProviderBinding) {
+    const result = await buildTeamExecutionContextPackWithProviderBinding(
+      input.request,
+      tenantId,
+      options,
+    );
+    return {
+      contextPack: result.contextPack,
+      teamProjectProviderBinding: result.projectAuthorizationBinding,
+    };
+  }
   return buildTeamExecutionContextPack(input.request, tenantId, options);
 }
 
+export async function build_context_pack(
+  input: BuildContextPackRequest,
+): Promise<ContextPack> {
+  return (await buildContextPackInternal(input, false)) as ContextPack;
+}
+
+export async function build_context_pack_with_provider_binding(
+  input: BuildContextPackRequest,
+): Promise<
+  | ContextPack
+  | {
+      contextPack: ContextPack;
+      teamProjectProviderBinding: TeamProjectProviderContextBinding;
+    }
+> {
+  return buildContextPackInternal(input, true);
+}
+
 export const buildContextPack = build_context_pack;
+export const buildContextPackWithProviderBinding =
+  build_context_pack_with_provider_binding;
 export { summarizeContextPack };
