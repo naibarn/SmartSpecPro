@@ -34,7 +34,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "expected_canonical_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 12,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "canonical_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
     "integrated": true,
-    "integrated_at": "2026-10-10T04:29:06Z"
+    "integrated_at": "2026-10-10T07:02:51Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -355,7 +355,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T04:30:25.478513Z",
+  "updated_at": "2026-10-10T07:03:55.355708Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -387,11 +387,18 @@
         "scope": "PR #451 integrated at fe6771c1cc93cd5cf3321c417210e082a2e8f86c; request-to-runtime spoofing cases fail closed; existing Global/Personal paths and write ceiling retained. 9 Vitest files, 144 passed, 11 TODO; direct authenticated ingress positive case remains TODO.",
         "source_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
         "status": "PASS"
+      },
+      {
+        "kind": "TARGETED_REGRESSION",
+        "path": "orchestra/tasks/smartaihub-marathon-r4-20261010/progress.md",
+        "scope": "PR #457: unknown/noncanonical Project IDs fail closed at prompt memory boundary; canonical ACL revalidation retained; global/personal memory preserved; 2 Vitest files / 51 tests passed on exact merged SHA. Component/service evidence only; not direct T-01–T-23 or deployed ingress acceptance.",
+        "source_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
     "status": "PARTIAL",
     "task_regressions": []
   }
