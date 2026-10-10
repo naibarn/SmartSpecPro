@@ -49,3 +49,9 @@ Add an evidence-based progress projection to the existing SmartAIHub agent runti
 ## Residual scope
 
 Live runtime instrumentation, durable evaluation jobs, session-level aggregate metrics, replay-based rule promotion, Task Control UI, direct non-production UAT, and normative SPEC-269/SPEC-277 updates remain separate WorkUnits. This checkpoint does not establish production readiness or cross-session learning.
+
+## Follow-on Task Control integration
+
+A bounded AutoTeam-specific read-only adapter now feeds the existing ledger summary and panel badge from canonical stage attempts, provider job status, claim expiry, the existing loop guard, repair stage, and final evidence acceptance. `projectTeamRuntimeResponse` itself still has no production caller. Unsupported stage types return no projection. No new database, queue, lifecycle state, recovery dispatch, or learning write is introduced.
+
+The remaining work is generic live AgentRuntime instrumentation, durable asynchronous evaluation jobs, automatic recovery dispatch through the canonical recovery owner, replay/retention authority, broader SPEC-277 requirements/handoff update, and non-production browser/UAT proof. This follow-on implementation is not complete until integrated and handed off; full task completion remains open.

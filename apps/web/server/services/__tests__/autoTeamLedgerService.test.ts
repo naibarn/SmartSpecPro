@@ -388,6 +388,12 @@ describe("autoTeamLedgerService", () => {
       }),
     );
     expect(readModel.timeline.some((entry) => entry.kind === "trace")).toBe(true);
+    expect(readModel.summary.progressAssessment).toMatchObject({
+      status: "WORKING",
+      progress: 0.5,
+      requiredCriteriaCount: 2,
+      verifiedRequiredCriteria: 1,
+    });
     expect(
       readModel.steps[0]?.stepLinks.some(
         (link) =>
