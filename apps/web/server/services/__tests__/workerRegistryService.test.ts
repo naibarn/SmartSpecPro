@@ -1618,6 +1618,42 @@ describe("workerRegistryService", () => {
     expect(repo.listClaimableJobs).not.toHaveBeenCalled();
   });
 
+  it.each(["offline", "unhealthy"])(
+    "rejects claims before queue scan when worker is %s",
+    async status => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          registeredByUserId: 7,
+          runtimeType: "desktop_zeroclaw_managed",
+          status,
+          capabilitiesJson: { workerApp: { sharingMode: "group" } },
+        }),
+        listClaimableJobs: vi.fn(),
+        tryClaimJob: vi.fn(),
+      };
+
+      await expect(claimWorkerJob({
+        auth: {
+          tenantId: "tenant-1",
+          workerId: "worker-1",
+          runtimeType: "desktop_zeroclaw_managed",
+        } as any,
+        workerId: "worker-1",
+        payload: { maxJobs: 1, capabilityHints: [] },
+      }, { repo } as any)).rejects.toMatchObject({
+        code: "worker_state_invalid",
+        statusCode: 409,
+      });
+
+      expect(repo.listClaimableJobs).not.toHaveBeenCalled();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    },
+  );
+
   describe("remotion_render_video defense-in-depth claim capability (implementation-progress.md gap #2)", () => {
     function remotionJob(overrides: Record<string, unknown> = {}) {
       return {
