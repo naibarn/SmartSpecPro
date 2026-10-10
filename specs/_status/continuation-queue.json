@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Continue evidence-backed work while awaiting authority. Resolve WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first; refresh and verify PR #405, then #403, then #399 in sequence. Do not merge, deploy, close requirements, or claim COMPLETE while mandatory gates or live acceptance remain blocked.",
+      "next_action": "Implementation-only SPEC-308 gaps currently identified as safe are addressed in the task worktree. Keep WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first in integration sequencing: obtain the Security and Media/Runtime Owner disposition for sprintf-js, then refresh and verify PR #405; next reconcile #403; then run the consolidated exact-head SPEC-308 unit/Chromium suite for PR #399. Run no repeated local test rounds. Preserve all ledger rows OPEN until exact-candidate evidence, canonical integration, and required external acceptance exist.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4884,7 +4884,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "priority": "P1",
-      "rationale": "Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.",
+      "rationale": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "spec_id": "268"
     },
@@ -4938,7 +4938,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Continue evidence-backed work while awaiting authority. Resolve WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first; refresh and verify PR #405, then #403, then #399 in sequence. Do not merge, deploy, close requirements, or claim COMPLETE while mandatory gates or live acceptance remain blocked.",
+      "rationale": "Implementation-only SPEC-308 gaps currently identified as safe are addressed in the task worktree. Keep WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first in integration sequencing: obtain the Security and Media/Runtime Owner disposition for sprintf-js, then refresh and verify PR #405; next reconcile #403; then run the consolidated exact-head SPEC-308 unit/Chromium suite for PR #399. Run no repeated local test rounds. Preserve all ledger rows OPEN until exact-candidate evidence, canonical integration, and required external acceptance exist.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },

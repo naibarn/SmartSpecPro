@@ -1,4 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import {
+  getSpec308SourceSha,
+  installSpec308MetricsProbe,
+  measureMascotSvgGzip,
+  writeSpec308MetricsEvidence,
+  type Spec308MetricsEvidence,
+} from "./helpers/spec308-metrics";
 
 const TEST_IDENTITY = {
   id: 30801,
@@ -591,4 +598,58 @@ test("SPEC-308 Thai launcher and reminder labels are localized", async ({ page }
   await dialog.getByRole("tab", { name: "ส่งความคิดเห็น" }).click();
   await expect(dialog.getByPlaceholder("หัวข้อ")).toBeVisible();
   await expect(dialog.getByLabel("ส่งเป็นเรื่องเร่งด่วน")).toBeVisible();
+});
+
+test("SPEC-308 records raw OFF/ON network, heap, CLS, timer and mascot asset metrics", async ({ page }) => {
+  const procedures: string[] = [];
+  const tenantFlag: TenantFlagFixture = { enabled: false };
+  await installMockEventSource(page);
+  const metrics = await installSpec308MetricsProbe(page);
+  try {
+    await initializeAuthenticatedBrowser(page, 390, 844, TEST_IDENTITY, tenantFlag, procedures);
+    await page.goto("/chat");
+    await expect(page.getByTestId("global-notification-bell")).toBeVisible();
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const offCallCount = procedures.length;
+    const flagOff = await metrics.snapshot("feature-flag-off", offCallCount);
+
+    tenantFlag.enabled = true;
+    await metrics.clearBrowserCache();
+    await page.reload();
+    const launcher = page.getByRole("button", { name: "Open AI Chat & Feedback" });
+    await expect(launcher).toBeVisible();
+    await waitForNotificationBaseline(page);
+    await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
+    await expect(page.getByRole("button", { name: "Demo reminder balloon" })).toBeVisible();
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const flagOnCallCount = procedures.length - offCallCount;
+    const flagOn = await metrics.snapshot("feature-flag-on-with-demo-balloon", flagOnCallCount);
+
+    const svg = measureMascotSvgGzip();
+    const evidence: Spec308MetricsEvidence = {
+      schemaVersion: 1,
+      sourceSha: getSpec308SourceSha(),
+      comparison: "same-build, same-browser, feature-flag OFF versus ON",
+      acceptanceBoundary: "Mocked authenticated UI fixture only. This is not a main-versus-candidate commit comparison, live-network measurement, low-end device profile, or live acceptance.",
+      thresholds: "not defined; no budget pass/fail is asserted",
+      browser: {
+        engine: "Chromium",
+        userAgent: await page.evaluate(() => navigator.userAgent),
+      },
+      mascotSvg: svg,
+      samples: [flagOff, flagOn],
+    };
+    await writeSpec308MetricsEvidence(evidence);
+    expect(svg.variants).toHaveLength(5);
+    expect(svg.variants.every(variant => variant.rawBytes > 0 && variant.gzipBytes > 0)).toBe(true);
+    expect(evidence.samples.map(sample => sample.phase)).toEqual([
+      "feature-flag-off",
+      "feature-flag-on-with-demo-balloon",
+    ]);
+    expect(evidence.samples.every(sample => sample.heap.source === "chromium-cdp-proxy")).toBe(true);
+    expect(evidence.samples.every(sample => Number.isFinite(sample.heap.jsHeapUsedBytes))).toBe(true);
+    expect(evidence.samples.every(sample => Number.isFinite(sample.layout.cumulativeLayoutShift))).toBe(true);
+  } finally {
+    await metrics.close();
+  }
 });

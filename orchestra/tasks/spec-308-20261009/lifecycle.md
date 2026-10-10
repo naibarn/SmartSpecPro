@@ -145,6 +145,27 @@ Completion invariants:
     waiting_predicate: consolidated exact-head browser run has an artifact for Thai dialog and feedback assertions
     reactivation_predicate: browser workflow completes on the candidate SHA
     progress_delta: translation keys and Thai dialog/form assertions added
+  - gap_id: GAP-008
+    discovered_at_stage: IMPLEMENT
+    earliest_affected_stage: VERIFY
+    classification: VERIFY_ONLY
+    severity: MEDIUM
+    condition: mobile balloon placement did not account for visible fixed/sticky controls or remeasure when controls were inserted, removed, or resized without a window resize
+    evidence: read-only reviews in this session; implementation in FeedbackButton.tsx, FeedbackButton.test.tsx and spec-308-route-surfaces.spec.ts
+    owner: conductor
+    action: run the consolidated focused unit and Chromium simulation suite on the final exact candidate SHA; inspect the collision fixture and responsive screenshots
+    attempts: 0/3
+    stale_gates: [AC-308-021, REQ-C1D12FE65B73, fixed-control collision, mutation and resize observer behavior]
+    status: FIXED_PENDING_VERIFICATION
+    resume_from: VERIFY
+    residual_risk: new implementation and fixture have not been executed; physical split-screen, zoom, safe-area and keyboard behavior remains outside mocked browser proof
+    root_cause: hint positioning only considered viewport bounds and the launcher anchor, and listened to viewport/launcher/hint changes
+    decision_class: FIX_NOW
+    attempted_strategies: [inspect specification fallback and route surfaces; add above/below obstacle placement; observe visible fixed/sticky controls and relevant DOM changes; defer execution to the consolidated test wave]
+    prohibited_retries: [blanket-suppress balloons on every editor or media route; claim physical-device acceptance from a mocked fixture]
+    waiting_predicate: final candidate SHA is fixed and the consolidated browser/unit workflow completes
+    reactivation_predicate: consolidated workflow starts for the final candidate SHA
+    progress_delta: collision-aware placement and deterministic fixture added; evidence remains OPEN pending execution
   - gap_id: GAP-006
     discovered_at_stage: IMPLEMENT
     earliest_affected_stage: VERIFY

@@ -95,6 +95,8 @@ jobs:
         run: >-
           pnpm exec playwright test
           tests/e2e/spec-308-dual-surface.spec.ts
+          tests/e2e/spec-308-side-effects.spec.ts
+          tests/e2e/spec-308-route-surfaces.spec.ts
           --project=chromium
           --workers=1
 

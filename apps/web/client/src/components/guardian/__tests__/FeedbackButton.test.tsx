@@ -214,6 +214,39 @@ describe("assistant hint visual viewport placement", () => {
       { width: 180, height: 100 },
     )).toBeNull();
   });
+
+  it("moves below the launcher when a fixed control blocks the preferred space above", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 0, width: 390, height: 844 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 170, top: 600, right: 218, bottom: 648, width: 48 },
+      { width: 180, height: 100 },
+      window.visualViewport,
+      { width: 390, height: 844 },
+      [{ left: 100, top: 480, right: 290, bottom: 590 }],
+    )).toEqual({ left: "104px", top: "656px" });
+  });
+
+  it("suppresses the balloon when fixed controls block both safe placements", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 0, width: 390, height: 844 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 170, top: 600, right: 218, bottom: 648, width: 48 },
+      { width: 180, height: 100 },
+      window.visualViewport,
+      { width: 390, height: 844 },
+      [
+        { left: 100, top: 480, right: 290, bottom: 590 },
+        { left: 100, top: 650, right: 290, bottom: 760 },
+      ],
+    )).toBeNull();
+  });
 });
 
 describe("FeedbackButton placement", () => {

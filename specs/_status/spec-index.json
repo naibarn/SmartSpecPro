@@ -119644,7 +119644,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "343a885ec61b3e52ef785b644228c71115ec2262",
+      "canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -120748,7 +120748,8 @@
         "requirement REQ-58277C646788 is OPEN",
         "requirement REQ-EA40FDE33EAD is OPEN",
         "requirement REQ-E8F70441ADF8 is OPEN",
-        "requirement REQ-233CE93441E3 is OPEN"
+        "requirement REQ-233CE93441E3 is OPEN",
+        "verification evidence is not bound to the canonical SHA"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
@@ -120790,13 +120791,13 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T05:05:37.875870Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.",
+      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
         "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
-        "next_action": "Establish an authorized durable team-room-to-canonical-project binding and source-level memory provenance before enabling project-scoped team-room memory.",
-        "root_cause": "The room project field is a legacy integer and SPEC-302 currently provides an advisory resolver without an authenticated durable domain binding or receipt. Chat now requests only user-global entity memory; team-room persistent memory remains disabled."
+        "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+        "root_cause": "Team-room entity memory is now scoped to a canonical project with active membership, but durable room-to-project binding and source-level persistent-memory provenance remain unverified. Project reassignment is blocked for new conversation updates; historical conversations may have been retargeted before that guard and messages carry no project scope."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
@@ -134247,7 +134248,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
+      "canonical_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -135413,11 +135414,11 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+      "evidence_freshness": "PENDING_CONSOLIDATED_TESTS_SECURITY_INTEGRATION_AND_LIVE_ACCEPTANCE",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Continue evidence-backed work while awaiting authority. Resolve WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first; refresh and verify PR #405, then #403, then #399 in sequence. Do not merge, deploy, close requirements, or claim COMPLETE while mandatory gates or live acceptance remain blocked.",
+      "next_action": "Implementation-only SPEC-308 gaps currently identified as safe are addressed in the task worktree. Keep WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION first in integration sequencing: obtain the Security and Media/Runtime Owner disposition for sprintf-js, then refresh and verify PR #405; next reconcile #403; then run the consolidated exact-head SPEC-308 unit/Chromium suite for PR #399. Run no repeated local test rounds. Preserve all ledger rows OPEN until exact-candidate evidence, canonical integration, and required external acceptance exist.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",

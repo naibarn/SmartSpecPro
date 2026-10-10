@@ -115,6 +115,23 @@ export function isAssistantBalloonSuppressedRoute(location: string) {
 
 type AssistantHintAnchor = { left: number; top: number; right: number; bottom: number; width: number };
 type AssistantHintSize = { width: number; height: number };
+type AssistantHintObstacle = { left: number; top: number; right: number; bottom: number };
+const ASSISTANT_COLLISION_CONTROL_SELECTOR = [
+  "button",
+  "a[href]",
+  "input",
+  "select",
+  "textarea",
+  "nav",
+  "header",
+  "[aria-label]",
+  "[role='button']",
+  "[role='dialog']",
+  "[role='menu']",
+  "[role='navigation']",
+  "[role='toolbar']",
+  "[data-spec308-critical-control]",
+].join(", ");
 
 /** Return fixed-position coordinates only when the complete hint fits in the visible viewport. */
 export function getAssistantHintPosition(
@@ -125,6 +142,7 @@ export function getAssistantHintPosition(
   fallbackViewport = typeof window === "undefined"
     ? { width: 0, height: 0 }
     : { width: window.innerWidth, height: window.innerHeight },
+  obstacles: AssistantHintObstacle[] = [],
 ): CSSProperties | null {
   const viewportLeft = viewport?.offsetLeft ?? 0;
   const viewportTop = viewport?.offsetTop ?? 0;
@@ -147,13 +165,18 @@ export function getAssistantHintPosition(
   const maxTop = viewportTop + viewportHeight - size.height - inset;
   const above = anchor.top - size.height - gap;
   const below = anchor.bottom + gap;
-  const top = above >= minTop
-    ? Math.min(above, maxTop)
-    : below <= maxTop
-      ? Math.max(below, minTop)
-      : null;
+  const candidates = [
+    ...(above >= minTop ? [Math.min(above, maxTop)] : []),
+    ...(below <= maxTop ? [Math.max(below, minTop)] : []),
+  ];
+  const top = candidates.find(candidateTop => !obstacles.some(obstacle =>
+    left < obstacle.right
+    && left + size.width > obstacle.left
+    && candidateTop < obstacle.bottom
+    && candidateTop + size.height > obstacle.top,
+  ));
 
-  return top === null ? null : { left: `${left}px`, top: `${top}px` };
+  return top === undefined ? null : { left: `${left}px`, top: `${top}px` };
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1045,7 +1068,13 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
 
   useLayoutEffect(() => {
     if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
-    const updateHintPosition = () => {
+    let updateHintPosition: () => void = () => undefined;
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(() => updateHintPosition());
+    const observedCollisionControls = new Set<HTMLElement>();
+    let mutationFrame: number | null = null;
+    updateHintPosition = () => {
       const launcher = feedbackButtonRef.current;
       const measuredAnchor = launcher?.getBoundingClientRect();
       if (!measuredAnchor) {
@@ -1071,8 +1100,79 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
       const viewportWidth = viewport?.width ?? window.innerWidth;
       const hintWidth = bounds?.width ?? Math.min(viewportWidth < 768 ? 216 : 360, viewportWidth - 32);
       const hintHeight = bounds?.height ?? 132;
-      setAssistantHintStyle(getAssistantHintPosition(anchor, { width: hintWidth, height: hintHeight }));
+      const collisionControls = Array.from(document.querySelectorAll<HTMLElement>(ASSISTANT_COLLISION_CONTROL_SELECTOR));
+      const obstacleElements = new Set<HTMLElement>();
+      collisionControls.forEach(control => {
+        if (control === launcher || launcher.contains(control) || control.contains(hint) || hint?.contains(control)) return;
+        let candidate: HTMLElement | null = control;
+        while (candidate && candidate !== launcher && !hint?.contains(candidate)) {
+          const style = window.getComputedStyle(candidate);
+          if (["fixed", "sticky"].includes(style.position)) {
+            if (style.display !== "none"
+              && style.visibility !== "hidden"
+              && style.pointerEvents !== "none"
+              && Number(style.opacity) !== 0) {
+              obstacleElements.add(candidate);
+            }
+            break;
+          }
+          candidate = candidate.parentElement;
+        }
+      });
+      const nextObservedControls = new Set<HTMLElement>();
+      const obstacles = Array.from(obstacleElements).flatMap(control => {
+        const rect = control.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return [];
+        nextObservedControls.add(control);
+        resizeObserver?.observe(control);
+        return [{ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }];
+      });
+      observedCollisionControls.forEach(control => {
+        if (!nextObservedControls.has(control)) resizeObserver?.unobserve(control);
+      });
+      observedCollisionControls.clear();
+      nextObservedControls.forEach(control => observedCollisionControls.add(control));
+      setAssistantHintStyle(getAssistantHintPosition(
+        anchor,
+        { width: hintWidth, height: hintHeight },
+        viewport,
+        undefined,
+        obstacles,
+      ));
     };
+    const schedulePositionUpdate = () => {
+      if (mutationFrame !== null) return;
+      mutationFrame = window.requestAnimationFrame(() => {
+        mutationFrame = null;
+        updateHintPosition();
+      });
+    };
+    const mutationObserver = typeof MutationObserver === "undefined"
+      ? null
+      : new MutationObserver(records => {
+        const relevantMutation = records.some(record => {
+          const target = record.target;
+          const launcher = feedbackButtonRef.current;
+          const hint = document.querySelector<HTMLElement>(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
+          if (target instanceof Node && (launcher?.contains(target) || hint?.contains(target))) return false;
+          if (record.type === "childList") {
+            return [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element
+              && (node.matches(ASSISTANT_COLLISION_CONTROL_SELECTOR)
+                || node.querySelector(ASSISTANT_COLLISION_CONTROL_SELECTOR) !== null));
+          }
+          return target instanceof HTMLElement
+            && (observedCollisionControls.has(target)
+              || target.matches(ASSISTANT_COLLISION_CONTROL_SELECTOR)
+              || target.querySelector(ASSISTANT_COLLISION_CONTROL_SELECTOR) !== null);
+        });
+        if (relevantMutation) schedulePositionUpdate();
+      });
+    mutationObserver?.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-hidden"],
+      childList: true,
+      subtree: true,
+    });
     updateHintPosition();
     // Re-measure after the launcher/balloon have completed this layout pass.
     // This is needed after a drag, when the hint is intentionally unmounted
@@ -1093,9 +1193,6 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     }
     window.addEventListener("resize", updateHintPosition);
     window.addEventListener("scroll", updateHintPosition, true);
-    const resizeObserver = typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver(updateHintPosition);
     if (feedbackButtonRef.current) resizeObserver?.observe(feedbackButtonRef.current);
     const hint = document.querySelector(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
     if (hint) resizeObserver?.observe(hint);
@@ -1103,6 +1200,8 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     window.visualViewport?.addEventListener("scroll", updateHintPosition);
     return () => {
       positionFrames.forEach(frame => window.cancelAnimationFrame(frame));
+      if (mutationFrame !== null) window.cancelAnimationFrame(mutationFrame);
+      mutationObserver?.disconnect();
       window.removeEventListener("resize", updateHintPosition);
       window.removeEventListener("scroll", updateHintPosition, true);
       window.visualViewport?.removeEventListener("resize", updateHintPosition);
