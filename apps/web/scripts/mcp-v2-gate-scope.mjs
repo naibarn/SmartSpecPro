@@ -24,10 +24,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     process.stderr.write("usage: node mcp-v2-gate-scope.mjs <base-sha> <head-sha>\n");
     process.exit(2);
   }
-  const changedPaths = execFileSync("git", ["diff", "--name-only", `${base}...${head}`], { encoding: "utf8" })
+  const changedPaths = execFileSync("git", ["diff", "--name-only", base, head], { encoding: "utf8" })
     .split(/\r?\n/).filter(Boolean);
   const flagsDiff = changedPaths.includes(SHARED_FLAGS)
-    ? execFileSync("git", ["diff", "--unified=0", `${base}...${head}`, "--", SHARED_FLAGS], { encoding: "utf8" })
+    ? execFileSync("git", ["diff", "--unified=0", base, head, "--", SHARED_FLAGS], { encoding: "utf8" })
     : "";
   process.stdout.write(`${requiresMcpV2Gates(changedPaths, flagsDiff)}\n`);
 }
