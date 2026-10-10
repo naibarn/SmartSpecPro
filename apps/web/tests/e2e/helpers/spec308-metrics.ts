@@ -166,6 +166,14 @@ export async function installSpec308MetricsProbe(page: Page) {
   await cdp.send("Performance.enable");
 
   return {
+    async resetLayoutShiftWindow() {
+      await page.evaluate(() => {
+        const probe = (window as Window & { __spec308MetricProbe?: BrowserProbe }).__spec308MetricProbe;
+        if (!probe) throw new Error("SPEC-308 metrics probe is unavailable");
+        probe.layoutShifts = [];
+        probe.layoutShiftEntries = 0;
+      });
+    },
     async snapshot(phase: string, profile: string, mockedProcedureCalls: number): Promise<Spec308MetricSnapshot> {
       const [viewport, browserProbe, resources, cdpMetrics] = await Promise.all([
         page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })),

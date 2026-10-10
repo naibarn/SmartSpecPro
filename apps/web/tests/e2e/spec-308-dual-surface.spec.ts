@@ -663,10 +663,12 @@ test("SPEC-308 records raw OFF/ON metrics across emulated mobile, tablet and des
       else await page.reload();
       await expect(page.getByTestId("global-notification-bell")).toBeVisible();
       await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      await metrics.resetLayoutShiftWindow();
       const offCallCount = procedures.length - previousProcedureCount;
       previousProcedureCount = procedures.length;
+      const offFrames = await measureFrameIntervals(page);
       const flagOff = await metrics.snapshot("feature-flag-off", profile.name, offCallCount);
-      flagOff.frameRendering = await measureFrameIntervals(page);
+      flagOff.frameRendering = offFrames;
       samples.push(flagOff);
 
       tenantFlag.enabled = true;
@@ -676,13 +678,16 @@ test("SPEC-308 records raw OFF/ON metrics across emulated mobile, tablet and des
       await expect(launcher).toBeVisible();
       await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
       await waitForNotificationBaseline(page);
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      await metrics.resetLayoutShiftWindow();
       await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
       await expect(page.locator(".assistant-reminder-balloon")).toBeVisible();
       await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
       const flagOnCallCount = procedures.length - previousProcedureCount;
       previousProcedureCount = procedures.length;
+      const onFrames = await measureFrameIntervals(page);
       const flagOn = await metrics.snapshot("feature-flag-on-with-demo-balloon", profile.name, flagOnCallCount);
-      flagOn.frameRendering = await measureFrameIntervals(page);
+      flagOn.frameRendering = onFrames;
       samples.push(flagOn);
     }
 
