@@ -118,22 +118,32 @@ def validate_vertical_drama_output_identity(
     return parsed
 
 
-def build_vertical_drama_output_guardrails(request: AssuranceRequest) -> list[Any]:
-    """Build an SDK guardrail that repeats identity/reference checks in Python."""
+def build_vertical_drama_output_guardrails(
+    request: AssuranceRequest,
+    *,
+    guardrail_function_output_type: type[Any],
+    output_guardrail_type: type[Any],
+) -> list[Any]:
+    """Build guardrails from SDK types supplied by the runtime adapter."""
 
     output_type = resolve_vertical_drama_output_type(request)
     if output_type is None:
         return []
-    try:
-        from agents import GuardrailFunctionOutput, OutputGuardrail
-    except ModuleNotFoundError as exc:  # pragma: no cover - health gate handles this
-        raise ValueError("openai_agents_sdk_output_guardrail_unavailable") from exc
-
     async def validate(_context: Any, _agent: Any, output: Any) -> Any:
         try:
             parsed = validate_vertical_drama_output_identity(request, output)
         except ValueError as exc:
-            return GuardrailFunctionOutput(output_info={"error": str(exc)}, tripwire_triggered=True)
-        return GuardrailFunctionOutput(output_info={"schemaRef": parsed.schemaRef if parsed else None}, tripwire_triggered=False)
+            return guardrail_function_output_type(
+                output_info={"error": str(exc)}, tripwire_triggered=True
+            )
+        return guardrail_function_output_type(
+            output_info={"schemaRef": parsed.schemaRef if parsed else None},
+            tripwire_triggered=False,
+        )
 
-    return [OutputGuardrail(guardrail_function=validate, name="vertical_drama_assurance_output")]
+    return [
+        output_guardrail_type(
+            guardrail_function=validate,
+            name="vertical_drama_assurance_output",
+        )
+    ]

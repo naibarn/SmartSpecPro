@@ -193,6 +193,14 @@ def test_vertical_drama_assurance_binds_trusted_output_type_and_guardrail(monkey
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
+    class FakeGuardrailFunctionOutput:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeOutputGuardrail:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
     request = _request([]).model_copy(update={"assurance": AssuranceRequest.model_validate({
         "contractVersion": 1, "contractId": "vd", "attemptId": "attempt_01", "taskKind": "structured_generation",
         "contractHash": "a" * 64, "evidencePolicy": {"allowTextOnlyFallback": True},
@@ -202,6 +210,8 @@ def test_vertical_drama_assurance_binds_trusted_output_type_and_guardrail(monkey
     adapter = OpenAIAgentsAdapter()
     monkeypatch.setattr(adapter, "_sdk_symbols", lambda: {
         "Agent": FakeAgent, "Runner": object, "RunConfig": FakeRunConfig,
+        "GuardrailFunctionOutput": FakeGuardrailFunctionOutput,
+        "OutputGuardrail": FakeOutputGuardrail,
         "OpenAIResponsesModel": FakeModel, "OpenAIChatCompletionsModel": FakeModel, "RunState": object,
     })
     monkeypatch.setattr("app.services.openai_agents_adapter.create_gateway_async_openai_client", lambda _config: object())
