@@ -34,7 +34,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+    "expected_canonical_sha": "c552c6960c1234320a1f4820ddfe5412b5bad58f",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 28,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+    "canonical_sha": "c552c6960c1234320a1f4820ddfe5412b5bad58f",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:54:36Z"
+    "integrated_at": "2026-10-10T08:57:52Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -479,7 +479,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:55:52.716352Z",
+  "updated_at": "2026-10-10T08:58:10.885249Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
