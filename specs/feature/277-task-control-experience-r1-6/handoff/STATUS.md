@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.
-- Manifest generation: 30
+- Next action: Continue with owner assignment and acceptance design for run-scoped stale-worker fencing; meanwhile select an independently executable Task Control continuity test that needs no schema migration.
+- Manifest generation: 32
