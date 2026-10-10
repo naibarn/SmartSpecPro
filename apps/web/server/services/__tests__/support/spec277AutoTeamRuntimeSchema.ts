@@ -2,9 +2,16 @@ import { is, SQL } from "drizzle-orm";
 import { getTableConfig, PgDialect, type PgTable } from "drizzle-orm/pg-core";
 import type postgres from "postgres";
 import {
+  agentActivityEvents,
+  runSnapshots,
+  teamRooms,
+  teamRuns,
+  workerJobAttempts,
+  workerJobDispatches,
   workerJobEvents,
   workerJobOutbox,
   workerJobScheduleOccurrences,
+  workerJobSettlements,
   workerJobs,
   workers,
 } from "../../../../drizzle/schema";
@@ -15,16 +22,23 @@ const dialect = new PgDialect();
 
 /**
  * Install the current canonical persistence projection needed by Feature186's
- * scheduled job producer. Cross-domain foreign keys are intentionally omitted;
- * this fixture proves scheduler/job/outbox persistence, not full migrations.
+ * scheduler and bounded AutoTeam run evaluation. Cross-domain foreign keys are
+ * intentionally omitted; this fixture is not a replacement for migrations.
  */
-export async function installSpec277AutoTeamScheduleSchema(client: postgres.Sql) {
+export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql) {
   const configs = ([
     workers,
     workerJobs,
+    workerJobAttempts,
     workerJobEvents,
     workerJobOutbox,
     workerJobScheduleOccurrences,
+    workerJobDispatches,
+    workerJobSettlements,
+    teamRooms,
+    teamRuns,
+    runSnapshots,
+    agentActivityEvents,
   ] as PgTable[]).map(getTableConfig);
   const enums = new Map<string, string[]>();
   for (const table of configs) {

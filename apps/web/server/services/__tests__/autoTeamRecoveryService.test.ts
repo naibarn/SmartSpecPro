@@ -400,4 +400,25 @@ describe("autoTeamRecoveryService", () => {
     expect(dbUpdateSetCalls).toEqual([]);
     expect(mockAdvanceRun).not.toHaveBeenCalled();
   });
+
+  it("preserves a resource capacity wait without reclassifying it or dispatching provider work", async () => {
+    mockRecoveryCandidateRows([{ id: "run-resource-wait", tenantId: "tenant-1" }]);
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+    mockGetRun.mockResolvedValue({
+      id: "run-resource-wait",
+      tenantId: "tenant-1",
+      status: "paused",
+      stopReason: "awaiting_async_media_pipeline",
+      runtimeState: {
+        autoTeamMediaPipeline: { status: "capacity_wait" },
+      },
+    });
+
+    const resumed = await sweepPendingAutoTeamRuns();
+
+    expect(resumed).toMatchObject({ actionsDispatched: 0, usefulWorkVerified: false });
+    expect(mockAdvanceAutoTeamMediaPipeline).not.toHaveBeenCalled();
+    expect(dbUpdateSetCalls).toEqual([]);
+    expect(mockAdvanceRun).not.toHaveBeenCalled();
+  });
 });

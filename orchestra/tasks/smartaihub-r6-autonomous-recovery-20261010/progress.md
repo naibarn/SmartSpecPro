@@ -1,7 +1,7 @@
 # R6 Progress
 
 - Current state: IMPLEMENTING.
-- Latest verified canonical SHA: `f67106314445567ec4a5d77b89e961642315ac65` (`origin/main`).
+- Latest verified canonical SHA: `df0873f3be10a65748b921d28b6dfa77b93c8997` (`origin/main`).
 - Clean isolated task branch/worktree: `/home/dev/worktrees/smartaihub-r6-autoteam-20261010`, branch `codex/r6-autoteam-recovery-20261010`.
 - User's dirty primary checkout is preserved and not synchronized.
 - Prior R5 evidence reviewed: `orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/worker-restart-recovery-5535867.json`.
@@ -23,4 +23,15 @@
 - Ten targeted fixture/security reviews: (1) refuses inherited `DATABASE_URL`, (2) non-root only, (3) unique randomized `autoteam_*_test` name, (4) owner nonce/path marker, (5) database binds only to 127.0.0.1 on ephemeral port, (6) only loopback host auth and local socket are enabled, (7) verifies postmaster PID/data/config before stop, (8) checks ownership before DB/schema creation and cleanup, (9) DDL derives from canonical Drizzle tables without running historical migrations, (10) two real scheduler processes race and persisted DB assertions reject duplicate occurrence/job/outbox rows. Cleanup removes only the verified task-owned cluster; ownership mismatch preserves it.
 - Scoped ESLint command was attempted but resolved to system ESLint 6.4.0 and failed because this repo has no ESLint config; tooling unavailable, not code pass/fail. No full typecheck was run.
 - The registered canonical user workspace remains dirty and behind at `ccd4cd11c664cf81cc54fe1287c60ce7f5c36978`; it was not changed. Workspace authority reports recovery pending, so convergence remains pending.
-- Next: open and merge the AutoTeam schedule-acceptance checkpoint through normal PR, rerun at merged SHA, then continue DB scan/evaluation and worker-restart/fencing slices. Do not report R6 complete unless SIGKILL/restart, mutation-boundary fencing, useful progress, Final Verify, and logical Task Control continuity pass.
+- AutoTeam scheduled-occurrence checkpoint integrated by PR #548, merge SHA `ea84aab960830a0c3fd8438621bae19edf9358ea`. It is reachable from `origin/main`; PR preview was SKIPPED, not PASS.
+- Post-integration verification tied to `ea84aab960830a0c3fd8438621bae19edf9358ea`: focused 7-file suite / 85 tests passed, including the real concurrent scheduler-process PostgreSQL acceptance; `git diff --check` passed and fixture cleanup left no owner directory.
+- Next executable WorkUnit: extend the disposable current-schema fixture into persisted Team-run scan/evaluation execution. Then attempt a synthetic worker hard-kill/restart and fix/verify atomic side-effect fencing. Do not report R6 complete unless SIGKILL/restart, mutation-boundary fencing, useful progress, Final Verify, and logical Task Control continuity pass.
+
+- PR #551 checkpoint `336ac630e2a1def934c5f2cc1bc39d836d2dda68` preserves `capacity_wait` and has 7 focused files / 86 passing tests on rebased candidate `cbef0acda1d3`; PR preview is SKIPPED, not PASS.
+- Regression outcome: before the fix the sweep reclassified resource wait and wrote `team_runs`; after the fix it performs no mutation and does not call media/provider advancement.
+- Next: run actual scan/evaluation workers through persisted Team-run state in the disposable current-schema PostgreSQL fixture. Worker SIGKILL/restart and atomic run-scoped stale-worker fencing remain unproven; review found no safe existing run fence, and a pre/post job-lease check is insufficient.
+
+- Extended the disposable PostgreSQL acceptance through real scheduler → scan → evaluation execution in four independent Node processes total (two concurrent scheduler producers, scan worker, evaluation worker). Candidate `a063157f8fd2109ab0e55e1edd01c99c0c394df8` passed the focused 7-file / 86-test suite.
+- Direct acceptance: one schedule/scan job/outbox; scan queued one evaluation for `run-r6-capacity`; future approval and terminal runs were skipped; evaluation job completed with `resource_scheduling`; `team_runs` remained paused with unchanged capacity wait; only scan/evaluation jobs existed, with 2 attempts, 2 outbox rows and >=10 events.
+- The integration exposed `runEngine.getRun()` dropping `team_runs.runtimeStateJson`; runtime merge fix now preserves stored media status and future choice deadline. Ten targeted review aspects checked: tenant-scoped run loading; persisted-state provenance; snapshot precedence; current lease claim; state fingerprint; duplicate schedule coalescing; terminal/future-approval selection; resource-wait no-dispatch; worker-job idempotent persistence; fixture isolation/cleanup. No atomic run-scoped fence exists, so SIGKILL/reclaim/stale side-effect denial remain open.
+- Next: synthetic SIGKILL/restart and exact mutation-boundary fencing. Do not claim autonomous completion or Task Control continuity.

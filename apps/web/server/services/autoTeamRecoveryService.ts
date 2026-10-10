@@ -248,6 +248,12 @@ export async function sweepPendingAutoTeamRuns(options: {
           ? (runtimeState.autoTeamMediaPipeline as Record<string, unknown>)
           : null;
       const status = typeof pipeline?.status === "string" ? pipeline.status : null;
+      // A capacity wait is a valid resource wait, not missing pipeline state.
+      // Leave it persisted for the normal capacity signal/poll to resume; a
+      // recovery scan must not treat this as permission to dispatch more work.
+      if (status === "capacity_wait") {
+        continue;
+      }
       if (
         !status ||
         ![

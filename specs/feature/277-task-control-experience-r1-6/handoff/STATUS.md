@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.
-- Manifest generation: 25
+- Next action: In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.
+- Manifest generation: 30
