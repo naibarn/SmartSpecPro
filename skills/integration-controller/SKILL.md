@@ -64,6 +64,34 @@ When a session is stopping because of quota/context/provider/time boundaries, tr
 8. If post-integration checks fail, create a repair task against latest configured canonical ref; pass the fast gate, promote the repair, and refresh the canonical working workspace again. Keep the original and repair commits visible in history.
 9. Classify worktrees for retirement through the shared resolver. Use dry-run first; retire only after proving no active owner, dirty/untracked/ignored/stashed content, or unique unpushed commit remains, and integration or explicit archival disposition is evidenced. Retain a recovery manifest/archive rather than a live Git worktree when recovery is needed. Never perform blind mass deletion.
 
+## Executable PR promotion and continuation
+
+For an existing GitHub PR that represents one ready slice, run
+`python3 skills/integration-controller/scripts/promote_ready_pr.py --pr <number>`
+after verifying the slice's own required tests, security/authorization decisions,
+and acceptance obligations. The default is read-only preflight. It reports a
+blocker list for drafts, stale heads, non-clean GitHub merge state, unmet review
+requirements, or failed/pending checks. Do not change acceptance criteria to
+make this preflight pass.
+
+Only when the slice gates and authority are satisfied, execute
+`python3 skills/integration-controller/scripts/promote_ready_pr.py --pr <number> --expected-head <sha> --execute`.
+The executor re-fetches the configured canonical ref, rechecks the exact PR
+head and CI immediately before merging, and uses GitHub's normal merge path
+with an expected-head guard. It never requests administrator bypass, force
+updates, or branch deletion. GitHub remains authoritative for repository
+reviews, rulesets, and merge queues. Treat `MERGE_QUEUED_OR_PENDING` as pending,
+not integrated. Record integration only after the returned merge SHA is proven
+reachable from the configured canonical ref.
+
+After each verified merge, the active Orchestra conductor reconciles to that
+exact canonical SHA and selects the next ready independent WorkUnit in the
+same execution. A waiting WorkUnit does not end the run while another is ready.
+This skill is loaded by the Codex conductor; this repository has no separate
+background scheduler that wakes a completed Codex turn. Do not claim automatic
+background dispatch or event-driven resume without evidence from a registered
+runtime trigger.
+
 ## Branch and worktree discipline
 
 - Do not create or retain per-session branches as the durable progress destination. If required by concurrent isolation or repository protection, use a temporary branch/PR, but canonicalize safe checkpoints to the configured canonical ref throughout the work lifecycle rather than waiting for final completion.

@@ -33,3 +33,6 @@ jobs:
             scripts.development-lifecycle.test_canonical_source \
             scripts.development-lifecycle.test_progressive_integration \
             scripts.development-lifecycle.test_deep_workflow_alignment
+          python -m unittest discover \
+            -s skills/integration-controller/tests \
+            -p 'test_*.py'
