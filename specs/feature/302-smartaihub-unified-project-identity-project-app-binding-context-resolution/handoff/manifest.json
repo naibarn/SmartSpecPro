@@ -33,8 +33,12 @@
     {
       "class": "IMPLEMENTATION",
       "id": "SPEC302_DIRECT_ACCEPTANCE",
-      "next_action": "Implement and execute direct acceptance against current canonical source.",
-      "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+      "next_action": "Run direct identity/context acceptance on an authenticated non-production ingress; keep all unverified App-bound Project reads fail-closed."
+    },
+    {
+      "class": "MIGRATION_APPROVAL",
+      "id": "SPEC302_DURABLE_RECEIPT_PHASE2",
+      "next_action": "Assign schema owner and obtain explicit Phase 2 migration approval before implementing or executing persistence."
     },
     {
       "class": "EXTERNAL_DEPENDENCY",
@@ -44,15 +48,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+    "expected_canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
     "expected_spec_digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d"
   },
   "continuation": {
-    "next_action": "Continue independent implementation and regression evidence; retryable GitHub failures resume automatically. Do not claim deployment/UAT until executed on a registered non-production target.",
-    "next_ready_workunit": "RESEARCH_NOTES_NONPROD_RUNTIME_TARGET",
-    "reactivation_predicate": "When the waiting predicate is true, seed synthetic authenticated fixture, start loopback app and canonical worker, deploy recorded package, then run authenticated API/UI/job smoke and UAT.",
-    "resume_point": "origin/main at 79d86010dd9ebb4a52a790c0306f7f9d95b2462c. Migration 0393 receipt and schema constraints are recorded in the program evidence file; healthz/readyz passed on loopback but app API/UI smoke is blocked by incomplete schema/vector extension. Continue generic factory pipeline work independently, then resume deployment/UAT.",
-    "waiting_predicate": "An approved nonproduction PostgreSQL 17 runtime schema bootstrap with pgvector (or scoped Mini App bootstrap), plus dependency-complete workspace, is available."
+    "next_action": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
+    "next_ready_workunit": "SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE",
+    "reactivation_predicate": "Assign the SPEC-302 schema owner, approve the Phase 2 migration contract, and reconcile it against current origin/main; production migration remains separate.",
+    "resume_point": "Phase 1 runtime slice integrated by PR #451 at fe6771c1cc93cd5cf3321c417210e082a2e8f86c. Focused tests pass; run direct identity/ingress acceptance independently. Phase 2 durable receipt WorkUnit is specified in orchestra/tasks/smartaihub-marathon-r3-20261010/phase2-durable-project-receipt.md and awaits schema-owner assignment plus explicit migration approval.",
+    "waiting_predicate": "Assign the SPEC-302 schema owner, approve the Phase 2 migration contract, and reconcile it against current origin/main; production migration remains separate."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -64,11 +68,11 @@
         "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
       }
     ],
-    "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
-    "rationale": "Repository-local authority and dependency edges are clear; executable acceptance and external Spec Library verification remain open.",
+    "next_action": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
+    "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
     "residual_requirements": [
-      "Direct acceptance tests for owned contracts",
-      "External Spec Library collision check remains NOT_VERIFIED"
+      "Direct identity/context acceptance on authenticated non-production ingress",
+      "Phase 2 durable receipt persistence and migration approval before durable Project writes"
     ]
   },
   "dependencies": {
@@ -129,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -163,9 +167,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+    "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
     "integrated": true,
-    "integrated_at": "2026-10-07T17:59:40Z"
+    "integrated_at": "2026-10-10T04:29:06Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -209,11 +213,11 @@
           "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md"
         }
       ],
-      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
-      "rationale": "Repository-local authority and dependency edges are clear; executable acceptance and external Spec Library verification remain open.",
+      "next_action": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
+      "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
       "residual_requirements": [
-        "Direct acceptance tests for owned contracts",
-        "External Spec Library collision check remains NOT_VERIFIED"
+        "Direct identity/context acceptance on authenticated non-production ingress",
+        "Phase 2 durable receipt persistence and migration approval before durable Project writes"
       ]
     },
     "disposition": {
@@ -418,7 +422,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T17:59:53.197543Z",
+  "updated_at": "2026-10-10T04:30:25.377249Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -449,11 +453,18 @@
         "scope": "Loopback web process healthz/readyz returned HTTP 200. Research Notes route and UI returned HTTP 500 because the disposable app schema was incomplete; vector extension unavailable. No authenticated UAT or deployment claim.",
         "source_sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "INTEGRATED_PHASE1_RUNTIME",
+        "path": "orchestra/tasks/smartaihub-marathon-r3-20261010/phase1-security-review.md",
+        "scope": "PR #451 integrated at fe6771c1cc93cd5cf3321c417210e082a2e8f86c; invocation-scoped read-only receipt, fresh ACL revalidation, durable writes denied. 9 Vitest files, 144 passed, 11 TODO; direct authenticated ingress positive case remains TODO.",
+        "source_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "79d86010dd9ebb4a52a790c0306f7f9d95b2462c",
+    "sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
     "status": "PARTIAL",
     "task_regressions": []
   }
