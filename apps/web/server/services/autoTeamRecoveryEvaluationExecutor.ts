@@ -46,9 +46,9 @@ export const executeAutoTeamRecoveryEvaluation: JobExecutor = async ({
     });
   }, 15_000);
   heartbeat.unref?.();
-  let resumed: number;
+  let sweepResult: Awaited<ReturnType<typeof sweepPendingAutoTeamRuns>>;
   try {
-    resumed = await sweepPendingAutoTeamRuns({
+    sweepResult = await sweepPendingAutoTeamRuns({
       onlyRunId: input.runId,
       expectedStateFingerprint: input.stateFingerprint,
     });
@@ -58,18 +58,23 @@ export const executeAutoTeamRecoveryEvaluation: JobExecutor = async ({
   }
   await reporter.assertActive(lease);
 
-  const afterRun = resumed > 0
+  const afterRun = sweepResult.actionsDispatched > 0
     ? await runEngine.getRun(input.runId, context.tenantId).catch(() => null)
     : run;
+  // State mutation alone is not proof of useful work: a recovery request may
+  // only record an attempt or move the run into another wait state.
   const recoveryVerified = Boolean(
-    resumed > 0 &&
-    afterRun &&
-    fingerprintAutoTeamRecoveryState(afterRun) !== input.stateFingerprint,
+    sweepResult.usefulWorkVerified ||
+    (afterRun && run.status !== "completed" && afterRun.status === "completed"),
   );
 
   const waitReason = run.status === "paused"
     ? run.stopReason === "awaiting_async_media_pipeline"
-      ? "provider_job"
+          ? run.runtimeState?.autoTeamMediaPipeline &&
+            typeof run.runtimeState.autoTeamMediaPipeline === "object" &&
+            (run.runtimeState.autoTeamMediaPipeline as Record<string, unknown>).status === "capacity_wait"
+            ? "resource_scheduling"
+            : "provider_job"
       : ["awaiting_human_choice", "awaiting_final_approval"].includes(run.stopReason ?? "")
         ? "approval_or_user_input"
         : ["auto_team_final_evidence_unresolved", "auto_team_media_final_evidence_unresolved"].includes(run.stopReason ?? "")
@@ -78,26 +83,29 @@ export const executeAutoTeamRecoveryEvaluation: JobExecutor = async ({
     : null;
   await reporter.progress(lease, {
     progress: recoveryVerified ? 100 : 90,
-    stage: recoveryVerified ? "continuing" : resumed > 0 ? "recovery_pending" : waitReason ? "waiting" : "no_action",
+    stage: recoveryVerified ? "continuing" : sweepResult.actionsDispatched > 0 ? "recovery_pending" : waitReason ? "waiting" : "no_action",
     message: recoveryVerified
       ? "The task made progress after recovery."
-      : resumed > 0
+      : sweepResult.actionsDispatched > 0
         ? "A recovery action was dispatched; its outcome is not confirmed yet."
       : waitReason
         ? "The task remains waiting on its current dependency."
         : "No authorized recovery action was ready.",
-    measured: { actionsDispatched: resumed, recoveryVerified },
+    measured: { actionsDispatched: sweepResult.actionsDispatched, recoveryVerified, usefulWorkEvidence: sweepResult.usefulWorkEvidence },
   });
 
   return {
     output: {
       outcome: recoveryVerified
         ? "recovery_verified"
-        : resumed > 0
-          ? "recovery_dispatched_unverified"
+        : sweepResult.actionsDispatched > 0
+          ? afterRun && fingerprintAutoTeamRecoveryState(afterRun) !== input.stateFingerprint
+            ? "recovery_action_applied_unverified"
+            : "recovery_dispatched_unverified"
           : waitReason ?? "no_action",
       runId: input.runId,
-      actionsDispatched: resumed,
+      actionsDispatched: sweepResult.actionsDispatched,
+      usefulWorkEvidence: sweepResult.usefulWorkEvidence,
       recoveryVerified,
     },
   };

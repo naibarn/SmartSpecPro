@@ -21,6 +21,11 @@ describe("Feature 192 startup timer policy", () => {
       disposition: "canonical-control-plane",
       jobTypes: ["llm.inference_settlement_sweep"],
     }));
+    expect(FEATURE_192_TIMER_INVENTORY).toContainEqual(expect.objectContaining({
+      initializer: "initializeAutoTeamRecoveryScanJob",
+      disposition: "canonical-control-plane",
+      jobTypes: ["auto-team.recovery.scan"],
+    }));
     expect(() => getFeature192TimerEntry("unknown-initializer")).toThrow(
       "FEATURE_192_TIMER_UNCLASSIFIED",
     );
@@ -31,6 +36,7 @@ describe("Feature 192 startup timer policy", () => {
     process.env.FEATURE_186_HARD_CUTOVER = "true";
     expect(shouldRunFeature192InProcessTimer("initializeGDriveCleanupJob")).toBe(true);
     expect(shouldRunFeature192InProcessTimer("initializeTrashPurgeJob")).toBe(true);
+    expect(shouldRunFeature192InProcessTimer("initializeAutoTeamRecoveryScanJob")).toBe(true);
     expect(shouldRunFeature192InProcessTimer("initializeBillingJobs")).toBe(false);
     expect(shouldRunFeature192InProcessTimer("initializePendingApprovalAlertJob")).toBe(false);
     expect(shouldRunFeature192InProcessTimer("initializeSkillMaintenanceScheduleJob")).toBe(false);
