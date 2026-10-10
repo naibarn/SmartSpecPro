@@ -7,6 +7,11 @@ import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import { resolveRequestTenantId } from "../services/tenantContext";
 import type { TrustedAppRuntimeContext } from "../services/smartAiHubRuntimeContext";
+import {
+  resolveTrustedAppRouteAssertion,
+  type TrustedAppRouteAssertionVerifier,
+  type TrustedAppRouteResolver,
+} from "../services/trustedAppRouteAssertion";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -25,6 +30,41 @@ export type TrpcContext = {
   /** App route provenance is unavailable from the current ingress; request host headers never populate this. */
   trustedAppContext: TrustedAppRuntimeContext | null;
 };
+
+/** Server-owned assertion consumer configuration. The assertion extractor may
+ * read an ingress-carried token, but trust is granted only after signature,
+ * issuer, audience, replay, tenant, and current route checks succeed. */
+export type TrustedAppIngressAuthority = {
+  readAssertion: (req: CreateExpressContextOptions["req"]) => unknown;
+  verifier: TrustedAppRouteAssertionVerifier;
+  resolveRoute: TrustedAppRouteResolver;
+  expectedIssuer: string;
+  expectedAudience: string;
+};
+
+/** Compose the existing assertion consumer with tRPC context creation. Keep the
+ * default createContext fail-closed until an approved ingress supplies this
+ * server-side authority; request Host/X-Forwarded-Host are never consulted. */
+export function createContextWithTrustedAppIngress(
+  authority: TrustedAppIngressAuthority,
+  now: () => number = Date.now
+) {
+  return async (opts: CreateExpressContextOptions): Promise<TrpcContext> => {
+    const context = await createContext(opts);
+    if (!context.user || !context.tenantId) return context;
+
+    const trustedAppContext = await resolveTrustedAppRouteAssertion({
+      assertion: authority.readAssertion(opts.req),
+      authenticatedTenantId: context.tenantId,
+      verifier: authority.verifier,
+      resolveRoute: authority.resolveRoute,
+      expectedIssuer: authority.expectedIssuer,
+      expectedAudience: authority.expectedAudience,
+      nowMs: now(),
+    });
+    return { ...context, trustedAppContext };
+  };
+}
 
 export async function createContext(
   opts: CreateExpressContextOptions
@@ -55,17 +95,28 @@ export async function createContext(
     privateVaultToken = vaultTokenHeader.trim();
   }
 
-  const protectedSurfaceTokenHeader = opts.req.headers["x-protected-surface-token"];
-  if (typeof protectedSurfaceTokenHeader === "string" && protectedSurfaceTokenHeader.trim()) {
+  const protectedSurfaceTokenHeader =
+    opts.req.headers["x-protected-surface-token"];
+  if (
+    typeof protectedSurfaceTokenHeader === "string" &&
+    protectedSurfaceTokenHeader.trim()
+  ) {
     protectedSurfaceToken = protectedSurfaceTokenHeader.trim();
   }
 
   try {
     user = await sdk.authenticateRequest(opts.req);
-    debugLog("Context", "User authenticated", { id: user?.id, email: user?.email });
+    debugLog("Context", "User authenticated", {
+      id: user?.id,
+      email: user?.email,
+    });
   } catch (error) {
     // Authentication is optional for public procedures.
-    debugLog("Context", "Auth failed (optional)", error instanceof Error ? error.message : error);
+    debugLog(
+      "Context",
+      "Auth failed (optional)",
+      error instanceof Error ? error.message : error
+    );
     user = null;
     userToken = null; // Clear token if auth failed
     privateVaultToken = null;
@@ -95,7 +146,10 @@ export async function createContext(
       publicUrl = origin;
     } else {
       const host = opts.req.headers.host;
-      const protocol = opts.req.secure || opts.req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+      const protocol =
+        opts.req.secure || opts.req.headers["x-forwarded-proto"] === "https"
+          ? "https"
+          : "http";
       if (host) {
         publicUrl = `${protocol}://${host}`;
       }
