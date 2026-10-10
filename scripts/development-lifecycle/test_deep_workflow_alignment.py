@@ -31,6 +31,8 @@ ACTIVE_GUIDANCE = [
     ROOT / "skills/deep-implement/skills/deep-implement/references/git-operations.md",
     ROOT / "skills/deep-implement/skills/deep-implement/references/code-review-protocol.md",
     ROOT / "skills/deep-implement/skills/deep-implement/references/apply-interview-fixes.md",
+    ROOT / "skills/session-finish/SKILL.md",
+    ROOT / "skills/session-finish/references/verification-policy.md",
 ]
 
 
@@ -75,6 +77,13 @@ class CrossSkillContractTests(unittest.TestCase):
         shared = ROOT / "skills/development-lifecycle/lifecycle_policy.py"
         self.assertTrue(shared.is_file())
         self.assertTrue(hasattr(lifecycle_policy, "remaining_requirements"))
+
+    def test_session_finish_requires_slice_checks_before_fast_gate_promotion(self):
+        skill = (ROOT / "skills/session-finish/SKILL.md").read_text(encoding="utf-8")
+        policy = (ROOT / "skills/session-finish/references/verification-policy.md").read_text(encoding="utf-8")
+        self.assertIn("SLICE/REPOSITORY-REQUIRED CHECKS", skill)
+        self.assertIn("required check failure blocks that slice", skill)
+        self.assertIn("targeted change-impact analysis", policy)
 
     def test_requirement_closure_requires_evidence_predicate_and_clear_regressions(self):
         requirement = {
