@@ -25,10 +25,10 @@
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Add direct current-schema scan/evaluation process acceptance, then implement or explicitly block run-scoped atomic fencing and SIGKILL recovery; preserve capacity_wait resource-wait behavior.",
+    "next_action": "In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.",
     "next_ready_workunit": "R6 current-schema AutoTeam scan/evaluation process acceptance, followed by SIGKILL/restart, lease reclaim and run mutation-boundary fencing",
     "reactivation_predicate": "The schedule-only disposable PostgreSQL runner is available. Continue immediately with the Team-run schema projection and deterministic synthetic run/provider fixture; never use shared smartspec_test or the historical Agency migration chain.",
-    "resume_point": "PR #551 contains the capacity_wait fix; rebased candidate cbef0acda1d3 passed seven focused files / 86 tests. The PR preview is skipped. Continue with persisted Team-run scan/evaluation process acceptance, then hard worker restart and run-scoped mutation fencing.",
+    "resume_point": "PR #551 candidate a063157f8fd2109ab0e55e1edd01c99c0c394df8 passes current-schema scheduler→scan→evaluation process acceptance. Capacity-wait and future-approval state are preserved; scan/evaluation complete through canonical worker leases. Next: hard SIGKILL/restart and run-scoped atomic fencing; no completion claim.",
     "waiting_predicate": "No wait for durable receipts or production authority is required for the next local AutoTeam slice. Full acceptance still needs Team-run fixtures, process restart, mutation-boundary fencing and Task Control projection evidence."
   },
   "continuation_assessment": {
@@ -62,7 +62,7 @@
         "source_sha": "feeb1a95df207239a72901dc413ce9a27e808af9"
       }
     ],
-    "next_action": "Add direct current-schema scan/evaluation process acceptance, then implement or explicitly block run-scoped atomic fencing and SIGKILL recovery; preserve capacity_wait resource-wait behavior.",
+    "next_action": "In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.",
     "rationale": "The explicit user request on 2026-10-10 authorizes the canonical recovery scan and useful-work verification WorkUnit. PR #501 is integrated as 311bc1e39100a308efcadab61fa278d607a860aa with focused evidence. SPEC-277 remains PARTIAL with 429 unresolved requirements; broad authority/relevance and completion are not proven.",
     "residual_requirements": [
       "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -98,7 +98,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 29,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -144,7 +144,7 @@
     "canonical_ref": "refs/heads/main",
     "canonical_sha": "df0873f3be10a65748b921d28b6dfa77b93c8997",
     "integrated": true,
-    "integrated_at": "2026-10-10T11:51:30Z"
+    "integrated_at": "2026-10-10T12:00:00Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -195,7 +195,7 @@
           "source_sha": "feeb1a95df207239a72901dc413ce9a27e808af9"
         }
       ],
-      "next_action": "Add direct current-schema scan/evaluation process acceptance, then implement or explicitly block run-scoped atomic fencing and SIGKILL recovery; preserve capacity_wait resource-wait behavior.",
+      "next_action": "In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.",
       "rationale": "The explicit user request on 2026-10-10 authorizes the canonical recovery scan and useful-work verification WorkUnit. PR #501 is integrated as 311bc1e39100a308efcadab61fa278d607a860aa with focused evidence. SPEC-277 remains PARTIAL with 429 unresolved requirements; broad authority/relevance and completion are not proven.",
       "residual_requirements": [
         "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -412,7 +412,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T11:52:14.251145Z",
+  "updated_at": "2026-10-10T11:59:36.396652Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -451,6 +451,13 @@
         "scope": "Candidate cbef0acda1d3; focused seven-file suite / 86 tests passed. Capacity wait remains unchanged and the recovery sweep dispatches no provider work.",
         "source_sha": "cbef0acda14510b00d27c886896651f0f822d001",
         "status": "PASS"
+      },
+      {
+        "kind": "R6_AUTOTEAM_SCAN_EVALUATION_PROCESS_ACCEPTANCE",
+        "path": "orchestra/tasks/smartaihub-r6-autonomous-recovery-20261010/evidence/autoteam-scheduled-occurrence-1a9239ba.json",
+        "scope": "Current-schema PostgreSQL; two scheduler producer processes plus separate scan and evaluation workers. 7 focused files / 86 tests pass at exact source SHA. Capacity wait stayed persisted; future human-choice and terminal runs were skipped; canonical scan/evaluation attempts/outbox/events persisted. No SIGKILL or run-scoped fencing claim.",
+        "source_sha": "a063157f8fd2109ab0e55e1edd01c99c0c394df8",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "FRESH",
@@ -458,7 +465,7 @@
       "quick",
       "integration"
     ],
-    "sha": "cbef0acda14510b00d27c886896651f0f822d001",
+    "sha": "a063157f8fd2109ab0e55e1edd01c99c0c394df8",
     "status": "PARTIAL",
     "task_regressions": []
   }
