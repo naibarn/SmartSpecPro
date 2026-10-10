@@ -11,6 +11,7 @@ import {
   asc,
   desc,
   eq,
+  gt,
   inArray,
   isNull,
   isNotNull,
@@ -131,6 +132,8 @@ import {
 } from "./jobCompletionNotificationService";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
+const CLAIM_CANDIDATE_PAGE_SIZE = 10;
+const CLAIM_CANDIDATE_SCAN_LIMIT = 100;
 
 /**
  * Materialize the candidate descriptor produced by a completed local
@@ -1350,7 +1353,16 @@ export interface WorkerRuntimeRepository {
   insertArtifact: (values: Record<string, any>) => Promise<WorkerArtifactRecord>;
   insertHeartbeat: (values: Record<string, any>) => Promise<void>;
   insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>, identity?: { assignmentId: string; sequence: number }) => Promise<WorkerJobEventRecord | null>;
-  listClaimableJobs: (tenantId: string, runtimeType: WorkerRuntimeType, teamId: string | null, capabilityHints: string[]) => Promise<WorkerJobRecord[]>;
+  listClaimableJobs: (
+    tenantId: string,
+    runtimeType: WorkerRuntimeType,
+    teamId: string | null,
+    capabilityHints: string[],
+    options?: {
+      cursor?: { priority: number; createdAt: Date; id: string } | null;
+      limit?: number;
+    },
+  ) => Promise<WorkerJobRecord[]>;
   listJobEvents: (workerJobId: string) => Promise<WorkerJobEventRecord[]>;
   /**
    * Feature 135 section-05 — narrow lookup backing the hermes claim-time
@@ -2109,7 +2121,7 @@ const defaultRepo: WorkerRuntimeRepository = {
       : await query.returning();
     return event ?? null;
   },
-  async listClaimableJobs(tenantId, runtimeType, teamId) {
+  async listClaimableJobs(tenantId, runtimeType, teamId, _capabilityHints, options) {
     const db = await getDb();
     const now = new Date();
     const conditions = [
@@ -2132,12 +2144,32 @@ const defaultRepo: WorkerRuntimeRepository = {
       conditions.push(or(eq(workerJobs.teamId, teamId), isNull(workerJobs.teamId)));
     }
 
+    if (options?.cursor) {
+      const { priority, createdAt, id } = options.cursor;
+      conditions.push(or(
+        lt(workerJobs.priority, priority),
+        and(
+          eq(workerJobs.priority, priority),
+          gt(workerJobs.createdAt, createdAt),
+        ),
+        and(
+          eq(workerJobs.priority, priority),
+          eq(workerJobs.createdAt, createdAt),
+          gt(workerJobs.id, id),
+        ),
+      ));
+    }
+
+    const limit = Number.isInteger(options?.limit)
+      ? Math.max(1, Math.min(CLAIM_CANDIDATE_SCAN_LIMIT, options.limit))
+      : CLAIM_CANDIDATE_PAGE_SIZE;
+
     return db
       .select()
       .from(workerJobs)
       .where(and(...conditions))
-      .orderBy(desc(workerJobs.priority), asc(workerJobs.createdAt))
-      .limit(10);
+      .orderBy(desc(workerJobs.priority), asc(workerJobs.createdAt), asc(workerJobs.id))
+      .limit(limit);
   },
   async isWorkerSeriesBindingEligible({ tenantId, workerId, bindingId, bindingRevision }) {
     if (!Number.isInteger(bindingRevision)) return false;
@@ -2641,148 +2673,179 @@ export async function claimWorkerJob(
   ensureWorkerScopedAccess(input.auth, worker, input.workerId);
   ensureWorkerCanClaim(worker);
 
-  const candidates = await repo.listClaimableJobs(
-    input.auth.tenantId,
-    input.auth.runtimeType,
-    worker.teamId ?? null,
-    input.payload.capabilityHints,
-  );
-  const eligibleCandidates = await filterClaimableJobsForWorker(worker, candidates);
   const hermesControlVersionCompatible = isHermesDesktopControlVersionCompatible(
     worker.runtimeType,
     worker.runtimeVersion,
   );
-  const selectableCandidates = eligibleCandidates.filter((candidate) =>
-    (!isHermesFabricJobType(candidate.jobType) || hermesControlVersionCompatible)
-    && workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
-  );
-
   // Feature 135 section-05 — memoizes `connectionId -> assignedWorkerId`
   // lookups across this single claim call so a candidate pool with several
   // hermes jobs pinned to the same connection only resolves it once.
   const hermesConnectionAssignedWorkerIdCache = new Map<string, string | null>();
+  const seenCandidateIds = new Set<string>();
+  let cursor: { priority: number; createdAt: Date; id: string } | null = null;
+  let scannedCandidateCount = 0;
+  let selectableCandidateCount = 0;
 
-  for (const candidate of selectableCandidates) {
-    if (candidate.workerSeriesBindingId) {
-      const bindingEligible = repo.isWorkerSeriesBindingEligible
-        ? await repo.isWorkerSeriesBindingEligible({
-            tenantId: worker.tenantId,
-            workerId: worker.id,
-            bindingId: candidate.workerSeriesBindingId,
-            bindingRevision: candidate.workerSeriesBindingRevision ?? null,
-          })
-        : false;
-      if (!bindingEligible) continue;
-    }
-    // Defense-in-depth claim-time assertion (implementation-progress.md
-    // gap #2, spec §6.3 step 7) — see the constant's doc comment above.
-    //
-    // F133-05 (LOW, pre-merge security gate) fix: `continue` to the next
-    // candidate instead of `throw`ing out of the whole loop. A worker that
-    // sends empty `capabilityHints` and happens to have an UNRELATED
-    // `remotion_render_video` job anywhere in its candidate pool used to
-    // fail claiming EVERY job in that attempt (including legitimate,
-    // unrelated ones) — an availability bug, not a security bypass (the
-    // primary anti-mis-claim property this check enforces is unaffected:
-    // the disqualified job is still never claimed by this worker).
-    if (
-      candidate.jobType === "remotion_render_video"
-      && !input.payload.capabilityHints.includes(REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY)
-    ) {
-      continue;
-    }
+  while (scannedCandidateCount < CLAIM_CANDIDATE_SCAN_LIMIT) {
+    const pageLimit = Math.min(
+      CLAIM_CANDIDATE_PAGE_SIZE,
+      CLAIM_CANDIDATE_SCAN_LIMIT - scannedCandidateCount,
+    );
+    const fetchedCandidates = await repo.listClaimableJobs(
+      input.auth.tenantId,
+      input.auth.runtimeType,
+      worker.teamId ?? null,
+      input.payload.capabilityHints,
+      { cursor, limit: pageLimit },
+    );
+    const candidates = fetchedCandidates.slice(0, pageLimit);
+    if (candidates.length === 0) break;
 
-    // Feature 135 section-05 — same `continue`-not-`throw` discipline as the
-    // remotion fix above (an unrelated candidate later in the same pool
-    // must still be claimable in this pass).
-    if (isHermesFabricJobType(candidate.jobType)) {
-      // Assertion 1 (capability): a worker that doesn't advertise
-      // `hermes_media` may never claim a hermes job, regardless of what
-      // `capabilityRequirementsJson.capabilityFamilies` says (mirrors the
-      // remotion primary-check gap: that check is a no-op on an empty
-      // `capabilityFamilies` array).
-      if (!input.payload.capabilityHints.includes(HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY)) {
+    const lastCandidate = candidates[candidates.length - 1];
+    cursor = {
+      priority: lastCandidate.priority,
+      createdAt: new Date(lastCandidate.createdAt),
+      id: lastCandidate.id,
+    };
+    const freshCandidates = candidates.filter((candidate) => {
+      if (seenCandidateIds.has(candidate.id)) return false;
+      seenCandidateIds.add(candidate.id);
+      return true;
+    });
+    if (freshCandidates.length === 0) break;
+    scannedCandidateCount += freshCandidates.length;
+
+    const eligibleCandidates = await filterClaimableJobsForWorker(worker, freshCandidates);
+    const selectableCandidates = eligibleCandidates.filter((candidate) =>
+      (!isHermesFabricJobType(candidate.jobType) || hermesControlVersionCompatible)
+      && workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
+    );
+    selectableCandidateCount += selectableCandidates.length;
+
+    for (const candidate of selectableCandidates) {
+      if (candidate.workerSeriesBindingId) {
+        const bindingEligible = repo.isWorkerSeriesBindingEligible
+          ? await repo.isWorkerSeriesBindingEligible({
+              tenantId: worker.tenantId,
+              workerId: worker.id,
+              bindingId: candidate.workerSeriesBindingId,
+              bindingRevision: candidate.workerSeriesBindingRevision ?? null,
+            })
+          : false;
+        if (!bindingEligible) continue;
+      }
+      // Defense-in-depth claim-time assertion (implementation-progress.md
+      // gap #2, spec §6.3 step 7) — see the constant's doc comment above.
+      //
+      // F133-05 (LOW, pre-merge security gate) fix: `continue` to the next
+      // candidate instead of `throw`ing out of the whole loop. A worker that
+      // sends empty `capabilityHints` and happens to have an UNRELATED
+      // `remotion_render_video` job anywhere in its candidate pool used to
+      // fail claiming EVERY job in that attempt (including legitimate,
+      // unrelated ones) — an availability bug, not a security bypass (the
+      // primary anti-mis-claim property this check enforces is unaffected:
+      // the disqualified job is still never claimed by this worker).
+      if (
+        candidate.jobType === "remotion_render_video"
+        && !input.payload.capabilityHints.includes(REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY)
+      ) {
         continue;
       }
 
-      // Assertion 2 (connection affinity): a hermes job pinned to a
-      // connection may only be claimed by that connection's currently
-      // assigned worker — this is layered ON TOP OF (never a replacement
-      // for) the pinned `workerId` / `filterClaimableJobsForWorker` owner
-      // check, closing the gap where `capabilityRequirementsJson.
-      // preferredWorkerId` is intentionally null for server-scoped
-      // connections (see `hermesMediaScheduler.ts`).
-      const requirements = (candidate.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
-      const connectionId = typeof requirements.connectionId === "string" ? requirements.connectionId : null;
-      if (connectionId) {
-        let assignedWorkerId: string | null;
-        if (hermesConnectionAssignedWorkerIdCache.has(connectionId)) {
-          assignedWorkerId = hermesConnectionAssignedWorkerIdCache.get(connectionId) ?? null;
-        } else {
-          assignedWorkerId = repo.getHermesConnectionAssignedWorkerId
-            ? await repo.getHermesConnectionAssignedWorkerId({ tenantId: worker.tenantId, connectionId })
-            : null;
-          hermesConnectionAssignedWorkerIdCache.set(connectionId, assignedWorkerId);
-        }
-        if (assignedWorkerId !== worker.id) {
+      // Feature 135 section-05 — same `continue`-not-`throw` discipline as the
+      // remotion fix above (an unrelated candidate later in the same pool
+      // must still be claimable in this pass).
+      if (isHermesFabricJobType(candidate.jobType)) {
+        // Assertion 1 (capability): a worker that doesn't advertise
+        // `hermes_media` may never claim a hermes job, regardless of what
+        // `capabilityRequirementsJson.capabilityFamilies` says (mirrors the
+        // remotion primary-check gap: that check is a no-op on an empty
+        // `capabilityFamilies` array).
+        if (!input.payload.capabilityHints.includes(HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY)) {
           continue;
         }
-      }
-    }
 
-    const leaseOwnerToken = crypto.randomBytes(12).toString("hex");
-    const leaseExpiresAt = new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
-    const claimed = await repo.tryClaimJob(candidate.id, worker.id, leaseOwnerToken, leaseExpiresAt);
-    if (claimed) {
-      const assignmentAttempt = buildAssignmentAttempt(claimed.id, worker.id, claimed.leaseOwnerToken ?? leaseOwnerToken);
-      const outputJson = {
-        ...(isPlainObject(claimed.outputJson) ? claimed.outputJson : {}),
-        assignmentAttempt,
-        assignmentWorkerId: worker.id,
-        assignmentLeaseExpiresAt: (claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString?.()
-          ?? new Date(claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString(),
-        assignedAt: new Date().toISOString(),
-        lastWorkerEventAt: null,
-        lastProgressAt: null,
-        assignmentStatus: "active",
-      };
-      let claimedWithAttempt: WorkerJobRecord & { assignmentAttempt: string } = {
-        ...claimed,
-        outputJson,
-        assignmentAttempt,
-      };
-      if (typeof repo.updateJob === "function") {
-        claimedWithAttempt = {
-          ...await repo.updateJob(claimed.id, { outputJson }),
+        // Assertion 2 (connection affinity): a hermes job pinned to a
+        // connection may only be claimed by that connection's currently
+        // assigned worker — this is layered ON TOP OF (never a replacement
+        // for) the pinned `workerId` / `filterClaimableJobsForWorker` owner
+        // check, closing the gap where `capabilityRequirementsJson.
+        // preferredWorkerId` is intentionally null for server-scoped
+        // connections (see `hermesMediaScheduler.ts`).
+        const requirements = (candidate.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
+        const connectionId = typeof requirements.connectionId === "string" ? requirements.connectionId : null;
+        if (connectionId) {
+          let assignedWorkerId: string | null;
+          if (hermesConnectionAssignedWorkerIdCache.has(connectionId)) {
+            assignedWorkerId = hermesConnectionAssignedWorkerIdCache.get(connectionId) ?? null;
+          } else {
+            assignedWorkerId = repo.getHermesConnectionAssignedWorkerId
+              ? await repo.getHermesConnectionAssignedWorkerId({ tenantId: worker.tenantId, connectionId })
+              : null;
+            hermesConnectionAssignedWorkerIdCache.set(connectionId, assignedWorkerId);
+          }
+          if (assignedWorkerId !== worker.id) {
+            continue;
+          }
+        }
+      }
+
+      const leaseOwnerToken = crypto.randomBytes(12).toString("hex");
+      const leaseExpiresAt = new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
+      const claimed = await repo.tryClaimJob(candidate.id, worker.id, leaseOwnerToken, leaseExpiresAt);
+      if (claimed) {
+        const assignmentAttempt = buildAssignmentAttempt(claimed.id, worker.id, claimed.leaseOwnerToken ?? leaseOwnerToken);
+        const outputJson = {
+          ...(isPlainObject(claimed.outputJson) ? claimed.outputJson : {}),
+          assignmentAttempt,
+          assignmentWorkerId: worker.id,
+          assignmentLeaseExpiresAt: (claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString?.()
+            ?? new Date(claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString(),
+          assignedAt: new Date().toISOString(),
+          lastWorkerEventAt: null,
+          lastProgressAt: null,
+          assignmentStatus: "active",
+        };
+        let claimedWithAttempt: WorkerJobRecord & { assignmentAttempt: string } = {
+          ...claimed,
+          outputJson,
           assignmentAttempt,
         };
+        if (typeof repo.updateJob === "function") {
+          claimedWithAttempt = {
+            ...await repo.updateJob(claimed.id, { outputJson }),
+            assignmentAttempt,
+          };
+        }
+        auditLogger.log({
+          eventType: "worker_job_claimed",
+          userId: claimedWithAttempt.requestedByUserId ?? null,
+          metadata: {
+            tenantId: claimedWithAttempt.tenantId,
+            workerId: worker.id,
+            jobId: claimedWithAttempt.id,
+            runtimeType: claimedWithAttempt.runtimeType,
+            jobType: claimedWithAttempt.jobType,
+            assignmentAttempt,
+            ...buildHermesAuditEnrichment(claimedWithAttempt),
+          },
+        });
+        return {
+          queueDepth: Math.max(0, selectableCandidateCount - 1),
+          job: {
+            ...claimedWithAttempt,
+            leaseOwnerToken: claimedWithAttempt.leaseOwnerToken ?? leaseOwnerToken,
+            leaseExpiresAt: claimedWithAttempt.leaseExpiresAt ?? leaseExpiresAt,
+            assignmentAttempt,
+          },
+        };
       }
-      auditLogger.log({
-        eventType: "worker_job_claimed",
-        userId: claimedWithAttempt.requestedByUserId ?? null,
-        metadata: {
-          tenantId: claimedWithAttempt.tenantId,
-          workerId: worker.id,
-          jobId: claimedWithAttempt.id,
-          runtimeType: claimedWithAttempt.runtimeType,
-          jobType: claimedWithAttempt.jobType,
-          assignmentAttempt,
-          ...buildHermesAuditEnrichment(claimedWithAttempt),
-        },
-      });
-      return {
-        queueDepth: Math.max(0, selectableCandidates.length - 1),
-        job: {
-          ...claimedWithAttempt,
-          leaseOwnerToken: claimedWithAttempt.leaseOwnerToken ?? leaseOwnerToken,
-          leaseExpiresAt: claimedWithAttempt.leaseExpiresAt ?? leaseExpiresAt,
-          assignmentAttempt,
-        },
-      };
+
     }
+    if (candidates.length < pageLimit) break;
   }
 
-  return { job: null, queueDepth: selectableCandidates.length };
+  return { job: null, queueDepth: selectableCandidateCount };
 }
 
 export async function recordWorkerJobEvent(
