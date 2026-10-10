@@ -125,6 +125,14 @@ impl RunnerJobCommand {
         if !browser_command && !external_agent_command {
             return Err("RUNNER_COMMAND_ADAPTER_UNSUPPORTED".into());
         }
+        if browser_command
+            && self
+                .browser_engine_constraint
+                .as_deref()
+                .is_some_and(|engine| engine != "chromium")
+        {
+            return Err("RUNNER_BROWSER_ENGINE_UNSUPPORTED".into());
+        }
         if contains_secret_key(&self.payload) {
             return Err("RUNNER_COMMAND_SECRET_FIELD".into());
         }
