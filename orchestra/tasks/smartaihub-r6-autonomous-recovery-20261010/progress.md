@@ -44,3 +44,8 @@
 - Lane C independent contract slice candidate `3971a6ceaed0070d12f486f72aba88fccf2b8bec`: SPEC-302 replay test passed 47 cases, including each accepted field's digest sensitivity, malformed keys/canonical identity, unsupported ceiling, and metadata-only exact replay. This does not create durable receipt authority; Phase 2 persistence remains gated on schema owner and migration approval.
 
 - Refreshed SPEC-302 replay test branch to latest main `66ba886c9c7e6c0e30682cd5def300214679c48d`; targeted 47-case suite passed on reconciled candidate `f48907874e99e052bbc7235c6144d2d12746c370`.
+
+- PR #555 merged at `c3d7cef8d94f8f5c023a427cfe83d49f44e72fd8`; the exact post-merge SPEC-302 replay contract test passed 47 cases. Preview was SKIPPED.
+- Lane B synthetic contract slice candidate `766cf48af6ad2520bb0e0cc24f137e4ed36e555d`: four SPEC-271 receipt suites passed 39 tests. Added missing/throwing scope authority, write/read authorization failure, storage untouched before read authorization, and read-time retention outage/policy-change rejection. Owner assignment and actual persistence/restart remain unresolved.
+
+- Lane B review refinement candidate `1ea0ce671e03b4cee8a60a147b0360d211f77244`: the 4-file / 39-test suite passed with READ authorized once then revoked on the second pre-storage check; `readBuffer` remained untouched. A second read-only review confirmed the assertion matches the adapter order.

@@ -76,7 +76,7 @@
     "F_provider_resource_dependency_waits": "PARTIAL: capacity_wait passed across the runtime boundary and no provider job was created; other provider/dependency waits are untested",
     "G_no_progress_suppression": "NOT_TESTED",
     "H_task_control_continuity": "NOT_TESTED",
-    "I_spec271_receipt_persistence_replay": "BLOCKED_OWNER_ASSIGNMENT",
+    "I_spec271_receipt_persistence_replay": "PARTIAL: synthetic/injectable adapter rejection contracts passed 4 files / 39 tests at source SHA 766cf48af6ad2520bb0e0cc24f137e4ed36e555d; authoritative WP2B owner and real persistence/restart approval remain unresolved.",
     "J_spec302_durable_receipt_readiness": "PARTIAL: pure replay contract checks passed at source SHA 3971a6ceaed0070d12f486f72aba88fccf2b8bec; no durable store/schema exists, and persistence/revocation/concurrency acceptance remains blocked on schema owner and explicit migration approval.",
     "K_spec224_first_authorized_e2e": "BLOCKED_AUTHORITY; protected dispatch remains DENY"
   },
@@ -88,7 +88,8 @@
     "The capacity_wait test is a focused service regression, not a process-boundary evaluation-worker acceptance.",
     "It does not prove run-scoped fencing at runEngine mutation boundaries, useful-work recovery, Final Verify, or Task Control continuity.",
     "The scan worker process was SIGKILLed after persisting progress and a replacement process recovered the lease and completed attempt 2. The stale-worker post-reclaim TeamRun mutation race, atomic run-scoped fence, useful work, Final Verify, and Task Control continuity remain untested.",
-    "SPEC-302 Phase 2 work in this checkpoint is limited to pure replay contract tests; no durable receipt persistence or migration was implemented."
+    "SPEC-302 Phase 2 work in this checkpoint is limited to pure replay contract tests; no durable receipt persistence or migration was implemented.",
+    "SPEC-271 Lane B tests exercise an injectable in-memory adapter only; they do not provide owner binding, real object-store persistence, cross-process replay, or an authoritative acceptance receipt."
   ],
   "candidateVerification": {
     "sourceSha": "238741241a68f079ee0916b2d5fe64c05a39dd0d",
@@ -137,5 +138,32 @@
     "tests": 47,
     "verifiedAt": "2026-10-10T12:19:49Z",
     "latestMainReconciled": true
+  },
+  "postIntegrationLaneC": {
+    "canonicalSha": "c3d7cef8d94f8f5c023a427cfe83d49f44e72fd8",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/555",
+    "mergeCommit": "c3d7cef8d94f8f5c023a427cfe83d49f44e72fd8",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/services/__tests__/spec302ProjectResolutionReplayContract.test.ts",
+    "result": "PASS_CONTRACT_ONLY",
+    "testFiles": 1,
+    "tests": 47,
+    "verifiedAt": "2026-10-10T12:20:43Z",
+    "previewCheck": "SKIPPED (not counted as pass)"
+  },
+  "laneBReceiptContractVerification": {
+    "sourceSha": "1ea0ce671e03b4cee8a60a147b0360d211f77244",
+    "baseCanonicalSha": "c3d7cef8d94f8f5c023a427cfe83d49f44e72fd8",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts server/services/__tests__/spec271AcceptanceReceiptFlow.test.ts server/services/__tests__/spec271PortableEvidenceReceipt.test.ts server/services/__tests__/spec271IndependentAcceptance.test.ts",
+    "result": "PASS_SYNTHETIC_CONTRACT_ONLY",
+    "testFiles": 4,
+    "tests": 39,
+    "verifiedAt": "2026-10-10T15:41:06Z",
+    "scope": [
+      "missing and unavailable run-scope authority denies before write",
+      "write/read authorization denial and outage fail closed",
+      "READ authorization allows first check then denies second check before object storage access",
+      "read-time retention outage and policy change are rejected"
+    ],
+    "limitations": "Injectable in-memory adapter contract tests only. No real owner, storage wiring, cross-process persistence, autonomous acceptance authority or production receipt was established."
   }
 }
