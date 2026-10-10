@@ -27,26 +27,26 @@
     {
       "class": "AUTHENTICATED_RUNTIME",
       "id": "SPEC308_NONPROD_APP_RUNTIME",
-      "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent test tenant/user through approved secret management.",
+      "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent synthetic test tenant/user through approved secret management.",
       "root_cause": "No approved non-production endpoint and authorized persistent acceptance identity are available; mocked CI is not live acceptance."
     },
     {
       "class": "LIVE_CONTRACT_AUTHORITY",
       "id": "SPEC308_MCP_LIVE_CI",
-      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN through approved GitHub secret management, then reruns the required live gate.",
-      "root_cause": "Both #399 and #403 live smoke gates fail closed because the authorized endpoint/token are absent."
-    },
-    {
-      "class": "BASELINE_CI_FAILURE",
-      "id": "MCP_CONTRACT_TEST_FIXTURES",
-      "next_action": "After security baseline clears, reconcile PR #403 to current main, verify its fixture repair on the refreshed dependency candidate, and integrate only through required gates.",
-      "root_cause": "PR #399 exact-head MCP tests still fail because canonical tests rely on unavailable PostgreSQL session state and import a retired service; #403 focused tests passed only on its stale base."
+      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN through approved GitHub secret management for an authorized endpoint and test identity, then reruns the required live gate.",
+      "root_cause": "The refreshed #403 live smoke fails closed because MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent; no approved MCP test endpoint or identity is provisioned."
     },
     {
       "class": "SECURITY_GATE_BASELINE",
       "id": "SPEC308_PRODUCTION_DEPENDENCY_AUDIT",
-      "next_action": "Security and media/runtime owners must authorize a compatible ONNX/WSL2 remediation or a scoped expiring disposition under policy. Keep the full audit failure visible; do not suppress it.",
-      "root_cause": "PR #405 mandatory production audit retains Moderate sprintf-js@1.1.3 through hyperframes > onnxruntime-node > global-agent > roarr; no patched version exists and native runtime changes need approval."
+      "next_action": "Security and Media/Runtime owners record whether the optional HyperFrames on-device ONNX installer and separately signed WSL2 runtime bundle are in scope, with an approved mitigation/rebuild plan or scoped expiring risk disposition; then keep #405 on exact green CI.",
+      "root_cause": "The #405 application dependency candidate passes full production audit and compatibility CI, but the CLI can dynamically install vulnerable ONNX Runtime 1.21.1 for optional search/background-removal features and the separate signed WSL2 runtime still uses HyperFrames 0.7.5. The existing PR decision requires named owner disposition for these residuals."
+    },
+    {
+      "class": "SECURITY_GATE_BASELINE",
+      "id": "MCP_DEPENDENCY_AUDIT_INTEGRATION",
+      "next_action": "After #405's authorized disposition and integration, refresh #403 and require its exact-head high audit to pass; do not suppress or lower audit thresholds.",
+      "root_cause": "PR #403's current audit runs against origin/main without the #405 security candidate, so it still reports existing Critical/High production dependency advisories despite passing MCP-focused tests and MCP secret scan."
     },
     {
       "class": "FEATURE_AUTHORITY",
@@ -60,57 +60,32 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "Security and Media/Runtime owners must first resolve the compatible ONNX/WSL2 remediation or policy-valid scoped disposition for #405 sprintf-js@1.1.3. The #399 task branch is now reconciled with current origin/main at merge commit 6e95c9ad66993d10266f5cc07cef76e77d083cb9; push it to the existing PR ref and collect fresh exact-head browser/MCP gates. Reuse, do not duplicate, #403 fixture repair. Do not merge until required audit/security/live authority gates pass.",
+    "next_action": "Latest main is f036df3745aea4bcb4cfcff18be2ce5130e0673f. PR #399 is refreshed at ad4688b7331137c72c89a0becea48fbb1bc7e930 and exact-head mocked browser simulation 38032031569 passed: 8 files/146 component tests plus 23 Chromium cases. PR #403 is refreshed at d822879bd9134e2ef96a04614068a9e8d8b6bfbc; CI passed 118 focused MCP tests, scoped MCP type diagnostics and secret scan, but failed high audit on still-unintegrated dependency baseline and live smoke lacks authorized URL/token. PR #405 is refreshed at fbd4a8e5523b7b8ea0f8a2e760c818a660099e4e; exact CI 38031948047 passed compatibility regressions and full production audit. Do not merge #405 until its recorded Security/Media-Runtime owner disposition for the dynamic optional ONNX path and separate signed WSL2 runtime is satisfied. Keep #403/#399 unmerged while mandatory audit/security/live gates remain. Provision authorized non-production MCP endpoint/token and SPEC-308 test identity, then rerun exact-head gates and merge in dependency order.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
-    "reactivation_predicate": "Security and media/runtime owners record an approved remediation path or policy-valid disposition through the authorized channel; resume by refreshing #405 against current main, then run full audit and compatibility gates on the exact candidate.",
-    "resume_point": "Task branch checkpoint 67f23e4145f64d61dd34815061bc98aeff1389e5 was reconciled with current origin/main b1f2d52e5ba864685dc28414c6f49d7ffe9523eb in merge commit 6e95c9ad66993d10266f5cc07cef76e77d083cb9. Its GitHub PR ref update and exact-head verification are pending. The previous exact-head browser PASS and MCP failure refer to e7d437b86ce9c385e15416cef3d1b5b47df3759b only; rerun browser and MCP workflows on the reconciled head. PR #403 already includes the fixture repair; PR #405 remains blocked on Moderate sprintf-js@1.1.3 and owner disposition. Keep 66 rows OPEN and no integration/acceptance claims.",
-    "waiting_predicate": "Security/media-runtime owners provide an approved decision for sprintf-js remediation or documented scoped/expiring disposition; live MCP and SPEC-308 acceptance continue to require approved endpoint/token and non-production test identity/Feature-049 authorization separately."
+    "reactivation_predicate": "Re-evaluate when an authorized Security/Media-Runtime owner records a disposition for the HyperFrames optional ONNX installer and signed WSL2 bundle, the production dependency baseline is integrated, or approved non-production MCP and SmartSpecPro endpoints/test identities are provisioned; resume by refreshing all open PRs to current main and rerunning only gates invalidated by the resulting source changes.",
+    "resume_point": "Canonical main is f036df3745aea4bcb4cfcff18be2ce5130e0673f. Current PR heads: #405 fbd4a8e5523b7b8ea0f8a2e760c818a660099e4e, #403 d822879bd9134e2ef96a04614068a9e8d8b6bfbc, #399 ad4688b7331137c72c89a0becea48fbb1bc7e930. #405 exact CI 38031948047: compatibility and full production audit PASS; owner disposition remains required for residual runtime scope. #403 exact CI 38031946413: MCP focused tests 118/118, scoped type gate and secret scan PASS; full high audit FAIL from unintegrated dependency baseline, live MCP BLOCKED_EXTERNAL. #399 exact browser CI 38032031569: 146 component tests and 23 mocked Chromium cases PASS; this is not authenticated acceptance. No PR has merged; integration remains false and all 66 requirement rows remain open. Next action is owner disposition plus authorized non-production identities/endpoints; then refresh PRs and merge only after applicable gates pass.",
+    "waiting_predicate": "Resume when at least one verifiable predicate changes: PR #405 has an authorized residual-scope disposition and passes exact-head mandatory checks; secured dependency baseline is merged and #403's high audit passes; authorized MCP_SMOKE_URL/MCP_SMOKE_TOKEN and scope-approved test identity are configured; and a non-production SPEC-308 endpoint/test tenant is authorized. Continue independent checks for any predicate that becomes ready."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave17.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013182833.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013182832.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013182833",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013182832",
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave18.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533419.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533460.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533419",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460",
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave19.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737",
-      "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965",
-      "orchestra/tasks/spec-308-20261009/evidence/canonical-reconcile-20261010.md",
-      "https://github.com/naibarn/SmartSpecPro/commit/6e95c9ad66993d10266f5cc07cef76e77d083cb9",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525646.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525649.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr405-audit-38004111980.json",
-      "orchestra/tasks/spec-308-20261009/evidence/onnx-wsl2-environment-20261010.md",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525646",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525649",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38004111980"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38032031569",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38031946413",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38031948047",
+      "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/evidence/hyperframes-08143-linux-candidate-20261010.md",
+      "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
     ],
-    "next_action": "Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.",
-    "rationale": "On refreshed PR #399 code-bearing head a067ad36fc05b49d33752af3d42f14f2f0a261dd, focused UI regressions (8 files/146 tests) and mocked Chromium (23/23) passed. MCP focused tests still fail 44/120 because the separate PR #403 fixture repair is not in main and old tests import retired agencyMcpService; live smoke lacks authorized endpoint/token. PR #405 exact candidate compatibility tests pass 18 files/238 tests, while mandatory full production audit fails on Moderate sprintf-js@1.1.3. This Linux host has no WSL2 interoperability. No runtime/dependency change, merge, acceptance or production deployment was made.",
+    "next_action": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
+    "rationale": "Implementation, scoped verification, PR reconciliation and audit improvements have progressed, but mandatory authenticated acceptance and recorded runtime/security authority disposition are still outstanding. Do not infer completion from green simulated or candidate-only gates.",
     "residual_requirements": [
-      "All 66 requirement rows remain OPEN; mocked browser evidence does not establish live authenticated runtime or canonical main integration.",
-      "PR #405 mandatory audit has one Moderate sprintf-js@1.1.3; owner disposition is required. The current Linux host cannot run WSL2 validation.",
-      "PR #403 existing fixture repair requires current-main focused/security gate verification after #405; authorized MCP endpoint/token remain absent.",
-      "Feature-049 tenant authorization and monotonic grouped notification revision need owner evidence before live attention behavior.",
-      "Approved isolated non-production app and authorized persistent test identity are needed for live browser acceptance.",
+      "All 66 requirement rows remain OPEN; no PR is integrated into origin/main and live authenticated acceptance is absent.",
+      "#405 production audit and compatibility pass on fbd4a8e, but owner disposition remains required for the optional dynamic ONNX installation path and signed WSL2 runtime still pinned to HyperFrames 0.7.5.",
+      "#403 passes 118 focused MCP tests, scoped MCP diagnostics and secret scan on d822879; high audit fails on unintegrated dependency findings and live acceptance lacks approved endpoint/token.",
+      "#399 passes 146 component tests and 23 mocked Chromium cases on ad4688b; authenticated non-production acceptance and Feature-049 tenant authorization/revision proof remain open.",
       "Production flags remain OFF; no production deployment is authorized."
     ],
-    "resume_point": "Current PR #399 branch is reconciled with origin/main b1f2d52e5ba864685dc28414c6f49d7ffe9523eb; code-bearing head a067ad36fc05b49d33752af3d42f14f2f0a261dd passed mocked browser simulation 38021525646 (146 focused tests, 23 Chromium cases) and failed MCP gate 38021525649 (44/120, retired import/factory drift; live URL/token absent). PR #403 already includes fixture repair; do not duplicate. PR #405 exact audit 38004111980 is red only on Moderate sprintf-js@1.1.3; compatibility suite passes. Linux environment lacks WSLInterop. All 66 requirements OPEN; no main integration SHA or live authenticated acceptance."
+    "resume_point": "Canonical origin/main is f036df3745aea4bcb4cfcff18be2ce5130e0673f. Existing PR heads are #405 fbd4a8e5523b7b8ea0f8a2e760c818a660099e4e, #403 d822879bd9134e2ef96a04614068a9e8d8b6bfbc, #399 ad4688b7331137c72c89a0becea48fbb1bc7e930. #405 run 38031948047 passes full production audit and compatibility regressions. #403 run 38031946413 passes focused tests 118/118, the MCP-scoped diagnostic wrapper and secret scan; its high audit fails on unintegrated dependency baseline, and live smoke fails closed for missing MCP_SMOKE_URL/MCP_SMOKE_TOKEN. #399 run 38032031569 passes 146 focused component tests and 23 mocked Chromium cases. No merge SHA exists. Resume at owner disposition and authorized environment provisioning, then refresh exact PR heads to current main and run only invalidated gates."
   },
   "dependencies": {
     "predicates": [],
@@ -142,7 +117,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 64,
+  "generation": 66,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -328,47 +303,22 @@
       "confidence": "HIGH",
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
-        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave17.md",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013182833.json",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013182832.json",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013182833",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013182832",
-        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave18.md",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533419.json",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533460.json",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533419",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460",
-        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave19.md",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737",
-        "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965",
-        "orchestra/tasks/spec-308-20261009/evidence/canonical-reconcile-20261010.md",
-        "https://github.com/naibarn/SmartSpecPro/commit/6e95c9ad66993d10266f5cc07cef76e77d083cb9",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525646.json",
-        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525649.json",
-        "orchestra/tasks/spec-308-20261009/evidence/pr405-audit-38004111980.json",
-        "orchestra/tasks/spec-308-20261009/evidence/onnx-wsl2-environment-20261010.md",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525646",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525649",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38004111980"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38032031569",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38031946413",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38031948047",
+        "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/evidence/hyperframes-08143-linux-candidate-20261010.md",
+        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
       ],
-      "next_action": "Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.",
-      "rationale": "On refreshed PR #399 code-bearing head a067ad36fc05b49d33752af3d42f14f2f0a261dd, focused UI regressions (8 files/146 tests) and mocked Chromium (23/23) passed. MCP focused tests still fail 44/120 because the separate PR #403 fixture repair is not in main and old tests import retired agencyMcpService; live smoke lacks authorized endpoint/token. PR #405 exact candidate compatibility tests pass 18 files/238 tests, while mandatory full production audit fails on Moderate sprintf-js@1.1.3. This Linux host has no WSL2 interoperability. No runtime/dependency change, merge, acceptance or production deployment was made.",
+      "next_action": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
+      "rationale": "Implementation, scoped verification, PR reconciliation and audit improvements have progressed, but mandatory authenticated acceptance and recorded runtime/security authority disposition are still outstanding. Do not infer completion from green simulated or candidate-only gates.",
       "residual_requirements": [
-        "All 66 requirement rows remain OPEN; mocked browser evidence does not establish live authenticated runtime or canonical main integration.",
-        "PR #405 mandatory audit has one Moderate sprintf-js@1.1.3; owner disposition is required. The current Linux host cannot run WSL2 validation.",
-        "PR #403 existing fixture repair requires current-main focused/security gate verification after #405; authorized MCP endpoint/token remain absent.",
-        "Feature-049 tenant authorization and monotonic grouped notification revision need owner evidence before live attention behavior.",
-        "Approved isolated non-production app and authorized persistent test identity are needed for live browser acceptance.",
+        "All 66 requirement rows remain OPEN; no PR is integrated into origin/main and live authenticated acceptance is absent.",
+        "#405 production audit and compatibility pass on fbd4a8e, but owner disposition remains required for the optional dynamic ONNX installation path and signed WSL2 runtime still pinned to HyperFrames 0.7.5.",
+        "#403 passes 118 focused MCP tests, scoped MCP diagnostics and secret scan on d822879; high audit fails on unintegrated dependency findings and live acceptance lacks approved endpoint/token.",
+        "#399 passes 146 component tests and 23 mocked Chromium cases on ad4688b; authenticated non-production acceptance and Feature-049 tenant authorization/revision proof remain open.",
         "Production flags remain OFF; no production deployment is authorized."
       ],
-      "resume_point": "Current PR #399 branch is reconciled with origin/main b1f2d52e5ba864685dc28414c6f49d7ffe9523eb; code-bearing head a067ad36fc05b49d33752af3d42f14f2f0a261dd passed mocked browser simulation 38021525646 (146 focused tests, 23 Chromium cases) and failed MCP gate 38021525649 (44/120, retired import/factory drift; live URL/token absent). PR #403 already includes fixture repair; do not duplicate. PR #405 exact audit 38004111980 is red only on Moderate sprintf-js@1.1.3; compatibility suite passes. Linux environment lacks WSLInterop. All 66 requirements OPEN; no main integration SHA or live authenticated acceptance."
+      "resume_point": "Canonical origin/main is f036df3745aea4bcb4cfcff18be2ce5130e0673f. Existing PR heads are #405 fbd4a8e5523b7b8ea0f8a2e760c818a660099e4e, #403 d822879bd9134e2ef96a04614068a9e8d8b6bfbc, #399 ad4688b7331137c72c89a0becea48fbb1bc7e930. #405 run 38031948047 passes full production audit and compatibility regressions. #403 run 38031946413 passes focused tests 118/118, the MCP-scoped diagnostic wrapper and secret scan; its high audit fails on unintegrated dependency baseline, and live smoke fails closed for missing MCP_SMOKE_URL/MCP_SMOKE_TOKEN. #399 run 38032031569 passes 146 focused component tests and 23 mocked Chromium cases. No merge SHA exists. Resume at owner disposition and authorized environment provisioning, then refresh exact PR heads to current main and run only invalidated gates."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -2215,62 +2165,26 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T03:47:02.225551Z",
+  "updated_at": "2026-10-10T06:53:25.037349Z",
   "verification": {
     "baseline_issues": [
-      "PR #399 MCP focused run 37986151602 fails on canonical-main baseline fixtures: PostgreSQL-backed session state is not configured and tests retain retired agencyMcpService imports; PR #403 owns the fixture repair.",
-      "PR #399 and #403 live MCP smoke fail closed because authorized MCP_SMOKE_URL and MCP_SMOKE_TOKEN are unavailable.",
-      "PR #405 compatibility tests pass but mandatory full production audit remains failed on Moderate sprintf-js@1.1.3 pending authorized remediation/disposition.",
-      "Exact PR #399 head run 38004846369 repeats the MCP baseline failure: DB-backed session fixtures are unavailable and tests import retired agencyMcpService; live smoke lacks approved MCP_SMOKE_URL/MCP_SMOKE_TOKEN.",
-      "Exact PR #405 workflow-dispatch run 38004111980 passes compatibility regressions (18 files/238 tests) and fails the mandatory production audit on Moderate sprintf-js@1.1.3; Security and media/runtime owner disposition is still required.",
-      "PR #399 exact-head contract run 38006779712 (SHA a7765811ef0f6a21b5a1297090f5754d845b30c0) fails before audit on canonical MCP baseline defects: missing PostgreSQL session fixture and retired agencyMcpService imports (44 failed/76 passed across 11 files); audit step is skipped. The live smoke fails closed because approved MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent. PR #403 owns the fixture repair and its focused suite passed 118/118; security audit and live authority remain open.",
-      "PR #399 evidence-head run 38007574817 on a87a991d082c3c72ad3768e03a0b244d963a1cf1 repeats the canonical MCP fixture/import baseline failure before mandatory audit (44 failed/76 passed); live smoke again fails closed because authorized MCP endpoint/token are unavailable. PR #403 remains the owner branch for its 118/118 fixture repair, subject to security gate ordering.",
-      "PR #399 exact head 0fdda9580ff80988266f7677980991481637c076: contract-and-security run 38009610509 fails before mandatory audit on canonical MCP fixture/import baseline (44 failed/76 passed across 11 files); audit did not pass. Live MCP smoke fails closed without approved MCP_SMOKE_URL/MCP_SMOKE_TOKEN. Browser simulation run 38009610472 separately passes 18/18 mocked Chromium cases and is not live acceptance.",
-      "On #399 head e7d437b86ce9c385e15416cef3d1b5b47df3759b, run 38014076965 failed 44/120 MCP focused tests; mandatory audit did not execute. Exact failures included missing protocol response fields, the legacy agencyMcpService test import, and fixture/assertion drift. Reconcile against current main without restoring retired systems.",
-      "On the same historical #399 head, live MCP run 38014076965 failed closed because authorized MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent; no secret values were read.",
-      "PR #403 already has the MCP fixture repair but its current exact-head verification on refreshed main is outstanding.",
-      "PR #405 remains OPEN/Draft; the recorded mandatory production audit retains one Moderate sprintf-js@1.1.3 finding pending Security and Media/Runtime owner disposition.",
-      "On refreshed PR #399 code-bearing head a067ad36fc05b49d33752af3d42f14f2f0a261dd, browser run 38021525646 passed 8 focused files/146 tests and 23 mocked Chromium cases. This is not live acceptance.",
-      "On the same PR #399 head, MCP run 38021525649 failed 44/120 focused tests with retired agencyMcpService import/factory drift; downstream check:mcp146, security:mcp146 and mandatory audit were skipped. Live smoke failed closed without authorized endpoint/token.",
-      "PR #405 exact candidate 868a5600ff770be91885666b7f584835e03fc690 run 38004111980 passed compatibility regressions (18 files/238 tests) and failed mandatory full audit only on Moderate sprintf-js@1.1.3. Security and Media/Runtime disposition is still needed.",
-      "Local host has no WSL interoperability or WSL executable, so ONNX/WSL2 runtime compatibility could not be tested here; no runtime or dependency was changed."
+      "CURRENT 2026-10-10: PR #403 refreshed head d822879bd9134e2ef96a04614068a9e8d8b6bfbc passes 118/118 focused MCP tests, check:mcp146 reports no MCP-targeted TypeScript diagnostic (full web check has unrelated baseline diagnostics), and security:mcp146 scans 23 files with no findings. Its high audit fails because secured dependency changes remain unintegrated; live smoke is BLOCKED_EXTERNAL due absent authorized MCP_SMOKE_URL/MCP_SMOKE_TOKEN.",
+      "CURRENT 2026-10-10: PR #405 refreshed head fbd4a8e5523b7b8ea0f8a2e760c818a660099e4e passes exact compatibility-regressions and full production audit in run 38031948047. HyperFrames 0.8.143 removes ONNX Runtime from the installed app dependency graph. The optional CLI search/background-removal path can dynamically install ONNX Runtime 1.21.1, and the separate signed WSL2 runtime remains on 0.7.5; recorded Security/Media-Runtime owner disposition is still required before merge or full WorkUnit closure.",
+      "CURRENT 2026-10-10: PR #399 refreshed head ad4688b7331137c72c89a0becea48fbb1bc7e930 passes exact mocked browser simulation run 38032031569 (8 files/146 component tests and 23 Chromium cases). Mocked browser evidence does not satisfy authenticated acceptance. No approved non-production app endpoint/test identity or MCP endpoint/token is configured.",
+      "Historical baseline MCP failures and earlier audit findings in this manifest refer to superseded SHAs; retain them as history only. The current heads and evidence above are authoritative for next action."
     ],
     "evidence": [
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave17.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013182833.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013182832.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013182833",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013182832",
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave18.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533419.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013533460.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533419",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013533460",
-      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave19.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737",
-      "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965",
-      "orchestra/tasks/spec-308-20261009/evidence/canonical-reconcile-20261010.md",
-      "https://github.com/naibarn/SmartSpecPro/commit/6e95c9ad66993d10266f5cc07cef76e77d083cb9",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525646.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525649.json",
-      "orchestra/tasks/spec-308-20261009/evidence/pr405-audit-38004111980.json",
-      "orchestra/tasks/spec-308-20261009/evidence/onnx-wsl2-environment-20261010.md",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525646",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525649",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38004111980"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38032031569",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38031946413",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38031948047",
+      "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/evidence/hyperframes-08143-linux-candidate-20261010.md",
+      "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
     ],
-    "freshness": "EXACT_HEAD_BROWSER_PASS_MCP_AND_SECURITY_GATES_PENDING",
+    "freshness": "EXACT_PR_HEAD_BROWSER_PASS; MCP_FIXTURE_REPAIR_CI_PASS_WITH_SECURITY_AUDIT_AND_LIVE_AUTH_BLOCKERS; SECURITY_CANDIDATE_AUDIT_AND_COMPATIBILITY_PASS_PENDING_OWNER_DISPOSITION",
     "required_profiles": [
       "quick"
     ],
-    "sha": "a067ad36fc05b49d33752af3d42f14f2f0a261dd",
+    "sha": "ad4688b7331137c72c89a0becea48fbb1bc7e930",
     "status": "PARTIAL",
     "task_regressions": []
   }

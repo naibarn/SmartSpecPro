@@ -129388,7 +129388,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+      "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -131111,14 +131111,14 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.325224Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "primary_blocker": {
-        "class": "DEPENDENCY_AND_OWNERSHIP",
-        "id": "APP_PROJECT_RUNTIME_CONTEXT_AUTHORITY",
-        "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+        "class": "ACCEPTANCE_AND_INGRESS_PROVENANCE",
+        "id": "APP_PROJECT_MEMORY_DIRECT_ACCEPTANCE",
+        "next_action": "Run direct T-01–T-23 cases. App-bound Project reads remain denied on unverified ingress; durable Project writes remain denied pending Phase 2.",
         "recoverable": true,
-        "root_cause": "PR #443 binds TeamRoom project authority to AgentRuntime provider attempts, but the current contract does not supply the canonical App-aware MemoryContext and ProjectResolutionReceipt needed for full App/Project runtime acceptance. Candidate paths remain shared/reserved under SPEC-302/SPEC-304. The old dirty SPEC-269 worktree remains preserved; its delta removes PR #426 authorization checks and is not reusable."
+        "root_cause": "PR #451 provides the minimum read-only authority/runtime boundary, but deployed ingress provenance and the direct acceptance matrix remain incomplete."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
@@ -142528,7 +142528,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+      "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -142585,13 +142585,12 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.839575Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "next_action": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
       "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
         "id": "SPEC302_DIRECT_ACCEPTANCE",
-        "next_action": "Implement and execute direct acceptance against current canonical source.",
-        "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+        "next_action": "Run direct identity/context acceptance on an authenticated non-production ingress; keep all unverified App-bound Project reads fail-closed."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
@@ -142778,7 +142777,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
+      "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -142828,17 +142827,16 @@
       "deployment": "UNKNOWN",
       "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "STALE",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.843501Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
       "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
-        "id": "SPEC304_DIRECT_ACCEPTANCE",
-        "next_action": "Implement and execute direct acceptance against current canonical source.",
-        "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+        "id": "SPEC304_TRUSTED_INGRESS_ASSERTION",
+        "next_action": "Establish and directly test authenticated App routing provenance in approved non-production infrastructure; do not derive identity from request Host/X-Forwarded-Host."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
@@ -143944,16 +143942,16 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "EXACT_HEAD_BROWSER_PASS_MCP_AND_SECURITY_GATES_PENDING",
+      "evidence_freshness": "EXACT_PR_HEAD_BROWSER_PASS; MCP_FIXTURE_REPAIR_CI_PASS_WITH_SECURITY_AUDIT_AND_LIVE_AUTH_BLOCKERS; SECURITY_CANDIDATE_AUDIT_AND_COMPATIBILITY_PASS_PENDING_OWNER_DISPOSITION",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.",
+      "next_action": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
         "id": "SPEC308_NONPROD_APP_RUNTIME",
-        "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent test tenant/user through approved secret management.",
+        "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent synthetic test tenant/user through approved secret management.",
         "root_cause": "No approved non-production endpoint and authorized persistent acceptance identity are available; mocked CI is not live acceptance."
       },
       "problem": null,

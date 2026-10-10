@@ -231,3 +231,13 @@ Loop policy:
 - PR #403 already includes the MCP fixture repair and passed its focused test/check/security suite; no duplicate patch was created. Its merge/reconciliation remains behind PR #405's security gate.
 - Handoff generation 60 now records verification SHA `22be8dd`, remains PARTIAL/completion-ineligible, and leaves all 66 requirements OPEN with no integration SHA.
 - GitHub authority inventory found no non-production environment, MCP smoke secret names, or named CODEOWNERS; no secret values were accessed.
+
+## SPEC-308 autonomous continuation — 2026-10-10
+
+Canonical main refreshed to `f036df3745aea4bcb4cfcff18be2ce5130e0673f`. Reconciled the existing PR refs without conflicts:
+
+- #405 head `fbd4a8e5523b7b8ea0f8a2e760c818a660099e4e`: HyperFrames CLI and producer are both 0.8.143; exact run `38031948047` passed compatibility regressions and full production audit. The candidate removes the vulnerable ONNX dependency from the installed application graph. Owner disposition is still required for the vendor CLI's dynamic optional ONNX 1.21.1 installer and the separate signed WSL2 runtime bundle still pinned to 0.7.5. No merge.
+- #403 head `d822879bd9134e2ef96a04614068a9e8d8b6bfbc`: added required `trustedAppContext: null` to four internal router contexts after exact CI exposed the missing field. Run `38031946413` passed 118/118 focused MCP tests, reported no MCP-targeted type diagnostic, and secret-scanned 23 files with no findings. The high audit fails against the still-unintegrated dependency baseline. Live smoke fails closed because authorized MCP endpoint/token are absent. No retired service was restored. No merge.
+- #399 head `ad4688b7331137c72c89a0becea48fbb1bc7e930`: exact browser run `38032031569` passed 8 focused files / 146 tests and 23 mocked Chromium cases. This is not authenticated acceptance. No approved non-production endpoint/test identity or MCP endpoint/token is available. No merge.
+
+Updated the canonical SPEC-308 manifest through the shared writer, retained 66/66 requirement rows OPEN, recorded all three exact PR heads/runs, and regenerated/validated the global handoff index. `spec-handoff validate --all` passes. There is no integration SHA: `origin/main` remains `f036df3745aea4bcb4cfcff18be2ce5130e0673f`.

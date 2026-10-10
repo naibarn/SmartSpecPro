@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.",
+      "next_action": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4902,7 +4902,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
       "priority": "P1",
-      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "rationale": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
       "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
       "spec_id": "302"
     },
@@ -4920,7 +4920,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "priority": "P1",
-      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "rationale": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
       "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "spec_id": "304"
     },
@@ -4929,7 +4929,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Security and Media/Runtime owners must approve compatible ONNX Runtime 1.30.0 compatibility validation on a dedicated WSL2 runner, or record a scoped expiring risk disposition. Then clear #405 mandatory audit, reconcile #403 existing fixtures and authorized MCP live gate, and continue SPEC-308 authenticated non-production acceptance. Do not merge or claim completion before all required gates.",
+      "rationale": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },
@@ -4956,7 +4956,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "priority": "P3",
-      "rationale": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "rationale": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "spec_id": "269"
     },
