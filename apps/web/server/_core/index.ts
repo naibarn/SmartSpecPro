@@ -216,6 +216,10 @@ import {
   shutdownMarketplaceAutoReviewJob,
 } from "../jobs/marketplaceAutoReviewJob";
 import {
+  initializeAutoTeamRecoveryScanJob,
+  shutdownAutoTeamRecoveryScanJob,
+} from "../jobs/autoTeamRecoveryScanJob";
+import {
   initFromDb,
   startPeriodicPersistence,
 } from "../services/providerHealth";
@@ -2806,11 +2810,9 @@ async function main() {
   }
 
   try {
-    const { startAutoTeamRecoverySweep } =
-      await import("../services/autoTeamRecoveryService");
-    startAutoTeamRecoverySweep();
+    initializeAutoTeamRecoveryScanJob();
   } catch (error) {
-    console.error("[Startup] Failed to start auto-team recovery sweep:", error);
+    console.error("[Startup] Failed to initialize AutoTeam recovery scan:", error);
   }
 
   if (process.env.NODE_ENV === "development") {
@@ -2952,11 +2954,7 @@ process.on("SIGTERM", async () => {
       stopGuardian();
     })
     .catch(() => {});
-  import("../services/autoTeamRecoveryService")
-    .then(({ stopAutoTeamRecoverySweep }) => {
-      stopAutoTeamRecoverySweep();
-    })
-    .catch(() => {});
+  shutdownAutoTeamRecoveryScanJob();
   import("../services/autoTeamMediaCompletionService")
     .then(({ stopAutoTeamMediaPipelineSweeper }) => {
       stopAutoTeamMediaPipelineSweeper();

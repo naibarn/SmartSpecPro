@@ -98,6 +98,12 @@ describe("autoTeamRecoveryService", () => {
       },
     } as any, now)).toBe(true);
     expect(isRecoveryEvaluationEligible({
+      id: "run-resource-wait",
+      status: "paused",
+      stopReason: "awaiting_async_media_pipeline",
+      runtimeState: { autoTeamMediaPipeline: { status: "capacity_wait" } },
+    } as any, now)).toBe(true);
+    expect(isRecoveryEvaluationEligible({
       id: "run-unsupported",
       status: "paused",
       stopReason: "auto_team_step_validation_failed",
@@ -174,7 +180,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(0);
+    expect(resumed).toMatchObject({ actionsDispatched: 0, usefulWorkVerified: false });
     expect(mockAdvanceRun).not.toHaveBeenCalled();
   });
 
@@ -189,11 +195,11 @@ describe("autoTeamRecoveryService", () => {
       runtimeState: null,
     });
     mockIsAutoTeamPlanReady.mockResolvedValue(true);
-    mockAdvanceRun.mockResolvedValue([]);
+    mockAdvanceRun.mockResolvedValue([{ messageId: "message-1", content: "Useful progress" }]);
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(1);
+    expect(resumed).toMatchObject({ actionsDispatched: 1, usefulWorkVerified: true, usefulWorkEvidence: ["assistant_turn_persisted"] });
     expect(mockAdvanceRun).toHaveBeenCalledWith("run-1", "tenant-1", 1);
   });
 
@@ -211,7 +217,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(1);
+    expect(resumed).toMatchObject({ actionsDispatched: 1, usefulWorkVerified: false });
     expect(mockRecoverBudgetBlockedAutoTeamRun).toHaveBeenCalledWith(
       "run-1",
       "tenant-1",
@@ -235,7 +241,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(0);
+    expect(resumed).toMatchObject({ actionsDispatched: 0, usefulWorkVerified: false });
     expect(mockRecoverBudgetBlockedAutoTeamRun).not.toHaveBeenCalled();
     expect(mockAdvanceRun).not.toHaveBeenCalled();
   });
@@ -254,7 +260,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(1);
+    expect(resumed).toMatchObject({ actionsDispatched: 1, usefulWorkVerified: false });
     expect(mockRecoverCapabilityGapAutoTeamRun).toHaveBeenCalledWith(
       "run-1",
       "tenant-1",
@@ -282,7 +288,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(1);
+    expect(resumed).toMatchObject({ actionsDispatched: 1, usefulWorkVerified: false });
     expect(mockRecoverPromptPackageValidationAutoTeamRun).toHaveBeenCalledWith(
       "run-1",
       "tenant-1",
@@ -304,7 +310,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(0);
+    expect(resumed).toMatchObject({ actionsDispatched: 0, usefulWorkVerified: false });
     expect(dbUpdateSetCalls[0]).toMatchObject({
       stopReason: "auto_team_media_pipeline_state_missing",
       runtimeTerminalReason:
@@ -331,7 +337,7 @@ describe("autoTeamRecoveryService", () => {
 
     const resumed = await sweepPendingAutoTeamRuns();
 
-    expect(resumed).toBe(1);
+    expect(resumed).toMatchObject({ actionsDispatched: 1, usefulWorkVerified: false });
     expect(mockAdvanceAutoTeamMediaPipeline).toHaveBeenCalledWith("run-1");
     expect(dbUpdateSetCalls).toEqual([]);
     expect(mockAdvanceRun).not.toHaveBeenCalled();

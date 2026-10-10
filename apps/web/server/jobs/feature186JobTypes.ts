@@ -19,6 +19,8 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "channel.delivery",
   "channel.webhook_ingest",
   "automation.execute",
+  "auto-team.recovery.scan",
+  "auto-team.recovery.evaluate",
   "database.backup",
   "database.backup.maintenance",
   "worker.heartbeat_retention",

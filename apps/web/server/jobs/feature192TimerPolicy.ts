@@ -171,10 +171,10 @@ export const FEATURE_192_TIMER_INVENTORY: readonly Feature192TimerInventoryEntry
       jobTypes: ["team.media_reconcile"],
     },
     {
-      initializer: "startAutoTeamRecoverySweep",
-      source: "server/services/autoTeamRecoveryService.ts",
-      disposition: "external-cloudflare-scheduler",
-      jobTypes: ["team.run_recovery"],
+      initializer: "initializeAutoTeamRecoveryScanJob",
+      source: "server/jobs/autoTeamRecoveryScanJob.ts",
+      disposition: "canonical-control-plane",
+      jobTypes: ["auto-team.recovery.scan"],
     },
     {
       initializer: "startMcpStaleMediaTaskReconciler",
