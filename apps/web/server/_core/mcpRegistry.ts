@@ -2556,6 +2556,7 @@ async function cancelMediaTask(args: Record<string, unknown>, ctx: McpExecutionC
     protectedSurfaceToken: null,
     tenantId: ctx.session.tenantId,
     publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
   });
   const result = await caller.cancelTask({ taskId });
   return { task_id: taskId, status: result.status ?? "canceled" };
@@ -2969,6 +2970,7 @@ async function createHermesCaller(ctx: McpExecutionContext) {
       protectedSurfaceToken: null,
       tenantId: ctx.session.tenantId,
       publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
     }),
   };
 }
@@ -3039,6 +3041,7 @@ async function executeHermesMedia(args: Record<string, unknown>, ctx: McpExecuti
     protectedSurfaceToken: null,
     tenantId: ctx.session.tenantId,
     publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
   });
   const references = Array.isArray(args.reference_image_urls)
     ? args.reference_image_urls.filter((value): value is string => typeof value === "string").slice(0, 9)
@@ -3097,6 +3100,7 @@ async function submitRemotionRender(args: Record<string, unknown>, ctx: McpExecu
     protectedSurfaceToken: null,
     tenantId: ctx.session.tenantId,
     publicUrl: "https://smartaihub.app",
+    trustedAppContext: null,
   });
   return caller.queueRender({ projectId, profile });
 }
