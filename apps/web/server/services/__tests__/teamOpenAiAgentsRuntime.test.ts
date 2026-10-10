@@ -41,6 +41,7 @@ vi.mock("../llmRouter", () => ({
 
 import { executeTeamRuntimeTurn } from "../agentRuntime/teamRuntimeOrchestrator";
 import { executeSharedSkillRuntime } from "../agentRuntime/skillRuntimeOrchestrator";
+import { build_context_pack_with_provider_binding } from "../contextPackBuilder";
 
 describe("executeTeamRuntimeTurn", () => {
   it("forwards team runtime settings and preserves legacy output shape", async () => {
@@ -90,10 +91,12 @@ describe("executeTeamRuntimeTurn", () => {
     const [call] = vi.mocked(executeSharedSkillRuntime).mock.calls;
     expect(call[0].originSurface).toBe("team");
     expect(call[0].entryPoint).toBe("team_step");
+    expect(call[0].builderDeps?.buildContextPack).toBe(
+      build_context_pack_with_provider_binding,
+    );
     expect(call[0].skillSlugs).toEqual(["video-prompt-engineer"]);
     expect(call[0].requestLabel).toBe("team:test");
     expect(result.value.content).toBe("legacy team content");
     expect(result.runtime.selection.mode).toBe("legacy");
   });
 });
-

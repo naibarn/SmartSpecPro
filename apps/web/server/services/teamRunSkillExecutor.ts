@@ -27,10 +27,11 @@ import { executeTeamRuntimeTurn } from "./agentRuntime/teamRuntimeOrchestrator";
 import { buildNativeSkillRuntimePlanContext } from "./agentRuntime/skillRuntimeOrchestrator";
 import { parsePromptResponse } from "./promptEnhancementService";
 import {
-  buildTeamExecutionContextPack,
+  buildTeamExecutionContextPackWithProviderBinding,
   summarizeContextPack,
   type ContextPack,
 } from "./contextEngineAdapter";
+import { revalidateTeamProjectProviderContextBinding } from "./teamProjectProviderAuthorization";
 import { recordContextEngineMetric } from "./monitoringService";
 import type {
   MediaJobResult,
@@ -1829,13 +1830,29 @@ export async function executeTeamRunSkillTurn(
   // ── END Unified Orchestrator Path ───────────────────────────────
 
   const contextAssemblyStartMs = Date.now();
-  contextPack = await buildTeamExecutionContextPack(teamPromptContext, input.tenantId, {
-    skillSystemPrompt: skill.systemPrompt
-      ? skill.systemPrompt.substring(0, TEAM_SYSTEM_PROMPT_MAX_CHARS)
-      : null,
-    dynamicParams: executionInput.dynamicParams ?? null,
-    label: `team:${input.teamId}/${input.roomId}`,
-  });
+  const contextWithProviderBinding = await buildTeamExecutionContextPackWithProviderBinding(
+    teamPromptContext,
+    input.tenantId,
+    {
+      skillSystemPrompt: skill.systemPrompt
+        ? skill.systemPrompt.substring(0, TEAM_SYSTEM_PROMPT_MAX_CHARS)
+        : null,
+      dynamicParams: executionInput.dynamicParams ?? null,
+      label: `team:${input.teamId}/${input.roomId}`,
+    },
+  );
+  contextPack = contextWithProviderBinding.contextPack;
+  const beforeTeamProviderRequest = () =>
+    revalidateTeamProjectProviderContextBinding(
+      contextWithProviderBinding.projectAuthorizationBinding,
+      {
+        tenantId: input.tenantId,
+        roomId: input.roomId,
+        teamId: input.teamId,
+        userId: input.userId,
+        runId: input.run.id,
+      },
+    );
 
   void recordContextEngineMetric({
     source: "team_run_legacy",
@@ -1947,6 +1964,7 @@ export async function executeTeamRunSkillTurn(
     legacyExecute: () =>
       executeSkillLlmWithFallback({
         messages,
+        beforeProviderRequest: beforeTeamProviderRequest,
         skillSlug: skill.id,
         userId: input.userId,
         executionPolicy,
@@ -1955,7 +1973,7 @@ export async function executeTeamRunSkillTurn(
           skill.executionPolicy?.thinking_level_hint === "medium" ||
           undefined,
         extraBodyParams,
-    }),
+      }),
   });
 
   const fallback = runtimeTurn.value;

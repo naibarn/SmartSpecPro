@@ -182,6 +182,7 @@ function createMockDeps(overrides?: Partial<Record<string, any>>) {
     acquireProviderSlot: vi.fn().mockResolvedValue({ queuePosition: 0 }),
     releaseProviderSlot: vi.fn(),
     recordModelUsage: vi.fn(),
+    revalidateTeamProjectProviderContextBinding: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -507,6 +508,350 @@ describe("/v1/responses endpoint", () => {
       expect(res.status).toBe(400);
       expect(res.body.error.message).toContain("tenant");
       expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("TeamRoom AgentRuntime provider authorization", () => {
+    const binding = {
+      version: "team-room-provider-context.v1",
+      tenantId: "tenant-internal",
+      roomId: "room-1",
+      teamId: "team-1",
+      userId: 42,
+      runId: "run-1",
+      historyScope: "run",
+      projectId: "project-1",
+      projectAuthority: "canonical-member",
+    };
+
+    it("revalidates the server-captured binding immediately before provider dispatch", async () => {
+      const events: string[] = [];
+      const revalidate = vi.fn(async () => {
+        events.push("authorization");
+      });
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+        revalidateTeamProjectProviderContextBinding: revalidate,
+      });
+      app = createApp(deps);
+      mockFetch.mockImplementation(async () => {
+        events.push("provider");
+        return makeFetchResponse(makeResponsesApiResponse());
+      });
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "team context" }] });
+
+      expect(res.status).toBe(200);
+      expect(revalidate).toHaveBeenCalledWith(binding, {
+        tenantId: "tenant-internal",
+        roomId: "room-1",
+        teamId: "team-1",
+        userId: 42,
+        runId: "run-1",
+      });
+      expect(events).toEqual(["authorization", "provider"]);
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty(
+        "x-sah-team-project-provider-binding",
+      );
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty(
+        "x-agent-runtime-origin-surface",
+      );
+    });
+
+    it("revalidates again before every provider request after an internal tool round", async () => {
+      const revalidate = vi.fn().mockResolvedValue(undefined);
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+        revalidateTeamProjectProviderContextBinding: revalidate,
+      });
+      app = createApp(deps);
+      mockFetch
+        .mockResolvedValueOnce(
+          makeFetchResponse(
+            makeResponsesApiResponse({
+              output: [
+                {
+                  type: "function_call",
+                  id: "fc_1",
+                  call_id: "call_1",
+                  name: "browser.execute_actions",
+                  arguments: "{}",
+                },
+              ],
+            }),
+          ),
+        )
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('{"result":"ok"}'),
+        })
+        .mockResolvedValueOnce(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "team context" }] });
+
+      expect(res.status).toBe(200);
+      expect(revalidate).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it("stops before a later provider round if TeamRoom authority is revoked", async () => {
+      const revalidate = vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("revoked"));
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+        revalidateTeamProjectProviderContextBinding: revalidate,
+      });
+      app = createApp(deps);
+      mockFetch
+        .mockResolvedValueOnce(
+          makeFetchResponse(
+            makeResponsesApiResponse({
+              output: [
+                {
+                  type: "function_call",
+                  id: "fc_1",
+                  call_id: "call_1",
+                  name: "browser.execute_actions",
+                  arguments: "{}",
+                },
+              ],
+            }),
+          ),
+        )
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('{"result":"ok"}'),
+        });
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "team context" }] });
+
+      expect(res.status).toBe(403);
+      expect(revalidate).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("ends a streamed response with an authorization error when authority is revoked between rounds", async () => {
+      const revalidate = vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("revoked"));
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+        revalidateTeamProjectProviderContextBinding: revalidate,
+      });
+      app = createApp(deps);
+
+      const functionCall = {
+        type: "response.output_item.done",
+        item: {
+          type: "function_call",
+          id: "fc_stream_1",
+          call_id: "call_stream_1",
+          name: "browser.execute_actions",
+          arguments: "{}",
+        },
+      };
+      const completed = {
+        type: "response.completed",
+        response: {
+          output: [
+            {
+              type: "function_call",
+              id: "fc_stream_1",
+              call_id: "call_stream_1",
+              name: "browser.execute_actions",
+              arguments: "{}",
+            },
+          ],
+          usage: { input_tokens: 3, output_tokens: 1, total_tokens: 4 },
+        },
+      };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          body: makeSSEStream([
+            `data: ${JSON.stringify(functionCall)}`,
+            `data: ${JSON.stringify(completed)}`,
+            "data: [DONE]",
+          ]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('{"result":"ok"}'),
+        });
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({
+          model: "gpt-5.4",
+          stream: true,
+          input: [{ role: "user", content: "team context" }],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('"code":"TEAM_PROJECT_AUTHORIZATION_DENIED"');
+      expect(res.text).not.toContain("event: responses_summary");
+      expect(revalidate).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(deps.recordModelUsage).toHaveBeenCalledWith("openai", "gpt-5.4", false, 3, 1);
+    });
+
+    it("fails closed before provider dispatch when a TeamRoom binding is missing or stale", async () => {
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+      });
+      app = createApp(deps);
+
+      const missing = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "team context" }] });
+
+      expect(missing.status).toBe(403);
+      expect(mockFetch).not.toHaveBeenCalled();
+
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+        revalidateTeamProjectProviderContextBinding: vi.fn().mockRejectedValue(
+          Object.assign(new Error("revoked"), { code: "TEAM_PROJECT_AUTHORIZATION_DENIED" }),
+        ),
+      });
+      app = createApp(deps);
+      const stale = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "team context" }] });
+
+      expect(stale.status).toBe(403);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects external or cross-tenant TeamRoom binding headers", async () => {
+      const external = await request(app)
+        .post("/v1/responses")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "forged" }] });
+      expect(external.status).toBe(403);
+
+      const internal = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-other")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "cross tenant" }] });
+      expect(internal.status).toBe(403);
+
+      const malformed = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set("X-SAH-Team-Project-Provider-Binding", "not-valid-base64url!")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "malformed" }] });
+      expect(malformed.status).toBe(403);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("fails closed before streamed provider dispatch when the TeamRoom binding is stale", async () => {
+      deps = createMockDeps({
+        guardWithCreditsOrInternalToken: vi
+          .fn()
+          .mockResolvedValue({ ok: true, userId: 99, isInternal: true }),
+        verifyInternalToken: vi.fn().mockReturnValue(true),
+        revalidateTeamProjectProviderContextBinding: vi.fn().mockRejectedValue(
+          new Error("revoked"),
+        ),
+      });
+      app = createApp(deps);
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .set("X-Internal-Token", "test-internal-token-value")
+        .set("X-Tenant-Id", "tenant-internal")
+        .set("X-Agent-Runtime-Origin-Surface", "team")
+        .set(
+          "X-SAH-Team-Project-Provider-Binding",
+          Buffer.from(JSON.stringify(binding)).toString("base64url"),
+        )
+        .send({
+          model: "gpt-5.4",
+          stream: true,
+          input: [{ role: "user", content: "team context" }],
+        });
+
+      expect(res.status).toBe(403);
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(deps.recordModelUsage).toHaveBeenCalledWith("openai", "gpt-5.4", false, 0, 0);
     });
   });
 
