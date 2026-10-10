@@ -1690,7 +1690,7 @@ function ensureJobScopedAccess(
 }
 
 function ensureWorkerCanClaim(worker: WorkerRecord): void {
-  if (worker.status === "disabled" || worker.status === "draining") {
+  if (worker.status !== "online") {
     throw new WorkerRuntimeServiceError(
       "worker_state_invalid",
       409,
