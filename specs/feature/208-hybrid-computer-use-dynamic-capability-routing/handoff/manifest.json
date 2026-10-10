@@ -125,9 +125,9 @@
       "class": "IMPLEMENTATION_SECURITY",
       "classification": "TRUE_EXTERNAL",
       "id": "SPEC208_W2_MOLI_RUNTIME_BOUNDARY",
-      "next_action": "Continue W2 by wiring the Runner-owned Moli process to the isolated local boundary and testing cancellation/cleanup. Keep Moli production dispatch disabled. Run W3 only against a specifically approved disposable non-production worker_jobs database and Runner authorization target.",
+      "next_action": "Continue W2 remaining production-boundary and policy checks independently while Moli dispatch stays off. Do not represent local rootless acceptance as Cloudflare certification. W3 requires the approved target described by SPEC208_W3_NONPRODUCTION_CONTROL_PLANE.",
       "recoverable": true,
-      "root_cause": "The approved Cloudflare JOB_CONTAINERS binding is still unavailable. PR #549 now provides a reproducible, isolated Linux acceptance runtime and its probes pass, but the application Runner does not yet launch Moli through that boundary. The externally managed application/database services on this host have no confirmed non-production worker_jobs target, so no live control-plane attempt was created."
+      "root_cause": "PR #558 now supplies a feature-gated Runner-owned launcher and successful rootless systemd Linux acceptance. This does not close the approved Cloudflare JOB_CONTAINERS runtime gap or all production tenant isolation, application egress, credential revocation, and control-plane checks. No worker_jobs authority was used."
     },
     {
       "affected_requirements": [
@@ -137,7 +137,7 @@
       "class": "SUPPLY_CHAIN_EVIDENCE",
       "classification": "TRUE_EXTERNAL",
       "id": "SPEC208_W4_PROVENANCE_AND_DEPLOYED_TARGET",
-      "next_action": "Rebuild Moli only after selecting a controlled, reproducible builder: current upstream v1.1.15 lock has fixed candidates crossbeam-epoch 0.9.20, rand 0.9.3, rustls 0.23.45, rustls-webpki 0.103.13, smallbitvec 2.6.1, and thin-vec 0.2.16; paste has no fixed release. Generate tests, SBOM/advisory/license notices, new digest, and authenticated provenance. The deployed target inventory is still required.",
+      "next_action": "Resume the preserved bounded v1.1.15 source build; generate tests, SBOM/advisory/license notices, candidate digest, and authenticated provenance. Keep paste RUSTSEC-2024-0436 open unless a supported remediation is proven. Obtain authoritative deployed-target inventory before production approval.",
       "recoverable": true,
       "root_cause": "The pinned upstream release remains v1.1.15 and carries 11 advisory records. Fixed registry candidates were identified, but no Moli rebuild was produced, the release asset has no verified publisher attestation, authoritative deployed-target inventory is unavailable, and third-party notices review is incomplete."
     },
@@ -149,21 +149,21 @@
       "class": "IMPLEMENTATION_SECURITY",
       "classification": "TRUE_EXTERNAL",
       "id": "SPEC208_W3_NONPRODUCTION_CONTROL_PLANE",
-      "next_action": "Provision or identify an explicitly non-production worker_jobs target and a synthetic Runner authorization grant. Then run one fixture-only worker_jobs→Runner→Moli acceptance attempt and capture canonical receipt/settlement.",
+      "next_action": "Obtain an explicitly approved non-production worker_jobs target and synthetic Runner authorization grant. Then run one fixture-only worker_jobs→Runner→Moli attempt and capture canonical result receipt, idempotent terminal settlement, cross-service cancellation/recovery, and cleanup.",
       "recoverable": true,
       "root_cause": "No approved disposable non-production worker_jobs database plus Runner registration/authorization endpoint was identified. The host has externally managed app/database processes; their target cannot be assumed safe for synthetic mutations."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+    "expected_canonical_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "W2 is now executable against the merged rootless Linux acceptance runtime: wire the actual Runner-owned Moli process and keep production dispatch disabled. W3 waits for a specifically approved disposable non-production worker_jobs database plus Runner authorization target. W4 has candidate fixed dependency versions but still requires a reproducible rebuild/provenance and notices review.",
-    "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
-    "reactivation_predicate": "Run W2 implementation and scoped Runner tests now using scripts/spec208 local boundary. W3 becomes executable when a disposable non-production worker_jobs database and synthetic Runner authorization/registration target are confirmed. W4 becomes executable when a controlled build owner/environment is available.",
-    "resume_point": "PR #549 merged as a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4. The pinned rootless systemd runtime passed on that exact canonical SHA: read-only root, non-root, bounded tmpfs profiles, no default route, egress/CDP/WebDriver probes denied, tenant localStorage/cookies separated, process IDs captured, and profiles removed. Evidence is evidence/moli-local-isolation-acceptance-2026-10-10.json. Its receipt is harness-local; the worker_jobs lease/auth/receipt/settlement path was not exercised because no authorized non-production control-plane target was identified. Chromium remains production default and Moli dispatch remains disabled.",
-    "waiting_predicate": "W2 does not wait on optional Cloudflare infrastructure. For W3, an explicitly approved disposable non-production worker_jobs database and Runner authorization/registration target must be available. For W4 artifact closure, reproducible build ownership and provenance must be available."
+    "next_action": "W2-R Runner-owned Moli execution is integrated and passed the rootless systemd synthetic acceptance. Continue W4 by resuming the controlled candidate build, SBOM/advisory/license notice review, and provenance work. W3 remains blocked pending an explicitly authorized disposable non-production worker_jobs database and synthetic Runner authorization target; do not claim W3 settlement or enable production Moli.",
+    "next_ready_workunit": "SPEC208_W4_PROVENANCE_AND_DEPLOYED_TARGET",
+    "reactivation_predicate": "W4 continues using the preserved candidate source/target and bounded build resources; W3 reactivates only when the owner supplies an approved disposable worker_jobs target and Runner authorization/registration grant. Cloudflare certification remains a separate production gate.",
+    "resume_point": "PR #558 merged as c6a7d63d486f94b500444ef082834ecab597ba4c. Runner-owned feature-gated Moli execution passed rootless systemd acceptance with real Runner and Moli PIDs, DOM result, Runner receipt, cancel/revoke/crash cleanup, stale fence, deadline, lease expiry, failed startup, and removed per-attempt profiles. Exact source commit 691e504e6e5c556221b34a97bc0eebd16cb81c68; evidence evidence/moli-runner-owned-acceptance-2026-10-10.json; ten code-review passes evidence/moli-runner-owned-qa-review-2026-10-10.md. This is not Cloudflare certified and the outer harness explicitly has no worker_jobs receipt/settlement. Chromium remains production default and Moli production dispatch remains disabled.",
+    "waiting_predicate": "W3 waits for an explicitly approved disposable non-production worker_jobs database and synthetic Runner authorization/registration target. W4 can proceed with the preserved controlled candidate build; authenticated provenance and deployed-target inventory remain external approval/evidence gates. Production stays Chromium-only until W4/W5 gates pass."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -370,7 +370,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 40,
+  "generation": 42,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -413,9 +413,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+    "canonical_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
     "integrated": true,
-    "integrated_at": "2026-10-10T11:45:27Z"
+    "integrated_at": "2026-10-10T15:50:01Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -542,21 +542,24 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+        "evidence_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "scripts/spec208/moli-isolation-acceptance.mjs",
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Separate ephemeral attempt profiles proved localStorage and cookies/HttpOnly cookies did not cross between the sequential synthetic attempts. IndexedDB and OPFS isolation remain unverified.",
+        "next_action": "LocalStorage, cookies and HttpOnly cookies were separated in synthetic Runner attempts. IndexedDB and OPFS isolation remain unverified; production/Cloudflare runtime isolation is not certified.",
         "requirement_digest": "87fe4e64e389847352e6251f6f6321e99354a4749b2c523c46d78e0493f3228e",
         "requirement_id": "REQ-11E188B44450",
         "requirement_text": "- Every session SHALL be isolated by tenant, job attempt, browser profile, and session identity with separate ephemeral storage by default. Cookies, local/session storage, IndexedDB, OPFS, credentials, and open pages MUST NOT be copied to another engine. Switching engines during a stateful task MUST stop for an explicit reauthorization and fresh session unless a separately tested and user-approved migration contract proves state equivalence.",
         "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
       },
@@ -596,21 +599,24 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+        "evidence_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "scripts/spec208/moli-isolation-acceptance.mjs",
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "The acceptance namespace had no non-loopback route and its fixture-only proxy denied CDP/WebDriver, external host, and metadata probes. Application DNS/IP/redirect policy integration remains open.",
+        "next_action": "Rootless namespace and fixture proxy denied outside egress, metadata, and browser protocol probes. Production destination policy, connection-time DNS/IP validation, HTTPS and redirect revalidation remain unverified.",
         "requirement_digest": "b89f52827bd9b41e025e724fdb54d276a417b5ad48185e4a77be43dea35e6d90",
         "requirement_id": "REQ-6777AD15DB68",
         "requirement_text": "- Egress SHALL use the existing destination policy and enforce HTTPS where applicable, redirect revalidation, DNS/IP checks at connection time, and rejection of loopback, private, link-local, metadata, and otherwise prohibited destinations. CDP endpoints MUST be loopback/private to the isolated runtime, authenticated or protected by the runtime boundary, and never exposed as an unauthenticated public service. Secrets, cookies, authorization headers, page content, and sensitive screenshots MUST be redacted from logs/evidence.",
         "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
       },
@@ -623,21 +629,24 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+        "evidence_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "scripts/spec208/moli-isolation-acceptance.mjs",
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "The local harness owns the two bounded Moli processes for its synthetic attempts, but no worker_jobs row, lease/fencing, Runner authorization, or canonical settlement was exercised.",
+        "next_action": "Runner-owned local acceptance passed, but the test harness has no worker_jobs receipt or settlement. Obtain an approved disposable non-production worker_jobs target and synthetic Runner authorization grant, then exercise canonical settlement.",
         "requirement_digest": "83f2147299e76dcaf1cf6709e786c9f5ebbf47ef04b14081cb9186adb5335533",
         "requirement_id": "REQ-6B3BDC3E78E4",
         "requirement_text": "- Feature 195 `worker_jobs` plus its outbox SHALL remain the durable execution, retry, cancellation, lease/fencing, and settlement authority. Feature 197 Runner / approved Cloudflare runtime SHALL own the execution boundary. This provider SHALL NOT introduce a second queue, scheduler, permission authority, or finality ledger.",
         "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
       },
@@ -677,21 +686,24 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+        "evidence_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "scripts/spec208/moli-isolation-acceptance.mjs",
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Moli child processes were terminated and both temporary profiles removed. Canonical job cancellation, session credential revocation, and application receipt binding remain unverified.",
+        "next_action": "Runner-owned cancel, revoke, crash, descendant termination and profile cleanup passed locally. Canonical job cancellation, session credential revocation and worker_jobs receipt binding remain unverified.",
         "requirement_digest": "b74951224f7db1b4d57cc5ed1beeb4edd4c001491e66b6958b9bb54585a77e79",
         "requirement_id": "REQ-F8BA5E2946ED",
         "requirement_text": "- Cancellation SHALL signal the canonical job and terminate the isolated browser process/context, remove ephemeral profile material, revoke session credentials, and record cleanup outcome. Receipts SHALL bind job/attempt, tenant, session, provider/version, capability snapshot, policy/authorization references, action/evidence hashes, termination state, and timestamps without persisting raw secrets.",
         "source_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json",
+          "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
         ],
         "verification_method": "Run the pinned Moli local systemd acceptance boundary and inspect the exact-SHA runtime evidence; do not treat the harness receipt as a worker_jobs receipt."
       }
@@ -989,7 +1001,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T11:48:28.798811Z",
+  "updated_at": "2026-10-10T15:51:15.853981Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

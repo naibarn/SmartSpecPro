@@ -89995,7 +89995,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "a321d6ade8499ea00ee9f27e24921ae8e2bbf5e7",
+      "canonical_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -90003,18 +90003,18 @@
         "disposition is not an active continuation target",
         "lifecycle has not reached implementation completion",
         "requirement REQ-12977A525AD6 is OPEN",
-        "requirement REQ-B13232C12B75 is OPEN",
-        "requirement REQ-6B3BDC3E78E4 is OPEN",
+        "requirement REQ-B13232C12B75 is PARTIAL",
+        "requirement REQ-6B3BDC3E78E4 is PARTIAL",
         "requirement REQ-936E167C9199 is OPEN",
-        "requirement REQ-11E188B44450 is OPEN",
-        "requirement REQ-6777AD15DB68 is OPEN",
+        "requirement REQ-11E188B44450 is PARTIAL",
+        "requirement REQ-6777AD15DB68 is PARTIAL",
         "requirement REQ-65A12166F1EA is OPEN",
         "requirement REQ-CD8FE7F93194 is OPEN",
-        "requirement REQ-F8BA5E2946ED is OPEN",
+        "requirement REQ-F8BA5E2946ED is PARTIAL",
         "requirement REQ-8315CFFF2840 is OPEN",
         "requirement REQ-7FC5B1F9CC2A is OPEN",
         "requirement REQ-2C0CE29B69FB is OPEN",
-        "requirement REQ-37A0D973D947 is OPEN",
+        "requirement REQ-37A0D973D947 is PARTIAL",
         "requirement REQ-E976E59DCD03 is OPEN",
         "requirement REQ-EF34515B0763 is OPEN",
         "requirement REQ-BDF53AE8314B is OPEN",
@@ -90422,7 +90422,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-10T02:18:48.585399Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue Issue #435 with W2: implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation using the existing Feature 195 worker_jobs and Feature 197 Runner boundaries. Keep Moli undispatched until those gates pass.",
+      "next_action": "Continue W2 now: wire the app Runner-owned Moli process to the merged non-production isolation boundary and test cancellation/cleanup. W3 waits for an explicitly approved disposable worker_jobs database and Runner authorization target. W4 fixed dependency candidates are identified; reproducible rebuild, publisher provenance, deployed-target inventory, and notices review remain open.",
       "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
       "primary_blocker": {
         "affected_requirements": [
@@ -90434,9 +90434,9 @@
         "class": "IMPLEMENTATION_SECURITY",
         "classification": "TRUE_EXTERNAL",
         "id": "SPEC208_W2_MOLI_RUNTIME_BOUNDARY",
-        "next_action": "Obtain the approved non-production JOB_CONTAINERS binding, immutable Runner/Moli image digest, named runtime owner, and documented filesystem, protocol, egress, and resource controls from the deployment pipeline owner. Once present, implement the Runner-owned launch and prove its isolation before connecting a synthetic worker_jobs attempt; retain the Moli reject guard until then.",
+        "next_action": "Continue W2 remaining production-boundary and policy checks independently while Moli dispatch stays off. Do not represent local rootless acceptance as Cloudflare certification. W3 requires the approved target described by SPEC208_W3_NONPRODUCTION_CONTROL_PLANE.",
         "recoverable": true,
-        "root_cause": "No authorized non-production Runner Container binding or image/network/resource policy is configured. apps/cloudflare/wrangler.production.jsonc says resource bindings are injected only after target-account preflight and the Feature 187 handoff gates. The only checked-in Moli launcher is cfg(test), lacks filesystem isolation, and is not an approved production runtime; local namespace tests cannot safely substitute."
+        "root_cause": "PR #558 now supplies a feature-gated Runner-owned launcher and successful rootless systemd Linux acceptance. This does not close the approved Cloudflare JOB_CONTAINERS runtime gap or all production tenant isolation, application egress, credential revocation, and control-plane checks. No worker_jobs authority was used."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
@@ -90597,7 +90597,7 @@
       "spec_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
       "successors": [],
       "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing",
-      "true_blockers": 2,
+      "true_blockers": 3,
       "verification": "PARTIAL"
     },
     {
@@ -134112,7 +134112,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
+      "canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -134568,7 +134568,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-10T07:35:15.704466Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
+      "next_action": "Continue with owner assignment and acceptance design for run-scoped stale-worker fencing; meanwhile select an independently executable Task Control continuity test that needs no schema migration.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
