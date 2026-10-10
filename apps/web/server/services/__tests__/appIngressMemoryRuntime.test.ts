@@ -92,7 +92,10 @@ serverApp.get("/runtime-context", async (req, res) => {
 let server: Server;
 let port: number;
 
-function getRuntimeContext(headers: Record<string, string>): Promise<{
+function getRuntimeContext(
+  headers: Record<string, string>,
+  query = ""
+): Promise<{
   status: number;
   body: {
     tenantId: string | null;
@@ -105,7 +108,7 @@ function getRuntimeContext(headers: Record<string, string>): Promise<{
       {
         hostname: "127.0.0.1",
         port,
-        path: "/runtime-context",
+        path: `/runtime-context${query}`,
         method: "GET",
         headers,
       },
@@ -184,10 +187,18 @@ describe("HTTP request to chat memory context boundary", () => {
         "x-forwarded-host": "notes.example.com, tasks.example.com",
       },
     ],
+    [
+      "client-supplied App, Project, and tenant identities",
+      {
+        host: "notes.example.com",
+        "x-forwarded-host": "notes.example.com",
+      },
+      "?appId=app-other&hostAppId=app-other&projectId=project-other&tenantId=tenant-other",
+    ],
   ])(
     "keeps Project memory closed for %s while preserving global entity memory",
-    async (_case, headers) => {
-      const response = await getRuntimeContext(headers);
+    async (_case, headers, query) => {
+      const response = await getRuntimeContext(headers, query);
 
       expect(response.status).toBe(200);
       expect(response.body.tenantId).toBe("tenant-42");
