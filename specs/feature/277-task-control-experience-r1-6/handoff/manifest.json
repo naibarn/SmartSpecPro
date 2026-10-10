@@ -25,11 +25,11 @@
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
-    "next_ready_workunit": "Recovery scan trigger integration through existing worker_jobs/outbox, followed by actual AutoTeam recovery UAT on a dedicated current-schema non-production DB",
-    "reactivation_predicate": "Resume implementation after the trigger design is approved; run UAT when a dedicated current-schema non-production DB is available.",
-    "resume_point": "Canonical main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f. Focused AutoTeam/AgentRuntime (26), stale-lease (3), and worker/outbox plus Cron adapter (5) contract tests pass. Under hard cutover, current timer policy returns false for startAutoTeamRecoverySweep; source audit finds no production Cloudflare Cron caller. Need an approved trigger design using existing job control plane. UAT DB remains blocked: smartspec_test lacks worker_jobs.activeDedupeKey. Full migration path includes retired systems and was not run.",
-    "waiting_predicate": "An approved recovery scan trigger design using existing worker_jobs/outbox scheduling is selected, and a dedicated current-schema non-production DB is available."
+    "next_action": "After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+    "next_ready_workunit": "Recovery trigger integration plus useful-progress verification and bounded no-progress loop handling, followed by actual AutoTeam recovery UAT",
+    "reactivation_predicate": "Resume implementation after approval of the trigger and useful-progress verification design; run UAT when the dedicated database is available.",
+    "resume_point": "Latest reviewed source SHA 4549e3dc436b8b2b1a758bc9af0d3b17f24fb0c5. Hard-cutover skips the existing in-process scan and no production Cloudflare Cron caller is in repository source. Recovery currently treats arbitrary run-state fingerprint change as verified success and can issue a new evaluation each five-minute slot without demonstrated useful progress. The next WorkUnit must establish a canonical trigger, useful-work evidence, and no-progress bounds before UAT. The shared smartspec_test DB is stale and full migrations include retired systems, so use a dedicated approved current-schema DB.",
+    "waiting_predicate": "A trigger/outcome-verification design is selected, and a dedicated approved current-schema non-production database is available."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -48,7 +48,7 @@
         "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
       }
     ],
-    "next_action": "Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+    "next_action": "After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
     "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
     "residual_requirements": [
       "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 18,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -165,7 +165,7 @@
           "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
         }
       ],
-      "next_action": "Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+      "next_action": "After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
       "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
       "residual_requirements": [
         "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -353,7 +353,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:16:02.790954Z",
+  "updated_at": "2026-10-10T08:19:00.262463Z",
   "verification": {
     "baseline_issues": [
       "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
@@ -463,6 +463,13 @@
         "reason": "For startAutoTeamRecoverySweep, the canonical source classifies the timer as external-cloudflare-scheduler and shouldRunFeature192InProcessTimer returns false under hard cutover. Repository source audit has no production Cloudflare Cron caller, so no active recovery trigger is evidenced in the current code/config path.",
         "result": "PASS",
         "revision": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f"
+      },
+      {
+        "command": "Read-only review of autoTeamRecoveryEvaluationExecutor.ts recoveryVerified calculation, autoTeamRecoveryService.ts evaluationSlot scheduling, and autoTeamRecoveryEvaluationJob.test.ts outcome contract",
+        "profile": "quick",
+        "reason": "Current executor treats any state fingerprint change after a dispatch as recovery_verified; a contract test uses an arbitrary runtimeState change as proof. Candidate evaluation slots advance every five minutes, so unchanged no-action states may be reevaluated repeatedly. Useful-work evidence and non-progress loop bounds remain unproven.",
+        "result": "PASS",
+        "revision": "4549e3dc436b8b2b1a758bc9af0d3b17f24fb0c5"
       }
     ],
     "freshness": "FRESH",
@@ -470,7 +477,7 @@
       "quick",
       "integration"
     ],
-    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+    "sha": "4549e3dc436b8b2b1a758bc9af0d3b17f24fb0c5",
     "status": "PARTIAL",
     "task_regressions": []
   }

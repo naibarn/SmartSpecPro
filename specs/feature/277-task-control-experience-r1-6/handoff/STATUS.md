@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.
-- Manifest generation: 18
+- Next action: After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.
+- Manifest generation: 19
