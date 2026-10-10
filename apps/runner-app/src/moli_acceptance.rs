@@ -140,7 +140,8 @@ pub fn run_cli(_config: &crate::config::RunnerConfig) -> Result<(), String> {
         }
     };
     let result = terminal.get("result").cloned();
-    let (exit_code, signal) = crash_status.unwrap_or_else(|| terminate(&mut child));
+    let cleanup_status = terminate(&mut child)?;
+    let (exit_code, signal) = crash_status.unwrap_or(cleanup_status);
     cleanup(&request.profile_path)?;
     let receipt = RunnerJobReceipt {
         event_id: format!(
@@ -310,31 +311,29 @@ fn launch_moli(request: &StartRequest) -> Result<Child, String> {
         .map_err(|_| "RUNNER_MOLI_START_FAILED".into())
 }
 
-fn terminate(child: &mut Child) -> (Option<i32>, Option<i32>) {
+fn terminate(child: &mut Child) -> Result<(Option<i32>, Option<i32>), String> {
     use std::os::unix::process::ExitStatusExt;
-    if let Ok(Some(status)) = child.try_wait() {
-        return (status.code(), status.signal());
-    }
+    let group = -(child.id() as i32);
     #[cfg(unix)]
     unsafe {
-        libc::kill(-(child.id() as i32), libc::SIGTERM);
-    }
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(4);
-    while std::time::Instant::now() < deadline {
-        if let Ok(Some(status)) = child.try_wait() {
-            return (status.code(), status.signal());
+        let result = libc::kill(group, libc::SIGTERM);
+        if result != 0 && io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH) {
+            return Err("RUNNER_MOLI_PROCESS_TERMINATE_FAILED".into());
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
     }
+    std::thread::sleep(std::time::Duration::from_millis(250));
     #[cfg(unix)]
     unsafe {
-        libc::kill(-(child.id() as i32), libc::SIGKILL);
+        let result = libc::kill(group, libc::SIGKILL);
+        if result != 0 && io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH) {
+            return Err("RUNNER_MOLI_PROCESS_TERMINATE_FAILED".into());
+        }
     }
     let status = child.wait().ok();
-    (
+    Ok((
         status.as_ref().and_then(|s| s.code()),
         status.and_then(|s| s.signal()),
-    )
+    ))
 }
 
 fn cleanup(profile: &Path) -> Result<(), String> {
@@ -385,4 +384,38 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let day = day_of_year - (153 * month_prime + 2) / 5 + 1;
     let month = month_prime + if month_prime < 10 { 3 } else { -9 };
     (year + i64::from(month <= 2), month, day)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::BufReader;
+    use std::os::unix::process::CommandExt;
+
+    #[test]
+    fn termination_kills_descendants_after_moli_leader_exits() {
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "sleep 60 >/dev/null 2>&1 & echo $!"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        command.process_group(0);
+        let mut child = command.spawn().expect("spawn test process group");
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().expect("captured stdout"))
+            .read_line(&mut line)
+            .expect("read descendant pid");
+        let descendant: libc::pid_t = line.trim().parse().expect("numeric descendant pid");
+        assert!(child.wait().expect("leader exits").success());
+        assert_eq!(unsafe { libc::kill(descendant, 0) }, 0);
+
+        terminate(&mut child).expect("terminate process group");
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while std::time::Instant::now() < deadline && unsafe { libc::kill(descendant, 0) } == 0 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert_eq!(unsafe { libc::kill(descendant, 0) }, -1);
+        assert_eq!(io::Error::last_os_error().raw_os_error(), Some(libc::ESRCH));
+    }
 }
