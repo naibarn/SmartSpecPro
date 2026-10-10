@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "df0873f3be10a65748b921d28b6dfa77b93c8997",
+    "expected_canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.",
-    "next_ready_workunit": "R6 current-schema AutoTeam scan/evaluation process acceptance, followed by SIGKILL/restart, lease reclaim and run mutation-boundary fencing",
-    "reactivation_predicate": "The schedule-only disposable PostgreSQL runner is available. Continue immediately with the Team-run schema projection and deterministic synthetic run/provider fixture; never use shared smartspec_test or the historical Agency migration chain.",
-    "resume_point": "PR #551 candidate a063157f8fd2109ab0e55e1edd01c99c0c394df8 passes current-schema scheduler→scan→evaluation process acceptance. Capacity-wait and future-approval state are preserved; scan/evaluation complete through canonical worker leases. Next: hard SIGKILL/restart and run-scoped atomic fencing; no completion claim.",
-    "waiting_predicate": "No wait for durable receipts or production authority is required for the next local AutoTeam slice. Full acceptance still needs Team-run fixtures, process restart, mutation-boundary fencing and Task Control projection evidence."
+    "next_action": "Obtain an explicit owner for team_runs mutation fencing and its schema/runtime contract, then implement and test stale-worker denial after lease reclaim at every protected run mutation boundary. Current SIGKILL proof kills the prior process before reclaim and does not test stale side effects.",
+    "next_ready_workunit": "R6-A4 run-scoped mutation fence ownership and disposable PostgreSQL stale-worker-after-reclaim acceptance; schema owner assignment is the prerequisite.",
+    "reactivation_predicate": "Resume schema/runtime fencing when the team_runs schema owner and required migration authorization are recorded; use an owner-marked disposable PostgreSQL fixture only. Continue independent Task Control, SPEC-271 and SPEC-302 contract work without waiting.",
+    "resume_point": "Canonical main is 6c42e73d2b8f360812f86ebf7338b1b2d9d44242. The reconciled 12-file / 172-test focused suite passed. SIGKILL recovery, pure SPEC-302 replay, and synthetic SPEC-271 fail-closed contracts are integrated. Stale TeamRun side-effect fencing, Task Control continuity, and durable authoritative receipts remain open.",
+    "waiting_predicate": "Lane A4 schema/runtime mutation is waiting on team_runs ownership and migration authorization; SPEC-271 authoritative WP2B remains waiting on owner assignment; SPEC-302 Phase 2 remains waiting on schema owner and explicit migration approval. These waits do not block other safe test-only work."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -62,14 +62,15 @@
         "source_sha": "feeb1a95df207239a72901dc413ce9a27e808af9"
       }
     ],
-    "next_action": "In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.",
-    "rationale": "The explicit user request on 2026-10-10 authorizes the canonical recovery scan and useful-work verification WorkUnit. PR #501 is integrated as 311bc1e39100a308efcadab61fa278d607a860aa with focused evidence. SPEC-277 remains PARTIAL with 429 unresolved requirements; broad authority/relevance and completion are not proven.",
+    "next_action": "Continue with owner assignment and acceptance design for run-scoped stale-worker fencing; meanwhile select an independently executable Task Control continuity test that needs no schema migration.",
+    "rationale": "The integrated SIGKILL/retry acceptance proves dead-process lease recovery only. The team_runs schema has no run-scoped lease/fencing field and runEngine has many writes, so stale-worker side-effect denial cannot be safely established by a worker-job lease assertion alone. SPEC-271/302 authority owners are also unresolved; retain those blockers without withholding independent contract coverage.",
     "residual_requirements": [
-      "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
-      "Durable asynchronous evaluation through the existing worker_jobs/outbox control plane.",
-      "Bounded authorized recovery dispatch, independent outcome verification, and useful-work resume through existing owners.",
-      "Replay/restart/resume, idempotency, duplicate event, stale lease, and failure-injection coverage.",
-      "Non-production UAT and assessment of the remaining open SPEC-277 requirements."
+      "Atomic run-scoped fencing at every runEngine side-effect and external dispatch boundary, including stale worker completion after reclaim.",
+      "Task Control continuity for the same logical run across interruption, retry, and new lease.",
+      "Useful-work recovery and independent Final Verify evidence.",
+      "SPEC-271 WP2B owner-bound durable receipt persistence/replay.",
+      "SPEC-302 Phase 2 durable receipt schema, idempotency, revocation/expiry, transaction race and migration/rollback evidence with owner approval.",
+      "Full SPEC-277 requirement reconciliation and non-production UAT."
     ]
   },
   "dependencies": {
@@ -98,7 +99,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 30,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -142,9 +143,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "df0873f3be10a65748b921d28b6dfa77b93c8997",
+    "canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
     "integrated": true,
-    "integrated_at": "2026-10-10T12:00:00Z"
+    "integrated_at": "2026-10-10T15:43:50Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -195,14 +196,15 @@
           "source_sha": "feeb1a95df207239a72901dc413ce9a27e808af9"
         }
       ],
-      "next_action": "In a synthetic disposable PostgreSQL run, hard-kill a worker after persisted progress, restart a new process, and prove lease reclaim plus stale side-effect denial at the AutoTeam run mutation boundary. Current worker job lease alone is not an atomic run fence.",
-      "rationale": "The explicit user request on 2026-10-10 authorizes the canonical recovery scan and useful-work verification WorkUnit. PR #501 is integrated as 311bc1e39100a308efcadab61fa278d607a860aa with focused evidence. SPEC-277 remains PARTIAL with 429 unresolved requirements; broad authority/relevance and completion are not proven.",
+      "next_action": "Continue with owner assignment and acceptance design for run-scoped stale-worker fencing; meanwhile select an independently executable Task Control continuity test that needs no schema migration.",
+      "rationale": "The integrated SIGKILL/retry acceptance proves dead-process lease recovery only. The team_runs schema has no run-scoped lease/fencing field and runEngine has many writes, so stale-worker side-effect denial cannot be safely established by a worker-job lease assertion alone. SPEC-271/302 authority owners are also unresolved; retain those blockers without withholding independent contract coverage.",
       "residual_requirements": [
-        "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
-        "Durable asynchronous evaluation through the existing worker_jobs/outbox control plane.",
-        "Bounded authorized recovery dispatch, independent outcome verification, and useful-work resume through existing owners.",
-        "Replay/restart/resume, idempotency, duplicate event, stale lease, and failure-injection coverage.",
-        "Non-production UAT and assessment of the remaining open SPEC-277 requirements."
+        "Atomic run-scoped fencing at every runEngine side-effect and external dispatch boundary, including stale worker completion after reclaim.",
+        "Task Control continuity for the same logical run across interruption, retry, and new lease.",
+        "Useful-work recovery and independent Final Verify evidence.",
+        "SPEC-271 WP2B owner-bound durable receipt persistence/replay.",
+        "SPEC-302 Phase 2 durable receipt schema, idempotency, revocation/expiry, transaction race and migration/rollback evidence with owner approval.",
+        "Full SPEC-277 requirement reconciliation and non-production UAT."
       ]
     },
     "lifecycle": {
@@ -412,7 +414,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T11:59:36.396652Z",
+  "updated_at": "2026-10-10T15:47:01.585972Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -458,6 +460,33 @@
         "scope": "Current-schema PostgreSQL; two scheduler producer processes plus separate scan and evaluation workers. 7 focused files / 86 tests pass at exact source SHA. Capacity wait stayed persisted; future human-choice and terminal runs were skipped; canonical scan/evaluation attempts/outbox/events persisted. No SIGKILL or run-scoped fencing claim.",
         "source_sha": "a063157f8fd2109ab0e55e1edd01c99c0c394df8",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "00e15e57f5054785f32789b34147f802272e7502",
+        "kind": "R6_AUTOTEAM_SCAN_EVALUATION_POST_INTEGRATION",
+        "path": "orchestra/tasks/smartaihub-r6-autonomous-recovery-20261010/evidence/autoteam-scheduled-occurrence-1a9239ba.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/551",
+        "scope": "PR #551 merged. Focused 7-file suite / 86 tests passed on exact merged main SHA; direct PostgreSQL scheduler→scan→evaluation acceptance proves bounded capacity-wait behavior only.",
+        "source_sha": "00e15e57f5054785f32789b34147f802272e7502",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+        "kind": "R6_AUTOTEAM_AND_RECEIPT_CONTRACT_POST_INTEGRATION",
+        "path": "orchestra/tasks/smartaihub-r6-autonomous-recovery-20261010/evidence/autoteam-scheduled-occurrence-1a9239ba.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/556",
+        "scope": "PRs #552/#553 SIGKILL recovery and #555/#556 replay/receipt rejection contract slices. Combined 12-file / 172-test focused suite passed. SIGKILL recovery is bounded; stale TeamRun mutation fencing and authoritative receipts remain unproven.",
+        "source_sha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+        "kind": "R6_AUTOTEAM_AND_RECEIPT_CONTRACT_RECONCILED_VERIFICATION",
+        "path": "orchestra/tasks/smartaihub-r6-autonomous-recovery-20261010/evidence/autoteam-scheduled-occurrence-1a9239ba.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/556",
+        "scope": "After PR #557 advanced main, the exact 12-file focused AutoTeam/SPEC-271/SPEC-302 regression suite passed 172 tests. This remains partial acceptance; stale TeamRun side-effect fencing, Task Control continuity and durable authoritative receipts are open.",
+        "source_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "FRESH",
@@ -465,7 +494,7 @@
       "quick",
       "integration"
     ],
-    "sha": "a063157f8fd2109ab0e55e1edd01c99c0c394df8",
+    "sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
     "status": "PARTIAL",
     "task_regressions": []
   }

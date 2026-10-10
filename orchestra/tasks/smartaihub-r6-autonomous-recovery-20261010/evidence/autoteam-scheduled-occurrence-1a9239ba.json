@@ -165,5 +165,26 @@
       "read-time retention outage and policy change are rejected"
     ],
     "limitations": "Injectable in-memory adapter contract tests only. No real owner, storage wiring, cross-process persistence, autonomous acceptance authority or production receipt was established."
+  },
+  "postIntegrationLaneB": {
+    "canonicalSha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/556",
+    "mergeCommit": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts server/services/__tests__/spec271AcceptanceReceiptFlow.test.ts server/services/__tests__/spec271PortableEvidenceReceipt.test.ts server/services/__tests__/spec271IndependentAcceptance.test.ts",
+    "result": "PASS_SYNTHETIC_CONTRACT_ONLY",
+    "testFiles": 4,
+    "tests": 39,
+    "verifiedAt": "2026-10-10T15:42:24Z",
+    "previewChecks": "SKIPPED (not counted as pass)"
+  },
+  "postIntegrationCombinedVerification": {
+    "canonicalSha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts server/services/__tests__/spec302ProjectResolutionReplayContract.test.ts server/services/__tests__/spec271DurableEvidenceReceiptStore.test.ts server/services/__tests__/spec271AcceptanceReceiptFlow.test.ts server/services/__tests__/spec271PortableEvidenceReceipt.test.ts server/services/__tests__/spec271IndependentAcceptance.test.ts",
+    "result": "PASS_PARTIAL_ACCEPTANCE",
+    "testFiles": 12,
+    "tests": 172,
+    "verifiedAt": "2026-10-10T15:46:16Z",
+    "limitations": "Focused regression suite only. Preview checks were skipped; no full build/typecheck or full SPEC-277 acceptance.",
+    "latestMainIncludedUnrelatedPR": 557
   }
 }
