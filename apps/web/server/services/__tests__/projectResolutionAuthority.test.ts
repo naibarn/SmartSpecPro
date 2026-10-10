@@ -47,34 +47,27 @@ const activeAppContext: TrustedAppRuntimeContext = {
   policyVersion: "spec269-app-project-memory.phase1.v1",
 };
 
-const activeAuthorityRows = [
-  {
-    projectId: "project-a",
-    projectTenantId: "tenant-a",
-    projectLifecycle: "ACTIVE",
-    membershipPrincipalId: "user:7",
-    membershipRole: "editor",
-    membershipLifecycle: "ACTIVE",
-    appTenantId: "tenant-a",
-    appLifecycle: "active",
-    bindingLifecycle: "ACTIVE",
-    userTenantId: "tenant-a",
-    userDisabled: false,
-    tenantActive: true,
-  },
-];
+const activeAuthorityRows = [{
+  projectId: "project-a",
+  projectTenantId: "tenant-a",
+  projectLifecycle: "ACTIVE",
+  membershipPrincipalId: "user:7",
+  membershipRole: "editor",
+  membershipLifecycle: "ACTIVE",
+  appTenantId: "tenant-a",
+  appLifecycle: "active",
+  bindingLifecycle: "ACTIVE",
+  userTenantId: "tenant-a",
+  userDisabled: false,
+  tenantActive: true,
+}];
 
-function setRows(
-  overrides: {
-    conversation?: unknown[];
-    authority?: unknown[];
-  } = {}
-) {
+function setRows(overrides: {
+  conversation?: unknown[];
+  authority?: unknown[];
+} = {}) {
   mocks.rows.clear();
-  mocks.rows.set(
-    conversations,
-    overrides.conversation ?? [{ projectId: "project-a" }]
-  );
+  mocks.rows.set(conversations, overrides.conversation ?? [{ projectId: "project-a" }]);
   mocks.rows.set(canonicalProjects, overrides.authority ?? activeAuthorityRows);
 }
 
@@ -111,165 +104,92 @@ describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
 
   it("rechecks membership and denies a receipt after ACL revocation", async () => {
     const receipt = await issueProjectResolutionReceipt({
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
+    });
+    mocks.rows.set(canonicalProjects, [{ ...activeAuthorityRows[0], membershipLifecycle: "REVOKED" }]);
+
+    await expect(validateProjectResolutionReceipt({
+      receipt,
+      operation: "read",
       tenantId: "tenant-a",
       userId: 7,
-      appContext: activeAppContext,
+      appId: "app-a",
       conversationId: 22,
-    });
-    mocks.rows.set(canonicalProjects, [
-      { ...activeAuthorityRows[0], membershipLifecycle: "REVOKED" },
-    ]);
-
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-        conversationId: 22,
-        sessionId: null,
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+      sessionId: null,
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("fails closed for an unknown membership role", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
-    mocks.rows.set(canonicalProjects, [
-      { ...activeAuthorityRows[0], membershipRole: "unknown" },
-    ]);
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+    mocks.rows.set(canonicalProjects, [{ ...activeAuthorityRows[0], membershipRole: "unknown" }]);
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-a", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("rechecks the live conversation binding and denies a Project switch mid-invocation", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
     mocks.rows.set(conversations, [{ projectId: "project-b" }]);
 
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-        conversationId: 22,
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-a", userId: 7, appId: "app-a", conversationId: 22,
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("denies cross-App reads when the current Project-App binding is missing or revoked", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
-    mocks.rows.set(canonicalProjects, [
-      { ...activeAuthorityRows[0], bindingLifecycle: "REVOKED" },
-    ]);
+    mocks.rows.set(canonicalProjects, [{ ...activeAuthorityRows[0], bindingLifecycle: "REVOKED" }]);
 
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-a", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("does not treat a client-supplied Project candidate as authority without a trusted App", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: null,
-      selectedProjectId: "project-a",
+      tenantId: "tenant-a", userId: 7, appContext: null, selectedProjectId: "project-a",
     });
     expect(receipt.resolutionState).toBe("RESOLVED_EXPLICIT");
     expect(receipt.authorizationResult).toBe("DENY");
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: null,
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-a", userId: 7, appId: null,
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("fails closed for foreign tenant and inactive App or Project", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
-    mocks.rows.set(canonicalProjects, [
-      {
-        ...activeAuthorityRows[0],
-        projectTenantId: "tenant-b",
-        appLifecycle: "suspended",
-      },
-    ]);
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+    mocks.rows.set(canonicalProjects, [{
+      ...activeAuthorityRows[0],
+      projectTenantId: "tenant-b",
+      appLifecycle: "suspended",
+    }]);
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-a", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("denies a principal after current tenant membership changes", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
-    mocks.rows.set(canonicalProjects, [
-      { ...activeAuthorityRows[0], userTenantId: "tenant-b" },
-    ]);
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
+    mocks.rows.set(canonicalProjects, [{ ...activeAuthorityRows[0], userTenantId: "tenant-b" }]);
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-a", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
   });
 
   it("allows only global/pending context when no server-bound Project exists", async () => {
     setRows({ conversation: [{ projectId: null }] });
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
       selectedProjectId: "project-client-selected",
     });
     expect(receipt).toMatchObject({
@@ -277,16 +197,14 @@ describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
       resolutionState: "NO_PROJECT",
       authorizationResult: "NOT_REQUIRED",
     });
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-        conversationId: 22,
-      })
-    ).resolves.toEqual({
+    await expect(validateProjectResolutionReceipt({
+      receipt,
+      operation: "read",
+      tenantId: "tenant-a",
+      userId: 7,
+      appId: "app-a",
+      conversationId: 22,
+    })).resolves.toEqual({
       authorized: false,
       reason: "REVOKED_OR_UNBOUND",
     });
@@ -295,10 +213,7 @@ describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
   it("marks a missing or foreign conversation UNRESOLVED instead of inventing NO_PROJECT", async () => {
     setRows({ conversation: [] });
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 999,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 999,
     });
     expect(receipt).toMatchObject({
       canonicalProjectId: null,
@@ -310,49 +225,22 @@ describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
 
   it("rejects cloned receipts, scope reuse, and all Phase 1 project writes", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt: { ...receipt },
-        operation: "read",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({ authorized: false, reason: "INVALID_RECEIPT" });
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "read",
-        tenantId: "tenant-b",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({ authorized: false, reason: "SCOPE_MISMATCH" });
-    await expect(
-      validateProjectResolutionReceipt({
-        receipt,
-        operation: "write",
-        tenantId: "tenant-a",
-        userId: 7,
-        appId: "app-a",
-      })
-    ).resolves.toEqual({
-      authorized: false,
-      reason: "DURABLE_WRITE_RECEIPT_REQUIRED",
-    });
+    await expect(validateProjectResolutionReceipt({
+      receipt: { ...receipt }, operation: "read", tenantId: "tenant-a", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "INVALID_RECEIPT" });
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "read", tenantId: "tenant-b", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "SCOPE_MISMATCH" });
+    await expect(validateProjectResolutionReceipt({
+      receipt, operation: "write", tenantId: "tenant-a", userId: 7, appId: "app-a",
+    })).resolves.toEqual({ authorized: false, reason: "DURABLE_WRITE_RECEIPT_REQUIRED" });
   });
 
   it("does not mutate the shared canonical App identity records", async () => {
     const receipt = await issueProjectResolutionReceipt({
-      tenantId: "tenant-a",
-      userId: 7,
-      appContext: activeAppContext,
-      conversationId: 22,
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
     });
     expect(receipt.appId).toBe("app-a");
     expect(mocks.rows.get(appIdentities)).toBeUndefined();
