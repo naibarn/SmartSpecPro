@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1246 unresolved of 1246
 - Next action: Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.
-- Manifest generation: 34
+- Manifest generation: 35
 
 ## Source-declared status and relationship claims
 

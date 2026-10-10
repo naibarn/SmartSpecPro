@@ -875,7 +875,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
+    "expected_canonical_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
     "expected_spec_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e"
   },
   "continuation": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
@@ -1108,6 +1108,17 @@
           "orchestra/tasks/spec224-remote-trust-eligibility-20261009/"
         ],
         "source_sha": "76d88dd7e9c81f6a8a244074463e1a850410769b"
+      },
+      {
+        "coverage": "PARTIAL; durable PR discovery and safe integration dispatch only; no CI/conflict repair or live completion benchmark",
+        "scope": "Discover exact same-repository PRs bound to clean inactive task workspaces and fresh trusted Runner snapshots; enqueue through existing worker_jobs/outbox; revalidate before normal exact-SHA merge; ownership-aware retirement after convergence",
+        "source_paths": [
+          "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
+          "apps/web/server/jobs/workspaceAuthorityGithub.ts",
+          "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
+          "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts"
+        ],
+        "source_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19"
       }
     ],
     "source_paths": [
@@ -1116,16 +1127,20 @@
       "apps/web/server/services/spec224RequirementClosurePersistence.ts",
       "apps/web/server/services/spec224FinalVerify.ts",
       "apps/runner-app/src/spec224_candidate.rs",
-      "apps/web/server/services/developmentRunEligibility.ts"
+      "apps/web/server/services/developmentRunEligibility.ts",
+      "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
+      "apps/web/server/jobs/workspaceAuthorityGithub.ts",
+      "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
+      "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
+    "canonical_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
     "integrated": true,
-    "integrated_at": "2026-10-09T09:15:39Z"
+    "integrated_at": "2026-10-10T09:37:07Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3413,7 +3428,7 @@
     "unresolved": 1246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T09:34:30.541329Z",
+  "updated_at": "2026-10-10T09:37:58.786719Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3445,13 +3460,20 @@
         "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: combined focused security and acceptance run: 21 files / 261 tests passed, including SPEC-224 DevelopmentRun, phase controller, final verify and provenance contracts. Synthetic/unit evidence only; no registered remote runner session or protected dispatch; SPEC-224 protected dispatch remains DENY.",
         "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
         "status": "PASS"
+      },
+      {
+        "kind": "AUTONOMOUS_GIT_LIFECYCLE_SLICE",
+        "path": "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
+        "scope": "PR #528 merged through normal GitHub merge. Merge SHA is in origin/main; its tree exactly matches the tested candidate tree. Node syntax checks, git diff --check, and SPEC-224 handoff validation passed. Focused Vitest was unavailable (not installed); build-preview was SKIPPED and is not counted as passed. Live Runner/database benchmark and failure repair remain unverified.",
+        "source_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+    "sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
     "status": "PARTIAL",
     "task_regressions": []
   }
