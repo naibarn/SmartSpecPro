@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 8 unresolved of 8
-- Next action: Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.
-- Manifest generation: 17
+- Next action: Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.
+- Manifest generation: 18
 
 ## Source-declared status and relationship claims
 

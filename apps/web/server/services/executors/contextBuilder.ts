@@ -5,6 +5,10 @@ import {
 import { retrieveForPrompt } from "../scopedMemoryService";
 import { getEntityMemoriesForContext } from "../memoryService";
 import {
+  issueProjectResolutionReceipt,
+  validateProjectResolutionReceipt,
+} from "../smartAiHubRuntimeContext";
+import {
   composePrompt,
   type ComposePromptInput,
   type PromptMessage,
@@ -59,6 +63,30 @@ export async function buildChatContext(
       if (persona) {
         const segments = buildPersonaPromptSegments(persona);
 
+        const trustedAppContext = request.conversationContext?.trustedAppContext ?? null;
+        const conversationId = request.conversationContext?.conversationId ?? null;
+        const projectReceipt = trustedAppContext && conversationId
+          ? await issueProjectResolutionReceipt({
+              tenantId: request.tenantId,
+              userId: request.userId,
+              appContext: trustedAppContext,
+              conversationId,
+              correlationId: request.traceId,
+            }).catch(() => null)
+          : null;
+        const validateProjectRead = async (): Promise<string | null> => {
+          if (!projectReceipt || !trustedAppContext) return null;
+          const checked = await validateProjectResolutionReceipt({
+            receipt: projectReceipt,
+            operation: "read",
+            tenantId: request.tenantId,
+            userId: request.userId,
+            appId: trustedAppContext.hostAppId,
+            conversationId,
+          }).catch(() => ({ authorized: false as const, reason: "REVOKED_OR_UNBOUND" as const }));
+          return checked.authorized ? checked.canonicalProjectId : null;
+        };
+
         // Build persona system message
         const parts: string[] = [segments.prefix];
 
@@ -70,6 +98,7 @@ export async function buildChatContext(
         }
 
         // Scoped memory — personaId is the assistantId in chat context
+        const projectIdForScopedRead = await validateProjectRead();
         const scopedMemories = await retrieveForPrompt(
           request.tenantId,
           personaId, // assistantId = personaId in chat channel
@@ -78,6 +107,11 @@ export async function buildChatContext(
           null,
           request.userMessage,
           CHAT_SCOPED_MEMORY_BUDGET,
+          undefined,
+          {
+            initiatedByUserId: request.userId,
+            projectId: projectIdForScopedRead,
+          },
         );
         if (scopedMemories.length > 0) {
           const memContent = scopedMemories
@@ -87,13 +121,13 @@ export async function buildChatContext(
         }
 
         // Entity memory
-        // Chat requests currently carry no verified canonical project binding.
-        // Keep user-global memories, but never hydrate project-scoped memories
-        // from another project into an unbound provider request.
+        // Entity memories may widen to the selected Project only after the
+        // same invocation receipt passes a fresh authorization check.
+        const projectIdForEntityRead = await validateProjectRead();
         const entityMemories = await getEntityMemoriesForContext(
           request.userId,
           undefined,
-          null,
+          projectIdForEntityRead,
           personaId,
         );
         if (entityMemories.length > 0) {
