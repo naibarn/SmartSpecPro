@@ -3,7 +3,7 @@ import { and, eq, isNotNull, isNull } from "drizzle-orm";
 
 import { closeDb, db, getDb } from "../server/db";
 import { workerJobDispatches, workerJobOutbox, workerJobs } from "../drizzle/schema";
-import { runPostgresNodeJobWorkerOnce } from "../server/jobs/postgresNodeJobWorker";
+import { initializePostgresNodeJobWorkerExecutors, runPostgresNodeJobWorkerOnce } from "../server/jobs/postgresNodeJobWorker";
 import { publishJobOutboxRow } from "../server/services/jobOutboxPublisher";
 import { PostgresPullJobTransportAdapter } from "../server/services/jobTransportAdapters";
 import { createJobControlPlane } from "../server/services/jobControlPlane";
@@ -99,9 +99,13 @@ async function startProgram(): Promise<void> {
 }
 
 async function runWorkerProcess(): Promise<void> {
+  // The canonical worker loads production modules before its first poll.
+  // Prepare them before this isolated process installs its synthetic adapter.
+  await initializePostgresNodeJobWorkerExecutors();
   configureMiniAppFactoryStageWorkerRuntime({
     pipeline,
     service,
+    allowSyntheticExecution: true,
     executeStage: async (stageId, context) => {
       if (stageId === "TEST" && context.attempt === 1) {
         const error = new Error("Synthetic transient Factory stage failure") as Error & { class: "retryable"; diagnosticCode: string };
