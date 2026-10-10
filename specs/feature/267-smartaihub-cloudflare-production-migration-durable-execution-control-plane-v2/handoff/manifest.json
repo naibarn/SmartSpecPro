@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -21,22 +21,22 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
-    "expected_spec_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922"
+    "expected_canonical_sha": "e14730f45c1b1ad436dd49ede6c973c8cfed7240",
+    "expected_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e"
   },
   "continuation": {
-    "next_action": "Connect authenticated worker capability, health, lease and resource facts to the existing claim path; persist actionable no-compatible-worker and queue-stall reasons; preserve worker_jobs, outbox and CAS fencing; then run the failure matrix against an isolated current-schema test database.",
+    "next_action": "Complete and integrate bounded keyset claim scanning (10-row pages, 100-candidate poll cap), preserving all existing worker eligibility checks and CAS lease fencing. Then extend the same WorkUnit with persisted no-compatible-worker/queue-stall reasons and run the failure matrix against an isolated current-schema database. Benchmark the single-machine baseline before any multi-machine default.",
     "next_ready_workunit": "WU-SPEC267-CAPABILITY-AWARE-CLAIM-PLACEMENT",
-    "reactivation_predicate": "Resume when canonical worker capability/health/resource fields and claim authority are identified in the existing SPEC-267 control plane, or when the isolated current-schema integration environment is provisioned.",
-    "resume_point": "PR #471 cycle recovery is integrated in d72bb64b9e9e8dc326b872f6bb249126591c1642; required-check merge guard is integrated by PR #504 at 890658e999cd3020d2944d5d7c898d5e52ec8f4f. Current origin/main is this SHA. PR preview and cleanup were SKIPPED; targeted guard test passed 22/22 locally. Overall architecture remains VALIDATION_PENDING and not production ready.",
-    "waiting_predicate": "A worker identity has fresh authenticated capability and health data, and job requirements map deterministically to those capabilities; if unavailable, keep this WorkUnit runnable through existing single-machine claim/retry and continue independent ready work."
+    "reactivation_predicate": "Resume after capability-aware bounded-scan checkpoint is integrated; provision isolated current-schema test database and worker runner to continue persistence, restart, and benchmark work.",
+    "resume_point": "SPEC-267 §17.10 defines bounded capability-aware claim scanning. The local implementation is in the registered continuation worktree and currently passes the 54-test workerRegistryService suite; it is not yet integrated. Existing scheduler behavior remains canonical until the implementation PR merges. Current origin/main at handoff refresh is e14730f45c1b1ad436dd49ede6c973c8cfed7240.",
+    "waiting_predicate": "No worker-specific persistent no-compatible reason or full runtime placement should be enabled until capability mapping is authenticated and current-schema integration environment is available; continue single-machine polling and independent compatible claims under existing policy."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-    "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+    "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-10T08:31:28.472353Z",
+      "last_evidence_at": "2026-10-10T08:51:05.905786Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T11:34:46+07:00",
       "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
@@ -107,15 +107,15 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
+    "canonical_sha": "e14730f45c1b1ad436dd49ede6c973c8cfed7240",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:36:26Z"
+    "integrated_at": "2026-10-10T08:51:05Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
-    "previous_state": "DISCOVERING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-10T08:31:28.472353Z"
+    "updated_at": "2026-10-10T08:51:05.905786Z"
   },
   "manual_decisions": {
     "requirements": {
@@ -158,10 +158,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-10T08:31:28.472353Z",
+    "reconciled_at": "2026-10-10T08:51:05.905786Z",
     "sources": [
       {
-        "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       },
@@ -173,7 +173,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 9,
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "source_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "value": "CANONICAL_IMPLEMENTATION_PLAN"
       },
       {
@@ -185,7 +185,7 @@
         "line": 33,
         "relation": "SUPERSEDES",
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "source_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "target_spec_ids": [],
         "value": ""
       }
@@ -217,7 +217,7 @@
         "excerpt": "status: CANONICAL_IMPLEMENTATION_PLAN",
         "line": 9,
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "source_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "value": "CANONICAL_IMPLEMENTATION_PLAN"
       },
       {
@@ -228,7 +228,7 @@
         "line": 33,
         "relation": "SUPERSEDES",
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "source_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "target_spec_ids": [],
         "value": ""
       }
@@ -236,7 +236,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -247,16 +247,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 1,
-    "total": 363,
-    "unresolved": 362
+    "pass": 0,
+    "total": 365,
+    "unresolved": 365
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:37:26.613842Z",
+  "updated_at": "2026-10-10T08:51:39.176680Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

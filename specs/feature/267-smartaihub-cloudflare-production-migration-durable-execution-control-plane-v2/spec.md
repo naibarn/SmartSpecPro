@@ -2058,6 +2058,12 @@ or another explicitly governed state.
 
 The canonical job control plane SHALL inspect no more than 128 unresolved dependency nodes during a claim-time cycle check. It SHALL fail the claim root with reason `dependency_cycle`, request operator review, and emit one idempotent `FAILED` event only when that bounded scan proves a dependency cycle. If the scan reaches its budget without proof, or otherwise cannot establish a cycle, the job SHALL remain queued or waiting; independent claimable jobs MUST remain eligible to proceed.
 
+## 17.10 Bounded capability-aware claim scanning
+
+The authenticated worker claim path SHALL inspect claimable jobs in deterministic keyset pages of at most 10 candidates, ordered by priority descending, creation time ascending, and job ID ascending. It SHALL apply the existing tenant/team/sharing, runtime, capability, affinity, health, and policy checks to each candidate before deciding that no job is claimable. A failed capability or policy match MUST NOT mutate or lease that job. The claim path MAY inspect at most 100 candidates per poll; after that bound it MUST return without dispatching an incompatible job, while leaving all unclaimed jobs eligible for another authorized worker. A successful dispatch MUST still use the existing conditional claim/lease fencing so concurrent workers cannot execute the same job.
+
+When the bounded scan finds no compatible candidate, the worker MAY continue polling under the existing policy, but the control plane MUST preserve the queued jobs and MUST NOT interpret aggregate free capacity as proof that a specific worker can execute them. Runtime-family capability mapping remains owned by Feature 077; authenticated claim eligibility and durable job state remain in this control plane.
+
 Provider integrations that lack sufficient recovery observability MAY be restricted to lower-risk job classes until a compensating control is certified.
 
 # 18. Artifact reliability
