@@ -16,7 +16,7 @@ Implement one safe vertical slice of the audit-first architecture: expose a trut
 
 | Requirement | Authority | Status | Evidence | Next action |
 |---|---|---|---|---|
-| Report pending/queued work with fresh online workers and known free aggregate capacity. | PR #467 §4; SPEC-267 canonical job/capacity ownership | Implemented; focused test passed after review repair | `apps/web/server/services/__tests__/jobControlPlaneMonitor.test.ts` at task revision tested 2026-10-10 14:33 Asia/Bangkok | Run fast gate; open protected PR. |
+| Report pending/queued work with fresh online workers and known free aggregate capacity through the admin summary API. | PR #467 §4; SPEC-267 canonical job/capacity ownership | Implemented; service test passed, route contract test added and awaits rerun | Service monitor and workerJobs admin summary tests | Rerun both focused files before treating this candidate as verified; CI/review/merge remain pending. |
 | Suppress signal if no backlog, no fresh worker, unknown capacity, or no free slots. | PR #467 §§3–4; truthful status / no false completion | Implemented; boundary tests passed | Same focused Vitest run | Preserve additive API field; confirm CI on PR SHA. |
 | Do not duplicate queue or scheduler authority. | PR #467 §§2,9; SPEC-267 | Pass by design | Existing `worker_jobs`, outbox and monitor reused; no schema or authority changes | Continue only after current spec ownership reconciles. |
 | Align all six canonical Specs, resolve execution-fabric spec identity, and implement full GitHub lifecycle. | PR #467 §§2,5,7,10 | Open / partial | `audit-and-lifecycle-report.md`; current canonical handoffs | Follow up without editing active-owner paths; reconcile SPEC-077 boundary and create separate bounded WUs. |

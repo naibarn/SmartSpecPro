@@ -23,7 +23,7 @@ describe("canonical job monitor cursor", () => {
 });
 
 describe("durable backlog with free worker capacity", () => {
-  it("signals when backlog coexists with fresh workers and known free capacity", () => {
+  it("signals when backlog coexists with fresh workers and known free aggregate capacity", () => {
     expect(deriveBacklogWithFreeWorkerCapacityAlert({
       pending: 1,
       queued: 2,
