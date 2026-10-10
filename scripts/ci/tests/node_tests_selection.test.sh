@@ -55,4 +55,19 @@ if grep -q '^pnpm ' "$TMP_ROOT/commands.log"; then
   exit 1
 fi
 
-echo 'node_tests package-manager selection tests passed (2 cases)'
+# SmartSpecWeb builds only the Remotion public schema entrypoint after install.
+mkdir -p "$TMP_ROOT/repo/apps/web/node_modules/.bin" "$TMP_ROOT/repo/packages/remotion-render"
+printf '%s\n' '{"name":"web-fixture","dependencies":{"@local/shared":"workspace:*"}}' > "$TMP_ROOT/repo/apps/web/package.json"
+cat > "$TMP_ROOT/repo/apps/web/node_modules/.bin/esbuild" <<'MOCK_ESBUILD'
+#!/usr/bin/env bash
+printf 'esbuild %s\n' "$*" >> "$COMMAND_LOG"
+MOCK_ESBUILD
+chmod +x "$TMP_ROOT/repo/apps/web/node_modules/.bin/esbuild"
+: > "$TMP_ROOT/commands.log"
+PATH="$TMP_ROOT/bin:$PATH" COMMAND_LOG="$TMP_ROOT/commands.log" \
+  bash "$TMP_ROOT/repo/scripts/ci/node_tests.sh" apps/web
+grep -Fq 'esbuild ' "$TMP_ROOT/commands.log"
+grep -Fq '/packages/remotion-render/src/remotionRenderVideoSchema.ts --bundle --platform=neutral --format=esm --target=es2022 --external:zod --outfile=' "$TMP_ROOT/commands.log"
+grep -Fxq 'pnpm run test:coverage' "$TMP_ROOT/commands.log"
+
+echo 'node_tests package-manager selection and SmartSpecWeb schema preparation tests passed (3 cases)'
