@@ -10,7 +10,7 @@ Outcome state: `PARTIAL`; no overall completion claim.
 | VERIFY | CLOSED FOR THIS SLICE | Focused Vitest passed; DB checks skipped by test gate and full typecheck not run. |
 | DEBUG_FIX | CLOSED | No gate or review defect known yet. |
 | REVIEW | CLOSED FOR THIS SLICE | Read-only review found no remaining material issue; focused service and route tests passed. |
-| FINAL_VERIFY | OPEN | PR #471 is open; task branch includes latest checked `origin/main` SHA `0199c3f04c362c4d3b098d54e7f7b8d34d6a4774` in ancestry. `build-preview` was `SKIPPED`; review decision is empty; no integration occurred. Six-spec alignment, full Git lifecycle, benchmark and platform recovery remain unverified. |
+| FINAL_VERIFY | OPEN | PR #471 is open; task branch includes latest checked `origin/main` SHA `859b5cb8cf5d6180d6552624964dd1e59ada671c` in ancestry. `build-preview` was `SKIPPED`; review decision is empty; no integration occurred. Six-spec alignment, full Git lifecycle, benchmark and platform recovery remain unverified. |
 
 Next ready WorkUnit: `WU-PR467-IDLE-BACKLOG-PR` — owner: conductor; paths: service, test, task evidence; prerequisites: focused tests passed; completion predicate: PR #471's required checks and reviews reach an allowed merge state, merge SHA is reachable from canonical `main`, and canonical workspace convergence is verified. Independent next WorkUnit: `WU-SPEC-ALLOCATION-RECONCILE` — reconcile SPEC-224/226/267/269/276/277 plus Feature 077 and current active task ownership before writing normative spec changes.
 
