@@ -647,10 +647,12 @@ async function searchGraphMemories(
     relatedConditions.push(sql`${scopedMemories.metadataJson}::text ILIKE ${`%${options.teamId}%`}`);
   }
 
-  const graphConditions: SQL[] = [
-    eq(scopedMemories.tenantId, options.tenantId),
-    or(...relatedConditions)!,
-  ];
+  // Relationship conditions must stay inside an authorized owner scope; they
+  // must never widen it to private user memories tagged with the selected Project.
+  const graphConditions: SQL[] = [scopeFilter];
+  if (relatedConditions.length > 0) {
+    graphConditions.push(or(...relatedConditions)!);
+  }
   if (options.excludeTeamRoomPromotions) {
     // This must constrain every graph match, not just the scope branch of the OR.
     graphConditions.push(buildTeamRoomPromotionExclusion());
