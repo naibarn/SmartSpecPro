@@ -2,10 +2,10 @@
 
 ## Exact candidate
 
-- PR #399 head: `a7765811ef0f6a21b5a1297090f5754d845b30c0`
+- PR #399 implementation candidate: `a7765811ef0f6a21b5a1297090f5754d845b30c0`; evidence-only handoff head: `a87a991d082c3c72ad3768e03a0b244d963a1cf1`
 - Canonical base merged into the candidate: `36fe5811a65b9c5a705f9ded6152607069077de4`
 - Browser workflow: [run 38006779631](https://github.com/naibarn/SmartSpecPro/actions/runs/38006779631)
-- Result: 8 focused component test files, 144 tests passed; mocked Chromium simulation, 18/18 passed. Evidence: `evidence/pr-ci-38006779631.json` and downloaded `evidence/ci-artifacts/38006779631/`.
+- Result: 8 focused component test files, 144 tests passed; mocked Chromium simulation, 18/18 passed. Evidence: `evidence/pr-ci-38006779631.json`, `evidence/pr-ci-38007259981.json`, `evidence/pr-ci-38007574644.json` and downloaded artifacts under `evidence/ci-artifacts/`.
 
 ## Change
 

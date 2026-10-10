@@ -63,7 +63,7 @@
     "next_action": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION is first: obtain owner-authorized disposition or compatible remediation, then refresh #405 and rerun mandatory gates. After it clears, reconcile #403, then re-evaluate #399 on the exact integrated SHA. Continue independent source/evidence reconciliation while external approvals are pending.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Security and media/runtime owners record an approved remediation path or policy-valid disposition through the authorized channel; resume by refreshing #405 against current main, then run full audit and compatibility gates on the exact candidate.",
-    "resume_point": "PR #399 exact head a7765811ef0f6a21b5a1297090f5754d845b30c0 includes main 36fe5811a65b9c5a705f9ded6152607069077de4 and passed focused components (8 files/144 tests) plus two mocked Chromium runs, 18/18 each (runs 38006779631 and 38007259981). Run 38006435762 failed on the same drag alignment geometry after only 32ms of Playwright virtual time; keeping the 24px assertion and advancing the clock through two positioning frames restored both passes. Contract run 38006779712 fails before mandatory audit on the canonical MCP session-fixture/retired agencyMcpService test baseline (44 failed, 76 passed) and skips the audit step; live smoke is fail-closed due absent approved endpoint/token. All 66 SPEC-308 rows remain OPEN (63 PARTIAL, 3 UNVERIFIED). PR #405 audit remains blocked on the Moderate sprintf-js owner disposition; approved non-production acceptance runtime, test identity and Feature-049 tenant authorization remain unavailable.",
+    "resume_point": "PR #399 exact head a87a991d082c3c72ad3768e03a0b244d963a1cf1 includes origin/main 36fe5811a65b9c5a705f9ded6152607069077de4 and passed 8 focused component files / 144 tests and 18/18 mocked Chromium cases on run 38007574644. The same UI behavior also passed two prior runs 38006779631 and 38007259981 on code SHA a7765811ef0f6a21b5a1297090f5754d845b30c0. All evidence is simulated, not live authenticated acceptance. The exact-head MCP contract run 38007574817 repeats canonical DB-session fixture and retired import baseline failures (44 failed/76 passed) and its live smoke fails closed due missing approved endpoint/token. All 66 requirements remain OPEN (63 PARTIAL, 3 UNVERIFIED). PR #405 audit remains blocked on Moderate sprintf-js owner disposition; authorized non-production acceptance runtime/test identity and Feature-049 tenant authorization remain unavailable.",
     "waiting_predicate": "Security/media-runtime owners provide an approved decision for sprintf-js remediation or documented scoped/expiring disposition; live MCP and SPEC-308 acceptance continue to require approved endpoint/token and non-production test identity/Feature-049 authorization separately."
   },
   "continuation_assessment": {
@@ -127,7 +127,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 48,
+  "generation": 49,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -256,7 +256,12 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007259981.json",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38006435762",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779712",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574644.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574817.json",
+      "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38007574644/spec-308-browser-simulation-38007574644/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574644",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574817"
     ],
     "updated_at": "2026-10-09T04:27:07.605340Z"
   },
@@ -355,7 +360,12 @@
         "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007259981.json",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38006435762",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779712",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574644.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574817.json",
+        "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38007574644/spec-308-browser-simulation-38007574644/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574644",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574817"
       ],
       "updated_at": "2026-10-09T04:27:07.605340Z"
     },
@@ -2132,7 +2142,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T00:05:16.816049Z",
+  "updated_at": "2026-10-10T00:09:26.811059Z",
   "verification": {
     "baseline_issues": [
       "PR #399 MCP focused run 37986151602 fails on canonical-main baseline fixtures: PostgreSQL-backed session state is not configured and tests retain retired agencyMcpService imports; PR #403 owns the fixture repair.",
@@ -2140,7 +2150,8 @@
       "PR #405 compatibility tests pass but mandatory full production audit remains failed on Moderate sprintf-js@1.1.3 pending authorized remediation/disposition.",
       "Exact PR #399 head run 38004846369 repeats the MCP baseline failure: DB-backed session fixtures are unavailable and tests import retired agencyMcpService; live smoke lacks approved MCP_SMOKE_URL/MCP_SMOKE_TOKEN.",
       "Exact PR #405 workflow-dispatch run 38004111980 passes compatibility regressions (18 files/238 tests) and fails the mandatory production audit on Moderate sprintf-js@1.1.3; Security and media/runtime owner disposition is still required.",
-      "PR #399 exact-head contract run 38006779712 (SHA a7765811ef0f6a21b5a1297090f5754d845b30c0) fails before audit on canonical MCP baseline defects: missing PostgreSQL session fixture and retired agencyMcpService imports (44 failed/76 passed across 11 files); audit step is skipped. The live smoke fails closed because approved MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent. PR #403 owns the fixture repair and its focused suite passed 118/118; security audit and live authority remain open."
+      "PR #399 exact-head contract run 38006779712 (SHA a7765811ef0f6a21b5a1297090f5754d845b30c0) fails before audit on canonical MCP baseline defects: missing PostgreSQL session fixture and retired agencyMcpService imports (44 failed/76 passed across 11 files); audit step is skipped. The live smoke fails closed because approved MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent. PR #403 owns the fixture repair and its focused suite passed 118/118; security audit and live authority remain open.",
+      "PR #399 evidence-head run 38007574817 on a87a991d082c3c72ad3768e03a0b244d963a1cf1 repeats the canonical MCP fixture/import baseline failure before mandatory audit (44 failed/76 passed); live smoke again fails closed because authorized MCP endpoint/token are unavailable. PR #403 remains the owner branch for its 118/118 fixture repair, subject to security gate ordering."
     ],
     "evidence": [
       "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md",
@@ -2190,13 +2201,18 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007259981.json",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38006435762",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779712",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574644.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574817.json",
+      "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38007574644/spec-308-browser-simulation-38007574644/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574644",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574817"
     ],
     "freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
     "required_profiles": [
       "quick"
     ],
-    "sha": "a7765811ef0f6a21b5a1297090f5754d845b30c0",
+    "sha": "a87a991d082c3c72ad3768e03a0b244d963a1cf1",
     "status": "PARTIAL",
     "task_regressions": []
   }
