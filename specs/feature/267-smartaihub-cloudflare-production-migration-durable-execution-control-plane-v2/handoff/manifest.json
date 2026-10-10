@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "e14730f45c1b1ad436dd49ede6c973c8cfed7240",
+    "expected_canonical_sha": "74554a9317b506886bde154166e7750986e3b83e",
     "expected_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e"
   },
   "continuation": {
-    "next_action": "Complete and integrate bounded keyset claim scanning (10-row pages, 100-candidate poll cap), preserving all existing worker eligibility checks and CAS lease fencing. Then extend the same WorkUnit with persisted no-compatible-worker/queue-stall reasons and run the failure matrix against an isolated current-schema database. Benchmark the single-machine baseline before any multi-machine default.",
+    "next_action": "After capability-aware claim pagination is integrated, continue same WorkUnit with persisted no-compatible-worker and queue-stall reasons, loop/stall detection and independent-work selection using existing worker_jobs/outbox. Then run live worker-loss and process-restart UAT on isolated current-schema DB and benchmark single-machine baseline before any multi-machine default.",
     "next_ready_workunit": "WU-SPEC267-CAPABILITY-AWARE-CLAIM-PLACEMENT",
-    "reactivation_predicate": "Resume after capability-aware bounded-scan checkpoint is integrated; provision isolated current-schema test database and worker runner to continue persistence, restart, and benchmark work.",
-    "resume_point": "SPEC-267 §17.10 defines bounded capability-aware claim scanning. The local implementation is in the registered continuation worktree and currently passes the 54-test workerRegistryService suite; it is not yet integrated. Existing scheduler behavior remains canonical until the implementation PR merges. Current origin/main at handoff refresh is e14730f45c1b1ad436dd49ede6c973c8cfed7240.",
-    "waiting_predicate": "No worker-specific persistent no-compatible reason or full runtime placement should be enabled until capability mapping is authenticated and current-schema integration environment is available; continue single-machine polling and independent compatible claims under existing policy."
+    "reactivation_predicate": "Resume after the claim-scan checkpoint is integrated or current canonical advances; activate DB/restart obligations only when an isolated current-schema test environment exists.",
+    "resume_point": "SPEC-267 §17.10 bounded claim scanning is implemented in source commit bd52b52dd. Candidate tree 0c85c326891e2a9081ae09efe745d0755fc73602 was refreshed with current canonical 74554a9317b506886bde154166e7750986e3b83e and passed 9 focused files / 205 tests, 2 DB tests skipped. The implementation is not integrated. Existing worker_jobs/outbox/CAS remains the execution authority.",
+    "waiting_predicate": "Continue source integration independently. Run database/restart UAT only when an isolated current-schema database and authenticated test worker are available; production data is not eligible."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 10,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
     "digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
@@ -90,26 +90,34 @@
   "implementation": {
     "checkpoint_shas": [
       "d72bb64b9e9e8dc326b872f6bb249126591c1642",
-      "311bc1e39100a308efcadab61fa278d607a860aa"
+      "bd52b52dd"
     ],
     "mapping": [
       {
         "requirement_id": "REQ-6452C7F15294",
-        "status": "IMPLEMENTED_AND_TESTED"
+        "status": "IMPLEMENTED_AND_INTEGRATED"
+      },
+      {
+        "requirement_id": "REQ-85D5A8E36B6D",
+        "status": "IMPLEMENTED_IN_TASK_BRANCH_PENDING_INTEGRATION"
+      },
+      {
+        "requirement_id": "REQ-927E3FEAD3CF",
+        "status": "IMPLEMENTED_PARTIAL_PENDING_INTEGRATION"
       }
     ],
     "source_paths": [
-      "apps/web/server/services/jobControlPlane.ts",
-      "apps/web/server/services/__tests__/jobControlPlane.test.ts"
+      "apps/web/server/services/workerRegistryService.ts",
+      "apps/web/server/services/__tests__/workerRegistryService.test.ts"
     ],
     "started": true,
-    "status": "PARTIAL_INTEGRATED"
+    "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e14730f45c1b1ad436dd49ede6c973c8cfed7240",
+    "canonical_sha": "74554a9317b506886bde154166e7750986e3b83e",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:51:05Z"
+    "integrated_at": "2026-10-10T08:53:45Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -128,25 +136,77 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
+        "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
         "final_state": "PASS",
         "implementation_evidence": [
-          "apps/web/server/services/jobControlPlane.ts at integrated PR #471 commit d72bb64b9e9e8dc326b872f6bb249126591c1642",
-          "apps/web/server/services/__tests__/jobControlPlane.test.ts at integrated PR #471 commit d72bb64b9e9e8dc326b872f6bb249126591c1642"
+          "apps/web/server/services/jobControlPlane.ts in PR #471 merge d72bb64b9e9e8dc326b872f6bb249126591c1642",
+          "apps/web/server/services/__tests__/jobControlPlane.test.ts in PR #471 merge d72bb64b9e9e8dc326b872f6bb249126591c1642"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Extend the same claim path with authenticated worker capability/health/resource compatibility and no-compatible-worker recovery; retain bounded scan and independent job progress.",
+        "next_action": "Keep bounded dependency graph scan and one-time failure event covered while extending compatible worker placement.",
         "requirement_digest": "9d7a807044cc3e973404ad17d4add8a447ed577cae84aeed5b6fa28047a1c8f6",
         "requirement_id": "REQ-6452C7F15294",
         "requirement_text": "The canonical job control plane SHALL inspect no more than 128 unresolved dependency nodes during a claim-time cycle check. It SHALL fail the claim root with reason `dependency_cycle`, request operator review, and emit one idempotent `FAILED` event only when that bounded scan proves a dependency cycle. If the scan reaches its budget without proof, or otherwise cannot establish a cycle, the job SHALL remain queued or waiting; independent claimable jobs MUST remain eligible to proceed.",
-        "source_spec_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
+        "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
         "successor_mapping": [],
         "verification_evidence": [
-          "Focused dependency-cycle/claim/lease cases passed (10 passed) on ancestor e20e13db2f01f5eb19d7dc611d753328ed084de4; implementation is included in current canonical main.",
-          "workspaceAuthoritySafeActionJob.test.ts passed 22/22 on exact canonical SHA 890658e999cd3020d2944d5d7c898d5e52ec8f4f.",
-          "PR #471 merged at d72bb64b9e9e8dc326b872f6bb249126591c1642; PR #504 merged at 890658e999cd3020d2944d5d7c898d5e52ec8f4f. Their preview CI results are SKIPPED and are not represented as passed."
+          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: dependency-cycle cases passed in a 9-file, 205-test focused run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; the cycle implementation itself is already on canonical main."
         ],
-        "verification_method": "Run the focused claim/dependency-cycle/lease/independent-progress Vitest cases against the exact integrated source revision."
+        "verification_method": "Focused claim/dependency-cycle/lease regression suite on the current SPEC-267 implementation."
+      },
+      "REQ-85D5A8E36B6D": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2063"
+        ],
+        "authority_source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2063",
+        "blocker": null,
+        "current_relevance": "ACTIVE",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
+          "apps/web/server/services/__tests__/workerRegistryService.test.ts at task commit bd52b52dd"
+        ],
+        "implementation_status": "IMPLEMENTED_PENDING_INTEGRATION",
+        "next_action": "Integrate the source commit, rerun the focused suite on canonical SHA, then implement persistent no-compatible-worker and queue-stall diagnosis.",
+        "requirement_digest": "887ca650b671b9781e393c4a1930d0b8389d349c28d62e4a1f38530cc2a28c1c",
+        "requirement_id": "REQ-85D5A8E36B6D",
+        "requirement_text": "The authenticated worker claim path SHALL inspect claimable jobs in deterministic keyset pages of at most 10 candidates, ordered by priority descending, creation time ascending, and job ID ascending. It SHALL apply the existing tenant/team/sharing, runtime, capability, affinity, health, and policy checks to each candidate before deciding that no job is claimable. A failed capability or policy match MUST NOT mutate or lease that job. The claim path MAY inspect at most 100 candidates per poll; after that bound it MUST return without dispatching an incompatible job, while leaving all unclaimed jobs eligible for another authorized worker. A successful dispatch MUST still use the existing conditional claim/lease fencing so concurrent workers cannot execute the same job.",
+        "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files passed, 205 passed, 2 DB-dependent skipped on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; includes compatible candidate after ten incompatible rows and the 100-scan cap."
+        ],
+        "verification_method": "Run the focused worker-registry suite and the exact nine-file control-plane/claim suite."
+      },
+      "REQ-927E3FEAD3CF": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2065"
+        ],
+        "authority_source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2065",
+        "blocker": null,
+        "current_relevance": "ACTIVE",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
+          "apps/web/server/services/__tests__/workerRegistryService.test.ts at task commit bd52b52dd"
+        ],
+        "implementation_status": "IMPLEMENTED_PENDING_INTEGRATION",
+        "next_action": "After integration, verify against a current-schema database and continue no-compatible-worker reason persistence without using aggregate capacity as dispatch proof.",
+        "requirement_digest": "e31020fcfb8ba7a69f2af8f4004c57acbbbd7d771ba828d5ea3d0fde9d4a519b",
+        "requirement_id": "REQ-927E3FEAD3CF",
+        "requirement_text": "When the bounded scan finds no compatible candidate, the worker MAY continue polling under the existing policy, but the control plane MUST preserve the queued jobs and MUST NOT interpret aggregate free capacity as proof that a specific worker can execute them. Runtime-family capability mapping remains owned by Feature 077; authenticated claim eligibility and durable job state remain in this control plane.",
+        "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "The 100-candidate bounded-scan test confirms no incompatible candidate reaches tryClaimJob and all remain queued; the compatible-after-ten test confirms the later eligible job is claimed. Both are in the 9-file run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602."
+        ],
+        "verification_method": "Verify failed compatibility candidates remain unchanged/queued and no claim CAS occurs; verify compatible independent job is claimed through existing fencing."
       }
     }
   },
@@ -247,24 +307,24 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 3,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 0,
+    "pass": 1,
     "total": 365,
-    "unresolved": 365
+    "unresolved": 364
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:51:39.176680Z",
+  "updated_at": "2026-10-10T08:54:04.681224Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       {
-        "kind": "FOCUSED_DEPENDENCY_CYCLE_TESTS",
-        "path": "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/spec267-dependency-cycle-20261010.md",
-        "scope": "10 targeted dependency-cycle, claim, lease and independent-progress cases passed on exact source SHA e20e13db2f01f5eb19d7dc611d753328ed084de4; subsequent canonical main 311bc1e39 contains this unchanged implementation.",
-        "source_sha": "e20e13db2f01f5eb19d7dc611d753328ed084de4",
+        "kind": "FOCUSED_CONTROL_PLANE_AND_CLAIM_REGRESSION",
+        "path": "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md",
+        "scope": "9 focused files; 205 passed, 2 database-dependent tests skipped. Exact tested candidate tree includes current canonical main and task commit bd52b52dd; not integrated yet.",
+        "source_sha": "0c85c326891e2a9081ae09efe745d0755fc73602",
         "status": "PASS"
       }
     ],
@@ -272,7 +332,7 @@
     "required_profiles": [
       "quick"
     ],
-    "sha": "e20e13db2f01f5eb19d7dc611d753328ed084de4",
+    "sha": "0c85c326891e2a9081ae09efe745d0755fc73602",
     "status": "PARTIAL",
     "task_regressions": []
   }

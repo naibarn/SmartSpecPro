@@ -1,5 +1,5 @@
 {
-  "generation": 5,
+  "generation": 7,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -4536,70 +4536,85 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2059"
       ],
       "authority_source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2059",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/jobControlPlane.ts in PR #471 merge d72bb64b9e9e8dc326b872f6bb249126591c1642",
+        "apps/web/server/services/__tests__/jobControlPlane.test.ts in PR #471 merge d72bb64b9e9e8dc326b872f6bb249126591c1642"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Keep bounded dependency graph scan and one-time failure event covered while extending compatible worker placement.",
       "requirement_digest": "9d7a807044cc3e973404ad17d4add8a447ed577cae84aeed5b6fa28047a1c8f6",
       "requirement_id": "REQ-6452C7F15294",
       "requirement_text": "The canonical job control plane SHALL inspect no more than 128 unresolved dependency nodes during a claim-time cycle check. It SHALL fail the claim root with reason `dependency_cycle`, request operator review, and emit one idempotent `FAILED` event only when that bounded scan proves a dependency cycle. If the scan reaches its budget without proof, or otherwise cannot establish a cycle, the job SHALL remain queued or waiting; independent claimable jobs MUST remain eligible to proceed.",
       "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: dependency-cycle cases passed in a 9-file, 205-test focused run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; the cycle implementation itself is already on canonical main."
+      ],
+      "verification_method": "Focused claim/dependency-cycle/lease regression suite on the current SPEC-267 implementation."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2063"
       ],
       "authority_source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2063",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
+        "apps/web/server/services/__tests__/workerRegistryService.test.ts at task commit bd52b52dd"
+      ],
+      "implementation_status": "IMPLEMENTED_PENDING_INTEGRATION",
+      "next_action": "Integrate the source commit, rerun the focused suite on canonical SHA, then implement persistent no-compatible-worker and queue-stall diagnosis.",
       "requirement_digest": "887ca650b671b9781e393c4a1930d0b8389d349c28d62e4a1f38530cc2a28c1c",
       "requirement_id": "REQ-85D5A8E36B6D",
       "requirement_text": "The authenticated worker claim path SHALL inspect claimable jobs in deterministic keyset pages of at most 10 candidates, ordered by priority descending, creation time ascending, and job ID ascending. It SHALL apply the existing tenant/team/sharing, runtime, capability, affinity, health, and policy checks to each candidate before deciding that no job is claimable. A failed capability or policy match MUST NOT mutate or lease that job. The claim path MAY inspect at most 100 candidates per poll; after that bound it MUST return without dispatching an incompatible job, while leaving all unclaimed jobs eligible for another authorized worker. A successful dispatch MUST still use the existing conditional claim/lease fencing so concurrent workers cannot execute the same job.",
       "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/capability-aware-claim-scan-20261010.md: 9 focused files passed, 205 passed, 2 DB-dependent skipped on candidate 0c85c326891e2a9081ae09efe745d0755fc73602; includes compatible candidate after ten incompatible rows and the 100-scan cap."
+      ],
+      "verification_method": "Run the focused worker-registry suite and the exact nine-file control-plane/claim suite."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2065"
       ],
       "authority_source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md#L2065",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "ACTIVE",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "74554a9317b506886bde154166e7750986e3b83e",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/workerRegistryService.ts at task commit bd52b52dd",
+        "apps/web/server/services/__tests__/workerRegistryService.test.ts at task commit bd52b52dd"
+      ],
+      "implementation_status": "IMPLEMENTED_PENDING_INTEGRATION",
+      "next_action": "After integration, verify against a current-schema database and continue no-compatible-worker reason persistence without using aggregate capacity as dispatch proof.",
       "requirement_digest": "e31020fcfb8ba7a69f2af8f4004c57acbbbd7d771ba828d5ea3d0fde9d4a519b",
       "requirement_id": "REQ-927E3FEAD3CF",
       "requirement_text": "When the bounded scan finds no compatible candidate, the worker MAY continue polling under the existing policy, but the control plane MUST preserve the queued jobs and MUST NOT interpret aggregate free capacity as proof that a specific worker can execute them. Runtime-family capability mapping remains owned by Feature 077; authenticated claim eligibility and durable job state remain in this control plane.",
       "source_spec_digest": "de36b436ce4d291fd1df7971205066edc3fa2b9c929256608f48b5013bf9321e",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "The 100-candidate bounded-scan test confirms no incompatible candidate reaches tryClaimJob and all remain queued; the compatible-after-ten test confirms the later eligible job is claimed. Both are in the 9-file run on candidate 0c85c326891e2a9081ae09efe745d0755fc73602."
+      ],
+      "verification_method": "Verify failed compatibility candidates remain unchanged/queued and no claim CAS occurs; verify compatible independent job is claimed through existing fencing."
     },
     {
       "applicability": "UNASSESSED",
