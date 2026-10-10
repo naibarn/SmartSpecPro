@@ -25,11 +25,11 @@
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Provision a non-production worker_jobs/outbox environment and externally managed Cloudflare schedule invocation; run end-to-end recovery UAT and capture a real run state change. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED until requirement/authority reconciliation is evidenced.",
-    "next_ready_workunit": "Non-production worker_jobs/outbox AutoTeam recovery UAT and external Cloudflare scheduler invocation verification",
-    "reactivation_predicate": "Resume UAT when the sanctioned non-production worker environment and scheduler invocation evidence are available.",
-    "resume_point": "At canonical SHA 00877132d21f2a675a143aefd6db679ef51fc66a, focused AgentRuntime/AutoTeam recovery contracts pass (26 tests) and stale-lease fencing contracts pass (3 tests). In-repo source audit found no production Cloudflare cron caller. Async evaluation remains PARTIAL; non-production UAT and external scheduler invocation are still unverified.",
-    "waiting_predicate": "A sanctioned non-production database/API worker environment and accessible external Cloudflare schedule configuration/invocation evidence are available."
+    "next_action": "Provision an isolated non-production database migrated to the current worker_jobs schema; then run actual AutoTeam worker_jobs/outbox recovery UAT and capture a real run state change. Also provide external Cloudflare scheduler invocation evidence. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED until broader requirement/authority reconciliation is evidenced.",
+    "next_ready_workunit": "Actual AutoTeam recovery UAT on an isolated migrated non-production DB plus external Cloudflare scheduler invocation verification",
+    "reactivation_predicate": "Resume integration UAT when a disposable migrated non-production DB and scheduler invocation evidence are available.",
+    "resume_point": "Canonical main SHA 65865cbe361e5882fd9bc44e19474f2a705dc2e3. Focused AutoTeam/AgentRuntime suites pass (26 tests), stale-lease fencing passes (3), and worker_jobs/outbox plus Cron adapter contracts pass (5). Actual DB control-plane UAT is blocked because local smartspec_test lacks worker_jobs.activeDedupeKey; no migration was run and test fixtures were cleaned. Production Cloudflare cron caller is absent from repository source.",
+    "waiting_predicate": "An isolated local test database has current migrations, and external Cloudflare schedule configuration/invocation evidence is accessible."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -353,9 +353,11 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:07:40.341518Z",
+  "updated_at": "2026-10-10T08:10:05.314459Z",
   "verification": {
-    "baseline_issues": [],
+    "baseline_issues": [
+      "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
+    ],
     "evidence": [
       {
         "command": "Node TypeScript syntax checks on AgentRuntime, recovery, registry, and contract tests; git diff --check",
@@ -440,6 +442,13 @@
         "skipped": 76,
         "test_files": 2,
         "tests": 5
+      },
+      {
+        "command": "RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=postgresql://smartspec:<redacted>@127.0.0.1:5432/smartspec_test JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/spec224PostgresIntegration.integration.test.ts",
+        "profile": "integration",
+        "reason": "Local smartspec_test schema is behind the current worker_jobs model: PostgreSQL reports missing column activeDedupeKey. No migration was run. The harness cleanup was verified for the two fixture tenant/user/job scopes created by this run; all counts are zero. This validates neither AutoTeam recovery execution nor production scheduling.",
+        "result": "BLOCKED",
+        "revision": "65865cbe361e5882fd9bc44e19474f2a705dc2e3"
       }
     ],
     "freshness": "FRESH",
@@ -447,7 +456,7 @@
       "quick",
       "integration"
     ],
-    "sha": "4707dd37439bdf6ce19442ff4fd68aca5e30687f",
+    "sha": "65865cbe361e5882fd9bc44e19474f2a705dc2e3",
     "status": "PARTIAL",
     "task_regressions": []
   }
