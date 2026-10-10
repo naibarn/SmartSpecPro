@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -374,7 +374,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:05:14.238516Z",
+  "updated_at": "2026-10-10T08:07:13.590744Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -412,11 +412,25 @@
         "scope": "PR #487 merged; injectable assertion consumer reaches HTTP-to-memory receipt issuance under synthetic verifier. 6 focused Vitest files, 102 passed. Production ingress caller, deployed provenance, and positive authorized Project-memory retrieval remain pending.",
         "source_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
         "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_RUNTIME_REGRESSION",
+        "path": "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "scope": "Exact origin/main SHA f28ec35346a9668fc300195ec53343d350b52108: 7 focused files, 105 tests passed across assertion consumer, HTTP-to-memory boundary, receipt authority, unified wiring, context builder, and App alias repository. Synthetic only; no deployed ingress or positive authorized Project read.",
+        "source_sha": "f28ec35346a9668fc300195ec53343d350b52108",
+        "status": "PASS"
+      },
+      {
+        "kind": "APP_ALIAS_IDENTITY_CONTRACT",
+        "path": "apps/web/server/services/__tests__/tenantProductIdentityContracts.test.ts",
+        "scope": "Exact origin/main SHA f28ec35346a9668fc300195ec53343d350b52108: 3 focused files, 17 tests passed; stable App identity across aliases and fail-closed inactive/cross-tenant routing are contract-level evidence, not deployed T-15 acceptance.",
+        "source_sha": "f28ec35346a9668fc300195ec53343d350b52108",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
+    "sha": "f28ec35346a9668fc300195ec53343d350b52108",
     "status": "PARTIAL",
     "task_regressions": []
   }
