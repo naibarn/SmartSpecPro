@@ -40,6 +40,11 @@ import type {
   RuntimeModelConfig,
 } from "../../../shared/agentRuntime/types";
 import type { OrchestraAssuranceRequest } from "../../../shared/agentRuntime/orchestraSchemas";
+import {
+  persistAgentRuntimeTraceEvents,
+  type AgentRuntimeTraceRepository,
+} from "./traceService";
+import { agentRuntimeTraceRepository } from "./traceRepository";
 
 export interface RuntimeUsageSummary {
   promptTokens: number;
@@ -132,6 +137,7 @@ export interface ExecuteSharedSkillRuntimeInput<TLegacy, TResult> {
   buildContextPackRequest?: BuildContextPackRequest;
   builderDeps?: AgentRuntimeRequestBuilderDependencies;
   client?: Pick<AgentRuntimeClient, "run">;
+  traceRepository?: AgentRuntimeTraceRepository;
   activationGate?: SkillCapabilityActivationGateResult;
   legacyExecute: () => Promise<TLegacy>;
   activeTransform: (
@@ -835,6 +841,24 @@ export async function executeSharedSkillRuntime<TLegacy, TResult>(
     const runtimeResponse = await client.run(runtimeRequest).catch(error => {
       throw toSharedRuntimeError(error);
     });
+    if (runtimeResponse.events?.length) {
+      await persistAgentRuntimeTraceEvents({
+        tenantId: input.tenantId,
+        runId: runtimeRequest.surface === "team" ? input.runId ?? null : null,
+        roomId: input.roomId ?? null,
+        surface: runtimeRequest.surface,
+        events: runtimeResponse.events,
+        repository: input.traceRepository ?? agentRuntimeTraceRepository,
+      }).catch(error => {
+        // Trace archival is observational. A trace store outage must not fail
+        // the user's runtime request or change Task Control completion state.
+        console.warn("[agentRuntime] failed to archive runtime trace events", {
+          tenantId: input.tenantId,
+          requestId: runtimeRequest.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
     assertRuntimeResponseReady(runtimeResponse);
     const value = await input.activeTransform(runtimeResponse);
 

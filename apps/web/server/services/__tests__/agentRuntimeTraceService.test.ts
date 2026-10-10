@@ -59,5 +59,12 @@ describe("persistAgentRuntimeTraceEvents", () => {
     expect(teamEvents).toHaveLength(1);
     expect(JSON.stringify(traces[0])).not.toContain("secret-token");
     expect(JSON.stringify(traces[0])).toContain("[REDACTED]");
+    expect(JSON.stringify(teamEvents[0])).not.toContain("secret-token");
+    expect(teamEvents[0]).toMatchObject({
+      tenantId: "tenant-1",
+      runId: "run-1",
+      roomId: "room-1",
+      eventName: "response.output_text.delta",
+    });
   });
 });
