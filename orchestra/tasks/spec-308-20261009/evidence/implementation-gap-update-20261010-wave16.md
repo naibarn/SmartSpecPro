@@ -15,7 +15,7 @@
 
 ## Verification and state
 
-- This repair has syntax-only validation pending and has not been run locally. The next CI is the consolidated candidate verification.
+- TypeScript `transpileModule` syntax-only parsing passed for the helper and callsite, and `git diff --check` passed. No local test suite was run. The next CI is the consolidated candidate verification.
 - The browser run above is simulated UI-only Vite evidence; it is not live authenticated or physical-device acceptance and does not close a requirement row.
 - MCP focused suite on the same PR candidate still fails on baseline PostgreSQL-session fixture defects and tests importing retired `agencyMcpService`; downstream check/security/audit were skipped. Live MCP smoke still fails closed because authorized endpoint/token are absent. Do not modify PR #403's separate worktree or infer these are SPEC-308 regressions.
 - The requirement ledger remains 66/66 OPEN, completion eligibility false, integration SHA unset, and production flags OFF.

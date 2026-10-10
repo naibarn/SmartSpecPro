@@ -116364,7 +116364,7 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "PENDING_CONSOLIDATED_TESTS_SECURITY_INTEGRATION_AND_LIVE_ACCEPTANCE",
+      "evidence_freshness": "PENDING_RETEST_AFTER_METRICS_HARNESS_REPAIR_AND_SECURITY_INTEGRATION",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
