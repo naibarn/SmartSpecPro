@@ -7,6 +7,7 @@ on:
       - "scripts/development-lifecycle/test_workspace_authority.py"
       - "apps/web/server/jobs/workspaceAuthorityGithub.ts"
       - "apps/web/server/jobs/workspaceAuthorityGithub.test.ts"
+      - "apps/web/server/jobs/workspaceAuthorityGithubList.test.ts"
       - "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts"
       - "apps/web/server/jobs/workspaceAuthoritySafeActionJob.test.ts"
       - "apps/web/server/services/jobExecutorRegistry.ts"
@@ -36,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile --filter @smartspec/web...
       - name: Run Git lifecycle adapter and safe action tests
         working-directory: apps/web
-        run: pnpm exec vitest run --maxWorkers=1 server/jobs/workspaceAuthorityGithub.test.ts server/jobs/workspaceAuthoritySafeActionJob.test.ts
+        run: pnpm exec vitest run --maxWorkers=1 server/jobs/workspaceAuthorityGithub.test.ts server/jobs/workspaceAuthorityGithubList.test.ts server/jobs/workspaceAuthoritySafeActionJob.test.ts
       - name: Parse canonical worker executor registration
         working-directory: apps/web
         run: pnpm exec esbuild server/services/jobExecutorRegistry.ts --format=esm --platform=node --outfile="$RUNNER_TEMP/jobExecutorRegistry.js"

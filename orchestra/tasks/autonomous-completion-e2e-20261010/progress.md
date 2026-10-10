@@ -24,6 +24,7 @@
 - `python3 -m py_compile scripts/development-lifecycle/workspace_authority.py`: passed.
 - `pnpm exec vitest run --maxWorkers=1 server/jobs/workspaceAuthorityGithub.test.ts server/jobs/workspaceAuthoritySafeActionJob.test.ts`: 23 passed for PR #536; 24 passed after lease-fencing changes. Used a temporary symlink to an existing dependency installation; it will be removed before finishing.
 - `pnpm exec esbuild server/services/jobExecutorRegistry.ts --format=esm --platform=node`: passed after wiring the lease assertion callback.
+- Added explicit tests for list-API mergeability omission, per-PR detail enrichment, and stale head rejection; the combined targeted Vitest suite is now 26/26.
 - `git diff --check`: passed.
 - Native disposable PostgreSQL exists, but no current-schema task-owned fixture is implemented or run in this checkpoint.
 
