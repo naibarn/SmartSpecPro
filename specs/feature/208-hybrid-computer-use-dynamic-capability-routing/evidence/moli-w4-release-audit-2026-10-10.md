@@ -38,3 +38,9 @@ Partial progress: release API digest equality is confirmed; signature/attestatio
 - Immutable source commit: <https://github.com/lexmount/moli/commit/eaaf6f2dbfe26bf8de33387cd3ae6c31d0931a0e>
 - OSV: <https://api.osv.dev/v1/querybatch> (POST, exact pinned versions listed above)
 - Advisories: <https://osv.dev/vulnerability/RUSTSEC-2026-0204>, <https://osv.dev/vulnerability/RUSTSEC-2024-0436>, <https://osv.dev/vulnerability/RUSTSEC-2026-0097>, <https://osv.dev/vulnerability/RUSTSEC-2026-0285>, <https://osv.dev/vulnerability/RUSTSEC-2026-0104>, <https://github.com/servo/smallbitvec/security/advisories/GHSA-97wc-2hqc-cjgr>, <https://rustsec.org/advisories/RUSTSEC-2026-0103.html>
+
+## Source-license notice refresh
+
+At the same immutable commit, the upstream workspace manifest declares `license = "MIT OR Apache-2.0"` and `license-metadata.json` identifies `LICENSE-APACHE` and `LICENSE-MIT`. The three local packages missing crate-level Cargo license fields (`moli-html-input-type`, `moli-url-policy`, and `moli-window-features`, all `0.1.0`) have no per-package override in their manifests. The source tree also contains `licenses/Chromium-BSD-3-Clause.txt` and `licenses/Selenium-NOTICE.txt`. This corroborates the repository-level dual-license coverage and confirms two bundled notices are present at the pinned source commit.
+
+This source inspection does not independently determine the legal compatibility of all 626 components, validate all bundled assets/fonts/native libraries, or produce a deployment-ready notices bundle. W4's full license/notice gate remains open pending a complete per-platform inventory and legal review.

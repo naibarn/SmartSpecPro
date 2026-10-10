@@ -116,14 +116,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "8be32bb6746af744aed36e36748910d1c49fc65a",
+    "expected_canonical_sha": "1db31747e1386c3205e87825da8d8dc4dc9c13dc",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
     "next_action": "Implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation in the canonical Runner path; do not dispatch Moli until these boundaries have executable tests.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
     "reactivation_predicate": "Paired Runner source/runtime and its authorization, egress-policy, audit, cancellation, and profile-cleanup interfaces are available for scoped integration.",
-    "resume_point": "W1 adapter baseline is integrated at fe5e04015b2b947d03d41ce800948582be40c721. W2 engine guard PR #447 is integrated at 1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e; exact-SHA focused web tests passed 16/16 and Runner library tests passed 174/174. The guard rejects non-Chromium browser engine constraints but does not establish Moli process/profile, protocol, network, tenant, cancellation or receipt isolation. W4 refreshed the v1.1.15 release digest and OSV records: GitHub asset digest matches the recorded archive, but no signed attestation was found and all 11 advisory records remain in the pinned lockfile. Continue W2 with an OS-enforced, egress-capable isolation boundary and W4 with a publisher-verifiable fixed artifact. Keep Moli undispatched and production disabled.",
+    "resume_point": "W1 adapter baseline is integrated at fe5e04015b2b947d03d41ce800948582be40c721. W2 engine guard PR #447 is integrated at 1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e; exact-SHA web tests passed 16/16 and Runner library tests 174/174. W4 refreshed v1.1.15: GitHub asset digest matches the recorded archive; root MIT/Apache license files and Chromium/Selenium notices were verified from immutable source commit; all 11 OSV records remain in affected pinned crate versions and no signed artifact attestation was found. Continue W2 with an approved egress-capable per-attempt isolation boundary; continue W4 with a publisher-verifiable fixed artifact and complete per-platform license/notice review. Keep Moli undispatched and production disabled.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -331,7 +331,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 29,
+  "generation": 30,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -374,9 +374,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "8be32bb6746af744aed36e36748910d1c49fc65a",
+    "canonical_sha": "1db31747e1386c3205e87825da8d8dc4dc9c13dc",
     "integrated": true,
-    "integrated_at": "2026-10-10T02:24:34Z"
+    "integrated_at": "2026-10-10T02:26:58Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -387,7 +387,7 @@
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md",
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
     ],
-    "updated_at": "2026-10-10T02:26:02Z"
+    "updated_at": "2026-10-10T02:28:20Z"
   },
   "manual_decisions": {
     "continuation_assessment": {
@@ -483,7 +483,7 @@
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md",
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
       ],
-      "updated_at": "2026-10-10T02:26:02Z"
+      "updated_at": "2026-10-10T02:28:20Z"
     }
   },
   "reconciliation": {
@@ -778,7 +778,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T02:26:34.020107Z",
+  "updated_at": "2026-10-10T02:29:12.290699Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
