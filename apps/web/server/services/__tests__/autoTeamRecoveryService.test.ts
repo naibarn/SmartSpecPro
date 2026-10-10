@@ -166,6 +166,64 @@ describe("autoTeamRecoveryService", () => {
     });
   });
 
+  it("bounds unchanged no-progress evaluation loops without blocking another ready run", async () => {
+    const candidates = [
+      { id: "run-stalled", tenantId: "tenant-1" },
+      { id: "run-ready", tenantId: "tenant-1" },
+    ];
+    let transactionIndex = 0;
+    mockGetDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({ orderBy: () => ({ limit: async () => candidates }) }),
+          }),
+        }),
+      }),
+      transaction: async (work: (query: any) => Promise<unknown>) => {
+        const thisTransaction = transactionIndex++;
+        let selectIndex = 0;
+        const priorNoProgress = Array.from({ length: 3 }, () => ({
+          outputJson: { outcome: "no_action" },
+        }));
+        const tx = {
+          execute: vi.fn().mockResolvedValue(undefined),
+          select: () => {
+            const currentSelect = selectIndex++;
+            const rows = thisTransaction === 0 && currentSelect === 1 ? priorNoProgress : [];
+            return {
+              from: () => ({
+                where: () => ({
+                  limit: async () => rows,
+                  orderBy: () => ({ limit: async () => rows }),
+                }),
+              }),
+            };
+          },
+        };
+        return work(tx);
+      },
+    });
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+    mockGetRun.mockImplementation(async (runId: string) => ({
+      id: runId,
+      tenantId: "tenant-1",
+      status: "running",
+      stopReason: null,
+      runtimeState: {},
+    }));
+    mockIsAutoTeamPlanReady.mockResolvedValue(true);
+    mockCreateCanonicalJobInTransaction.mockResolvedValue({ jobId: "job-ready", created: true });
+
+    const queued = await dispatchPendingAutoTeamEvaluations(new Date("2026-10-10T08:00:00.000Z"));
+
+    expect(queued).toBe(1);
+    expect(mockCreateCanonicalJobInTransaction).toHaveBeenCalledOnce();
+    expect(mockCreateCanonicalJobInTransaction.mock.calls[0]?.[0]).toMatchObject({
+      definition: { input: { runId: "run-ready" } },
+    });
+  });
+
   it("skips auto-team runs until the plan review has passed", async () => {
     mockRecoveryCandidateRows([{ id: "run-1", tenantId: "tenant-1" }]);
     mockHasQueuedAutoAdvance.mockReturnValue(false);

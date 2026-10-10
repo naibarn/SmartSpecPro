@@ -1,0 +1,27 @@
+{
+  "profile": "quick",
+  "revision": "311bc1e39100a308efcadab61fa278d607a860aa",
+  "source_pr": "https://github.com/naibarn/SmartSpecPro/pull/501",
+  "integrated": true,
+  "commands": [
+    {
+      "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/__tests__/feature192TimerPolicy.test.ts server/jobs/__tests__/feature186JobTypes.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
+      "result": "PASS",
+      "test_files": 6,
+      "tests": 29
+    },
+    {"command": "git diff --check", "result": "PASS"}
+  ],
+  "not_run": [
+    {
+      "profile": "integration",
+      "command": "actual non-production AutoTeam recovery UAT",
+      "result": "NOT_RUN",
+      "reason": "The shared smartspec_test DB is stale (worker_jobs.activeDedupeKey missing); current repository migrations include retired structures and were not run. No safe dedicated current-schema non-production database was available."
+    }
+  ],
+  "known_gaps": [
+    "No-progress suppression is implemented for three consecutive completed no_action/recovery_action_applied_unverified/recovery_dispatched_unverified evaluations of the same unchanged running state; dedicated DB verification remains pending.",
+    "Actual provider dispatch, restart/resume and end-to-end recovered task delivery have not been demonstrated in UAT."
+  ]
+}
