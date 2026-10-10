@@ -116,14 +116,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
+    "expected_canonical_sha": "87f08914837ce5ff5e06ee90967919d9f73fd746",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "Implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation in the canonical Runner path; do not dispatch Moli until these boundaries have executable tests.",
+    "next_action": "Implement and execute the Runner-owned Moli process/profile and CDP-only protocol/network boundary in the approved isolated runtime. Connect the current profile and egress-policy primitives to actual launch, listener, resolver/socket, redirect and cleanup hooks; keep the Runner Chromium-only guard until those gates pass. Then continue W3 real receipts/settlement/cancellation/cleanup against that boundary. Continue W4 artifact provenance and complete notices review independently.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
-    "reactivation_predicate": "Paired Runner source/runtime and its authorization, egress-policy, audit, cancellation, and profile-cleanup interfaces are available for scoped integration.",
-    "resume_point": "W1 safe adapter baseline is integrated at PR #445 / fe5e04015b2b947d03d41ce800948582be40c721. Scoped TypeScript typecheck and focused tests were rerun against the unchanged W1 implementation at canonical SHA 890658e999cd3020d2944d5d7c898d5e52ec8f4f: typecheck exit 0, focused tests 15 passed and 2 live-runtime skips (exit 0). W1 safe additive baseline is closed. W2 process/profile, protocol/network, tenant isolation and W3 Runner lifecycle remain open; keep Moli undispatched and production disabled.",
+    "reactivation_predicate": "An approved isolated runtime adapter is available that launches the pinned Moli build per worker_jobs attempt, binds only authorized loopback CDP, enforces resolved-IP pins across navigation/redirect at the socket layer, and exposes canonical receipt/cancellation/profile cleanup hooks.",
+    "resume_point": "Canonical verification SHA 87f08914837ce5ff5e06ee90967919d9f73fd746: W0/W1 closed; W1 scoped TypeScript exit 0 and focused tests 15 passed/2 live-runtime skipped. W2 partial primitives merged by #510 / e0f1031c453a21273f8d03d3bca81916b12834ee and reverified at canonical SHA (4 isolation tests + 1 Chromium-only guard test pass), but no Moli process, protocol listener, DNS/socket enforcement, or real process isolation is wired; keep Runner rejecting Moli. W3 baseline lifecycle tests merged by #508 / 225dbfb1196c1139f6902cbe739b3f3a403f0289 and reverified at canonical SHA (4/4 pass), but the real Moli result/receipt/settlement/cancellation/cleanup vertical slice is blocked on W2 isolated Runner adapter. W4 refreshed all 11 advisory records in #511 / 87f08914837ce5ff5e06ee90967919d9f73fd746; pinned prototype records remain applicable, no fixed Moli release or publisher attestation exists, deployed inventory and complete notices/legal review remain unresolved. Chromium stays production default and Moli production stays disabled.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -331,7 +331,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 33,
+  "generation": 34,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -374,7 +374,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
+    "canonical_sha": "87f08914837ce5ff5e06ee90967919d9f73fd746",
     "integrated": true,
     "integrated_at": "2026-10-10T02:26:58Z"
   },
@@ -387,7 +387,9 @@
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md",
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md",
       "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md",
-      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md",
+      "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
     ],
     "updated_at": "2026-10-10T02:28:20Z"
   },
@@ -485,7 +487,9 @@
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md",
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md",
         "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md",
-        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md",
+        "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
       ],
       "updated_at": "2026-10-10T02:28:20Z"
     }
@@ -782,7 +786,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:38:43.988632Z",
+  "updated_at": "2026-10-10T08:45:52.850472Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
