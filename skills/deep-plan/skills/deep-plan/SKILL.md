@@ -210,6 +210,17 @@ If resuming, **skip to step {resume_from_step}** in the workflow below.
 
 **Note:** All scripts use `{plugin_root}` from step 1's validate-env.sh output.
 
+### Canonical source preflight (every start and resume)
+
+Before codebase research, require setup output `canonical_baseline.ready == true`
+when the project defines `.development-repository.toml`. The setup script
+fetches that policy's remote/ref and checks that the workspace contains the
+fetched SHA; planning permits dirty spec artifacts but never a stale source
+baseline. If the check fails, preserve the workspace and reconcile from the
+reported SHA before research. Do not assume a local `main` is current. If the
+repository has no canonical policy, record that fallback and use its documented
+trunk workflow.
+
 ### 6. Research Decision (Auto)
 
 Read `{plugin_root}/references/research-protocol.md` for details.

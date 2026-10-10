@@ -624,16 +624,7 @@ Read `references/result-integration.md`.
 5. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
 6. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
 
-**Canonicalize each safe checkpoint:** After integrating agent results for a wave or any coherent task-owned slice, do not wait for the parent task or spec to complete. Read `references/continuous-canonicalization.md`; if the slice passes the FAST INTEGRATION GATE, use `$session-finish` and `$integration-controller` to record it in `origin/main`, verify the integrated SHA, and write/update the durable handoff before continuing. A partial wave may remain `PARTIAL` in the Orchestra lifecycle while its safe code is already canonical in `main`. If only part is safe, promote that subset and retain the rest with an owner, recovery location, and next action.
-
-**Lifecycle recovery after integration:** Read `references/completion-loop.md`. Git canonicalization is independent from task completion: an incomplete stage or open lifecycle gap does not justify keeping safe valuable code off `main`, and a commit in `main` does not mark the task complete.
-Every partial/failed result, missing artifact, contract mismatch, or new impact
-surface must create/update a gap in `orchestra/lifecycle.md`, set its
-`earliest_affected_stage`, mark downstream evidence stale, and set `resume_from`.
-Repair safe in-scope gaps before advancing to the next wave. A `PARTIAL` or
-`FAILED` wave is not a completed stage and cannot be hidden in `backlog.md`.
-
-**Pre-merge security gate trigger check (run AFTER integration, BEFORE quality gates):**
+**Pre-merge security gate trigger check (before integration):**
 
 Check whether ANY of these conditions apply to the completed wave's file changes:
 
@@ -649,7 +640,8 @@ Check whether ANY of these conditions apply to the completed wave's file changes
 | Security-related dependency version changed (`package.json`, `pnpm-lock.yaml`, `pyproject.toml`, `uv.lock`, Docker image, or GitHub Actions version) |
 | Infrastructure configuration changed (nginx, docker-compose, systemd service files) |
 
-If ANY trigger applies: set `security_gate_required = true`. Gate runs in Step 6.
+If ANY trigger applies: set `security_gate_required = true`. Run the gate in
+Step 6 before integrating this slice.
 
 ---
 
@@ -757,6 +749,28 @@ After all 3 complete, orchestra dispatches `ssp-security-review` as aggregator w
 | FAIL | N CRITICAL | Mark `TRUE_BLOCKER` for the affected path with evidence; continue unrelated safe WorkUnits. The conductor cannot accept critical security risk on the user's behalf. |
 
 ---
+
+**Canonicalize each verified safe slice:** After every repository-required and
+slice-required pre-merge gate passes, do not wait for the parent task or SPEC
+to complete. Read `references/continuous-canonicalization.md`; use
+`$session-finish` and `$integration-controller` through repository policy,
+verify and record the exact canonical SHA, and write/update the durable
+handoff before continuing. A partial wave or open SPEC may remain `PARTIAL`
+while safe code is already canonical. If only part is safe, promote that
+subset and retain the rest with an owner, recovery location, and next action.
+
+**Lifecycle recovery and automatic continuation:** Read
+`references/completion-loop.md`. Integration does not complete requirements.
+Record partial/failed results, missing artifacts, contract mismatches, and new
+impact surfaces in `orchestra/lifecycle.md`; set `earliest_affected_stage`,
+mark only downstream evidence stale, and set `resume_from`. Once a slice is
+integrated and its SHA reconciled, immediately select and start the next
+dependency-ready WorkUnit through the existing lifecycle kernel, even while
+other WorkUnits or the parent SPEC remain open. A `WAITING_*` unit blocks only
+its dependents. If post-merge checks find a regression, use the existing
+repair/revert path before further integration. Use targeted impact closure to
+identify newly affected paths, tests, contracts, and stale evidence; skip
+revalidation only when inputs are unchanged and repository policy permits it.
 
 ## Step 7: Progress Update
 

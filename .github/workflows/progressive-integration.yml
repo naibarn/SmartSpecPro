@@ -1,0 +1,35 @@
+name: Progressive Integration Checks
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  progressive_integration_gate:
+    name: progressive_integration_gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run lifecycle tests for affected skill changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+        run: |
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths.txt"
+          if ! rg -q '^(skills/(development-lifecycle|orchestra|integration-controller|session-finish|deep-plan|deep-implement|deep-plan-quick|deep-project)/|scripts/development-lifecycle/|\.github/workflows/progressive-integration\.yml$)' "$RUNNER_TEMP/changed-paths.txt"; then
+            echo "No progressive-integration policy changes; gate is not applicable."
+            exit 0
+          fi
+          python -m unittest \
+            scripts.development-lifecycle.test_canonical_source \
+            scripts.development-lifecycle.test_progressive_integration \
+            scripts.development-lifecycle.test_deep_workflow_alignment

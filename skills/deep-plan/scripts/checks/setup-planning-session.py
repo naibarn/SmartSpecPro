@@ -16,6 +16,7 @@ Usage:
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -35,6 +36,39 @@ from lib.task_storage import (
     generate_section_tasks_to_write,
     write_tasks,
 )
+
+
+def check_canonical_baseline(file_path: Path) -> dict | None:
+    """Fetch the configured project trunk before codebase research begins."""
+    candidates = (file_path.parent, Path.cwd())
+    repo_root = None
+    for candidate in candidates:
+        result = subprocess.run(
+            ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            repo_root = Path(result.stdout.strip()).resolve()
+            break
+    if repo_root is None or not (repo_root / ".development-repository.toml").exists():
+        return None
+    helper = repo_root / "scripts" / "development-lifecycle" / "canonical_source.py"
+    if not helper.is_file():
+        return {"ready": False, "status": "PREFLIGHT_TOOL_MISSING", "repository_root": str(repo_root)}
+    result = subprocess.run(
+        [sys.executable, str(helper), "preflight", "--repository", str(repo_root), "--allow-dirty"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        report = {"ready": False, "status": "PREFLIGHT_FAILED", "detail": result.stderr.strip()}
+    report["ready"] = result.returncode == 0 and report.get("ready") is True
+    return report
 from lib.tasks import (
     STEP_NAMES,
     TASK_DEPENDENCIES,
@@ -322,6 +356,16 @@ def main():
         print(json.dumps(result, indent=2))
         return 1
 
+    canonical_baseline = check_canonical_baseline(file_path)
+    if canonical_baseline is not None and not canonical_baseline["ready"]:
+        print(json.dumps({
+            "success": False,
+            "mode": "canonical_baseline_reconciliation_required",
+            "error": "Planning must inspect the latest fetched canonical source. Reconcile this workspace before continuing.",
+            "canonical_baseline": canonical_baseline,
+        }, indent=2))
+        return 1
+
     # Planning dir is always the parent of the spec file
     # (parent must exist since the file exists)
     planning_dir = file_path.parent
@@ -557,6 +601,7 @@ def main():
         "success": True,
         "mode": mode,
         "planning_dir": str(planning_dir),
+        "canonical_baseline": canonical_baseline,
         "initial_file": str(file_path),
         "plugin_root": str(plugin_root),
         "review_mode": review_mode,

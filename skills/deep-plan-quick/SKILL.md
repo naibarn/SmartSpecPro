@@ -32,6 +32,12 @@ Produce a compact but implementation-safe planning package:
 - `<planning_dir>/sections/index.md`
 - `<planning_dir>/sections/section-*.md`
 
+The implementation plan and each section must also carry the slice contract:
+owned paths/owner, true prerequisites, observable acceptance, impacted required
+checks, merge readiness, feature exposure/fallback, and rollback. Identify the
+earliest useful deliverable; parent SPEC acceptance is not a prerequisite for
+an independently verified slice to integrate.
+
 These files are the source of truth.
 
 ## Input Modes
@@ -89,6 +95,15 @@ Review until findings converge: two consecutive rounds with no meaningful delta 
 This applies even to small plans. Small scope is not a reason to skip stabilization.
 
 ## Workflow
+
+Before repository research on a new or resumed plan, fetch and verify the
+repository-policy canonical ref. If the repo contains
+`scripts/development-lifecycle/canonical_source.py`, run
+`python3 scripts/development-lifecycle/canonical_source.py preflight --repository <repo> --allow-dirty`.
+Proceed only when it reports `BASELINE_READY`; otherwise preserve local work
+and reconcile from its reported SHA. Do not treat local `main` as a baseline
+unless it contains the freshly fetched canonical SHA. If no canonical policy
+exists, record the repository's actual trunk workflow.
 
 ### 1. Normalize the Request
 

@@ -18,6 +18,34 @@ Before writing the plan, these files will be in `{planning_dir}`:
 | `claude-research.md` | Codebase patterns, web research findings (if research was done) | Inform architecture decisions, follow existing conventions |
 | `claude-interview.md` | Q&A transcript from stakeholder interview | Clarify ambiguities, understand priorities and constraints |
 
+## Trunk-Based Slice Plan
+
+Decompose work into the smallest useful slices that can be integrated while
+the parent SPEC remains open. Do not make final SPEC acceptance or unrelated
+sections prerequisites for an independently usable slice. Identify the
+earliest deliverable explicitly and keep only real interface/data dependencies
+in the dependency graph.
+
+Every implementation slice/section must state:
+
+- **Owned paths and owner** — bounded write scope and the accountable WorkUnit.
+- **Prerequisites** — exact interface, schema, or evidence dependency; omit
+  unrelated section ordering.
+- **Acceptance** — observable behavior that closes this slice, distinct from
+  parent SPEC acceptance.
+- **Verification** — impacted compile/type checks, focused tests, security or
+  authorization checks, and API/schema compatibility checks required by repo
+  policy.
+- **Integration readiness** — whether it can merge alone, the remaining
+  prerequisite if it cannot, and the condition that makes it ready.
+- **Exposure and fallback** — feature flag/tenant exposure or a backward-
+  compatible path that keeps unfinished behavior inert and main usable.
+- **Rollback** — the safe revert or recovery action for this slice.
+
+Prefer a complete vertical slice over a large layer that cannot be exercised.
+Sections that are only planning/research dependencies must not force unrelated
+code slices to wait. Mark the SPEC and each slice lifecycle independently.
+
 **Read all three files before writing.** The plan should synthesize these inputs, not ignore them.
 
 ---

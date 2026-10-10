@@ -10,6 +10,7 @@ from scripts.checks.setup_implementation_session import (
     check_git_repo,
     check_current_branch,
     check_working_tree_status,
+    check_canonical_baseline,
     detect_commit_style,
     detect_section_review_state,
     infer_session_state,
@@ -17,6 +18,48 @@ from scripts.checks.setup_implementation_session import (
 )
 
 SETUP_SCRIPT = Path(__file__).parent.parent / "scripts" / "checks" / "setup_implementation_session.py"
+
+
+def test_canonical_baseline_blocks_stale_branch_without_rewriting_it(tmp_path):
+    def git(*args, cwd=None):
+        result = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True)
+        assert result.returncode == 0, result.stderr
+        return result.stdout.strip()
+
+    remote, seed, work = tmp_path / "remote.git", tmp_path / "seed", tmp_path / "work"
+    git("init", "--bare", "--initial-branch=main", str(remote))
+    git("clone", str(remote), str(seed))
+    git("-C", str(seed), "config", "user.name", "Test")
+    git("-C", str(seed), "config", "user.email", "test@example.invalid")
+    (seed / "source.txt").write_text("v1\n")
+    git("-C", str(seed), "add", "source.txt")
+    git("-C", str(seed), "commit", "-m", "v1")
+    git("-C", str(seed), "push", "origin", "main")
+    git("clone", "--branch", "main", str(remote), str(work))
+    git("-C", str(work), "config", "user.name", "Test")
+    git("-C", str(work), "config", "user.email", "test@example.invalid")
+    git("-C", str(work), "checkout", "-b", "codex/setup-fixture")
+
+    (seed / "source.txt").write_text("v2\n")
+    git("-C", str(seed), "commit", "-am", "v2")
+    git("-C", str(seed), "push", "origin", "main")
+    (work / ".development-repository.toml").write_text(
+        "[repository]\nrepository_id='fixture'\nremote='origin'\n"
+        f"canonical_ref='refs/heads/main'\nsource_root='{tmp_path / 'sources'}'\n"
+    )
+    helper = work / "scripts" / "development-lifecycle" / "canonical_source.py"
+    helper.parent.mkdir(parents=True)
+    source_helper = Path(__file__).resolve().parents[3] / "scripts" / "development-lifecycle" / "canonical_source.py"
+    shutil.copy2(source_helper, helper)
+    git("-C", str(work), "add", ".development-repository.toml", "scripts/development-lifecycle/canonical_source.py")
+    git("-C", str(work), "commit", "-m", "add lifecycle preflight fixture")
+    old_sha = git("-C", str(work), "rev-parse", "HEAD")
+
+    result = check_canonical_baseline(work)
+    assert result["ready"] is False
+    assert result["next_action"] == "RECONCILE_WITH_FETCHED_CANONICAL_SHA"
+    assert git("-C", str(work), "rev-parse", "HEAD") == old_sha
+    assert git("-C", str(work), "status", "--porcelain") == ""
 
 
 def test_section_checkpoints_do_not_complete_finalization_task():
