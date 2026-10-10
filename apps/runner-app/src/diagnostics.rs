@@ -1688,6 +1688,22 @@ fn run_live_control_loop_inner(
             }
             continue;
         }
+        if !browser_execution_capacity_available(browser_processes.len()) {
+            send_runner_receipt(
+                endpoint,
+                transport,
+                channel,
+                node_kind,
+                &command,
+                &mut receipt_sequences,
+                &mut receipt_journal,
+                RunnerJobReceiptEventType::ExecutionFailed,
+                "failed",
+                Some("RUNNER_BROWSER_CONCURRENCY_LIMIT"),
+                None,
+            )?;
+            continue;
+        }
         let candidate = scan_environment(config.profile)
             .into_iter()
             .find(|tool| tool.adapter_id.as_deref() == Some("browser.v1"))
@@ -1767,6 +1783,12 @@ struct ActiveBrowserExecution {
     process: BrowserExecutionHandle,
     cancel_requested: bool,
     cancel_commands: Vec<RunnerJobCommand>,
+}
+
+const MAX_ACTIVE_BROWSER_EXECUTIONS: usize = 1;
+
+fn browser_execution_capacity_available(active_count: usize) -> bool {
+    active_count < MAX_ACTIVE_BROWSER_EXECUTIONS
 }
 
 fn poll_browser_executions<T: ControlTransport>(
@@ -3682,8 +3704,9 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::{
-        build_keepalive_envelope, cancellation_target_command_id, cancellation_target_matches,
-        capability_snapshot, delivery_transport_label, keepalive_due, parse_refresh_interval,
+        browser_execution_capacity_available, build_keepalive_envelope,
+        cancellation_target_command_id, cancellation_target_matches, capability_snapshot,
+        delivery_transport_label, keepalive_due, parse_refresh_interval,
         persist_and_send_runner_receipt, recover_interrupted_external_agent_commands,
         replay_pending_runner_receipts, runner_receipt_payload, semantic_receipt_payload,
         snapshot_evidence, update_ack_statuses, CAPABILITY_SNAPSHOT_REFRESH_INTERVAL,
@@ -3832,6 +3855,13 @@ mod lifecycle_tests {
         target.attempt = cancel.attempt;
         cancel.payload["targetCommandId"] = json!("execute-other");
         assert!(!cancellation_target_matches(&cancel, &target));
+    }
+
+    #[test]
+    fn browser_execution_capacity_is_bounded_to_one_active_process_per_runner() {
+        assert!(browser_execution_capacity_available(0));
+        assert!(!browser_execution_capacity_available(1));
+        assert!(!browser_execution_capacity_available(2));
     }
 
     #[test]

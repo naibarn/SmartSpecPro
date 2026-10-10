@@ -1,7 +1,7 @@
 {
   "evidenceVersion": 1,
   "workUnit": "SmartAIHub R5 SPEC-304 trusted local ingress to persisted SPEC-269 Project memory",
-  "sourceSha": "a093288aa2582153e380c0e84b43da9a3313d865",
+  "sourceSha": "056922d71912f5bededd06d173a9e57580a9fcb9",
   "canonicalBaselineSha": "23e2601ecc8b0662c343c4b3f6204a4424a50899",
   "verification": {
     "persistedCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
@@ -62,5 +62,15 @@
     "No worker-crossing App context was tested.",
     "App-private memory isolation remains unavailable in the current persistence model.",
     "SPEC-269 T-01 through T-23 remain partial; this evidence does not close any full Spec."
-  ]
+  ],
+  "postIntegrationVerification": {
+    "canonicalSha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+    "verifiedAt": "2026-10-10T09:49:32Z",
+    "persistedStatus": "PASS",
+    "persistedTestFiles": 1,
+    "persistedTests": 5,
+    "focusedStatus": "PASS",
+    "focusedTestFiles": 4,
+    "focusedTests": 38
+  }
 }
