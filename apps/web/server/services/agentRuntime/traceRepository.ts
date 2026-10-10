@@ -80,8 +80,8 @@ export const agentRuntimeTraceRepository: AgentRuntimeTraceRepository = {
         sequence: (last?.sequence ?? 0) + 1,
         eventName: record.eventName.slice(0, 160),
         sourceComponent: "agent_runtime",
-        severity: "info",
-        summary: record.eventName.slice(0, 500),
+        severity: record.severity,
+        summary: record.summary.slice(0, 500),
         // Task Control receives only bounded identifiers. Runtime payloads can
         // contain model or user content and remain in the redacted archive only.
         redactedMetadataJson: {
