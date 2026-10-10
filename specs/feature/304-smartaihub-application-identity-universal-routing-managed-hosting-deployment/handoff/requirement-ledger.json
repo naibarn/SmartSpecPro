@@ -1,5 +1,5 @@
 {
-  "generation": 4,
+  "generation": 5,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -33,7 +33,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
+      "evidence_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -47,10 +47,16 @@
           "path": "apps/web/server/routers/appIdentity.ts",
           "source_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
           "summary": "Exposes protected route resolution and derives tenant scope only from authenticated account context."
+        },
+        {
+          "kind": "REFERENCE_MINI_APP_ROUTE_DISPATCH",
+          "path": "apps/web/client/src/pages/MiniAppRoute.tsx",
+          "source_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
+          "summary": "Dispatches only the canonical Research Notes and Project Wiki App IDs to their reference runtimes; an unrelated active App is shown as unsupported rather than receiving Research Notes CRUD."
         }
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Add reference Mini App UI and persisted CRUD/actions using the App route API; apply migration 0392 only to a verified non-production database and run integration evidence.",
+      "next_action": "Apply migration 0392 only to an authorized non-production database, then run authenticated App route, persisted CRUD, cross-tenant denial, and browser acceptance on that target. Deployment remains a separate gate.",
       "requirement_digest": "860a0105aee860bc035dc55b3b4893d093312ac13cd89fffbef97e31f0e11081",
       "requirement_id": "REQ-8267DE389563",
       "requirement_text": "`AppIdentity` has stable opaque `appId` and `publicAppId`, tenant/publisher relationships, lifecycle, canonical product identity, policy references, creation time, and aliases. Listing, Release, Deployment, and channel records reference it; none becomes its identity. The canonical SmartAIHub route is `https://smartaihub.app/apps/{publicAppId}`. URL/slug/domain is mutable alias data and MUST NOT be used as canonical identity.",
@@ -63,9 +69,16 @@
           "result": "PASS",
           "source_sha": "d50caa27f2e29b0e725398b1b5653aed9cb90562",
           "summary": "15 focused route, repository and identity contract tests passed on the exact integrated tree."
+        },
+        {
+          "kind": "REFERENCE_MINI_APP_UI_TEST",
+          "path": "apps/web/client/src/pages/__tests__/MiniAppRoute.test.tsx",
+          "result": "PASS",
+          "source_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
+          "summary": "Three focused UI suites passed: canonical Research Notes mapping, canonical Project Wiki mapping, unrelated active App unsupported state, and persisted page/note UI behavior; 9 tests total."
         }
       ],
-      "verification_method": "pnpm --filter @smartspec/web exec vitest run server/services/__tests__/tenantProductIdentityContracts.test.ts"
+      "verification_method": "Run the focused MiniAppRoute, ResearchNotesPage, and ProjectWikiPagesPage Vitest suites against the integrated SHA. Apply migration 0392 only to an authorized non-production database before runtime CRUD acceptance."
     },
     {
       "applicability": "UNASSESSED",
