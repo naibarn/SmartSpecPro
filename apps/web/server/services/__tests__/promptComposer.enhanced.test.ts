@@ -486,6 +486,10 @@ describe("composePrompt -- workspace memory parity", () => {
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: 99 } as any,
     });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      { tenantId: "tenant-1", lifecycle: "ACTIVE", principalId: "user:42" },
+    ]);
 
     await composePrompt({
       ...baseInput,
@@ -538,6 +542,10 @@ describe("composePrompt -- workspace memory parity", () => {
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: 77 } as any,
     });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      { tenantId: "tenant-1", lifecycle: "ACTIVE", principalId: "user:42" },
+    ]);
 
     const result = await composePrompt({
       ...baseInput,
@@ -716,7 +724,7 @@ describe("composePrompt -- workspace memory parity", () => {
     expect(prompt).not.toContain("project-memory-secret");
   });
 
-  it("omits legacy-scoped context if its project becomes canonical during assembly", async () => {
+  it("keeps an initially unregistered project out of scope if it becomes canonical during assembly", async () => {
     mockRetrieveForPrompt.mockResolvedValue([
       {
         memory: {
@@ -757,10 +765,14 @@ describe("composePrompt -- workspace memory parity", () => {
     expect(result.messages.map(message => message.content).join("\n")).not.toContain(
       "project-memory-secret",
     );
-    expect(mockLeftJoinCalls).toBe(1);
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: 42,
+      projectId: null,
+    });
+    expect(mockLeftJoinCalls).toBe(0);
   });
 
-  it("omits legacy-scoped context if it becomes canonical without an initiating user", async () => {
+  it("keeps an initially unregistered project out of scope without an initiating user", async () => {
     mockRetrieveForPrompt.mockImplementation(async () => {
       tableResults.set(canonicalProjects, [
         {
@@ -801,7 +813,11 @@ describe("composePrompt -- workspace memory parity", () => {
     expect(result.messages.map(message => message.content).join("\n")).not.toContain(
       "project-memory-secret",
     );
-    expect(mockLeftJoinCalls).toBe(1);
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: undefined,
+      projectId: null,
+    });
+    expect(mockLeftJoinCalls).toBe(0);
   });
 
   it("omits scoped context if a canonical project disappears during assembly", async () => {
@@ -949,19 +965,66 @@ describe("composePrompt -- workspace memory parity", () => {
     }
   });
 
-  it("preserves project scope for an ID absent from the canonical registry", async () => {
-    mockRetrieveForPrompt.mockResolvedValue([]);
+  it("keeps project-scoped retrieval global-only for an ID absent from the canonical registry", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "project",
+          projectId: "legacy-project-id",
+          memoryKind: "fact",
+          title: "Project secret",
+          content: "legacy-project-memory-secret",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      },
+      {
+        memory: {
+          ownerType: "user",
+          projectId: null,
+          memoryKind: "fact",
+          title: "Personal preference",
+          content: "global-personal-memory",
+        },
+        score: 0.8,
+        matchType: "keyword",
+      },
+    ] as any);
+    mockGetRuleMemories.mockResolvedValue([
+      {
+        id: "legacy-project-rule",
+        projectId: "legacy-project-id",
+        title: "Project rule",
+        content: "legacy-project-rule-secret",
+      },
+    ] as any);
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
     });
     tableResults.set(canonicalProjects, []);
 
-    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const prompt = result.messages.map(message => message.content).join("\n");
 
     expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
       initiatedByUserId: 42,
-      projectId: "legacy-project-id",
+      projectId: null,
     });
-    expect(mockGetProjectSummaries).toHaveBeenCalledWith("legacy-project-id", 42, 3);
+    expect(mockGetRuleMemories).toHaveBeenCalledWith(
+      "tenant-1",
+      42,
+      "persona-1",
+      null,
+    );
+    expect(mockGetProjectSummaries).not.toHaveBeenCalled();
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
+      42,
+      undefined,
+      null,
+      "persona-1",
+    );
+    expect(prompt).not.toContain("legacy-project-memory-secret");
+    expect(prompt).not.toContain("legacy-project-rule-secret");
+    expect(prompt).toContain("global-personal-memory");
   });
 });
