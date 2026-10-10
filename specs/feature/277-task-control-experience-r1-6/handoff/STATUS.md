@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: Next executable WorkUnit: run non-production worker_jobs/outbox AutoTeam recovery UAT, capture actual recovery state change, and verify the externally managed Cloudflare scheduler invocation. Keep broader SPEC-277 authority/relevance and 429 requirement reconciliation unresolved.
-- Manifest generation: 16
+- Next action: Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.
+- Manifest generation: 17
