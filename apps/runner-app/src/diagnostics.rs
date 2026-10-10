@@ -1,7 +1,7 @@
 use crate::adapters::{
     apply_probe, build_browser_authorization_grant, build_external_agent_authorization_ref,
-    execute_browser_candidate, probe_browser_candidate, probe_candidate, AdapterProbeResult,
-    BrowserAuthorizationGrant,
+    probe_browser_candidate, probe_candidate, AdapterProbeResult, BrowserAuthorizationGrant,
+    BrowserExecutionHandle,
 };
 use crate::config::RunnerConfig;
 use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
@@ -1080,6 +1080,7 @@ fn run_live_control_loop(
     stop: Option<&AtomicBool>,
 ) -> Result<String, String> {
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
+    let mut browser_processes = std::collections::HashMap::<String, ActiveBrowserExecution>::new();
     let result = run_live_control_loop_inner(
         config,
         endpoint,
@@ -1092,6 +1093,7 @@ fn run_live_control_loop(
         browser_grant,
         stop,
         &mut external_processes,
+        &mut browser_processes,
     );
     if result
         .as_ref()
@@ -1099,6 +1101,9 @@ fn run_live_control_loop(
     {
         for active in external_processes.values_mut() {
             let _ = active.process.cancel();
+        }
+        for active in browser_processes.values_mut() {
+            active.process.request_cancel();
         }
     }
     result
@@ -1140,6 +1145,7 @@ fn run_live_control_loop_inner(
     mut browser_grant: Option<BrowserAuthorizationGrant>,
     stop: Option<&AtomicBool>,
     external_processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
+    browser_processes: &mut std::collections::HashMap<String, ActiveBrowserExecution>,
 ) -> Result<String, String> {
     let tenant_id = snapshot
         .get("tenantId")
@@ -1295,6 +1301,15 @@ fn run_live_control_loop_inner(
             node_kind,
             &mut receipt_sequences,
             external_processes,
+            &mut receipt_journal,
+        )?;
+        poll_browser_executions(
+            endpoint,
+            transport,
+            channel,
+            node_kind,
+            &mut receipt_sequences,
+            browser_processes,
             &mut receipt_journal,
         )?;
         let incoming = match transport.receive_server_message() {
@@ -1456,51 +1471,83 @@ fn run_live_control_loop_inner(
         if command.command_type == "cancel" {
             let mut interrupted_target = None;
             let mut interrupted_recovery_ref = None;
-            let disposition = if command.execution_kind != "external_agent_task" {
-                (
-                    RunnerJobReceiptEventType::CommandRejected,
-                    "rejected",
-                    Some("RUNNER_CANCEL_EXECUTION_KIND_UNSUPPORTED"),
-                )
-            } else if let Some(target_command_id) = cancellation_target_command_id(&command) {
-                let matching_target = external_processes
-                    .get(target_command_id)
-                    .is_some_and(|active| cancellation_target_matches(&command, &active.command));
-                if !matching_target {
-                    (
-                        RunnerJobReceiptEventType::CommandRejected,
-                        "rejected",
-                        Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
-                    )
-                } else if let Some(mut active) = external_processes.remove(target_command_id) {
-                    interrupted_target = Some(active.command.clone());
-                    interrupted_recovery_ref = active.process.recovery_ref();
-                    match active.process.cancel() {
-                        Ok(()) => (
+            let mut defer_browser_cancel_receipt = false;
+            let target_command_id = cancellation_target_command_id(&command);
+            let disposition = match (command.execution_kind.as_str(), target_command_id) {
+                ("external_agent_task", Some(target_command_id)) => {
+                    let matching_target =
+                        external_processes
+                            .get(target_command_id)
+                            .is_some_and(|active| {
+                                cancellation_target_matches(&command, &active.command)
+                            });
+                    if !matching_target {
+                        (
+                            RunnerJobReceiptEventType::CommandRejected,
+                            "rejected",
+                            Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
+                        )
+                    } else if let Some(mut active) = external_processes.remove(target_command_id) {
+                        interrupted_target = Some(active.command.clone());
+                        interrupted_recovery_ref = active.process.recovery_ref();
+                        match active.process.cancel() {
+                            Ok(()) => (
+                                RunnerJobReceiptEventType::CancelAcknowledged,
+                                "cancelled",
+                                None,
+                            ),
+                            Err(_) => (
+                                RunnerJobReceiptEventType::UnknownOutcome,
+                                "unknown",
+                                Some("RUNNER_CANCEL_OUTCOME_UNKNOWN"),
+                            ),
+                        }
+                    } else {
+                        (
+                            RunnerJobReceiptEventType::CommandRejected,
+                            "rejected",
+                            Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
+                        )
+                    }
+                }
+                ("computer_use.browser", Some(target_command_id))
+                    if command.adapter_id == "browser.v1" =>
+                {
+                    if let Some(active) = browser_processes
+                        .get_mut(target_command_id)
+                        .filter(|active| cancellation_target_matches(&command, &active.command))
+                    {
+                        active.cancel_requested = true;
+                        active.process.request_cancel();
+                        active.cancel_commands.push(command.clone());
+                        defer_browser_cancel_receipt = true;
+                        (
                             RunnerJobReceiptEventType::CancelAcknowledged,
                             "cancelled",
                             None,
-                        ),
-                        Err(_) => (
-                            RunnerJobReceiptEventType::UnknownOutcome,
-                            "unknown",
-                            Some("RUNNER_CANCEL_OUTCOME_UNKNOWN"),
-                        ),
+                        )
+                    } else {
+                        (
+                            RunnerJobReceiptEventType::CommandRejected,
+                            "rejected",
+                            Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
+                        )
                     }
-                } else {
-                    (
-                        RunnerJobReceiptEventType::CommandRejected,
-                        "rejected",
-                        Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
-                    )
                 }
-            } else {
-                (
+                (_, None) => (
                     RunnerJobReceiptEventType::CommandRejected,
                     "rejected",
                     Some("RUNNER_CANCEL_TARGET_REQUIRED"),
-                )
+                ),
+                _ => (
+                    RunnerJobReceiptEventType::CommandRejected,
+                    "rejected",
+                    Some("RUNNER_CANCEL_EXECUTION_KIND_UNSUPPORTED"),
+                ),
             };
+            if defer_browser_cancel_receipt {
+                continue;
+            }
             send_cancel_receipt(
                 endpoint,
                 transport,
@@ -1647,46 +1694,26 @@ fn run_live_control_loop_inner(
             .ok_or_else(|| "RUNNER_BROWSER_NOT_DISCOVERED".to_string());
         let result = candidate.and_then(|candidate| {
             let grant = browser_grant
-                .as_ref()
+                .clone()
                 .ok_or_else(|| "RUNNER_BROWSER_AUTHORIZATION_REQUIRED".to_string())?;
-            execute_browser_candidate(
-                &candidate,
+            BrowserExecutionHandle::start(
+                candidate,
                 std::time::Duration::from_secs(30),
                 grant,
-                &command.payload,
+                command.payload.clone(),
             )
         });
         match result {
-            Ok(evidence) => {
-                if let Some(observation) = evidence.semantic_observation.as_ref() {
-                    channel.record_semantic_observation(&command, observation)?;
-                }
-                send_runner_receipt(
-                    endpoint,
-                    transport,
-                    channel,
-                    node_kind,
-                    &command,
-                    &mut receipt_sequences,
-                    &mut receipt_journal,
-                    RunnerJobReceiptEventType::EvidenceCreated,
-                    "evidence",
-                    None,
-                    Some(&evidence),
-                )?;
-                send_runner_receipt(
-                    endpoint,
-                    transport,
-                    channel,
-                    node_kind,
-                    &command,
-                    &mut receipt_sequences,
-                    &mut receipt_journal,
-                    RunnerJobReceiptEventType::ExecutionCompleted,
-                    "completed",
-                    None,
-                    Some(&evidence),
-                )?;
+            Ok(process) => {
+                browser_processes.insert(
+                    command.command_id.clone(),
+                    ActiveBrowserExecution {
+                        command,
+                        process,
+                        cancel_requested: false,
+                        cancel_commands: Vec::new(),
+                    },
+                );
             }
             Err(error) => {
                 send_runner_receipt(
@@ -1733,6 +1760,156 @@ fn build_keepalive_envelope(
 struct ActiveExternalAgent {
     command: RunnerJobCommand,
     process: ExternalAgentProcess,
+}
+
+struct ActiveBrowserExecution {
+    command: RunnerJobCommand,
+    process: BrowserExecutionHandle,
+    cancel_requested: bool,
+    cancel_commands: Vec<RunnerJobCommand>,
+}
+
+fn poll_browser_executions<T: ControlTransport>(
+    endpoint: &ControlEndpoint,
+    transport: &mut T,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    processes: &mut std::collections::HashMap<String, ActiveBrowserExecution>,
+    receipt_journal: &mut RunnerReceiptJournal,
+) -> Result<(), String> {
+    let command_ids = processes.keys().cloned().collect::<Vec<_>>();
+    for command_id in command_ids {
+        let outcome = processes
+            .get_mut(&command_id)
+            .map(|active| active.process.try_collect());
+        let Some(outcome) = outcome else { continue };
+        match outcome {
+            Ok(None) => {}
+            Ok(Some(result)) => {
+                let active = processes
+                    .remove(&command_id)
+                    .expect("active browser execution exists");
+                if active.cancel_requested {
+                    let cancelled_cleanly = matches!(
+                        &result,
+                        Err(error) if error == "RUNNER_BROWSER_EXECUTION_CANCELLED"
+                    );
+                    for cancel_command in &active.cancel_commands {
+                        let (event_type, status, error) = if cancelled_cleanly {
+                            (
+                                RunnerJobReceiptEventType::CancelAcknowledged,
+                                "cancelled",
+                                None,
+                            )
+                        } else if result.is_ok() {
+                            (
+                                RunnerJobReceiptEventType::CommandRejected,
+                                "rejected",
+                                Some("RUNNER_CANCEL_TARGET_ALREADY_COMPLETED"),
+                            )
+                        } else {
+                            (
+                                RunnerJobReceiptEventType::UnknownOutcome,
+                                "unknown",
+                                Some("RUNNER_CANCEL_OUTCOME_UNKNOWN"),
+                            )
+                        };
+                        send_cancel_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            cancel_command,
+                            receipt_sequences,
+                            receipt_journal,
+                            event_type,
+                            status,
+                            error,
+                            None,
+                            None,
+                            None,
+                        )?;
+                    }
+                }
+                if active.cancel_requested
+                    && matches!(
+                        &result,
+                        Err(error) if error == "RUNNER_BROWSER_EXECUTION_CANCELLED"
+                    )
+                {
+                    continue;
+                }
+                match result {
+                    Ok(evidence) => {
+                        if let Some(observation) = evidence.semantic_observation.as_ref() {
+                            channel.record_semantic_observation(&active.command, observation)?;
+                        }
+                        send_runner_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &active.command,
+                            receipt_sequences,
+                            receipt_journal,
+                            RunnerJobReceiptEventType::EvidenceCreated,
+                            "evidence",
+                            None,
+                            Some(&evidence),
+                        )?;
+                        send_runner_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &active.command,
+                            receipt_sequences,
+                            receipt_journal,
+                            RunnerJobReceiptEventType::ExecutionCompleted,
+                            "completed",
+                            None,
+                            Some(&evidence),
+                        )?;
+                    }
+                    Err(error) => {
+                        send_runner_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &active.command,
+                            receipt_sequences,
+                            receipt_journal,
+                            RunnerJobReceiptEventType::ExecutionFailed,
+                            "failed",
+                            Some(&error),
+                            None,
+                        )?;
+                    }
+                }
+            }
+            Err(error) => {
+                let active = processes
+                    .remove(&command_id)
+                    .expect("active browser execution exists");
+                send_runner_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &active.command,
+                    receipt_sequences,
+                    receipt_journal,
+                    RunnerJobReceiptEventType::UnknownOutcome,
+                    "unknown",
+                    Some(&error),
+                    None,
+                )?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn cancellation_target_command_id(command: &RunnerJobCommand) -> Option<&str> {
@@ -3604,6 +3781,56 @@ mod lifecycle_tests {
         target.fencing_token += 1;
         assert!(!cancellation_target_matches(&cancel, &target));
         cancel.command_id = "execute-1".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+    }
+
+    #[test]
+    fn browser_cancellation_requires_the_full_original_runner_binding() {
+        let mut cancel = RunnerJobCommand {
+            command_id: "cancel-browser-1".into(),
+            command_type: "cancel".into(),
+            contract_version: crate::protocol::RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-browser-1".into(),
+            attempt: 2,
+            lease_id: "lease-browser-1".into(),
+            fencing_token: 9,
+            tenant_id: "tenant-browser-1".into(),
+            user_id: None,
+            project_ref: None,
+            workspace_ref: None,
+            runner_id: "runner-browser-1".into(),
+            runner_session_id: "session-browser-1".into(),
+            capability_snapshot_id: "capability-browser-1".into(),
+            capability_snapshot_revision: "revision-browser-1".into(),
+            control_plane_origin: "http://localhost:3000".into(),
+            execution_kind: "computer_use.browser".into(),
+            adapter_id: "browser.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: Some("chromium".into()),
+            idempotency_key: "cancel:job-browser-1:2".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-browser-1".into(),
+            input_ref: "input-browser-1".into(),
+            payload: json!({"targetCommandId": "execute-browser-1"}),
+        };
+        let mut target = RunnerJobCommand {
+            command_id: "execute-browser-1".into(),
+            command_type: "execute".into(),
+            payload: json!({}),
+            ..cancel.clone()
+        };
+        assert!(cancellation_target_matches(&cancel, &target));
+
+        target.capability_snapshot_revision = "stale-revision".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.capability_snapshot_revision = cancel.capability_snapshot_revision.clone();
+        target.control_plane_origin = "http://other-control-plane:3000".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.control_plane_origin = cancel.control_plane_origin.clone();
+        target.attempt += 1;
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.attempt = cancel.attempt;
+        cancel.payload["targetCommandId"] = json!("execute-other");
         assert!(!cancellation_target_matches(&cancel, &target));
     }
 
