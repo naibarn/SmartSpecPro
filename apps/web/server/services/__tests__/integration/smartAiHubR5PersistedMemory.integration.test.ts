@@ -58,6 +58,7 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
   const secondUserOpenId = `r5-second-user-${suffix}`;
   const foreignUserOpenId = `r5-foreign-user-${suffix}`;
   const appId = `r5-app-${suffix}`;
+  const secondAppId = `r5-second-app-${suffix}`;
   const foreignAppId = `r5-foreign-app-${suffix}`;
   const projectAId = crypto.randomUUID();
   const projectBId = crypto.randomUUID();
@@ -92,6 +93,14 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       lifecycle: "active",
     });
     await db.insert(appIdentities).values({
+      appId: secondAppId,
+      publicAppId: `public-${secondAppId}`,
+      tenantId,
+      publisherRef: "r5-test-publisher",
+      canonicalProductId: "r5-test-product",
+      lifecycle: "active",
+    });
+    await db.insert(appIdentities).values({
       appId: foreignAppId,
       publicAppId: `public-${foreignAppId}`,
       tenantId: foreignTenantId,
@@ -112,7 +121,9 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
       lifecycle: "ACTIVE",
     });
     await db.insert(canonicalProjectMemberships).values({ tenantId, projectId: projectAId, principalId: `user:${secondUserId}`, role: "viewer", lifecycle: "ACTIVE" });
+    await db.insert(canonicalProjectMemberships).values({ tenantId, projectId: projectBId, principalId: `user:${userId}`, role: "viewer", lifecycle: "ACTIVE" });
     await db.insert(canonicalProjectAppBindings).values({ tenantId, projectId: projectAId, appId, lifecycle: "ACTIVE" });
+    await db.insert(canonicalProjectAppBindings).values({ tenantId, projectId: projectBId, appId: secondAppId, lifecycle: "ACTIVE" });
     await db.insert(canonicalProjectMemberships).values({ tenantId: foreignTenantId, projectId: foreignProjectId, principalId: `user:${foreignUserId}`, role: "viewer", lifecycle: "ACTIVE" });
     await db.insert(canonicalProjectAppBindings).values({ tenantId: foreignTenantId, projectId: foreignProjectId, appId: foreignAppId, lifecycle: "ACTIVE" });
     await db.insert(personaTemplates).values({
@@ -245,6 +256,51 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
     expect(revokedPrompt).toContain(markers.secondUserGlobal);
     expect(revokedPrompt).not.toContain(markers.sharedProject);
     expect(revokedPrompt).not.toContain(markers.projectA);
+  });
+
+  it("isolates same-tenant Projects by their bound App", async () => {
+    const db = getDb();
+    const readPromptForApp = async (hostAppId: string) => {
+      const messages = await buildChatContext({
+        channel: "chat",
+        userId,
+        tenantId,
+        userMessage: "R5 keyword marker",
+        traceId: `r5-app-isolation-${suffix}`,
+        conversationContext: {
+          conversationId,
+          activePersonaId: personaId,
+          trustedAppContext: {
+            version: "spec304-trusted-host-app-context.v1",
+            tenantId,
+            hostAppId,
+            publicAppId: `public-${hostAppId}`,
+            routeProvenance: "verified_custom_domain_alias",
+            permissionCeiling: { projectMemoryRead: "authorized_bound_project_only", durableProjectMemoryWrite: false },
+            policyVersion: SMARTAIHUB_RUNTIME_CONTEXT_POLICY_VERSION,
+          },
+        },
+      }, "R5 base prompt", null);
+      return messages.map(message => typeof message.content === "string" ? message.content : JSON.stringify(message.content)).join("\n");
+    };
+
+    await db.update(conversations).set({ projectId: projectBId }).where(eq(conversations.id, conversationId));
+    try {
+      const appAPrompt = await readPromptForApp(appId);
+      expect(appAPrompt).toContain(markers.projectAGlobal);
+      expect(appAPrompt).toContain(markers.entityGlobal);
+      expect(appAPrompt).not.toContain(markers.projectB);
+      expect(appAPrompt).not.toContain(markers.entityB);
+
+      const appBPrompt = await readPromptForApp(secondAppId);
+      expect(appBPrompt).toContain(markers.projectB);
+      expect(appBPrompt).toContain(markers.entityB);
+      expect(appBPrompt).toContain(markers.projectAGlobal);
+      expect(appBPrompt).not.toContain(markers.projectA);
+      expect(appBPrompt).not.toContain(markers.entityA);
+    } finally {
+      await db.update(conversations).set({ projectId: projectAId }).where(eq(conversations.id, conversationId));
+    }
   });
 
   it("keeps Project A memory out after ACL/binding revocation, retargeting, and NO_PROJECT", async () => {
