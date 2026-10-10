@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 8 unresolved of 8
 - Next action: Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.
-- Manifest generation: 18
+- Manifest generation: 21
 
 ## Source-declared status and relationship claims
 

@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "expected_canonical_sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Run the focused AutoTeam recovery and AgentRuntime trace Vitest contracts in a provisioned package runner; validate worker_jobs/outbox creation, stale lease fencing, recovery state change and idempotent replay in a non-production DB; verify the configured Cloudflare scheduler invokes the recovery producer before claiming deployed autonomous completion.",
-    "next_ready_workunit": "Post-integration focused worker-job contract tests, non-production recovery UAT, and scheduler-source verification",
-    "reactivation_predicate": null,
-    "resume_point": "PR #480 merged at 12000eaa372e79f7aaf172f46741d7e3aa6c6d4e. Eligible AutoTeam evaluations now dispatch per run through canonical worker_jobs/outbox and existing runEngine recovery owners. Tests were authored but not executable in this worktree (vitest missing); PR preview was SKIPPED. No actual recovery or UAT evidence exists.",
-    "waiting_predicate": null
+    "next_action": "After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+    "next_ready_workunit": "Recovery trigger integration plus useful-progress verification and bounded no-progress loop handling, followed by actual AutoTeam recovery UAT",
+    "reactivation_predicate": "Resume implementation after approval of the trigger and useful-progress verification design; run UAT when the dedicated database is available.",
+    "resume_point": "Latest reviewed source SHA 4549e3dc436b8b2b1a758bc9af0d3b17f24fb0c5. Hard-cutover skips the existing in-process scan and no production Cloudflare Cron caller is in repository source. Recovery currently treats arbitrary run-state fingerprint change as verified success and can issue a new evaluation each five-minute slot without demonstrated useful progress. The next WorkUnit must establish a canonical trigger, useful-work evidence, and no-progress bounds before UAT. The shared smartspec_test DB is stale and full migrations include retired systems, so use a dedicated approved current-schema DB.",
+    "waiting_predicate": "A trigger/outcome-verification design is selected, and a dedicated approved current-schema non-production database is available."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -48,7 +48,7 @@
         "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
       }
     ],
-    "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+    "next_action": "After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
     "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
     "residual_requirements": [
       "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -105,7 +105,8 @@
       "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
       "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
       "bce088f9242025d4eafa6f52791dbe3f5924f088",
-      "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+      "085cc0420fd5b16b9e9189489f1cb97158aff732"
     ],
     "mapping": [],
     "source_paths": [
@@ -125,9 +126,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "canonical_sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:54:54Z"
+    "integrated_at": "2026-10-10T07:59:39Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -164,7 +165,7 @@
           "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
         }
       ],
-      "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+      "next_action": "After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
       "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
       "residual_requirements": [
         "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -352,12 +353,14 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:57:07.664987Z",
+  "updated_at": "2026-10-10T08:19:00.262463Z",
   "verification": {
-    "baseline_issues": [],
+    "baseline_issues": [
+      "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
+    ],
     "evidence": [
       {
-        "command": "node --experimental-strip-types --check on changed runtime, recovery, registry, and contract test TypeScript files",
+        "command": "Node TypeScript syntax checks on AgentRuntime, recovery, registry, and contract tests; git diff --check",
         "profile": "quick",
         "result": "PASS",
         "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
@@ -370,25 +373,103 @@
         "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
       },
       {
+        "command": "Node TypeScript syntax checks on timeline projection, persistence adapter, and trace contract test; git diff --check",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "assertions": 6,
+        "command": "node --experimental-strip-types /tmp/auto-team-recovery-contract-smoke.mjs",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
         "command": "pnpm exec vitest run focused AutoTeam and AgentRuntime contract suites",
         "profile": "quick",
         "reason": "vitest binary is not installed in the isolated worktree",
         "result": "NOT_RUN",
-        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
       },
       {
         "command": "non-production worker_jobs/outbox recovery UAT",
         "profile": "integration",
         "reason": "DATABASE_URL and API_BASE_URL are absent; no non-production environment is configured",
         "result": "NOT_RUN",
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "command": "PR #480 preview CI",
+        "profile": "integration",
+        "result": "SKIPPED",
         "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
       },
       {
-        "command": "PR preview CI",
+        "command": "PR #485 preview CI",
         "profile": "integration",
-        "pull_request": 480,
         "result": "SKIPPED",
-        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts server/services/__tests__/agentRuntimeTraceService.test.ts server/services/__tests__/skillRuntimeOpenAiAgents.test.ts",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a",
+        "test_files": 4,
+        "tests": 26
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/jobControlPlane.test.ts -t \"fences stale workers|fences a reporter|late completion after cancellation or fencing\"",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a",
+        "skipped": 67,
+        "tests": 3
+      },
+      {
+        "command": "rg -n 'createOccurrence\\(|team\\.run_recovery|startAutoTeamRecoverySweep|CloudflareCronSchedulerAdapter' --glob '!node_modules/**' --glob '!**/node_modules/**' .",
+        "profile": "quick",
+        "reason": "Source audit found timer policy/inventory and adapter implementation/tests, but no production createOccurrence caller or team.run_recovery dispatch source; external Cloudflare schedule remains unverified.",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a"
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/cloudflareJobAdapters.test.ts server/services/__tests__/jobControlPlane.test.ts -t \"timezone-validated Cron job intent|rejects a Cron occurrence whose tenant|creates one canonical job and outbox intent|deduplicated retry outbox|callback insert that loses the unique race\"",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "4707dd37439bdf6ce19442ff4fd68aca5e30687f",
+        "skipped": 76,
+        "test_files": 2,
+        "tests": 5
+      },
+      {
+        "command": "RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=postgresql://smartspec:<redacted>@127.0.0.1:5432/smartspec_test JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/spec224PostgresIntegration.integration.test.ts",
+        "profile": "integration",
+        "reason": "Local smartspec_test schema is behind the current worker_jobs model: PostgreSQL reports missing column activeDedupeKey. No migration was run. The harness cleanup was verified for the two fixture tenant/user/job scopes created by this run; all counts are zero. This validates neither AutoTeam recovery execution nor production scheduling.",
+        "result": "BLOCKED",
+        "revision": "65865cbe361e5882fd9bc44e19474f2a705dc2e3"
+      },
+      {
+        "command": "rg -n -i 'agency|workpacks|work/request|sandbox_jobs|opensandbox|custom workflow|\\\"workflows\\\"' apps/web/drizzle --glob '*.sql'",
+        "profile": "quick",
+        "reason": "Migration source includes retired Agency and legacy workflow references; full db:migrate on a fresh database is not an approved UAT preparation path and was not run.",
+        "result": "PASS",
+        "revision": "e14b941e3e720343b7bc524d7695a4c77967340a"
+      },
+      {
+        "command": "FEATURE_186_HARD_CUTOVER=true node --import tsx --input-type=module -e <read-only recovery timer policy assertion>",
+        "profile": "quick",
+        "reason": "For startAutoTeamRecoverySweep, the canonical source classifies the timer as external-cloudflare-scheduler and shouldRunFeature192InProcessTimer returns false under hard cutover. Repository source audit has no production Cloudflare Cron caller, so no active recovery trigger is evidenced in the current code/config path.",
+        "result": "PASS",
+        "revision": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f"
+      },
+      {
+        "command": "Read-only review of autoTeamRecoveryEvaluationExecutor.ts recoveryVerified calculation, autoTeamRecoveryService.ts evaluationSlot scheduling, and autoTeamRecoveryEvaluationJob.test.ts outcome contract",
+        "profile": "quick",
+        "reason": "Current executor treats any state fingerprint change after a dispatch as recovery_verified; a contract test uses an arbitrary runtimeState change as proof. Candidate evaluation slots advance every five minutes, so unchanged no-action states may be reevaluated repeatedly. Useful-work evidence and non-progress loop bounds remain unproven.",
+        "result": "PASS",
+        "revision": "4549e3dc436b8b2b1a758bc9af0d3b17f24fb0c5"
       }
     ],
     "freshness": "FRESH",
@@ -396,7 +477,7 @@
       "quick",
       "integration"
     ],
-    "sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "sha": "4549e3dc436b8b2b1a758bc9af0d3b17f24fb0c5",
     "status": "PARTIAL",
     "task_regressions": []
   }

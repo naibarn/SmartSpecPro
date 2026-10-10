@@ -56,7 +56,10 @@ vi.mock("../mediaGenerationService", () => ({
   resolveExternalMediaReferenceUrls: vi.fn(async (urls: string[]) => urls),
 }));
 
-import { createContext } from "../../_core/context";
+import {
+  createContext,
+  createContextWithTrustedAppIngress,
+} from "../../_core/context";
 import {
   CHAT_SCOPED_MEMORY_BUDGET,
   buildChatContext,
@@ -64,6 +67,36 @@ import {
 
 const serverApp = express();
 serverApp.set("trust proxy", 1);
+const createTrustedContext = createContextWithTrustedAppIngress({
+  readAssertion: req => req.headers["x-test-route-assertion"],
+  verifier: {
+    verifyAndConsume: async assertion =>
+      assertion === "synthetic-valid-assertion"
+        ? {
+            issuer: "test-edge",
+            audience: "smartspec-web",
+            assertionId: `test-${Date.now()}`,
+            tenantId: "tenant-42",
+            appId: "app-notes",
+            publicAppId: "public-notes",
+            routeHostname: "notes.example.com",
+            issuedAtMs: Date.now() - 1000,
+            expiresAtMs: Date.now() + 10_000,
+          }
+        : null,
+  },
+  resolveRoute: async route =>
+    route.tenantId === "tenant-42" && route.value === "notes.example.com"
+      ? {
+          tenantId: "tenant-42",
+          appId: "app-notes",
+          publicAppId: "public-notes",
+        }
+      : null,
+  expectedIssuer: "test-edge",
+  expectedAudience: "smartspec-web",
+});
+
 serverApp.get("/runtime-context", async (req, res) => {
   const context = await createContext({ req, res } as any);
   const messages = await buildChatContext(
@@ -89,12 +122,37 @@ serverApp.get("/runtime-context", async (req, res) => {
   });
 });
 
+serverApp.get("/trusted-runtime-context", async (req, res) => {
+  const context = await createTrustedContext({ req, res } as any);
+  const messages = await buildChatContext(
+    {
+      channel: "chat",
+      userId: context.user!.id,
+      tenantId: context.tenantId!,
+      userMessage: "show my memory",
+      conversationContext: {
+        conversationId: 22,
+        activePersonaId: "p1",
+        trustedAppContext: context.trustedAppContext,
+      },
+    },
+    "assistant",
+    null
+  );
+  res.status(200).json({
+    tenantId: context.tenantId,
+    trustedAppContext: context.trustedAppContext,
+    messages,
+  });
+});
+
 let server: Server;
 let port: number;
 
 function getRuntimeContext(
   headers: Record<string, string>,
-  query = ""
+  query = "",
+  path = "/runtime-context"
 ): Promise<{
   status: number;
   body: {
@@ -108,7 +166,7 @@ function getRuntimeContext(
       {
         hostname: "127.0.0.1",
         port,
-        path: `/runtime-context${query}`,
+        path: `${path}${query}`,
         method: "GET",
         headers,
       },
@@ -231,4 +289,58 @@ describe("HTTP request to chat memory context boundary", () => {
       ).toBe(true);
     }
   );
+
+  it("passes only verifier-authenticated App context into Project receipt issuance", async () => {
+    const response = await getRuntimeContext(
+      {
+        host: "origin.internal",
+        "x-forwarded-host": "attacker.example.net",
+        "x-test-route-assertion": "synthetic-valid-assertion",
+      },
+      "",
+      "/trusted-runtime-context"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.trustedAppContext).toMatchObject({
+      tenantId: "tenant-42",
+      hostAppId: "app-notes",
+      publicAppId: "public-notes",
+    });
+    expect(mocks.issueProjectReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-42",
+        userId: 7,
+        appContext: expect.objectContaining({ hostAppId: "app-notes" }),
+        conversationId: 22,
+      })
+    );
+  });
+
+  it("keeps Project memory closed when an untrusted assertion accompanies a matching Host", async () => {
+    const response = await getRuntimeContext(
+      {
+        host: "notes.example.com",
+        "x-forwarded-host": "notes.example.com",
+        "x-test-route-assertion": "forged",
+      },
+      "",
+      "/trusted-runtime-context"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.trustedAppContext).toBeNull();
+    expect(mocks.issueProjectReceipt).not.toHaveBeenCalled();
+    expect(mocks.retrieveForPrompt).toHaveBeenCalledWith(
+      "tenant-42",
+      "p1",
+      null,
+      null,
+      null,
+      "show my memory",
+      CHAT_SCOPED_MEMORY_BUDGET,
+      undefined,
+      { initiatedByUserId: 7, projectId: null }
+    );
+  });
 });

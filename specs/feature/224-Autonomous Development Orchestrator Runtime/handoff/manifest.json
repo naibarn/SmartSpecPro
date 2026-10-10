@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 26,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
@@ -3244,7 +3244,7 @@
     "unresolved": 1244
   },
   "schema_version": 1,
-  "updated_at": "2026-10-09T12:19:38.527964Z",
+  "updated_at": "2026-10-10T08:15:20.561260Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3262,13 +3262,27 @@
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md",
       "orchestra/programs/autonomous-mini-app-factory/owner-action-manifest.v1.json (stale preparation evidence, not authority)",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md",
+      {
+        "kind": "INDEPENDENT_SYNTHETIC_DEVELOPMENT_RUN_REGRESSION",
+        "path": "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
+        "scope": "Exact origin/main SHA bf4f2cfa56d312b9ed46bf18e3b6598cd7077cb7: 8 focused SPEC-271/SPEC-224 suites, 68 tests passed, covering DevelopmentRun persistence contracts, phase controller, final verify and provenance plus portable/durable acceptance receipt contracts. Synthetic/unit evidence only; no protected dispatch, real runner, process restart, or remote trust claim.",
+        "source_sha": "bf4f2cfa56d312b9ed46bf18e3b6598cd7077",
+        "status": "PASS"
+      },
+      {
+        "kind": "R4_SYNTHETIC_DEVELOPMENT_RUN_REGRESSION",
+        "path": "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
+        "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: combined focused security and acceptance run: 21 files / 261 tests passed, including SPEC-224 DevelopmentRun, phase controller, final verify and provenance contracts. Synthetic/unit evidence only; no registered remote runner session or protected dispatch; SPEC-224 protected dispatch remains DENY.",
+        "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "1df17e691f710df466737c586838c37f7c90ff6a",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }

@@ -190,11 +190,23 @@ describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
     setRows({ conversation: [{ projectId: null }] });
     const receipt = await issueProjectResolutionReceipt({
       tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
+      selectedProjectId: "project-client-selected",
     });
     expect(receipt).toMatchObject({
       canonicalProjectId: null,
       resolutionState: "NO_PROJECT",
       authorizationResult: "NOT_REQUIRED",
+    });
+    await expect(validateProjectResolutionReceipt({
+      receipt,
+      operation: "read",
+      tenantId: "tenant-a",
+      userId: 7,
+      appId: "app-a",
+      conversationId: 22,
+    })).resolves.toEqual({
+      authorized: false,
+      reason: "REVOKED_OR_UNBOUND",
     });
   });
 

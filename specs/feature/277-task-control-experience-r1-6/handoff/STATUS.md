@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.
-- Manifest generation: 11
+- Next action: After selecting an approved trigger design, implement a canonical recovery scan through existing worker_jobs/outbox, verify outcomes with durable useful-work evidence rather than arbitrary state changes, and bound repeated no-progress evaluations. Then run actual AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.
+- Manifest generation: 19
