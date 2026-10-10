@@ -5,20 +5,7 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "224",
-        "referenced_spec_id": "224",
-        "referencing_spec_id": "277",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-        "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
-        "successor_spec_id": "277"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
@@ -34,29 +21,42 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+    "expected_canonical_sha": "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Continue the AutoTeam vertical slice by wiring generic AgentRuntime evidence producers into the existing Task Control read model; then add durable asynchronous evaluation through worker_jobs/outbox and validate in non-production UAT.",
-    "next_ready_workunit": "AgentRuntime-to-Task-Control evidence adapter and focused contract tests",
-    "reactivation_predicate": "Resume when an implementation owner is assigned to the generic AgentRuntime adapter; this is active work, not an external dependency wait.",
-    "resume_point": "PR #466 merged at 3cca4b4b720c2684f8b2749a5450b2113f81b1b4; AutoTeam projection is integrated, SPEC-277 requirements remain PARTIAL.",
+    "next_action": "Complete focused verification for PR #473, then wire asynchronous evaluation and bounded authorized recovery through the existing worker_jobs/outbox control plane; preserve all unresolved requirements and verify in non-production UAT.",
+    "next_ready_workunit": "Existing worker_jobs/outbox-backed asynchronous Task Control evaluation, with replay/restart/idempotency/stale-lease/failure-injection contract tests",
+    "reactivation_predicate": null,
+    "resume_point": "PR #473 merged at 89d3ea653542a1774b96e1b2f3abfb5dd3fc6326. Generic AgentRuntime traces now persist to agent_runtime_traces and Team traces project bounded metadata to the existing Task Control trace timeline. Focused Vitest did not run because vitest is not installed in the worktree.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
-    "confidence": "UNRESOLVED",
-    "decision": "RECONCILIATION_REQUIRED",
+    "confidence": "MEDIUM",
+    "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
         "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
+      },
+      {
+        "canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+        "kind": "INTEGRATED_IMPLEMENTATION",
+        "path": "apps/web/server/services/autoTeamProgressProjection.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/466",
+        "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
-    "residual_requirements": []
+    "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+    "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
+    "residual_requirements": [
+      "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
+      "Durable asynchronous evaluation through the existing worker_jobs/outbox control plane.",
+      "Bounded authorized recovery dispatch, independent outcome verification, and useful-work resume through existing owners.",
+      "Replay/restart/resume, idempotency, duplicate event, stale lease, and failure-injection coverage.",
+      "Non-production UAT and assessment of the remaining open SPEC-277 requirements."
+    ]
   },
   "dependencies": {
     "predicates": [],
@@ -84,13 +84,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.792204Z",
+      "last_evidence_at": "2026-10-10T07:35:15.704466Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -102,30 +102,88 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "3cca4b4b720c2684f8b2749a5450b2113f81b1b4"
+      "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+      "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326"
     ],
     "mapping": [],
     "source_paths": [
       "apps/web/server/services/autoTeamProgressProjection.ts",
       "apps/web/server/services/autoTeamLedgerService.ts",
-      "apps/web/client/src/components/orchestrator/AutoTeamLedgerPanel.tsx"
+      "apps/web/client/src/components/orchestrator/AutoTeamLedgerPanel.tsx",
+      "apps/web/server/services/agentRuntime/traceRepository.ts",
+      "apps/web/server/services/agentRuntime/skillRuntimeOrchestrator.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+    "canonical_sha": "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:21:15Z"
+    "integrated_at": "2026-10-10T07:41:50Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
-    "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.792204Z"
+    "current_state": "CONTINUATION_REQUIRED",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      {
+        "kind": "USER_DIRECTED_CONTINUATION",
+        "observed_at": "2026-10-10T07:35:27Z",
+        "reference": "Current user request: Continue SmartAIHub AutoTeam / SPEC-277 toward reliable Autonomous Completion."
+      },
+      {
+        "canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+        "kind": "INTEGRATED_PARTIAL_IMPLEMENTATION",
+        "reference": "PR #466: AutoTeam progress projection; four SPEC-277 requirements remain PARTIAL."
+      }
+    ],
+    "updated_at": "2026-10-10T07:35:15.704466Z"
   },
   "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "MEDIUM",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        {
+          "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
+        },
+        {
+          "canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+          "kind": "INTEGRATED_IMPLEMENTATION",
+          "path": "apps/web/server/services/autoTeamProgressProjection.ts",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/466",
+          "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
+        }
+      ],
+      "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+      "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
+      "residual_requirements": [
+        "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
+        "Durable asynchronous evaluation through the existing worker_jobs/outbox control plane.",
+        "Bounded authorized recovery dispatch, independent outcome verification, and useful-work resume through existing owners.",
+        "Replay/restart/resume, idempotency, duplicate event, stale lease, and failure-injection coverage.",
+        "Non-production UAT and assessment of the remaining open SPEC-277 requirements."
+      ]
+    },
+    "lifecycle": {
+      "current_state": "CONTINUATION_REQUIRED",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        {
+          "kind": "USER_DIRECTED_CONTINUATION",
+          "observed_at": "2026-10-10T07:35:27Z",
+          "reference": "Current user request: Continue SmartAIHub AutoTeam / SPEC-277 toward reliable Autonomous Completion."
+        },
+        {
+          "canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+          "kind": "INTEGRATED_PARTIAL_IMPLEMENTATION",
+          "reference": "PR #466: AutoTeam progress projection; four SPEC-277 requirements remain PARTIAL."
+        }
+      ],
+      "updated_at": "2026-10-10T07:35:15.704466Z"
+    },
     "requirements": {
       "REQ-1609B0DEE1D0": {
         "applicability": "APPLICABLE",
@@ -241,7 +299,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.792204Z",
+    "reconciled_at": "2026-10-10T07:35:15.704466Z",
     "sources": [
       {
         "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -259,7 +317,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -275,10 +333,10 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 4,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -287,7 +345,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:22:51.085966Z",
+  "updated_at": "2026-10-10T07:42:26.809150Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
