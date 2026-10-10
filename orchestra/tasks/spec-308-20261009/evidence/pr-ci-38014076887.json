@@ -1,0 +1,21 @@
+{
+  "run_id": 38014076887,
+  "workflow": "SPEC-308 Browser Simulation",
+  "event": "pull_request",
+  "head_sha": "e7d437b86ce9c385e15416cef3d1b5b47df3759b",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "Mocked SPEC-308 browser simulation",
+      "conclusion": "success",
+      "steps": {
+        "focused_component_regressions": "success",
+        "chromium_simulation": "success"
+      },
+      "scope": "mocked UI-only browser simulation; not live authenticated acceptance"
+    }
+  ],
+  "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+  "observed_at": "2026-10-10T01:43:29Z"
+}

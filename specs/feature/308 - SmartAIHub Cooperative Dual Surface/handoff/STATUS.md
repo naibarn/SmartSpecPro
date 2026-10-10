@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.
-- Manifest generation: 60
+- Next action: Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.
+- Manifest generation: 62
 
 ## Source-declared status and relationship claims
 

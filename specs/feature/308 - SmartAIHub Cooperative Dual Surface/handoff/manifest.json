@@ -60,10 +60,10 @@
     "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
   },
   "continuation": {
-    "next_action": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION remains first: obtain the Security and Media/Runtime Owner disposition for sprintf-js, then refresh and verify PR #405; next reconcile #403; then run one consolidated exact-head SPEC-308 unit/Chromium suite for PR #399. The prior PR #399 browser failures were test-only locator/readiness defects and are repaired in candidate 5107487cf569d20c39b93d53cfac9bebc29b88e6; do not close requirements from that repair or prior mocked evidence.",
+    "next_action": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION remains first. PR #405 is OPEN/Draft at 868a5600ff770be91885666b7f584835e03fc690 and retains one Moderate sprintf-js@1.1.3. Obtain Security and Media/Runtime owner authority for compatible ONNX/WSL2 remediation or a policy-valid scoped disposition, refresh against current origin/main b1f2d52e5ba864685dc28414c6f49d7ffe9523eb, and run the mandatory exact-head audit. Then reconcile PR #403 (reuse its existing fixture repair) against current main and run focused MCP/security checks plus authorized live smoke. Finally refresh PR #399 (currently stale/DIRTY) and run exact-head unit/Chromium and approved live acceptance. Keep all 66 requirements OPEN until criterion-level evidence and canonical integration.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Security and media/runtime owners record an approved remediation path or policy-valid disposition through the authorized channel; resume by refreshing #405 against current main, then run full audit and compatibility gates on the exact candidate.",
-    "resume_point": "Canonical origin/main 9cedee5ea2590f2671d7541244de8846f6c732f6 is merged into the task branch. PR #399 head 6907bdf4bc0c8ca4f36e11e2e2fedb5abad0f499 browser run 38012581430 passed 22/23; selectors/readiness are repaired and the sole remaining harness defect (Playwright-transformed JSX preventing React SSR in mascot byte metrics) is fixed at code checkpoint 57a3eeba1fd64b62499cb86493a7e24bab25ae51. This fix has syntax-only evidence; exact candidate verification is pending. MCP focused tests still fail on canonical baseline fixture mismatch and stale imports of retired agencyMcpService, causing downstream check/security/audit to skip; live MCP smoke lacks authorized endpoint/token. PR #405 mandatory audit remains blocked by Moderate sprintf-js@1.1.3 without Security and Media/Runtime Owner disposition. Keep all 66 requirements OPEN, integration SHA unset, and production flags OFF.",
+    "resume_point": "Recovered current origin/main b1f2d52e5ba864685dc28414c6f49d7ffe9523eb. PR #399 remains OPEN/non-draft at historical head e7d437b86ce9c385e15416cef3d1b5b47df3759b on base 2b497268f5a5c76c45d277cb162f59d10137f97d; GitHub reports DIRTY and no integration SHA exists. Browser simulation 38014076887 passed on that exact head (mocked only). MCP gate 38014076965 failed 44/120 focused tests and live smoke failed closed because approved endpoint/token are absent. PR #403 at 74a482e8fe38a131bdbe41bfee0e53ad90347e4c already includes fixture repair; re-evaluate it against current main. PR #405 at 868a5600ff770be91885666b7f584835e03fc690 remains Draft with mandatory audit blocked by Moderate sprintf-js@1.1.3 and no authorized Security/Media-Runtime disposition. Dedicated task worktrees inspected for this recovery were clean; the shared primary checkout's unrelated dirty files were preserved. Evidence: orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md. Keep 66 requirements OPEN, integration SHA unset, and production flags OFF.",
     "waiting_predicate": "Security/media-runtime owners provide an approved decision for sprintf-js remediation or documented scoped/expiring disposition; live MCP and SPEC-308 acceptance continue to require approved endpoint/token and non-production test identity/Feature-049 authorization separately."
   },
   "continuation_assessment": {
@@ -84,10 +84,15 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737",
+      "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965"
     ],
-    "next_action": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
-    "rationale": "On exact #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff, the isolated mocked browser simulation passed 23/23, while contract/MCP and live endpoint checks remain failed/blocked. This does not meet live acceptance or security gates.",
+    "next_action": "Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.",
+    "rationale": "The latest browser simulation passed on historical #399 head e7d437b86ce9c385e15416cef3d1b5b47df3759b, while MCP focused tests failed 44/120 and live MCP smoke failed closed. Current origin/main is b1f2d52e5ba864685dc28414c6f49d7ffe9523eb; PR #399 is stale and GitHub reports DIRTY. PR #403 already contains the MCP fixture repair; #405 still requires mandatory audit remediation/disposition. No merge or live acceptance authority exists.",
     "residual_requirements": [
       "All 66 ledger rows remain OPEN: 63 PARTIAL implementation rows and 3 UNVERIFIED; simulated browser evidence does not close requirements.",
       "PR #405 residual sprintf-js Moderate requires Security and Media/Runtime owner disposition and approved compatibility testing if selected.",
@@ -96,7 +101,7 @@
       "Approved non-production SmartSpecPro runtime and authorized test identity are required for authenticated acceptance.",
       "Production feature flags remain OFF and no production deployment is authorized."
     ],
-    "resume_point": "Exact latest PR #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff is based on canonical origin/main 2b497268f5a5c76c45d277cb162f59d10137f97d. Browser Simulation 38013794799 passed 23/23 mocked Chromium tests. MCP Compatibility 38013794737 failed 44/120 on mainline PostgreSQL-session fixture drift and retired agencyMcpService imports; its downstream audit did not run, and live smoke failed closed because the approved URL/token are absent. PR #403 already contains the fixture repair and passed focused checks. PR #405 remains blocked on Moderate sprintf-js owner disposition. Only a production GitHub environment exists and no MCP smoke secret names are configured; no secret values were read. All 66 requirements stay OPEN, integration SHA unset, production flags OFF."
+    "resume_point": "See orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md. Resume first with WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION on PR #405 after Security/Media-Runtime disposition; do not duplicate fixture repair already in #403. Reconcile exact heads against current main before further code changes."
   },
   "dependencies": {
     "predicates": [],
@@ -128,7 +133,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 60,
+  "generation": 62,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -273,7 +278,12 @@
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610509",
       "orchestra/tasks/spec-308-20261009/evidence/metrics-harness-wave13.md",
       "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave14.md",
-      "orchestra/tasks/spec-308-20261009/lifecycle.md"
+      "orchestra/tasks/spec-308-20261009/lifecycle.md",
+      "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965"
     ],
     "updated_at": "2026-10-09T04:27:07.605340Z"
   },
@@ -315,10 +325,15 @@
         "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
         "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737",
+        "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965"
       ],
-      "next_action": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
-      "rationale": "On exact #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff, the isolated mocked browser simulation passed 23/23, while contract/MCP and live endpoint checks remain failed/blocked. This does not meet live acceptance or security gates.",
+      "next_action": "Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.",
+      "rationale": "The latest browser simulation passed on historical #399 head e7d437b86ce9c385e15416cef3d1b5b47df3759b, while MCP focused tests failed 44/120 and live MCP smoke failed closed. Current origin/main is b1f2d52e5ba864685dc28414c6f49d7ffe9523eb; PR #399 is stale and GitHub reports DIRTY. PR #403 already contains the MCP fixture repair; #405 still requires mandatory audit remediation/disposition. No merge or live acceptance authority exists.",
       "residual_requirements": [
         "All 66 ledger rows remain OPEN: 63 PARTIAL implementation rows and 3 UNVERIFIED; simulated browser evidence does not close requirements.",
         "PR #405 residual sprintf-js Moderate requires Security and Media/Runtime owner disposition and approved compatibility testing if selected.",
@@ -327,7 +342,7 @@
         "Approved non-production SmartSpecPro runtime and authorized test identity are required for authenticated acceptance.",
         "Production feature flags remain OFF and no production deployment is authorized."
       ],
-      "resume_point": "Exact latest PR #399 SHA 22be8dd555dbdfe62443915fb7edbd06150303ff is based on canonical origin/main 2b497268f5a5c76c45d277cb162f59d10137f97d. Browser Simulation 38013794799 passed 23/23 mocked Chromium tests. MCP Compatibility 38013794737 failed 44/120 on mainline PostgreSQL-session fixture drift and retired agencyMcpService imports; its downstream audit did not run, and live smoke failed closed because the approved URL/token are absent. PR #403 already contains the fixture repair and passed focused checks. PR #405 remains blocked on Moderate sprintf-js owner disposition. Only a production GitHub environment exists and no MCP smoke secret names are configured; no secret values were read. All 66 requirements stay OPEN, integration SHA unset, production flags OFF."
+      "resume_point": "See orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md. Resume first with WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION on PR #405 after Security/Media-Runtime disposition; do not duplicate fixture repair already in #403. Reconcile exact heads against current main before further code changes."
     },
     "disposition": {
       "confidence": "HIGH",
@@ -384,7 +399,12 @@
         "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610509",
         "orchestra/tasks/spec-308-20261009/evidence/metrics-harness-wave13.md",
         "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave14.md",
-        "orchestra/tasks/spec-308-20261009/lifecycle.md"
+        "orchestra/tasks/spec-308-20261009/lifecycle.md",
+        "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965"
       ],
       "updated_at": "2026-10-09T04:27:07.605340Z"
     },
@@ -2161,7 +2181,7 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T01:39:53.381518Z",
+  "updated_at": "2026-10-10T03:38:07.535295Z",
   "verification": {
     "baseline_issues": [
       "PR #399 MCP focused run 37986151602 fails on canonical-main baseline fixtures: PostgreSQL-backed session state is not configured and tests retain retired agencyMcpService imports; PR #403 owns the fixture repair.",
@@ -2171,7 +2191,11 @@
       "Exact PR #405 workflow-dispatch run 38004111980 passes compatibility regressions (18 files/238 tests) and fails the mandatory production audit on Moderate sprintf-js@1.1.3; Security and media/runtime owner disposition is still required.",
       "PR #399 exact-head contract run 38006779712 (SHA a7765811ef0f6a21b5a1297090f5754d845b30c0) fails before audit on canonical MCP baseline defects: missing PostgreSQL session fixture and retired agencyMcpService imports (44 failed/76 passed across 11 files); audit step is skipped. The live smoke fails closed because approved MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent. PR #403 owns the fixture repair and its focused suite passed 118/118; security audit and live authority remain open.",
       "PR #399 evidence-head run 38007574817 on a87a991d082c3c72ad3768e03a0b244d963a1cf1 repeats the canonical MCP fixture/import baseline failure before mandatory audit (44 failed/76 passed); live smoke again fails closed because authorized MCP endpoint/token are unavailable. PR #403 remains the owner branch for its 118/118 fixture repair, subject to security gate ordering.",
-      "PR #399 exact head 0fdda9580ff80988266f7677980991481637c076: contract-and-security run 38009610509 fails before mandatory audit on canonical MCP fixture/import baseline (44 failed/76 passed across 11 files); audit did not pass. Live MCP smoke fails closed without approved MCP_SMOKE_URL/MCP_SMOKE_TOKEN. Browser simulation run 38009610472 separately passes 18/18 mocked Chromium cases and is not live acceptance."
+      "PR #399 exact head 0fdda9580ff80988266f7677980991481637c076: contract-and-security run 38009610509 fails before mandatory audit on canonical MCP fixture/import baseline (44 failed/76 passed across 11 files); audit did not pass. Live MCP smoke fails closed without approved MCP_SMOKE_URL/MCP_SMOKE_TOKEN. Browser simulation run 38009610472 separately passes 18/18 mocked Chromium cases and is not live acceptance.",
+      "On #399 head e7d437b86ce9c385e15416cef3d1b5b47df3759b, run 38014076965 failed 44/120 MCP focused tests; mandatory audit did not execute. Exact failures included missing protocol response fields, the legacy agencyMcpService test import, and fixture/assertion drift. Reconcile against current main without restoring retired systems.",
+      "On the same historical #399 head, live MCP run 38014076965 failed closed because authorized MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent; no secret values were read.",
+      "PR #403 already has the MCP fixture repair but its current exact-head verification on refreshed main is outstanding.",
+      "PR #405 remains OPEN/Draft; the recorded mandatory production audit retains one Moderate sprintf-js@1.1.3 finding pending Security and Media/Runtime owner disposition."
     ],
     "evidence": [
       "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave17.md",
@@ -2188,13 +2212,18 @@
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794799.json",
       "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38013794737.json",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794799",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737"
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38013794737",
+      "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965"
     ],
-    "freshness": "PENDING_SECURITY_MCP_LIVE_ACCEPTANCE",
+    "freshness": "EXACT_HISTORICAL_PR_HEAD_PENDING_CANONICAL_REBASE",
     "required_profiles": [
       "quick"
     ],
-    "sha": "22be8dd555dbdfe62443915fb7edbd06150303ff",
+    "sha": "e7d437b86ce9c385e15416cef3d1b5b47df3759b",
     "status": "PARTIAL",
     "task_regressions": []
   }
