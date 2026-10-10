@@ -227,6 +227,49 @@ describe("buildChatContext", () => {
     )).toBe(true);
   });
 
+  it("uses null Project read scope and retains global entity memory without trusted App context", async () => {
+    mockGetPersonaById.mockResolvedValue({ id: "p1" } as any);
+    mockBuildPersonaPromptSegments.mockReturnValue({
+      prefix: "Persona prefix",
+      styleInstructions: "",
+      restrictionsBulletPoints: "",
+    });
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        id: 1,
+        userId: 1,
+        personaId: "p1",
+        entityType: "preference",
+        entityName: "global preference",
+        facts: ["Keep answers concise"],
+        projectId: null,
+      } as any,
+    ]);
+
+    const messages = await buildChatContext(
+      makeRequest({
+        conversationContext: {
+          conversationId: 22,
+          activePersonaId: "p1",
+          trustedAppContext: null,
+        },
+      }),
+      "You are a helpful assistant",
+      null,
+    );
+
+    expect(mockIssueProjectReceipt).not.toHaveBeenCalled();
+    expect(mockValidateProjectReceipt).not.toHaveBeenCalled();
+    expect(mockRetrieveForPrompt).toHaveBeenCalledWith(
+      "t1", "p1", null, null, null, "Hello world", CHAT_SCOPED_MEMORY_BUDGET,
+      undefined, { initiatedByUserId: 1, projectId: null },
+    );
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(1, undefined, null, "p1");
+    expect(messages.some((message) =>
+      typeof message.content === "string" && message.content.includes("Keep answers concise"),
+    )).toBe(true);
+  });
+
   it("with persona -- loads persona, builds segments, retrieves memory", async () => {
     const persona = {
       id: "p1",
