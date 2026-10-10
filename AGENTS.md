@@ -103,6 +103,30 @@ no real security or data-safety boundary. Preserve system/platform controls,
 secrets, external irreversible-operation boundaries, and critical security
 stops. A partial canonical checkpoint never means the task is complete.
 
+### Safe Progress and Guardrail Scope
+
+Classify every blocking decision before stopping:
+
+- `G1 HARD_SAFETY`: deny only the unsafe action for tenant isolation,
+  authorization, secret access, data integrity, destructive production work,
+  spending limits, or explicit policy. Continue independent safe WorkUnits.
+- `G2 REMEDIATION`: repair, retry, reroute, or resume within existing authority
+  and budget, with idempotency and bounded attempts. Do not turn transient
+  failures into approval requests by default.
+- `G3 VERIFICATION`: report `VERIFIED`, `PARTIALLY_VERIFIED`, `NOT_TESTED`,
+  `UNSUPPORTED`, or `FAILED` from evidence. Missing optional devices or test
+  tools qualify evidence; they do not globally block unrelated development.
+- `G4 ADVISORY`: track optional practices and optimizations as warnings or
+  follow-up WorkUnits, not global gates.
+
+Every gate decision records `reason_code`, `guardrail_class`, `affected_scope`,
+`required_authority`, `evidence`, `allowed_next_actions`, `recovery_strategy`,
+`escalation_condition`, and `policy_version`. Scope a block to the action,
+stage, deployment, or outcome it actually prevents. A local blocker may block
+dependent work, but must not block independent work without a documented safety
+or dependency reason. User approval is required only when the existing authority
+owner requires it; it is not a general error-recovery mechanism.
+
 ## Orchestra
 
 Prefer the `orchestra` skill when the user's request is not merely a factual
