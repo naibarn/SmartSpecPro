@@ -91,14 +91,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "4f76b17f338e8b3f6e2f642dec0ddfd36dbfdea3",
     "expected_spec_digest": "ce74e7b5be1c52315a57858dc559e30450416a1cbedf751340ca4f2c6c84c3a9"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Implement the Mini App authoring intake UI/API and tenant-authorized multi-file asset selection; then connect bounded URL capture, visual blueprint, Runner/UAT comparison, and repair to existing authorities.",
+    "next_ready_workunit": "SPEC-224_VISUAL_REFERENCE_CREATE_UI_AND_CAPTURE",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "Start from canonical SHA 4f76b17f338e8b3f6e2f642dec0ddfd36dbfdea3. The design request schema and immutable draft persistence accept references; the user-facing intake, actual URL acquisition, visual compare, and repair stages remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 9,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md",
     "digest": "ce74e7b5be1c52315a57858dc559e30450416a1cbedf751340ca4f2c6c84c3a9",
@@ -305,10 +305,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "4f76b17f338e8b3f6e2f642dec0ddfd36dbfdea3",
+    "integrated": true,
+    "integrated_at": "2026-10-10T23:57:05Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -751,7 +751,7 @@
     "unresolved": 351
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T23:54:50.638657Z",
+  "updated_at": "2026-10-10T23:57:51.439641Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
