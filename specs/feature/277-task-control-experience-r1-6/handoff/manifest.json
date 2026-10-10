@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "expected_canonical_sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Run the focused AutoTeam recovery and AgentRuntime trace Vitest contracts in a provisioned package runner; validate worker_jobs/outbox creation, stale lease fencing, recovery state change and idempotent replay in a non-production DB; verify the configured Cloudflare scheduler invokes the recovery producer before claiming deployed autonomous completion.",
+    "next_action": "Run focused contract suites and database-backed worker_jobs/outbox UAT when a provisioned package runner and non-production environment are available; verify external scheduler dispatch; gather actual recovery and post-action state-change evidence.",
     "next_ready_workunit": "Post-integration focused worker-job contract tests, non-production recovery UAT, and scheduler-source verification",
     "reactivation_predicate": null,
-    "resume_point": "PR #480 merged at 12000eaa372e79f7aaf172f46741d7e3aa6c6d4e. Eligible AutoTeam evaluations now dispatch per run through canonical worker_jobs/outbox and existing runEngine recovery owners. Tests were authored but not executable in this worktree (vitest missing); PR preview was SKIPPED. No actual recovery or UAT evidence exists.",
+    "resume_point": "PR #485 merged at 085cc0420fd5b16b9e9189489f1cb97158aff732. Task Control now receives only terminal AgentRuntime milestones with friendly summaries; streamed deltas remain archived but are not projected into the user timeline. Async evaluation remains PARTIAL until Vitest, stale-lease DB verification, and non-production recovery UAT pass.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -105,7 +105,8 @@
       "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
       "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
       "bce088f9242025d4eafa6f52791dbe3f5924f088",
-      "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+      "085cc0420fd5b16b9e9189489f1cb97158aff732"
     ],
     "mapping": [],
     "source_paths": [
@@ -125,9 +126,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "canonical_sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:54:54Z"
+    "integrated_at": "2026-10-10T07:59:39Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -352,12 +353,12 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:57:07.664987Z",
+  "updated_at": "2026-10-10T08:00:24.084532Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       {
-        "command": "node --experimental-strip-types --check on changed runtime, recovery, registry, and contract test TypeScript files",
+        "command": "Node TypeScript syntax checks on AgentRuntime, recovery, registry, and contract tests; git diff --check",
         "profile": "quick",
         "result": "PASS",
         "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
@@ -370,25 +371,43 @@
         "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
       },
       {
+        "command": "Node TypeScript syntax checks on timeline projection, persistence adapter, and trace contract test; git diff --check",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "assertions": 6,
+        "command": "node --experimental-strip-types /tmp/auto-team-recovery-contract-smoke.mjs",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
         "command": "pnpm exec vitest run focused AutoTeam and AgentRuntime contract suites",
         "profile": "quick",
         "reason": "vitest binary is not installed in the isolated worktree",
         "result": "NOT_RUN",
-        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
       },
       {
         "command": "non-production worker_jobs/outbox recovery UAT",
         "profile": "integration",
         "reason": "DATABASE_URL and API_BASE_URL are absent; no non-production environment is configured",
         "result": "NOT_RUN",
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "command": "PR #480 preview CI",
+        "profile": "integration",
+        "result": "SKIPPED",
         "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
       },
       {
-        "command": "PR preview CI",
+        "command": "PR #485 preview CI",
         "profile": "integration",
-        "pull_request": 480,
         "result": "SKIPPED",
-        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+        "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
       }
     ],
     "freshness": "FRESH",
@@ -396,7 +415,7 @@
       "quick",
       "integration"
     ],
-    "sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
     "status": "PARTIAL",
     "task_regressions": []
   }
