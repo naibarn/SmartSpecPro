@@ -1,0 +1,46 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 SPEC-269 persisted acceptance expansion",
+  "sourceSha": "0f2b08b7667a4b285f0e09b45636fc9c5ef8f29a",
+  "canonicalBaselineSha": "35947a6d5bd1716919110a1f5f512e17cbe77bd6",
+  "testCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+  "result": {
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 2,
+    "cases": [
+      "foreign-tenant trusted App context rejected for Project memory while that user's Global scoped and entity memory remain available",
+      "Project membership and App-Project binding revocation, conversation retargeting, and NO_PROJECT exclude Project memory while preserving Global memory"
+    ],
+    "persistence": "PostgreSQL 17.11 via the existing loopback-only miniapp_r5_test target; actual buildChatContext, receipt validation, and persisted memory services exercised",
+    "externalProviderCalls": 0
+  },
+  "database": {
+    "name": "miniapp_r5_test",
+    "container": "smartaihub-r5-pg17-20261010",
+    "loopbackPort": 32784,
+    "syntheticFixturesOnly": true,
+    "schema": "R5 curated current-schema test projection; no production or existing shared database used"
+  },
+  "reviewedSecurityLenses": [
+    "Database runner still rejects inherited DATABASE_URL and JWT_SECRET and requires explicit R5 target confirmation",
+    "Target remains exact loopback miniapp_r5_test; no production or shared database fallback",
+    "Foreign tenant, user, App, Project, membership, binding, conversation, and memory fixtures are synthetic and uniquely identified",
+    "Foreign App and Project are valid within their own tenant so rejection is attributable to cross-tenant context mismatch",
+    "A mismatched trusted App context cannot authorize the foreign tenant Project memory",
+    "Unauthorized Project memory is asserted absent for both scoped_memories and entity_memories",
+    "Permitted user Global scoped and entity memory remain present, guarding against broad fail-closed regressions",
+    "Existing fresh membership and App-Project revocation cases remain in the persisted path",
+    "Existing conversation retarget and NO_PROJECT cases remain in the persisted path",
+    "Fixture cleanup is bounded to generated tenant IDs and constrains conversation deletion by both ID and tenant",
+    "Conversation IDs stay within PostgreSQL int32 and differ only by one within the generated fixture pair",
+    "No schema migration, provider call, dispatch, durable Project write, production ingress assertion, or privileged operation was added"
+  ],
+  "limitations": [
+    "This is direct persisted acceptance for cross-tenant context mismatch and a partial SPEC-269 isolation matrix; it is not full T-01–T-23 PASS.",
+    "App-private memory remains unproven because the current memory schema has no authoritative appId dimension.",
+    "Production trusted ingress producer and deployed provenance remain unverified; test supplies a synthetic server-side context.",
+    "SPEC-271 worker restart/recovery and WP2B receipt acceptance remain owner-gated and unproven.",
+    "SPEC-302 durable Project-shared writes remain DENY."
+  ]
+}
