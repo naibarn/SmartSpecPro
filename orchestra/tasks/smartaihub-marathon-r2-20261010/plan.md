@@ -31,7 +31,21 @@ The old SPEC-269 worktree is dirty at `08426194c743381a20ee45b46c6741a9d2eb9af0`
 
 - Integrated by PR #432 at `b3d676f22abde85c510e452b3156ce23a0c75d49`.
 - Focused verification: 9 files / 214 tests passed on the branch candidate before merge; no provider, deployment, or atomic revocation claim.
-- Team-room project context remains subject to the final-DB-read-to-remote-acceptance race. Chat remains global-only; team-room persistent memory remains disabled pending provenance.
+- Team-room project context remains subject to the final-DB-read-to-remote-acceptance race. Standard Chat entity-memory context remains global-only without a verified project; team-room persistent memory remains disabled pending provenance.
+
+## Checkpoint 2 — `CHAT_ENTITY_MEMORY_PROVENANCE_GUARD`
+
+- PR #434 merged at `dc73feffcb6c6420dfc73f0178b48213fbd83b74`.
+- `promptComposer.ts` now uses the existing project-aware entity-memory resolver and defers scoped entity context until its final canonical membership revalidation. Conversation project reassignment is denied so existing history is not reclassified; use a new conversation to change project context.
+- Four focused suites passed: 78 tests. Preview build was skipped; no deployment/runtime acceptance is claimed.
+- Updated SPEC-304 handoff state from the already integrated PR #433 checkpoint in the same PR.
+
+## Checkpoint 3 — `CANONICAL_ENTITY_MEMORY_SCOPE`
+
+- PR #436 merged at `224fa6cd8ce122ee178f3a6040c32269f0f814a0`.
+- Legacy or unregistered room project IDs cannot widen entity-memory retrieval; only canonical project identity plus active membership allows project-scoped entity memory. The shared helper retains its existing global-only mode.
+- Four focused suites passed: 79 tests on tree `341200801fce5a69d7a838069d9d6c08a9e95ee1`, identical to the merge tree. Preview build was skipped.
+- Canonical SPEC-268 handoff records `REQ-CF6F62069953` as partial; project/segment source provenance, historical retargeted conversation state, App-switch isolation, and full runtime acceptance remain open.
 
 ## WorkUnit: `MINI_APP_ROUTE_IDENTITY_GUARD`
 
@@ -43,4 +57,4 @@ The old SPEC-269 worktree is dirty at `08426194c743381a20ee45b46c6741a9d2eb9af0`
 
 ## Next WorkUnit
 
-After this checkpoint, continue with an independent functional slice from current SPEC-269/302/303/240/287 ownership and authority. Do not reopen broad discovery or re-enable unproven team-room project memory.
+Next WorkUnit: `SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING`. Continue with the existing SPEC-302 identity/migration authority; keep team-room persistent memory disabled until source provenance and isolation are verified. Preserve the old dirty SPEC-269 worktree and do not recover its unsafe two-file delta. After a safe SPEC-268 checkpoint, select the next independent functional slice from current SPEC-303/304/240/287 ownership without repeating broad discovery.
