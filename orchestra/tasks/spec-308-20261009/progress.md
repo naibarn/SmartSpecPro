@@ -241,3 +241,15 @@ Canonical main refreshed to `f036df3745aea4bcb4cfcff18be2ce5130e0673f`. Reconcil
 - #399 head `ad4688b7331137c72c89a0becea48fbb1bc7e930`: exact browser run `38032031569` passed 8 focused files / 146 tests and 23 mocked Chromium cases. This is not authenticated acceptance. No approved non-production endpoint/test identity or MCP endpoint/token is available. No merge.
 
 Updated the canonical SPEC-308 manifest through the shared writer, retained 66/66 requirement rows OPEN, recorded all three exact PR heads/runs, and regenerated/validated the global handoff index. `spec-handoff validate --all` passes. There is no integration SHA: `origin/main` remains `f036df3745aea4bcb4cfcff18be2ce5130e0673f`.
+
+## Final current-head checkpoint — 2026-10-10
+
+Current fetched canonical main: `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`. The three existing PR branches include main through `26df7b3a341370063fff65b0d0ee21057ac6d232`; the only intervening main delta is SPEC-269 handoff documentation. No integration was possible because mandatory gates remain unresolved.
+
+- #405 head `64aac26cbced4583483eb42845c7c3fec05f8a59`, CI `38034490774`: production audit PASS and compatibility regressions PASS. Application graph candidate remains HyperFrames 0.8.143. Security/Media-Runtime owner disposition is still needed for the optional dynamic ONNX 1.21.1 installer and the separate signed WSL2 runtime (HyperFrames 0.7.5). No merge.
+- #403 head `bdde69e2dd7c70ba032f0c7cb9f698a526ee54b4`, CI `38034489323`: MCP tests 118/118 PASS; `check:mcp146` has no MCP-targeted diagnostics (full web check has unrelated baseline diagnostics); `security:mcp146` scanned 23 files with 0 findings. High audit FAILS because #405 has not integrated; live smoke is BLOCKED_EXTERNAL for absent approved URL/token. No merge.
+- #399 head `b5802c40c368dbc1614a433bb6e0c6b6cc8413e6`, browser CI `38034489869`: 8 files / 146 tests and 23 mocked Chromium cases PASS. MCP workflow `38034489779` still fails on fixture changes owned by the unmerged #403 plus missing live endpoint/token. Mocked evidence is not authenticated acceptance. No merge.
+
+Canonical SPEC-308 handoff remains generation 66 before this update; ledger is 0/66 PASS, 66 OPEN. No PR merge or integration SHA exists. PR bodies and canonical handoff are being refreshed with these exact results; do not claim completion.
+
+Handoff reconciliation follow-up (manifest generation 67): `spec-handoff validate --all` passes, global index invariants pass, and the canonical ledger remains 0/66 PASS, 66 OPEN. Current fetched main is `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; the #399 branch head `b5802c4` records verification evidence from its exact CI run and currently has no integration SHA. Latest remaining actions are the named owner disposition and authorized non-production identities/endpoints, followed by refresh and exact gates before any merge.

@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.
-- Manifest generation: 66
+- Next action: Obtain Security/Media-Runtime disposition; provision approved non-production MCP and SPEC-308 test identities; refresh and merge PRs in dependency order only after exact mandatory gates pass.
+- Manifest generation: 67
 
 ## Source-declared status and relationship claims
 

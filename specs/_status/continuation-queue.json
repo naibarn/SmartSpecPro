@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
+      "next_action": "Obtain Security/Media-Runtime disposition; provision approved non-production MCP and SPEC-308 test identities; refresh and merge PRs in dependency order only after exact mandatory gates pass.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4929,7 +4929,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Obtain the recorded Security/Media-Runtime owner disposition for the optional HyperFrames ONNX installer and separately signed WSL2 bundle. Then merge the secured dependency baseline through the existing #405 PR only if its exact mandatory checks remain green; refresh #403 and #399 from new main and require their applicable security/protocol/browser gates. Provision an authorized MCP endpoint/token and non-production SPEC-308 test identity before live acceptance.",
+      "rationale": "Obtain Security/Media-Runtime disposition; provision approved non-production MCP and SPEC-308 test identities; refresh and merge PRs in dependency order only after exact mandatory gates pass.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },
