@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
 - Next action: Obtain Security/Media-Runtime disposition; provision approved non-production MCP and SPEC-308 test identities; refresh and merge PRs in dependency order only after exact mandatory gates pass.
-- Manifest generation: 71
+- Manifest generation: 72
 
 ## Source-declared status and relationship claims
 
