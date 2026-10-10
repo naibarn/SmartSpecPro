@@ -50,3 +50,19 @@
 | Provider transport | guard invoked before request; remote acceptance cannot be atomic with PostgreSQL revalidation |
 | Team-room persistent memory | remains disabled until trusted source provenance exists |
 | SPEC-224 protected dispatch / deployment | out of scope; remains DENY / unauthorized |
+
+## SmartAIHub Marathon R2 — Mini App Route Identity Wave (2026-10-10)
+
+### Ownership boundaries
+
+| File | Owner |
+|---|---|
+| `apps/web/client/src/pages/MiniAppRoute.tsx` | conductor |
+| `apps/web/client/src/pages/__tests__/MiniAppRoute.test.tsx` | conductor |
+
+### Route contract
+
+- Resolve `publicAppId` through the authenticated App Route API before selecting a reference UI.
+- Route only the canonical `app_research_notes` identity to Research Notes and `app_project_wiki_pages` to Project Wiki Pages.
+- A valid App identity with no registered host runtime must show an unsupported-runtime state; it must not inherit the Research Notes UI or CRUD binding.
+- This does not register a deployment target, apply migration 0392, or enable a generic hosted-App runtime.

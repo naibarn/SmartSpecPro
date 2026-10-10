@@ -16,5 +16,15 @@ export default function MiniAppRoute() {
     return <AppPage title="Mini App unavailable" state="error" error={{ title: "This App is unavailable", description: "Check the app link and your tenant access, then try again.", onRetry: () => { void appQuery.refetch(); } }} />;
   }
   if (appQuery.data.appId === "app_project_wiki_pages") return <ProjectWikiPagesPage appId={appQuery.data.appId} />;
-  return <ResearchNotesPage />;
+  if (appQuery.data.appId === "app_research_notes") return <ResearchNotesPage />;
+  return (
+    <AppPage
+      title="Mini App unavailable"
+      state="error"
+      error={{
+        title: "This App is not supported yet",
+        description: "The App link is valid, but this host does not have a runtime for it.",
+      }}
+    />
+  );
 }
