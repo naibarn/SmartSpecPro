@@ -5,10 +5,15 @@ Canonical ledger: `specs/feature/308 - SmartAIHub Cooperative Dual Surface/hando
 ## Current evidence boundary
 
 - PR #399 source-focused run 38036424904 passed 146 component tests at source SHA `8bd3b68787726df4ab2fbda2f203676dec816852`. It is aggregate evidence; no mapping from all 146 cases to all 66 rows is asserted here.
-- PR #399 mocked Chromium run 38037147561 passed 23 simulations at head `95f5ce50d7f40f0289f461ff709f23f172c67ac9`. It is simulated, not live authenticated acceptance, and no unsupported per-row mapping is asserted. A refreshed-head run is pending.
-- Current refreshed PR heads: #399 `56fb8e77da0920ee0e1c10ebebd71a76d28dab91`, #403 `2681346dd8dbace3f98b40634d3a6d7a93e1d777`, #405 `556e74fd40a761f334b0ce336fa1bbd99ccd6d40`; all now use base `e20e13db2f01f5eb19d7dc611d753328ed084de4`. Their exact-head CI is pending.
+- PR #399 mocked Chromium run 38037949886 passed 23 simulations on exact head `15c9c4fa635d9421e0feecb1b66c6983dd09efc8`. It is simulated, not live authenticated acceptance, and no unsupported per-row mapping is asserted.
+- Current refreshed PR heads: #399 `15c9c4fa635d9421e0feecb1b66c6983dd09efc8`, #403 `2681346dd8dbace3f98b40634d3a6d7a93e1d777`, #405 `556e74fd40a761f334b0ce336fa1bbd99ccd6d40`; all use base `e20e13db2f01f5eb19d7dc611d753328ed084de4`. GitHub reports no merge conflict (mergeability is being recomputed after refresh).
 - Authenticated acceptance remains NOT RUN: only GitHub environment discovered is `production`; no authorized non-production endpoint/identity is available. Do not use production credentials or treat mocks as live.
 - Integration status remains pending because no PR is merged. Requirement final states remain the source of truth in the ledger.
+
+## Refreshed dependency PR verification
+
+- PR #403 refreshed exact head `2681346dd8dbace3f98b40634d3a6d7a93e1d777` run 38037833334 passed 118/118 focused MCP tests, `check:mcp146`, and `security:mcp146`; its mandatory production audit still fails on 85 findings (1 Critical, 38 High, 37 Moderate, 9 Low), and live smoke fails closed for missing `MCP_SMOKE_URL`/`MCP_SMOKE_TOKEN`. The fixture repair is present; no retired Agency implementation was restored.
+- PR #405 refreshed exact head `556e74fd40a761f334b0ce336fa1bbd99ccd6d40` run 38037826210 passed production audit and compatibility regressions. Its package and lockfile match the Linux render candidate evidence; residual optional CLI ONNX and signed WSL2 pack still need the existing Security and Media/Runtime owner disposition.
 
 ## Three rows with implementation/measurement status UNVERIFIED
 
