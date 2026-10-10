@@ -51,3 +51,5 @@
 - Lane B review refinement candidate `1ea0ce671e03b4cee8a60a147b0360d211f77244`: the 4-file / 39-test suite passed with READ authorized once then revoked on the second pre-storage check; `readBuffer` remained untouched. A second read-only review confirmed the assertion matches the adapter order.
 
 - PR #556 merged at `7e436e27989c6a12167a80e7c7e3e9a64a43e3ab`; post-merge Lane B receipt suites passed 4 files / 39 tests. Combined current canonical focused regression passed 12 files / 172 tests on the same SHA. Preview checks were SKIPPED; no full build/typecheck.
+
+- Reconciled with unrelated PR #557 at canonical `6c42e73d2b8f360812f86ebf7338b1b2d9d44242`; reran the combined focused suite on that canonical SHA: 12 files / 172 tests passed.

@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+    "expected_canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
     "next_action": "Obtain an explicit owner for team_runs mutation fencing and its schema/runtime contract, then implement and test stale-worker denial after lease reclaim at every protected run mutation boundary. Current SIGKILL proof kills the prior process before reclaim and does not test stale side effects.",
     "next_ready_workunit": "R6-A4 run-scoped mutation fence ownership and disposable PostgreSQL stale-worker-after-reclaim acceptance; schema owner assignment is the prerequisite.",
-    "reactivation_predicate": "Resume schema/runtime fencing when the team_runs schema owner and required migration authorization are recorded; run only against an owner-marked disposable PostgreSQL fixture. Continue independent Task Control, SPEC-271 and SPEC-302 contract work without waiting.",
-    "resume_point": "Canonical main is 7e436e27989c6a12167a80e7c7e3e9a64a43e3ab. Combined 12-file / 172-test focused suite passed. SIGKILL process recovery, SPEC-302 pure replay and SPEC-271 synthetic rejection contracts are integrated. Stale run-side-effect fencing, Task Control continuity, durable receipt persistence and full SPEC-277 acceptance remain open.",
+    "reactivation_predicate": "Resume schema/runtime fencing when the team_runs schema owner and required migration authorization are recorded; use an owner-marked disposable PostgreSQL fixture only. Continue independent Task Control, SPEC-271 and SPEC-302 contract work without waiting.",
+    "resume_point": "Canonical main is 6c42e73d2b8f360812f86ebf7338b1b2d9d44242. The reconciled 12-file / 172-test focused suite passed. SIGKILL recovery, pure SPEC-302 replay, and synthetic SPEC-271 fail-closed contracts are integrated. Stale TeamRun side-effect fencing, Task Control continuity, and durable authoritative receipts remain open.",
     "waiting_predicate": "Lane A4 schema/runtime mutation is waiting on team_runs ownership and migration authorization; SPEC-271 authoritative WP2B remains waiting on owner assignment; SPEC-302 Phase 2 remains waiting on schema owner and explicit migration approval. These waits do not block other safe test-only work."
   },
   "continuation_assessment": {
@@ -99,7 +99,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 32,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -143,9 +143,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+    "canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
     "integrated": true,
-    "integrated_at": "2026-10-10T15:42:14Z"
+    "integrated_at": "2026-10-10T15:43:50Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -414,7 +414,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T15:44:11.124837Z",
+  "updated_at": "2026-10-10T15:47:01.585972Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -478,6 +478,15 @@
         "scope": "PRs #552/#553 SIGKILL recovery and #555/#556 replay/receipt rejection contract slices. Combined 12-file / 172-test focused suite passed. SIGKILL recovery is bounded; stale TeamRun mutation fencing and authoritative receipts remain unproven.",
         "source_sha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+        "kind": "R6_AUTOTEAM_AND_RECEIPT_CONTRACT_RECONCILED_VERIFICATION",
+        "path": "orchestra/tasks/smartaihub-r6-autonomous-recovery-20261010/evidence/autoteam-scheduled-occurrence-1a9239ba.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/556",
+        "scope": "After PR #557 advanced main, the exact 12-file focused AutoTeam/SPEC-271/SPEC-302 regression suite passed 172 tests. This remains partial acceptance; stale TeamRun side-effect fencing, Task Control continuity and durable authoritative receipts are open.",
+        "source_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "FRESH",
@@ -485,7 +494,7 @@
       "quick",
       "integration"
     ],
-    "sha": "7e436e27989c6a12167a80e7c7e3e9a64a43e3ab",
+    "sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
     "status": "PARTIAL",
     "task_regressions": []
   }
