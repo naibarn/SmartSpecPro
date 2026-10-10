@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+    "expected_canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
     "expected_spec_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922"
   },
   "continuation": {
     "next_action": "Connect authenticated worker capability, health, lease and resource facts to the existing claim path; persist actionable no-compatible-worker and queue-stall reasons; preserve worker_jobs, outbox and CAS fencing; then run the failure matrix against an isolated current-schema test database.",
     "next_ready_workunit": "WU-SPEC267-CAPABILITY-AWARE-CLAIM-PLACEMENT",
     "reactivation_predicate": "Resume when canonical worker capability/health/resource fields and claim authority are identified in the existing SPEC-267 control plane, or when the isolated current-schema integration environment is provisioned.",
-    "resume_point": "PR #471 dependency-cycle guard is integrated in d72bb64b9e9e8dc326b872f6bb249126591c1642 and remains in current canonical 311bc1e39100a308efcadab61fa278d607a860aa. Focused tests passed on ancestor e20e13db2f01f5eb19d7dc611d753328ed084de4. PR preview CI was SKIPPED and merge-SHA checks were queued at last observation; production readiness is not established.",
+    "resume_point": "PR #471 cycle recovery is integrated in d72bb64b9e9e8dc326b872f6bb249126591c1642; required-check merge guard is integrated by PR #504 at 890658e999cd3020d2944d5d7c898d5e52ec8f4f. Current origin/main is this SHA. PR preview and cleanup were SKIPPED; targeted guard test passed 22/22 locally. Overall architecture remains VALIDATION_PENDING and not production ready.",
     "waiting_predicate": "A worker identity has fresh authenticated capability and health data, and job requirements map deterministically to those capabilities; if unavailable, keep this WorkUnit runnable through existing single-machine claim/retry and continue independent ready work."
   },
   "continuation_assessment": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 6,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
     "digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
@@ -107,9 +107,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+    "canonical_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:31:48Z"
+    "integrated_at": "2026-10-10T08:36:26Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -128,7 +128,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+        "evidence_sha": "890658e999cd3020d2944d5d7c898d5e52ec8f4f",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/jobControlPlane.ts at integrated PR #471 commit d72bb64b9e9e8dc326b872f6bb249126591c1642",
@@ -142,8 +142,9 @@
         "source_spec_digest": "f2076cdbb8fb456b751689a9f0051b3058333c10789e53869a22c36edcaae922",
         "successor_mapping": [],
         "verification_evidence": [
-          "orchestra/tasks/autonomous-completion-pr467-20261010/evidence/spec267-dependency-cycle-20261010.md: 10 focused cases passed on e20e13db2f01f5eb19d7dc611d753328ed084de4, descendant source of current main.",
-          "PR #471 merge SHA d72bb64b9e9e8dc326b872f6bb249126591c1642 is an ancestor of current origin/main 311bc1e39100a308efcadab61fa278d607a860aa."
+          "Focused dependency-cycle/claim/lease cases passed (10 passed) on ancestor e20e13db2f01f5eb19d7dc611d753328ed084de4; implementation is included in current canonical main.",
+          "workspaceAuthoritySafeActionJob.test.ts passed 22/22 on exact canonical SHA 890658e999cd3020d2944d5d7c898d5e52ec8f4f.",
+          "PR #471 merged at d72bb64b9e9e8dc326b872f6bb249126591c1642; PR #504 merged at 890658e999cd3020d2944d5d7c898d5e52ec8f4f. Their preview CI results are SKIPPED and are not represented as passed."
         ],
         "verification_method": "Run the focused claim/dependency-cycle/lease/independent-progress Vitest cases against the exact integrated source revision."
       }
@@ -255,7 +256,7 @@
     "unresolved": 362
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:32:35.402597Z",
+  "updated_at": "2026-10-10T08:37:26.613842Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
