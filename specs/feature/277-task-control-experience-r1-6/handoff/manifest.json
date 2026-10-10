@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 10,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -352,14 +352,52 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:55:12.705988Z",
+  "updated_at": "2026-10-10T07:57:07.664987Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      {
+        "command": "node --experimental-strip-types --check on changed runtime, recovery, registry, and contract test TypeScript files",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "assertions": 6,
+        "command": "node --experimental-strip-types /tmp/auto-team-recovery-contract-smoke.mjs",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "command": "pnpm exec vitest run focused AutoTeam and AgentRuntime contract suites",
+        "profile": "quick",
+        "reason": "vitest binary is not installed in the isolated worktree",
+        "result": "NOT_RUN",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "command": "non-production worker_jobs/outbox recovery UAT",
+        "profile": "integration",
+        "reason": "DATABASE_URL and API_BASE_URL are absent; no non-production environment is configured",
+        "result": "NOT_RUN",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      },
+      {
+        "command": "PR preview CI",
+        "profile": "integration",
+        "pull_request": 480,
+        "result": "SKIPPED",
+        "revision": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e"
+      }
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "quick",
+      "integration"
+    ],
+    "sha": "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
