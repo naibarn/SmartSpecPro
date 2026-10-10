@@ -344,6 +344,8 @@ type JobDependencyCheck =
   | { state: "waiting" }
   | { state: "failed"; reason: string };
 
+const JOB_DEPENDENCY_CYCLE_SCAN_LIMIT = 128;
+
 function readJobDependencyIds(
   inputJson: unknown
 ): { ids: string[]; invalid: false } | { ids: []; invalid: true } {
@@ -396,11 +398,64 @@ async function checkJobDependencies(
   ) {
     return { state: "failed", reason: "dependency_failed" };
   }
-  return dependencies.every(
+  if (dependencies.every(
     dependency => canonicalizeStoredStatus(dependency!.status) === "succeeded"
-  )
-    ? { state: "ready" }
+  )) {
+    return { state: "ready" };
+  }
+
+  const cycle = await hasJobDependencyCycle(repo, job);
+  return cycle === true
+    ? { state: "failed", reason: "dependency_cycle" }
     : { state: "waiting" };
+}
+
+/**
+ * Detect cycles in the unresolved dependency chain before leaving a queued
+ * job waiting forever. The scan is bounded and fail-closed: if the graph is
+ * larger than the budget, the job remains queued for a later claim rather
+ * than being failed without proof of a cycle.
+ */
+async function hasJobDependencyCycle(
+  repo: TxRepo,
+  root: WorkerJob
+): Promise<boolean | null> {
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  let scanned = 0;
+
+  const visit = async (node: WorkerJob): Promise<boolean | null> => {
+    if (visiting.has(node.id)) return true;
+    if (visited.has(node.id)) return false;
+    if (scanned >= JOB_DEPENDENCY_CYCLE_SCAN_LIMIT) return null;
+    scanned += 1;
+    visiting.add(node.id);
+
+    const parsed = readJobDependencyIds(node.inputJson);
+    if (!parsed.invalid) {
+      for (const dependencyId of parsed.ids) {
+        if (visiting.has(dependencyId)) return true;
+        if (visited.has(dependencyId)) continue;
+
+        const dependency = await repo.findJob(dependencyId);
+        if (!dependency) continue;
+        const status = canonicalizeStoredStatus(dependency.status);
+        if (["succeeded", "failed", "cancelled", "expired"].includes(status)) {
+          visited.add(dependencyId);
+          continue;
+        }
+
+        const result = await visit(dependency);
+        if (result !== false) return result;
+      }
+    }
+
+    visiting.delete(node.id);
+    visited.add(node.id);
+    return false;
+  };
+
+  return visit(root);
 }
 
 /**
