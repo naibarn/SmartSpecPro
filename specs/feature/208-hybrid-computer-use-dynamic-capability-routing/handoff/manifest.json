@@ -116,14 +116,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "87f08914837ce5ff5e06ee90967919d9f73fd746",
+    "expected_canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "Implement and execute the Runner-owned Moli process/profile and CDP-only protocol/network boundary in the approved isolated runtime. Connect the current profile and egress-policy primitives to actual launch, listener, resolver/socket, redirect and cleanup hooks; keep the Runner Chromium-only guard until those gates pass. Then continue W3 real receipts/settlement/cancellation/cleanup against that boundary. Continue W4 artifact provenance and complete notices review independently.",
+    "next_action": "Identify the approved isolated Runner runtime adapter and its source/runtime ownership. Wire the existing profile and egress primitives to actual Moli launch, listener, resolver/socket, redirect and cleanup hooks while retaining the Chromium-only guard. Then implement W3 receipt/settlement/cancellation/cleanup against that real boundary. Continue W4 artifact provenance and complete notices review when exact deployed target artifacts and inventory are available.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
-    "reactivation_predicate": "An approved isolated runtime adapter is available that launches the pinned Moli build per worker_jobs attempt, binds only authorized loopback CDP, enforces resolved-IP pins across navigation/redirect at the socket layer, and exposes canonical receipt/cancellation/profile cleanup hooks.",
-    "resume_point": "Canonical verification SHA 87f08914837ce5ff5e06ee90967919d9f73fd746: W0/W1 closed; W1 scoped TypeScript exit 0 and focused tests 15 passed/2 live-runtime skipped. W2 partial primitives merged by #510 / e0f1031c453a21273f8d03d3bca81916b12834ee and reverified at canonical SHA (4 isolation tests + 1 Chromium-only guard test pass), but no Moli process, protocol listener, DNS/socket enforcement, or real process isolation is wired; keep Runner rejecting Moli. W3 baseline lifecycle tests merged by #508 / 225dbfb1196c1139f6902cbe739b3f3a403f0289 and reverified at canonical SHA (4/4 pass), but the real Moli result/receipt/settlement/cancellation/cleanup vertical slice is blocked on W2 isolated Runner adapter. W4 refreshed all 11 advisory records in #511 / 87f08914837ce5ff5e06ee90967919d9f73fd746; pinned prototype records remain applicable, no fixed Moli release or publisher attestation exists, deployed inventory and complete notices/legal review remain unresolved. Chromium stays production default and Moli production stays disabled.",
+    "reactivation_predicate": "A specific approved isolated runtime adapter and its source/runtime owner are available, with testable process launch, loopback CDP-only listener, resolved-IP pinning across redirects, receipt emission, cancellation, and profile cleanup hooks.",
+    "resume_point": "Canonical integration SHA eec45036091f1f43a215a46c643007f9f2c4ff44 includes W2 hardening PR #514 (merge SHA 74554a9317b506886bde154166e7750986e3b83e): validate absolute nonsymlink Runner-owned private profile data roots and recheck canonical identity/permissions. On eec4503, Rust isolation tests 5/5 and Chromium-only Runner guard 1/1 pass. Existing W3 executor suite passed 4/4 on 74554a9; rerun on eec4503 could not start because Vitest dependencies are absent in the clean isolated worktree. W3 inspection confirms no real Moli runtime, receipt, cancellation, or cleanup hooks; no synthetic E2E was added. W4 remains open: pinned prototype advisories still apply, publisher provenance/deployed target inventory and complete license-notice review are unresolved. W0/W1 closed. Chromium remains production default and Moli production dispatch remains disabled. Evidence: specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -331,7 +331,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -374,9 +374,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "87f08914837ce5ff5e06ee90967919d9f73fd746",
+    "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "integrated": true,
-    "integrated_at": "2026-10-10T02:26:58Z"
+    "integrated_at": "2026-10-10T08:57:50Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -786,7 +786,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:45:52.850472Z",
+  "updated_at": "2026-10-10T08:59:00.161674Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -839,6 +839,22 @@
         "sha": "1c01e3fa80c8952d0903d4ddfbdfcf6619c3b65e",
         "test_files": 1,
         "warning": "Cargo global last-use metadata write failed because root filesystem was full; test exit was 0"
+      },
+      {
+        "exit_code": 0,
+        "passed": 6,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md",
+        "profile": "package",
+        "result": "PASS",
+        "sha": "eec45036091f1f43a215a46c643007f9f2c4ff44"
+      },
+      {
+        "exit_code": 0,
+        "passed": 4,
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md",
+        "profile": "quick",
+        "result": "PASS",
+        "sha": "74554a9317b506886bde154166e7750986e3b83e"
       }
     ],
     "freshness": "FRESH",
