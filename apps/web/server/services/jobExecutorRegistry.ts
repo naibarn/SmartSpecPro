@@ -1317,6 +1317,18 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "auto-team.recovery.scan",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async input => {
+    const { executeAutoTeamRecoveryScan } = await import(
+      "./autoTeamRecoveryScanExecutor"
+    );
+    return executeAutoTeamRecoveryScan(input);
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "auto-team.recovery.evaluate",
   executionClass: "long",
   contractVersions: new Set(["auto-team-recovery-v1"]),

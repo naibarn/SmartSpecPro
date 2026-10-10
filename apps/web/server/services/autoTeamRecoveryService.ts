@@ -1,10 +1,9 @@
-import { and, asc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { teamRooms, teamRuns, workerJobs } from "../../drizzle/schema";
 import * as runEngine from "./runEngine";
 import * as automationFabricService from "./workAutomationFabricService";
 import * as autoTeamMediaCompletionService from "./autoTeamMediaCompletionService";
-import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 import { createCanonicalJobInTransaction } from "./jobControlPlane";
 import {
   AUTO_TEAM_RECOVERY_POLL_INTERVAL_MS,
@@ -12,15 +11,18 @@ import {
   fingerprintAutoTeamRecoveryState,
 } from "./autoTeamRecoveryEvaluationJob";
 
-const AUTO_TEAM_RECOVERY_INTERVAL_MS = 30_000;
-let recoveryTimer: ReturnType<typeof setInterval> | null = null;
+export interface AutoTeamRecoverySweepResult {
+  actionsDispatched: number;
+  usefulWorkVerified: boolean;
+  usefulWorkEvidence: string[];
+}
 
 export async function sweepPendingAutoTeamRuns(options: {
   onlyRunId?: string;
   expectedStateFingerprint?: string;
-} = {}): Promise<number> {
+} = {}): Promise<AutoTeamRecoverySweepResult> {
   const db = await getDb();
-  if (!db) return 0;
+  if (!db) return { actionsDispatched: 0, usefulWorkVerified: false, usefulWorkEvidence: [] };
 
   const candidateRuns = await db
     .select({
@@ -54,6 +56,7 @@ export async function sweepPendingAutoTeamRuns(options: {
     .limit(100);
 
   let resumed = 0;
+  const usefulWorkEvidence: string[] = [];
   for (const run of candidateRuns) {
     if (runEngine.hasQueuedAutoAdvance(run.id)) {
       continue;
@@ -102,7 +105,10 @@ export async function sweepPendingAutoTeamRuns(options: {
           run.tenantId,
           "Auto-completed after final review timeout with resolved final evidence.",
         );
-        if (completed) resumed += 1;
+        if (completed) {
+          resumed += 1;
+          usefulWorkEvidence.push("final_review_completed");
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (!message.includes("already advancing")) {
@@ -334,8 +340,11 @@ export async function sweepPendingAutoTeamRuns(options: {
     }
 
     try {
-      await runEngine.advanceRun(run.id, run.tenantId, 1);
-      resumed += 1;
+      const turns = await runEngine.advanceRun(run.id, run.tenantId, 1);
+      if (turns.length > 0 && turns.some(turn => turn.messageId && turn.content.trim())) {
+        usefulWorkEvidence.push("assistant_turn_persisted");
+      }
+      if (turns.length > 0) resumed += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes("already advancing") && !message.includes("must be 'running' to advance")) {
@@ -348,7 +357,11 @@ export async function sweepPendingAutoTeamRuns(options: {
     }
   }
 
-  return resumed;
+  return {
+    actionsDispatched: resumed,
+    usefulWorkVerified: usefulWorkEvidence.length > 0,
+    usefulWorkEvidence,
+  };
 }
 
 export function isRecoveryEvaluationEligible(
@@ -391,6 +404,7 @@ export function isRecoveryEvaluationEligible(
     "rendering_final_video",
     "probing_final_video",
     "finalizing_evidence",
+    "capacity_wait",
   ].includes(String(status));
 }
 
@@ -457,6 +471,32 @@ export async function dispatchPendingAutoTeamEvaluations(
           .limit(1);
         if (failedStateJob[0]) return false;
 
+        if (currentRun.status === "running") {
+          const recentEvaluations = await tx
+            .select({ outputJson: workerJobs.outputJson })
+            .from(workerJobs)
+            .where(and(
+              eq(workerJobs.tenantId, candidate.tenantId),
+              eq(workerJobs.jobType, "auto-team.recovery.evaluate"),
+              eq(workerJobs.status, "completed"),
+              like(workerJobs.idempotencyKey, `auto-team-recovery:${candidate.id}:${stateFingerprint}:%`),
+            ))
+            .orderBy(desc(workerJobs.createdAt))
+            .limit(3);
+          const noProgressOutcomes = new Set([
+            "no_action",
+            "recovery_action_applied_unverified",
+            "recovery_dispatched_unverified",
+          ]);
+          const repeatedNoProgress = recentEvaluations.length === 3 && recentEvaluations.every(row => {
+            const output = row.outputJson && typeof row.outputJson === "object"
+              ? row.outputJson as Record<string, unknown>
+              : {};
+            return noProgressOutcomes.has(String(output.outcome ?? ""));
+          });
+          if (repeatedNoProgress) return false;
+        }
+
         const [previous] = await tx
           .select({ id: workerJobs.id })
           .from(workerJobs)
@@ -488,26 +528,4 @@ export async function dispatchPendingAutoTeamEvaluations(
     }
   }
   return queued;
-}
-
-export function startAutoTeamRecoverySweep(): void {
-  if (!shouldRunFeature192InProcessTimer("startAutoTeamRecoverySweep")) {
-    console.info("[auto-team-recovery] in-process sweep disabled; use Cloudflare scheduler");
-    return;
-  }
-  if (recoveryTimer) return;
-  recoveryTimer = setInterval(() => {
-    void dispatchPendingAutoTeamEvaluations().catch((error) => {
-      console.warn("[auto-team-recovery] sweep failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
-  }, AUTO_TEAM_RECOVERY_INTERVAL_MS);
-  recoveryTimer.unref?.();
-}
-
-export function stopAutoTeamRecoverySweep(): void {
-  if (!recoveryTimer) return;
-  clearInterval(recoveryTimer);
-  recoveryTimer = null;
 }

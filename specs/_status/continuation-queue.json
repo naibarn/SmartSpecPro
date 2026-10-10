@@ -4767,7 +4767,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",
@@ -4956,7 +4956,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "priority": "P3",
-      "rationale": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
+      "rationale": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "spec_id": "269"
     },
