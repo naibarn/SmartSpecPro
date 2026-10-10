@@ -20,6 +20,23 @@
     {"id":"AC-17","event":"resume_after_checkpoint","facts":{"canonical_sha":"main-sha-1","reconciled_canonical_sha":"main-sha-1","evidence_fresh":true,"workunits":[{"id":"WU-2","status":"READY","prerequisites":["WU-1"],"completion_predicate":{"kind":"evidence_exists","locator":"evidence/wu2.log"}}],"completed_workunits":[{"id":"WU-1","status":"COMPLETE","completion_evidence":["evidence/wu1.log"],"evidence_fresh":true,"canonical_sha":"main-sha-1"}]},"expected":"RESUME_NEXT_READY"},
     {"id":"AC-18","event":"fixable_remaining_spec_requirements","facts":{"unresolved":2,"fixable":2},"expected":"CLOSE_REQUIREMENTS"},
     {"id":"AC-19","event":"production_acceptance_evidence_missing","facts":{"acceptance_required":true,"acceptance_evidence":false},"expected":"CONTINUE_UNTIL_ACCEPTANCE"},
-    {"id":"AC-20","event":"project_policy_deadlock","facts":{"policy_project_local":true,"safety_gain":false},"expected":"SELF_HEAL_AND_RESUME"}
+    {"id":"AC-20","event":"project_policy_deadlock","facts":{"policy_project_local":true,"safety_gain":false},"expected":"SELF_HEAL_AND_RESUME"},
+    {"id":"AC-21","event":"concurrent_writer_collision","facts":{"isolated_workspace_available":true},"expected":"ISOLATE_WORKTREE"},
+    {"id":"AC-22","event":"dirty_canonical_checkout","facts":{"exact_sha_workspace_available":true},"expected":"PRESERVE_AND_VERIFY_ISOLATED"},
+    {"id":"AC-23","event":"unrelated_baseline_failure","facts":{"task_regression":false,"independent_work":true},"expected":"ISOLATE_AND_CONTINUE"},
+    {"id":"AC-24","event":"missing_optional_runner","facts":{"compatible_fallback":true,"verification_optional":false},"expected":"SUBSTITUTE"},
+    {"id":"AC-25","event":"full_verification_resource_wait","facts":{"ready_independent_unit":true},"expected":"QUEUE_AND_CONTINUE"},
+    {"id":"AC-26","event":"interrupted_worker_resume","facts":{"durable_capsule":true,"canonical_reconciled":true},"expected":"RESUME_FROM_CAPSULE"},
+    {"id":"AC-27","event":"dependency_wake_resume","facts":{"predicate_revalidated":true,"outbox_available":true},"expected":"RESUME_IDEMPOTENTLY"},
+    {"id":"AC-28","event":"local_blocker_with_independent_work","facts":{"blocker_scoped":true,"independent_work":true},"expected":"ISOLATE_BLOCKER_AND_CONTINUE"},
+    {"id":"AC-29","event":"unauthorized_action","facts":{"independent_work":true},"expected":"DENY_AND_CONTINUE_SAFE_WORK"},
+    {"id":"AC-30","event":"safe_pr_integration","facts":{"fast_gate_passed":true,"base_reconciled":true,"non_force_path":true},"expected":"INTEGRATE_NORMAL_PATH"},
+    {"id":"AC-31","event":"exact_sha_build","facts":{"source_sha":"sha-1","requested_sha":"sha-1","canonical_ancestor":true,"canonical_advanced":false},"expected":"BUILD_EXACT_SHA"},
+    {"id":"AC-32","event":"exact_sha_build","facts":{"source_sha":"sha-1","requested_sha":"sha-1","canonical_ancestor":true,"canonical_advanced":true},"expected":"MARK_STALE_AND_REBUILD"},
+    {"id":"AC-33","event":"missing_optional_runner","facts":{"compatible_fallback":false,"verification_optional":true},"expected":"WAITING_CAPABILITY"},
+    {"id":"AC-34","event":"missing_optional_runner","facts":{"compatible_fallback":false,"verification_optional":false},"expected":"BLOCKED_CAPABILITY"},
+    {"id":"AC-35","event":"unauthorized_action","facts":{"independent_work":false},"expected":"DENY_AND_WAIT_AUTHORITY"},
+    {"id":"AC-36","event":"concurrent_writer_collision","facts":{"isolated_workspace_available":false},"expected":"SERIALIZE_OWNED_PATH"},
+    {"id":"AC-37","event":"exact_sha_build","facts":{"source_sha":"sha-other","requested_sha":"sha-1","canonical_ancestor":false,"canonical_advanced":false},"expected":"REJECT_SOURCE"}
   ]
 }
