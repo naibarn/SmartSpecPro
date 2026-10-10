@@ -285,7 +285,7 @@ export async function measureMascotSvgGzip(page: Page): Promise<Spec308MetricsEv
   }
   const variants = renderedVariants.map(({ style, markup }) => {
     const raw = Buffer.from(markup, "utf8");
-    return { style, rawBytes: raw.byteLength, gzipBytes: gzipSync(raw, { mtime: 0 }).byteLength };
+    return { style, rawBytes: raw.byteLength, gzipBytes: gzipSync(raw).byteLength };
   });
   return {
     method: "Rendered settings preview SVG outerHTML, gzipSync",

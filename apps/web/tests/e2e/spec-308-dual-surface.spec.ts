@@ -600,6 +600,15 @@ test("SPEC-308 Thai launcher and reminder labels are localized", async ({ page }
   await expect(dialog.getByLabel("ส่งเป็นเรื่องเร่งด่วน")).toBeVisible();
 });
 
+type Spec308MetricProfile = {
+  name: "low-end-mobile-cpu-emulation" | "tablet-emulation" | "desktop-emulation";
+  width: number;
+  height: number;
+  deviceScaleFactor: 1;
+  cpuThrottlingRate: number;
+  network: "baseline";
+};
+
 async function measureFrameIntervals(page: Page) {
   return page.evaluate(() => new Promise<{
     framesObserved: number;
@@ -636,7 +645,7 @@ test("SPEC-308 records raw OFF/ON metrics across emulated mobile, tablet and des
   const tenantFlag: TenantFlagFixture = { enabled: false };
   await installMockEventSource(page);
   const metrics = await installSpec308MetricsProbe(page);
-  const profiles = [
+  const profiles: Spec308MetricProfile[] = [
     { name: "low-end-mobile-cpu-emulation", width: 360, height: 800, deviceScaleFactor: 1 as const, cpuThrottlingRate: 4, network: "baseline" as const },
     { name: "tablet-emulation", width: 768, height: 1024, deviceScaleFactor: 1 as const, cpuThrottlingRate: 1, network: "baseline" as const },
     { name: "desktop-emulation", width: 1440, height: 900, deviceScaleFactor: 1 as const, cpuThrottlingRate: 1, network: "baseline" as const },
@@ -647,7 +656,7 @@ test("SPEC-308 records raw OFF/ON metrics across emulated mobile, tablet and des
     let previousProcedureCount = 0;
     for (const profile of profiles) {
       await page.setViewportSize({ width: profile.width, height: profile.height });
-      await metrics.setEmulationProfile(profile.name as (typeof profiles)[number]["name"]);
+      await metrics.setEmulationProfile(profile.name);
       tenantFlag.enabled = false;
       await metrics.clearBrowserCache();
       if (profile === profiles[0]) await page.goto("/chat");
