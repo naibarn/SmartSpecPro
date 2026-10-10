@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const { mockSearchMemories, mockGetRuleMemories } = vi.hoisted(() => ({
   mockSearchMemories: vi.fn(),
@@ -6,6 +7,12 @@ const { mockSearchMemories, mockGetRuleMemories } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../db", () => ({ getDb: vi.fn() }));
+vi.mock("../appRuntimeConfig", () => ({
+  getAppRuntimeConfig: vi.fn(async () => ({ pythonBackendUrl: "http://test.invalid" })),
+}));
+vi.mock("../../_core/fetchWithResilience", () => ({
+  fetchWithResilience: vi.fn(async () => ({ ok: false })),
+}));
 vi.mock("../scopedMemoryService", () => ({
   searchMemories: mockSearchMemories,
   getRuleMemories: mockGetRuleMemories,
@@ -62,9 +69,11 @@ vi.mock("../tenantFeatureFlagService", () => ({
 }));
 
 import { getDb } from "../../db";
+import { entityMemories, messages, conversationSummaries } from "../../../drizzle/schema";
 import { getOrCreateState } from "../visualStateService";
 import * as personaService from "../personaService";
 import { buildChatContext, upsertEntityMemory } from "../memoryService";
+import { buildChatContext as buildLegacyChatContext } from "../chatService";
 
 const mockGetDb = vi.mocked(getDb);
 const mockGetOrCreateState = vi.mocked(getOrCreateState);
@@ -171,6 +180,61 @@ describe("memoryService persona routing", () => {
       expect.objectContaining({ excludeTeamRoomPromotions: true })
     );
     expect(JSON.stringify(context)).not.toContain("Do not send this room detail to Chat");
+  });
+
+  it("keeps project-scoped entity memories out of the legacy chat prompt without a project binding", async () => {
+    const globalMemory = {
+      entityType: "user",
+      entityName: "response preference",
+      facts: ["Prefers concise answers"],
+      projectId: null,
+    };
+    const projectMemory = {
+      entityType: "project",
+      entityName: "private project detail",
+      facts: ["Project A launch is confidential"],
+      projectId: "project-a",
+    };
+    let currentTable: unknown;
+    let entityMemoryWhere: unknown;
+    const db: any = {
+      select: vi.fn(() => ({
+        from: vi.fn((table: unknown) => {
+          currentTable = table;
+          return {
+            where: vi.fn((predicate: unknown) => {
+              if (currentTable === entityMemories) entityMemoryWhere = predicate;
+              return {
+                limit: vi.fn().mockResolvedValue([]),
+                orderBy: vi.fn(() => {
+                  if (currentTable === entityMemories) {
+                    const query = new PgDialect().sqlToQuery(entityMemoryWhere as never);
+                    const filtersToGlobalOnly = /projectId"\s+is null/i.test(query.sql);
+                    return Promise.resolve(
+                      filtersToGlobalOnly ? [globalMemory] : [globalMemory, projectMemory],
+                    );
+                  }
+                  if (currentTable === conversationSummaries) return Promise.resolve([]);
+                  if (currentTable === messages) {
+                    return { limit: vi.fn().mockResolvedValue([]) };
+                  }
+                  return Promise.resolve([]);
+                }),
+              };
+            }),
+          };
+        }),
+      })),
+    };
+    mockGetDb.mockResolvedValue(db);
+
+    const context = await buildLegacyChatContext(801, 7, "Base system prompt");
+    const prompt = context.map((message) => message.content).join("\n");
+    const query = new PgDialect().sqlToQuery(entityMemoryWhere as never);
+
+    expect(query.sql).toMatch(/projectId"\s+is null/i);
+    expect(prompt).toContain("Prefers concise answers");
+    expect(prompt).not.toContain("Project A launch is confidential");
   });
 
   it("passes user and tenant defaults into persona resolution", async () => {
