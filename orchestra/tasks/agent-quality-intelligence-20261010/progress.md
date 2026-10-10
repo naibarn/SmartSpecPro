@@ -15,9 +15,9 @@ Loop policy:
   stop_conditions: safe_checkpoint_recorded; remaining live integration handed off
   stop_reason: partial_checkpoint
 
-Baseline: `8126f279c13f9b7b445eb5320f7fd585619940e0` (`origin/main` at worktree creation). Reconciled with latest `origin/main` `cdeba4818de65e944d868feca82fa459b566f6ad` before promotion.
+Baseline: `8126f279c13f9b7b445eb5320f7fd585619940e0` (`origin/main` at worktree creation). Reconciled before promotion with current `origin/main` `c2c8cc428c9cc40a7a007640fdd26637026b19d7`, including R4's latest SPEC-269 handoff update.
 Worktree: `/home/dev/worktrees/smartaihub-agent-quality-20261010`.
-Source checkpoint: `a9228bc8acb0407e662f848eca638e18f07059c5`; PR [#458](https://github.com/naibarn/SmartSpecPro/pull/458) is open and `mergeStateStatus=CLEAN`. It is not yet reachable from `origin/main`. The only reported check is `build-preview=SKIPPED`; no required verification evidence has passed.
+PR [#458](https://github.com/naibarn/SmartSpecPro/pull/458) is open and was rebased onto the latest canonical tip. It is not yet reachable from `origin/main`. The only reported check is `build-preview=SKIPPED`; no required verification evidence has passed.
 The user's primary checkout, SPEC-308 PR/worktrees, R4 dirty worktree, and root Orchestra artifacts are preserved.
 
 - Discovery: existing trace correlation, team response projection, CompletionContract, evidence/receipt boundaries, recovery, worker_jobs/outbox, and task-control owners mapped in `capability-matrix.md`.
