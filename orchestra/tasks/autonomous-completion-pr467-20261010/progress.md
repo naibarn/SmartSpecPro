@@ -36,4 +36,4 @@ Loop policy:
 - PR #471 opened and handoff updated; reconciled base `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; review decision empty; only `build-preview` completed as `SKIPPED`.
 - Stop reason for this checkpoint: implementation PR is reviewable, but canonical integration requires normal PR review/check evidence. Keep branch/worktree active and do not report `SKIPPED` as passing.
 - Added explicit `workerJobs.adminDashboardSummary` response assertion. Focused run at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`: 2 files passed, 15 passed, 2 DB integration tests skipped. Reviewer confirmed the pass-through assertion and service scope; no material finding remains.
-- Refreshed `origin/main` to `dab53cb6e` after PR creation. The task branch is one commit ahead of its remote PR head and must be reconciled with this latest canonical SHA before updating the PR.
+- Refreshed `origin/main` through `0199c3f04c362c4d3b098d54e7f7b8d34d6a4774` after PR creation. Two latest SPEC-277 handoff merges touch only handoff artifacts; task branch now contains this canonical SHA in ancestry and is ready for a normal non-force PR update.

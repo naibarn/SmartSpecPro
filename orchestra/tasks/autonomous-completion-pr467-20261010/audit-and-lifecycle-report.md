@@ -30,11 +30,11 @@ Generated `handoff/STATUS.md` files were read as projections; no generated statu
 | PR #467 | Open RFC-only PR; preview check is `SKIPPED` | Treated as architecture input only; `SKIPPED` is not a pass. |
 | PR #438 | Open guardrail/spec PR; overlaps SPEC-276 and generated handoff/registry artifacts; preview is `SKIPPED` | No overlapping files edited. |
 | Primary checkout | `/home/dev/projects/SmartSpecPro`, local `main` at `ccd4cd11`; 109 commits behind observed canonical SHA and has unrelated staged/unstaged/untracked task work | Preserved unchanged; no checkout, reset, clean, merge, or staging performed there. |
-| Implementation PR #471 | [feat(worker-jobs): expose backlog with free capacity signal](https://github.com/naibarn/SmartSpecPro/pull/471), open, reconciled base `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; `reviewDecision` empty; `build-preview` is `SKIPPED` | PR is reviewable but not integrated. See GitHub for the current head SHA. No skipped check is counted as a pass. |
+| Implementation PR #471 | [feat(worker-jobs): expose backlog with free capacity signal](https://github.com/naibarn/SmartSpecPro/pull/471), open; PR base metadata reports `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; latest observed head is recorded in the handoff; `reviewDecision` empty; `build-preview` is `SKIPPED` | PR is reviewable but not integrated. No skipped check is counted as a pass. |
 | This task workspace | `/home/dev/worktrees/autonomous-completion-idle-signal-20261010`, branch `codex/autonomous-completion-idle-signal-20261010`, registered as `TASK_WORKTREE` for `autonomous-completion-pr467-20261010` | Only this task's service, service-test, route-test files and task evidence are owned here. |
 | Existing related worktrees | SPEC-224 runner/trust, SPEC-269 acceptance, SPEC-277 evidence, skills candidates and other runner worktrees are present | Ownership could not be safely inferred from path/name. None were edited, deleted, pruned, or merged. |
 
-The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`, passed the local fast integration gate, and was delivered through normal PR #471. The only GitHub check observed is `build-preview: SKIPPED`; no review decision exists and no merge occurred. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
+The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `0199c3f04c362c4d3b098d54e7f7b8d34d6a4774` after two SPEC-277 handoff PRs advanced main; the latest reconciliation adds only those handoff files. It passed the local fast integration gate and was delivered through normal PR #471. `build-preview` is `SKIPPED`; no review decision exists and no merge occurred. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
 
 ## Verification evidence and remaining work
 
@@ -43,7 +43,7 @@ The task branch is a temporary candidate, not a canonical integration. It was re
 - Passed: clean rebase onto canonical SHA `564ccc092ca4be93dfc12b8d548bd729bfdbe78b` and normal PR creation (#471).
 - Passed: focused service + router tests at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`; local fast gate for that code/test candidate.
 - Pending: required CI/review and post-merge ancestry verification. Current `build-preview` is skipped, not passed.
-- Canonical reconciliation update: `origin/main` advanced to `dab53cb6e` after PR #471 was opened. The task branch has not yet been reconciled with this newer SHA; do that before the next PR update and rerun the focused checks if code changes during reconciliation.
+- Canonical reconciliation update: `origin/main` advanced to `0199c3f04c362c4d3b098d54e7f7b8d34d6a4774` after PR #471 was opened. The branch now contains this SHA in its ancestry; intervening changes touch SPEC-277 handoff artifacts only, outside this slice's changed code paths.
 - Not verified: six-spec normative amendment, UI presentation of the new field, job/worker capability compatibility, DB-backed monitor behavior, full failure/retry/conflict/runner-loss/duplicate-execution scenarios, automatic PR repair/merge/cleanup, benchmark, Windows/Debian execution, deployment, production readiness.
 
 ## Next safe actions
