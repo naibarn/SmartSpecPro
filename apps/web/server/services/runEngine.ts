@@ -11133,8 +11133,17 @@ export async function getRun(
   const latestSnapshot = await monitoringService.getLatestRunSnapshot(runId);
   const snapshotRuntimeState =
     monitoringService.extractRunRuntimeState(latestSnapshot);
-  const runtimeState =
-    snapshotRuntimeState ?? monitoringService.buildRunRuntimeState(run);
+  const persistedRuntimeState =
+    run.runtimeStateJson &&
+    typeof run.runtimeStateJson === "object" &&
+    !Array.isArray(run.runtimeStateJson)
+      ? run.runtimeStateJson
+      : null;
+  const runtimeState = {
+    ...monitoringService.buildRunRuntimeState(run),
+    ...(persistedRuntimeState ?? {}),
+    ...(snapshotRuntimeState ?? {}),
+  };
   const policyGateReason =
     runtimeState.policyGateReason ??
     (await monitoringService
