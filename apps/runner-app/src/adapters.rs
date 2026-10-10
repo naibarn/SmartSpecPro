@@ -6,6 +6,9 @@ use std::io::Read as _;
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
@@ -356,7 +359,8 @@ pub fn probe_browser_candidate(
     if !fixture_url.starts_with("https://smartaihub.app/") {
         return Err("RUNNER_BROWSER_FIXTURE_URL_INVALID".into());
     }
-    let mut browser = BrowserProbeProcess::launch(executable, timeout)?;
+    let mut browser =
+        BrowserProbeProcess::launch(executable, timeout, Arc::new(AtomicBool::new(false)))?;
     let probe = browser.run_cdp_probe(
         &fixture_url,
         timeout,
@@ -413,6 +417,88 @@ pub struct BrowserExecutionEvidence {
     pub verification_input_ref: String,
     pub semantic_observation: Option<Value>,
     pub cleanup_succeeded: bool,
+}
+
+/// A bounded browser execution that can be cancelled while the control loop
+/// continues to receive commands. The worker owns the browser process and
+/// always performs profile/process cleanup before publishing its result.
+pub struct BrowserExecutionHandle {
+    cancel: Arc<AtomicBool>,
+    result: mpsc::Receiver<Result<BrowserExecutionEvidence, String>>,
+    worker: Option<JoinHandle<()>>,
+    cancelled: bool,
+}
+
+impl BrowserExecutionHandle {
+    pub fn start(
+        candidate: ToolCandidate,
+        timeout: Duration,
+        grant: BrowserAuthorizationGrant,
+        payload: Value,
+    ) -> Result<Self, String> {
+        if timeout.is_zero() || timeout > Duration::from_secs(30) {
+            return Err("RUNNER_BROWSER_TIMEOUT_INVALID".into());
+        }
+        let cancel = Arc::new(AtomicBool::new(false));
+        let worker_cancel = Arc::clone(&cancel);
+        let (sender, result) = mpsc::channel();
+        let worker = std::thread::Builder::new()
+            .name("runner-browser-execution".into())
+            .spawn(move || {
+                let outcome = execute_browser_candidate_cancellable(
+                    &candidate,
+                    timeout,
+                    &grant,
+                    &payload,
+                    &worker_cancel,
+                );
+                let _ = sender.send(outcome);
+            })
+            .map_err(|_| "RUNNER_BROWSER_WORKER_START_FAILED")?;
+        Ok(Self {
+            cancel,
+            result,
+            worker: Some(worker),
+            cancelled: false,
+        })
+    }
+
+    pub fn request_cancel(&mut self) {
+        self.cancelled = true;
+        self.cancel.store(true, Ordering::SeqCst);
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled
+    }
+
+    pub fn try_collect(
+        &mut self,
+    ) -> Result<Option<Result<BrowserExecutionEvidence, String>>, String> {
+        match self.result.try_recv() {
+            Ok(outcome) => {
+                if let Some(worker) = self.worker.take() {
+                    worker
+                        .join()
+                        .map_err(|_| "RUNNER_BROWSER_WORKER_PANICKED")?;
+                }
+                Ok(Some(outcome))
+            }
+            Err(mpsc::TryRecvError::Empty) => Ok(None),
+            Err(mpsc::TryRecvError::Disconnected) => {
+                Err("RUNNER_BROWSER_WORKER_RESULT_UNAVAILABLE".into())
+            }
+        }
+    }
+}
+
+impl Drop for BrowserExecutionHandle {
+    fn drop(&mut self) {
+        self.request_cancel();
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+    }
 }
 
 fn wait_for_semantic_target<F>(
@@ -511,6 +597,28 @@ pub fn execute_browser_candidate(
     grant: &BrowserAuthorizationGrant,
     payload: &Value,
 ) -> Result<BrowserExecutionEvidence, String> {
+    execute_browser_candidate_cancellable(
+        candidate,
+        timeout,
+        grant,
+        payload,
+        &Arc::new(AtomicBool::new(false)),
+    )
+}
+
+fn execute_browser_candidate_cancellable(
+    candidate: &ToolCandidate,
+    timeout: Duration,
+    grant: &BrowserAuthorizationGrant,
+    payload: &Value,
+    cancel: &Arc<AtomicBool>,
+) -> Result<BrowserExecutionEvidence, String> {
+    if timeout.is_zero() || timeout > Duration::from_secs(30) {
+        return Err("RUNNER_BROWSER_TIMEOUT_INVALID".into());
+    }
+    if cancel.load(Ordering::SeqCst) {
+        return Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into());
+    }
     if !matches!(candidate.kind, ToolKind::Browser)
         || candidate.adapter_id.as_deref() != Some("browser.v1")
     {
@@ -523,7 +631,11 @@ pub fn execute_browser_candidate(
         &grant.tenant_id,
         current_time_ms(),
     )?;
-    let version_probe = run_version_probe(candidate, timeout.min(Duration::from_secs(10)))?;
+    let version_probe = run_version_probe_cancellable(
+        candidate,
+        timeout.min(Duration::from_secs(10)),
+        Some(cancel),
+    )?;
     if !version_probe.healthy || !version_probe.available {
         return Err("RUNNER_BROWSER_VERSION_PROBE_FAILED".into());
     }
@@ -540,7 +652,7 @@ pub fn execute_browser_candidate(
     if !fixture_url.starts_with("https://smartaihub.app/") {
         return Err("RUNNER_BROWSER_FIXTURE_URL_INVALID".into());
     }
-    let mut browser = BrowserProbeProcess::launch(executable, timeout)?;
+    let mut browser = BrowserProbeProcess::launch(executable, timeout, Arc::clone(cancel))?;
     let operation = browser.run_cdp_operation(
         &fixture_url,
         timeout,
@@ -574,6 +686,14 @@ fn run_version_probe(
     candidate: &ToolCandidate,
     timeout: Duration,
 ) -> Result<AdapterProbeResult, String> {
+    run_version_probe_cancellable(candidate, timeout, None)
+}
+
+fn run_version_probe_cancellable(
+    candidate: &ToolCandidate,
+    timeout: Duration,
+    cancel: Option<&AtomicBool>,
+) -> Result<AdapterProbeResult, String> {
     if !approved_manifest(candidate) {
         return Err("RUNNER_ADAPTER_NOT_APPROVED".into());
     }
@@ -601,6 +721,13 @@ fn run_version_probe(
         .map(|stream| std::thread::spawn(move || read_probe_output(stream)));
     let deadline = Instant::now() + timeout;
     let status = loop {
+        if cancel.is_some_and(|token| token.load(Ordering::SeqCst)) {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = stdout.and_then(|thread| thread.join().ok());
+            let _ = stderr.and_then(|thread| thread.join().ok());
+            return Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into());
+        }
         let status = match child.try_wait() {
             Ok(status) => status,
             Err(_) => {
@@ -1080,6 +1207,7 @@ struct BrowserProbeProcess {
     socket: Option<tungstenite::WebSocket<tungstenite::stream::MaybeTlsStream<TcpStream>>>,
     next_message_id: u64,
     cleaned: bool,
+    cancel: Arc<AtomicBool>,
 }
 
 const BROWSER_CLEANUP_RETRY_COUNT: usize = 8;
@@ -1107,7 +1235,11 @@ where
 }
 
 impl BrowserProbeProcess {
-    fn launch(executable: &Path, timeout: Duration) -> Result<Self, String> {
+    fn launch(
+        executable: &Path,
+        timeout: Duration,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<Self, String> {
         let port = TcpListener::bind("127.0.0.1:0")
             .map_err(|_| "RUNNER_BROWSER_DEBUG_PORT_UNAVAILABLE")?
             .local_addr()
@@ -1136,6 +1268,11 @@ impl BrowserProbeProcess {
             .stdout(Stdio::null())
             .stderr(Stdio::null());
         #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            command.process_group(0);
+        }
+        #[cfg(unix)]
         command.arg("--no-sandbox");
         let mut child = command
             .spawn()
@@ -1143,9 +1280,15 @@ impl BrowserProbeProcess {
         let deadline = Instant::now() + timeout;
         let version_url = format!("http://127.0.0.1:{port}/json/version");
         let websocket_url = loop {
+            if cancel.load(Ordering::SeqCst) {
+                let _ = terminate_browser_process(&mut child);
+                let _ = remove_profile_dir_with_retry(&profile_dir, |path| {
+                    std::fs::remove_dir_all(path)
+                });
+                return Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into());
+            }
             if Instant::now() >= deadline {
-                let _ = child.kill();
-                let _ = child.wait();
+                let _ = terminate_browser_process(&mut child);
                 let _ = std::fs::remove_dir_all(&profile_dir);
                 return Err("RUNNER_BROWSER_CDP_ENDPOINT_TIMEOUT".into());
             }
@@ -1159,18 +1302,22 @@ impl BrowserProbeProcess {
         let (socket, _) = match tungstenite::connect(websocket_url.as_str()) {
             Ok(connection) => connection,
             Err(_) => {
-                let _ = child.kill();
-                let _ = child.wait();
+                let _ = terminate_browser_process(&mut child);
                 let _ = std::fs::remove_dir_all(&profile_dir);
                 return Err("RUNNER_BROWSER_CDP_CONNECT_FAILED".into());
             }
         };
+        if let tungstenite::stream::MaybeTlsStream::Plain(stream) = socket.get_ref() {
+            let _ = stream.set_read_timeout(Some(Duration::from_millis(100)));
+            let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+        }
         Ok(Self {
             child,
             profile_dir,
             socket: Some(socket),
             next_message_id: 1,
             cleaned: false,
+            cancel,
         })
     }
 
@@ -1613,6 +1760,9 @@ impl BrowserProbeProcess {
         session_id: Option<&str>,
         timeout: Duration,
     ) -> Result<Value, String> {
+        if self.cancel.load(Ordering::SeqCst) {
+            return Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into());
+        }
         let id = self.next_message_id;
         self.next_message_id = self.next_message_id.saturating_add(1);
         let mut message = json!({ "id": id, "method": method, "params": params });
@@ -1628,12 +1778,24 @@ impl BrowserProbeProcess {
             .map_err(|_| "RUNNER_BROWSER_CDP_SEND_FAILED")?;
         let deadline = Instant::now() + timeout;
         loop {
+            if self.cancel.load(Ordering::SeqCst) {
+                return Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into());
+            }
             if Instant::now() >= deadline {
                 return Err(format!("RUNNER_BROWSER_CDP_TIMEOUT_{method}"));
             }
-            let message = socket
-                .read()
-                .map_err(|_| "RUNNER_BROWSER_CDP_READ_FAILED")?;
+            let message = match socket.read() {
+                Ok(message) => message,
+                Err(tungstenite::Error::Io(error))
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                    ) =>
+                {
+                    continue
+                }
+                Err(_) => return Err("RUNNER_BROWSER_CDP_READ_FAILED".into()),
+            };
             let text = match message {
                 tungstenite::Message::Text(text) => text.to_string(),
                 tungstenite::Message::Binary(bytes) => String::from_utf8(bytes.to_vec())
@@ -1656,22 +1818,67 @@ impl BrowserProbeProcess {
         if self.cleaned {
             return Ok(());
         }
-        self.cleaned = true;
         self.socket.take();
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-        remove_profile_dir_with_retry(&self.profile_dir, |path| std::fs::remove_dir_all(path))
+        let process_cleanup = terminate_browser_process(&mut self.child);
+        let profile_cleanup =
+            remove_profile_dir_with_retry(&self.profile_dir, |path| std::fs::remove_dir_all(path));
+        match (process_cleanup, profile_cleanup) {
+            (Ok(()), Ok(())) => {
+                self.cleaned = true;
+                Ok(())
+            }
+            (Err(process_error), Ok(())) => Err(process_error),
+            (Ok(()), Err(profile_error)) => Err(profile_error),
+            (Err(process_error), Err(profile_error)) => {
+                Err(format!("{process_error}; {profile_error}"))
+            }
+        }
     }
 }
 
 impl Drop for BrowserProbeProcess {
     fn drop(&mut self) {
         if !self.cleaned {
-            let _ = self.child.kill();
-            let _ = self.child.wait();
+            let _ = terminate_browser_process(&mut self.child);
             let _ = std::fs::remove_dir_all(&self.profile_dir);
         }
     }
+}
+
+fn terminate_browser_process(child: &mut Child) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        let group = -(child.id() as libc::pid_t);
+        let term_result = unsafe { libc::kill(group, libc::SIGTERM) };
+        if term_result != 0 {
+            let error = std::io::Error::last_os_error();
+            if error.raw_os_error() != Some(libc::ESRCH) {
+                return Err("RUNNER_BROWSER_PROCESS_TERMINATE_FAILED".into());
+            }
+        }
+        std::thread::sleep(Duration::from_millis(100));
+        let kill_result = unsafe { libc::kill(group, libc::SIGKILL) };
+        if kill_result != 0 {
+            let error = std::io::Error::last_os_error();
+            if error.raw_os_error() != Some(libc::ESRCH) {
+                return Err("RUNNER_BROWSER_PROCESS_TERMINATE_FAILED".into());
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    if child
+        .try_wait()
+        .map_err(|_| "RUNNER_BROWSER_PROCESS_STATUS_FAILED")?
+        .is_none()
+    {
+        child
+            .kill()
+            .map_err(|_| "RUNNER_BROWSER_PROCESS_TERMINATE_FAILED")?;
+    }
+    child
+        .wait()
+        .map(|_| ())
+        .map_err(|_| "RUNNER_BROWSER_PROCESS_WAIT_FAILED".into())
 }
 
 fn read_debugger_version(url: &str, timeout: Duration) -> Result<Value, String> {
@@ -2130,6 +2337,118 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(attempts, 3);
         assert!(!profile.exists());
+
+        let failed_attempts = std::cell::Cell::new(0);
+        let error = remove_profile_dir_with_retry(&profile, |_| {
+            failed_attempts.set(failed_attempts.get() + 1);
+            Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+        })
+        .unwrap_err();
+        assert_eq!(error, "RUNNER_BROWSER_CLEANUP_FAILED");
+        assert_eq!(failed_attempts.get(), BROWSER_CLEANUP_RETRY_COUNT);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn browser_process_group_cleanup_reaps_child_and_removes_profile_idempotently() {
+        use std::os::unix::process::CommandExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let profile_dir = temp.path().join("browser-profile");
+        std::fs::create_dir(&profile_dir).unwrap();
+        let mut command = Command::new("sh");
+        command
+            .args(["-c", "sleep 30"])
+            .process_group(0)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        let child = command.spawn().unwrap();
+        let mut browser = BrowserProbeProcess {
+            child,
+            profile_dir: profile_dir.clone(),
+            socket: None,
+            next_message_id: 1,
+            cleaned: false,
+            cancel: Arc::new(AtomicBool::new(false)),
+        };
+
+        browser.cleanup().unwrap();
+        browser.cleanup().unwrap();
+
+        assert!(browser.child.try_wait().unwrap().is_some());
+        assert!(!profile_dir.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn browser_cleanup_reports_profile_failure_after_reaping_process_and_can_retry() {
+        use std::os::unix::process::CommandExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let profile_path = temp.path().join("browser-profile-file");
+        std::fs::write(&profile_path, b"profile cleanup failure fixture").unwrap();
+        let mut command = Command::new("sh");
+        command
+            .args(["-c", "sleep 30"])
+            .process_group(0)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        let child = command.spawn().unwrap();
+        let mut browser = BrowserProbeProcess {
+            child,
+            profile_dir: profile_path.clone(),
+            socket: None,
+            next_message_id: 1,
+            cleaned: false,
+            cancel: Arc::new(AtomicBool::new(false)),
+        };
+
+        assert_eq!(
+            browser.cleanup().unwrap_err(),
+            "RUNNER_BROWSER_CLEANUP_FAILED"
+        );
+        assert!(browser.child.try_wait().unwrap().is_some());
+        std::fs::remove_file(&profile_path).unwrap();
+        browser.cleanup().unwrap();
+    }
+
+    #[test]
+    fn browser_execution_cancellation_signal_is_idempotent_and_observable() {
+        let cancel = Arc::new(AtomicBool::new(false));
+        let worker_cancel = Arc::clone(&cancel);
+        let cleanup_complete = Arc::new(AtomicBool::new(false));
+        let worker_cleanup_complete = Arc::clone(&cleanup_complete);
+        let (sender, result) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            while !worker_cancel.load(Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            worker_cleanup_complete.store(true, Ordering::SeqCst);
+            let _ = sender.send(Err("RUNNER_BROWSER_EXECUTION_CANCELLED".into()));
+        });
+        let mut handle = BrowserExecutionHandle {
+            cancel,
+            result,
+            worker: Some(worker),
+            cancelled: false,
+        };
+
+        handle.request_cancel();
+        handle.request_cancel();
+
+        assert!(handle.is_cancelled());
+        let deadline = Instant::now() + Duration::from_secs(1);
+        loop {
+            if let Some(outcome) = handle.try_collect().unwrap() {
+                assert_eq!(outcome.unwrap_err(), "RUNNER_BROWSER_EXECUTION_CANCELLED");
+                assert!(cleanup_complete.load(Ordering::SeqCst));
+                break;
+            }
+            assert!(Instant::now() < deadline, "cancelled worker must finish");
+            std::thread::sleep(Duration::from_millis(2));
+        }
     }
 
     #[test]
