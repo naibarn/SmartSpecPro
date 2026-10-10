@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
@@ -3428,7 +3428,7 @@
     "unresolved": 1246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T09:37:58.786719Z",
+  "updated_at": "2026-10-10T09:42:55.605865Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3464,16 +3464,23 @@
       {
         "kind": "AUTONOMOUS_GIT_LIFECYCLE_SLICE",
         "path": "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
-        "scope": "PR #528 merged through normal GitHub merge. Merge SHA is in origin/main; its tree exactly matches the tested candidate tree. Node syntax checks, git diff --check, and SPEC-224 handoff validation passed. Focused Vitest was unavailable (not installed); build-preview was SKIPPED and is not counted as passed. Live Runner/database benchmark and failure repair remain unverified.",
-        "source_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
+        "scope": "PR #528 implementation is merged in origin/main at 9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19; merge tree matches candidate. Targeted Vitest results on this exact source tree: workspaceAuthorityAuditJob.test.ts 11/11 passed; workerRegistryService.test.ts capability/lease/head-of-line cases 5/5 passed. Syntax checks, git diff --check, and handoff validation passed. build-preview remained SKIPPED and is not counted as passed. Isolated DB/live Runner benchmark and CI/conflict repair remain unverified.",
+        "source_sha": "d47d551d705603070893af7b50f481f3495ec1e2",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC267_CAPABILITY_AWARE_CLAIM_TARGETED_TESTS",
+        "path": "apps/web/server/services/__tests__/workerRegistryService.test.ts",
+        "scope": "Focused test-name filter on exact source SHA d47d551d705603070893af7b50f481f3495ec1e2: 5 tests passed for lease exclusivity, capability-incompatible paging, bounded scan, and compatible work dispatch without head-of-line blocking. Mock-backed unit evidence only; no isolated database, crash/restart, or lease-expiration live scenario.",
+        "source_sha": "d47d551d705603070893af7b50f481f3495ec1e2",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
+    "sha": "d47d551d705603070893af7b50f481f3495ec1e2",
     "status": "PARTIAL",
     "task_regressions": []
   }
