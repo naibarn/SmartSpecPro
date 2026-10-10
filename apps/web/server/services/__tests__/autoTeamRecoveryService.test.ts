@@ -9,6 +9,7 @@ const mockRecoverBudgetBlockedAutoTeamRun = vi.hoisted(() => vi.fn());
 const mockRecoverCapabilityGapAutoTeamRun = vi.hoisted(() => vi.fn());
 const mockRecoverPromptPackageValidationAutoTeamRun = vi.hoisted(() => vi.fn());
 const mockAdvanceAutoTeamMediaPipeline = vi.hoisted(() => vi.fn());
+const mockCreateCanonicalJobInTransaction = vi.hoisted(() => vi.fn());
 const dbUpdateSetCalls: Array<Record<string, unknown>> = [];
 
 vi.mock("../../db", () => ({
@@ -29,8 +30,15 @@ vi.mock("../runEngine", () => ({
 vi.mock("../autoTeamMediaCompletionService", () => ({
   advanceAutoTeamMediaPipeline: mockAdvanceAutoTeamMediaPipeline,
 }));
+vi.mock("../jobControlPlane", () => ({
+  createCanonicalJobInTransaction: mockCreateCanonicalJobInTransaction,
+}));
 
-import { sweepPendingAutoTeamRuns } from "../autoTeamRecoveryService";
+import {
+  isRecoveryEvaluationEligible,
+  dispatchPendingAutoTeamEvaluations,
+  sweepPendingAutoTeamRuns,
+} from "../autoTeamRecoveryService";
 
 function mockRecoveryCandidateRows(rows: Array<{ id: string; tenantId: string }>) {
   mockGetDb.mockResolvedValue({
@@ -66,8 +74,90 @@ describe("autoTeamRecoveryService", () => {
     mockRecoverCapabilityGapAutoTeamRun.mockReset();
     mockRecoverPromptPackageValidationAutoTeamRun.mockReset();
     mockAdvanceAutoTeamMediaPipeline.mockReset();
+    mockCreateCanonicalJobInTransaction.mockReset();
     mockGetDb.mockReset();
     dbUpdateSetCalls.length = 0;
+  });
+
+  it("distinguishes a future approval wait from an eligible provider wait", () => {
+    const now = new Date("2026-10-10T08:00:00.000Z");
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+
+    expect(isRecoveryEvaluationEligible({
+      id: "run-approval",
+      status: "paused",
+      stopReason: "awaiting_human_choice",
+      runtimeState: { choiceDeadlineAt: "2026-10-10T09:00:00.000Z" },
+    } as any, now)).toBe(false);
+    expect(isRecoveryEvaluationEligible({
+      id: "run-provider",
+      status: "paused",
+      stopReason: "awaiting_async_media_pipeline",
+      runtimeState: {
+        autoTeamMediaPipeline: { status: "waiting_for_video_tasks" },
+      },
+    } as any, now)).toBe(true);
+    expect(isRecoveryEvaluationEligible({
+      id: "run-unsupported",
+      status: "paused",
+      stopReason: "auto_team_step_validation_failed",
+      runtimeState: {},
+    } as any, now)).toBe(false);
+  });
+
+  it("continues dispatching independent runs when one candidate cannot be read", async () => {
+    const tx = {
+      execute: vi.fn().mockResolvedValue(undefined),
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [] }),
+        }),
+      }),
+    };
+    mockGetDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({
+              orderBy: () => ({
+                limit: async () => [
+                  { id: "run-bad", tenantId: "tenant-1" },
+                  { id: "run-ready", tenantId: "tenant-1" },
+                ],
+              }),
+            }),
+          }),
+        }),
+      }),
+      transaction: async (work: (query: any) => Promise<unknown>) => work(tx),
+    });
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+    mockGetRun.mockImplementation(async (runId: string) => {
+      if (runId === "run-bad") throw new Error("injected read failure");
+      return {
+        id: runId,
+        status: "paused",
+        stopReason: "auto_team_final_evidence_unresolved",
+        runtimeState: {},
+      };
+    });
+    mockCreateCanonicalJobInTransaction.mockResolvedValue({
+      jobId: "job-1",
+      created: true,
+    });
+
+    const queued = await dispatchPendingAutoTeamEvaluations(
+      new Date("2026-10-10T08:00:00.000Z"),
+    );
+
+    expect(queued).toBe(1);
+    expect(mockCreateCanonicalJobInTransaction).toHaveBeenCalledOnce();
+    expect(mockCreateCanonicalJobInTransaction.mock.calls[0]?.[0]).toMatchObject({
+      definition: {
+        jobType: "auto-team.recovery.evaluate",
+        input: { runId: "run-ready" },
+      },
+    });
   });
 
   it("skips auto-team runs until the plan review has passed", async () => {
