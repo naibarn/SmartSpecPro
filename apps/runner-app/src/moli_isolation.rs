@@ -707,6 +707,9 @@ mod tests {
         if !std::env::var(NAMESPACE_PROBE_ENV).is_ok_and(|value| value == "1") {
             return;
         }
+        enable_loopback_for_test().unwrap();
+        let loopback = bind_loopback_listener("127.0.0.1:0".parse().unwrap()).unwrap();
+        assert!(loopback.local_addr().unwrap().ip().is_loopback());
         assert!(!has_external_default_route().unwrap());
         use std::os::unix::fs::MetadataExt;
         let user_ns = std::fs::metadata("/proc/self/ns/user").unwrap().ino();
@@ -725,6 +728,33 @@ mod tests {
         assert!(std::env::var("TMPDIR").is_ok_and(|tmp| Path::new(&tmp).is_dir()));
         assert!(std::env::var_os("SAH_MOLI_NAMESPACE_TEST_SECRET").is_none());
         std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+
+    #[cfg(target_os = "linux")]
+    fn enable_loopback_for_test() -> Result<(), String> {
+        use std::os::unix::fs::PermissionsExt;
+
+        let ip = Path::new("/usr/bin/ip");
+        let metadata = std::fs::symlink_metadata(ip)
+            .map_err(|_| "RUNNER_MOLI_TEST_IP_TOOL_UNAVAILABLE".to_string())?;
+        if metadata.file_type().is_symlink()
+            || !metadata.is_file()
+            || metadata.permissions().mode() & 0o022 != 0
+            || metadata.permissions().mode() & 0o111 == 0
+        {
+            return Err("RUNNER_MOLI_TEST_IP_TOOL_UNTRUSTED".into());
+        }
+        let output = Command::new(ip)
+            .args(["link", "set", "lo", "up"])
+            .output()
+            .map_err(|_| "RUNNER_MOLI_TEST_LOOPBACK_SETUP_FAILED".to_string())?;
+        if !output.status.success() {
+            return Err(format!(
+                "RUNNER_MOLI_TEST_LOOPBACK_SETUP_FAILED: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        Ok(())
     }
 
     #[cfg(target_os = "linux")]
