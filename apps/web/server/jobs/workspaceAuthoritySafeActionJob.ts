@@ -59,6 +59,16 @@ type PullRequestFact = {
   mergedAt?: unknown; mergeCommit?: { oid?: unknown } | null;
 };
 
+type RequiredCheck = { context: string; integrationId: number | null };
+type CheckRunFact = { name: string; status: string; conclusion: string | null; integrationId: number | null };
+type CommitStatusFact = { context: string; state: string };
+type CheckGateEvidence = {
+  state: "NO_REQUIRED_CHECKS_CONFIGURED" | "REQUIRED_CHECKS_PASSED" | "REQUIRED_CHECKS_NOT_PASSED" | "ALREADY_MERGED";
+  headSha: string;
+  requiredChecks: Array<{ context: string; integrationId: number | null; state: string }>;
+  observedChecks: Array<{ context: string; source: "check_run" | "commit_status"; state: string }>;
+};
+
 async function canonicalGithubRepository(repository: string): Promise<string> {
   const [remote] = await execFileAsync("git", ["remote", "get-url", "origin"], { cwd: repository, timeout: 10_000 });
   const remoteUrl = remote.trim();
@@ -91,6 +101,177 @@ async function mergePullRequest(repository: string, repositorySlug: string, numb
   return JSON.parse(stdout) as Record<string, unknown>;
 }
 
+async function githubApiJson(repository: string, endpoint: string): Promise<unknown> {
+  try {
+    const { stdout } = await execFileAsync("gh", ["api", endpoint], {
+      cwd: repository, timeout: 30_000, maxBuffer: 1024 * 1024,
+    });
+    return JSON.parse(stdout) as unknown;
+  } catch (error) {
+    const stderr = error && typeof error === "object" && "stderr" in error
+      ? String((error as { stderr?: unknown }).stderr ?? "") : "";
+    if (endpoint.includes("/branches/") && endpoint.endsWith("/protection/required_status_checks") &&
+        /Branch not protected.*404/i.test(stderr)) return null;
+    throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+  }
+}
+
+export function readRequiredChecks(rulesValue: unknown, protectionValue: unknown): RequiredCheck[] {
+  if (!Array.isArray(rulesValue)) throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+  const checks: RequiredCheck[] = [];
+  const add = (context: unknown, integrationId: unknown) => {
+    if (typeof context !== "string" || !context.trim() ||
+        (integrationId !== null && integrationId !== undefined &&
+          (!Number.isSafeInteger(integrationId) || (integrationId as number) < -1)))
+      throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+    checks.push({
+      context: context.trim(),
+      integrationId: Number.isSafeInteger(integrationId) && (integrationId as number) > 0
+        ? integrationId as number : null,
+    });
+  };
+
+  for (const rule of rulesValue) {
+    if (!rule || typeof rule !== "object") throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+    const record = rule as Record<string, unknown>;
+    if (record.type !== "required_status_checks") continue;
+    if (!record.parameters || typeof record.parameters !== "object")
+      throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+    const configured = (record.parameters as Record<string, unknown>).required_status_checks;
+    if (!Array.isArray(configured)) throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+    for (const item of configured) {
+      if (!item || typeof item !== "object") throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+      const check = item as Record<string, unknown>;
+      add(check.context, check.integration_id);
+    }
+  }
+
+  if (protectionValue !== null) {
+    if (!protectionValue || typeof protectionValue !== "object")
+      throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+    const protection = protectionValue as Record<string, unknown>;
+    const configured = protection.checks;
+    if (!Array.isArray(configured) || !Array.isArray(protection.contexts))
+      throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+    for (const item of configured) {
+      if (!item || typeof item !== "object") throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+      const check = item as Record<string, unknown>;
+      add(check.context, check.app_id);
+    }
+    for (const context of protection.contexts) add(context, null);
+  }
+
+  return [...new Map(checks.map(check => [`${check.context}\0${check.integrationId ?? "*"}`, check])).values()];
+}
+
+function checkConclusionState(status: string, conclusion: string | null): string {
+  if (status !== "completed") return "pending";
+  if (conclusion === "success") return "success";
+  if (conclusion === "skipped") return "skipped";
+  return conclusion || "missing_conclusion";
+}
+
+export function evaluateRequiredCheckGate(input: {
+  headSha: string;
+  requiredChecks: RequiredCheck[];
+  checkRuns: CheckRunFact[];
+  commitStatuses: CommitStatusFact[];
+}): CheckGateEvidence {
+  const observedChecks = [
+    ...input.checkRuns.map(run => ({
+      context: run.name,
+      source: "check_run" as const,
+      state: checkConclusionState(run.status, run.conclusion),
+    })),
+    ...input.commitStatuses.map(status => ({
+      context: status.context,
+      source: "commit_status" as const,
+      state: status.state,
+    })),
+  ].slice(0, 200);
+
+  if (input.requiredChecks.length === 0) {
+    return {
+      state: "NO_REQUIRED_CHECKS_CONFIGURED",
+      headSha: input.headSha,
+      requiredChecks: [],
+      observedChecks,
+    };
+  }
+
+  const requiredChecks = input.requiredChecks.map(required => {
+    const matchingRuns = input.checkRuns.filter(run => run.name === required.context &&
+      (required.integrationId === null || run.integrationId === required.integrationId));
+    const matchingStatuses = required.integrationId === null
+      ? input.commitStatuses.filter(status => status.context === required.context)
+      : [];
+    const states = [
+      ...matchingRuns.map(run => checkConclusionState(run.status, run.conclusion)),
+      ...matchingStatuses.map(status => status.state),
+    ];
+    const state = states.length === 0 ? "missing"
+      : states.every(value => value === "success") ? "success"
+        : states.includes("skipped") ? "skipped"
+          : states.includes("pending") ? "pending" : "failed";
+    return {
+      context: required.context,
+      integrationId: required.integrationId,
+      state,
+    };
+  });
+  return {
+    state: requiredChecks.every(check => check.state === "success")
+      ? "REQUIRED_CHECKS_PASSED" : "REQUIRED_CHECKS_NOT_PASSED",
+    headSha: input.headSha,
+    requiredChecks,
+    observedChecks,
+  };
+}
+
+async function inspectCheckGate(
+  repository: string,
+  repositorySlug: string,
+  baseBranch: string,
+  headSha: string,
+): Promise<CheckGateEvidence> {
+  const encodedBranch = encodeURIComponent(baseBranch);
+  const [rules, protection, runsValue, statusesValue] = await Promise.all([
+    githubApiJson(repository, `repos/${repositorySlug}/rules/branches/${encodedBranch}`),
+    githubApiJson(repository, `repos/${repositorySlug}/branches/${encodedBranch}/protection/required_status_checks`),
+    githubApiJson(repository, `repos/${repositorySlug}/commits/${headSha}/check-runs?per_page=100`),
+    githubApiJson(repository, `repos/${repositorySlug}/commits/${headSha}/status?per_page=100`),
+  ]);
+  if (!runsValue || typeof runsValue !== "object" ||
+      !Array.isArray((runsValue as Record<string, unknown>).check_runs) ||
+      !statusesValue || typeof statusesValue !== "object" ||
+      !Array.isArray((statusesValue as Record<string, unknown>).statuses))
+    throw new Error("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+  const checkRuns = ((runsValue as Record<string, unknown>).check_runs as unknown[]).flatMap(value => {
+      if (!value || typeof value !== "object") return [];
+      const run = value as Record<string, unknown>;
+      return typeof run.name === "string" && typeof run.status === "string"
+        ? [{ name: run.name, status: run.status, conclusion: typeof run.conclusion === "string" ? run.conclusion : null,
+            integrationId: run.app && typeof run.app === "object" && Number.isSafeInteger((run.app as Record<string, unknown>).id)
+              ? (run.app as Record<string, unknown>).id as number : null }]
+        : [];
+    });
+  const commitStatuses = ((statusesValue as Record<string, unknown>).statuses as unknown[]).flatMap(value => {
+      if (!value || typeof value !== "object") return [];
+      const status = value as Record<string, unknown>;
+      return typeof status.context === "string" && typeof status.state === "string"
+        ? [{ context: status.context, state: status.state }] : [];
+    });
+  const evidence = evaluateRequiredCheckGate({
+    headSha,
+    requiredChecks: readRequiredChecks(rules, protection),
+    checkRuns,
+    commitStatuses,
+  });
+  if (evidence.state === "REQUIRED_CHECKS_NOT_PASSED")
+    throw new Error(`WORKSPACE_ACTION_REQUIRED_CHECKS_NOT_PASSED:${JSON.stringify(evidence.requiredChecks)}`);
+  return evidence;
+}
+
 async function integratePullRequest(
   repository: string,
   input: ActionInput,
@@ -99,6 +280,7 @@ async function integratePullRequest(
   github: {
     repository: (root: string) => Promise<string>;
     inspect: (root: string, number: number) => Promise<PullRequestFact>;
+    checkGate: (root: string, slug: string, baseBranch: string, headSha: string) => Promise<CheckGateEvidence>;
     merge: (root: string, slug: string, number: number, headSha: string) => Promise<Record<string, unknown>>;
   },
 ) {
@@ -118,13 +300,16 @@ async function integratePullRequest(
   if (typeof input.payload.expectedHeadSha !== "string" || input.payload.expectedHeadSha !== pr.headRefOid)
     throw new Error("WORKSPACE_ACTION_PULL_REQUEST_HEAD_STALE");
   let merged: Record<string, unknown>;
+  let checkGate: CheckGateEvidence;
   if (pr.state === "MERGED" && typeof pr.mergedAt === "string" &&
       typeof pr.mergeCommit?.oid === "string" && /^[a-f0-9]{40,64}$/.test(pr.mergeCommit.oid)) {
     merged = { merged: true, sha: pr.mergeCommit.oid };
+    checkGate = { state: "ALREADY_MERGED", headSha: pr.headRefOid, requiredChecks: [], observedChecks: [] };
   } else {
     if (pr.state !== "OPEN" || pr.isDraft === true || pr.mergeable !== true ||
         !["CLEAN", "HAS_HOOKS"].includes(String(pr.mergeStateStatus)))
       throw new Error("WORKSPACE_ACTION_PULL_REQUEST_NOT_MERGEABLE");
+    checkGate = await github.checkGate(repository, repositorySlug, canonicalBranch, pr.headRefOid);
     merged = await github.merge(repository, repositorySlug, number, pr.headRefOid);
   if (merged.merged !== true || typeof merged.sha !== "string" || !/^[a-f0-9]{40,64}$/.test(merged.sha))
     throw new Error("WORKSPACE_ACTION_PULL_REQUEST_MERGE_UNCONFIRMED");
@@ -145,7 +330,7 @@ async function integratePullRequest(
       eventId: `pull-request:${number}:${integratedSha}:${(convergence.receipt as Record<string, unknown>).receipt_id}`,
     });
   }
-  return { status: "INTEGRATION_RECORDED", pullRequestNumber: number, integratedSha, convergence };
+  return { status: "INTEGRATION_RECORDED", pullRequestNumber: number, integratedSha, checkGate, convergence };
 }
 
 /** Canonical worker_jobs executor; all Git/worktree operations stay outside the API request path. */
@@ -158,6 +343,7 @@ export async function executeWorkspaceAuthoritySafeAction(
     github?: {
       repository: (root: string) => Promise<string>;
       inspect: (root: string, number: number) => Promise<PullRequestFact>;
+      checkGate: (root: string, slug: string, baseBranch: string, headSha: string) => Promise<CheckGateEvidence>;
       merge: (root: string, slug: string, number: number, headSha: string) => Promise<Record<string, unknown>>;
     };
     hostname?: () => string;
@@ -166,7 +352,12 @@ export async function executeWorkspaceAuthoritySafeAction(
 ) {
   const executeAuthority = dependencies.runAuthority ?? runAuthority;
   const resolveAuthority = dependencies.resolveAuthority ?? resolveOwnedWorkspaceAuthority;
-  const github = dependencies.github ?? { repository: canonicalGithubRepository, inspect: inspectPullRequest, merge: mergePullRequest };
+  const github = dependencies.github ?? {
+    repository: canonicalGithubRepository,
+    inspect: inspectPullRequest,
+    checkGate: inspectCheckGate,
+    merge: mergePullRequest,
+  };
   const currentRunnerAuthority = await resolveAuthority({
     tenantId: input.tenantId,
     actorId: input.actorId,

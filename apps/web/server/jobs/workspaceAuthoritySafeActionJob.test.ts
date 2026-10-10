@@ -4,7 +4,11 @@ const mocks = vi.hoisted(() => ({ enqueueEvent: vi.fn(), resolveAuthority: vi.fn
 vi.mock("./workspaceAuthorityAuditJob", () => ({ enqueueWorkspaceAuthorityAuditEvent: mocks.enqueueEvent }));
 vi.mock("../services/workspaceAuthoritySafeActions", () => ({ resolveOwnedWorkspaceAuthority: mocks.resolveAuthority }));
 
-import { executeWorkspaceAuthoritySafeAction } from "./workspaceAuthoritySafeActionJob";
+import {
+  evaluateRequiredCheckGate,
+  executeWorkspaceAuthoritySafeAction,
+  readRequiredChecks,
+} from "./workspaceAuthoritySafeActionJob";
 
 const env = { SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY: "/canonical/repo" } as NodeJS.ProcessEnv;
 function request(overrides: Record<string, unknown> = {}) {
@@ -35,6 +39,105 @@ beforeEach(() => {
 });
 
 describe("workspace authority safe action executor", () => {
+  it("reads required checks from active rulesets and legacy branch protection", () => {
+    expect(readRequiredChecks([
+      { type: "required_status_checks", parameters: { required_status_checks: [
+        { context: "ruleset/build", integration_id: 15368 },
+      ] } },
+    ], {
+      checks: [{ context: "protection/build", app_id: 15368 }],
+      contexts: ["legacy/lint"],
+    })).toEqual([
+      { context: "ruleset/build", integrationId: 15368 },
+      { context: "protection/build", integrationId: 15368 },
+      { context: "legacy/lint", integrationId: null },
+    ]);
+  });
+
+  it("treats omitted or -1 GitHub app bindings as an any-app required check", () => {
+    expect(readRequiredChecks([
+      { type: "required_status_checks", parameters: { required_status_checks: [
+        { context: "ruleset/any-app" },
+      ] } },
+    ], { checks: [{ context: "protection/any-app", app_id: -1 }], contexts: [] })).toEqual([
+      { context: "ruleset/any-app", integrationId: null },
+      { context: "protection/any-app", integrationId: null },
+    ]);
+  });
+
+  it.each([
+    [null, null],
+    [[{ type: "required_status_checks" }], null],
+    [[{ type: "required_status_checks", parameters: { required_status_checks: [null] } }], null],
+    [[], { checks: [], contexts: "malformed" }],
+  ])("fails closed on malformed required-check policy metadata", (rules, protection) => {
+    expect(() => readRequiredChecks(rules, protection)).toThrow("WORKSPACE_ACTION_CHECK_POLICY_UNAVAILABLE");
+  });
+
+  it.each([
+    ["skipped", "completed", "skipped", "skipped"],
+    ["failed", "completed", "failure", "failed"],
+    ["pending", "in_progress", null, "pending"],
+    ["missing", null, null, "missing"],
+  ])("blocks a required %s check on the exact PR head", (_label, status, conclusion, expectedState) => {
+    const evidence = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40),
+      requiredChecks: [{ context: "build-preview", integrationId: 15368 }],
+      checkRuns: status === null ? [] : [{
+        name: "build-preview", status: String(status), conclusion: conclusion as string | null, integrationId: 15368,
+      }],
+      commitStatuses: [],
+    });
+    expect(evidence.state).toBe("REQUIRED_CHECKS_NOT_PASSED");
+    expect(evidence.headSha).toBe("c".repeat(40));
+    expect(evidence.requiredChecks).toEqual([
+      { context: "build-preview", integrationId: 15368, state: expectedState },
+    ]);
+  });
+
+  it("accepts a required check only when its matching app reports success", () => {
+    const evidence = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40),
+      requiredChecks: [{ context: "build-preview", integrationId: 15368 }],
+      checkRuns: [
+        { name: "build-preview", status: "completed", conclusion: "success", integrationId: 15368 },
+        { name: "build-preview", status: "completed", conclusion: "success", integrationId: 999 },
+      ],
+      commitStatuses: [],
+    });
+    expect(evidence.state).toBe("REQUIRED_CHECKS_PASSED");
+    expect(evidence.requiredChecks[0].state).toBe("success");
+  });
+
+  it("accepts a required legacy commit status only when its exact context is successful", () => {
+    const passed = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40),
+      requiredChecks: [{ context: "legacy/build", integrationId: null }],
+      checkRuns: [],
+      commitStatuses: [{ context: "legacy/build", state: "success" }],
+    });
+    const failed = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40),
+      requiredChecks: [{ context: "legacy/build", integrationId: null }],
+      checkRuns: [],
+      commitStatuses: [{ context: "legacy/build", state: "failure" }],
+    });
+    expect(passed.state).toBe("REQUIRED_CHECKS_PASSED");
+    expect(failed.requiredChecks[0].state).toBe("failed");
+  });
+
+  it("records skipped optional CI as skipped when no required checks are configured", () => {
+    const evidence = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40), requiredChecks: [],
+      checkRuns: [{ name: "build-preview", status: "completed", conclusion: "skipped", integrationId: 15368 }],
+      commitStatuses: [],
+    });
+    expect(evidence.state).toBe("NO_REQUIRED_CHECKS_CONFIGURED");
+    expect(evidence.observedChecks).toEqual([
+      { context: "build-preview", source: "check_run", state: "skipped" },
+    ]);
+  });
+
   it("rechecks trusted Runner authority before any local or mutating execution", async () => {
     const runAuthority = vi.fn().mockResolvedValue(resolved);
     mocks.resolveAuthority.mockResolvedValueOnce({
@@ -124,12 +227,33 @@ describe("workspace authority safe action executor", () => {
     expect(merge).not.toHaveBeenCalled();
   });
 
+  it("never calls merge when a required check is skipped", async () => {
+    const runAuthority = vi.fn().mockResolvedValue(resolved);
+    const checkGate = vi.fn().mockRejectedValue(new Error("WORKSPACE_ACTION_REQUIRED_CHECKS_NOT_PASSED"));
+    const merge = vi.fn();
+    const github = {
+      repository: vi.fn().mockResolvedValue("owner/repo"),
+      inspect: vi.fn().mockResolvedValue({ state: "OPEN", isDraft: false, baseRefName: "main", headRefOid: "c".repeat(40), mergeable: true, mergeStateStatus: "CLEAN" }),
+      checkGate,
+      merge,
+    };
+    await expect(executeWorkspaceAuthoritySafeAction(request({ action: "INTEGRATE_COMPLETED_WORK", workspaceId: null,
+      payload: { pullRequestNumber: 42, expectedHeadSha: "c".repeat(40) } }), env, { runAuthority, github }))
+      .rejects.toThrow("WORKSPACE_ACTION_REQUIRED_CHECKS_NOT_PASSED");
+    expect(checkGate).toHaveBeenCalledWith("/canonical/repo", "owner/repo", "main", "c".repeat(40));
+    expect(merge).not.toHaveBeenCalled();
+  });
+
   it("integrates only the fenced head through the protected merge endpoint and emits lifecycle events", async () => {
     const runAuthority = vi.fn(async (_root: string, _env: NodeJS.ProcessEnv, args: string[]) => args[0] === "resolve"
       ? resolved : { status: "USER_WORKSPACE_CONVERGED", receipt: { receipt_id: "workspace-convergence:r1" } });
     const github = {
       repository: vi.fn().mockResolvedValue("owner/repo"),
       inspect: vi.fn().mockResolvedValue({ state: "OPEN", isDraft: false, baseRefName: "main", headRefOid: "c".repeat(40), mergeable: true, mergeStateStatus: "CLEAN" }),
+      checkGate: vi.fn().mockResolvedValue({
+        state: "NO_REQUIRED_CHECKS_CONFIGURED", headSha: "c".repeat(40), requiredChecks: [],
+        observedChecks: [{ context: "build-preview", source: "check_run", state: "skipped" }],
+      }),
       merge: vi.fn().mockResolvedValue({ merged: true, sha: "d".repeat(40) }),
     };
     const result = await executeWorkspaceAuthoritySafeAction(request({ action: "INTEGRATE_COMPLETED_WORK", workspaceId: null,
@@ -143,6 +267,11 @@ describe("workspace authority safe action executor", () => {
       tenantId: "tenant-a", eventType: "HANDOFF_COMPLETE",
       eventId: `pull-request:42:${"d".repeat(40)}:workspace-convergence:r1`,
     });
-    expect(result.output.receipt.evidence).toMatchObject({ status: "INTEGRATION_RECORDED", integratedSha: "d".repeat(40) });
+    expect(result.output.receipt.evidence).toMatchObject({
+      status: "INTEGRATION_RECORDED", integratedSha: "d".repeat(40),
+      checkGate: { state: "NO_REQUIRED_CHECKS_CONFIGURED", observedChecks: [
+        { context: "build-preview", source: "check_run", state: "skipped" },
+      ] },
+    });
   });
 });
