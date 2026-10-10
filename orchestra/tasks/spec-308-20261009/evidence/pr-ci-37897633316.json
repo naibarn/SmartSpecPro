@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "check": "MCP v2 Compatibility Gates",
+  "head_sha": "779532c22af916f5da0ba47f44c19e1a051c4bf5",
+  "run_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/37897633316",
+  "outcomes": {
+    "contract_and_security": "FAIL",
+    "live_contract_evidence": "FAIL",
+    "build_preview": "SKIPPED"
+  },
+  "steps": {
+    "mcp_focused_tests": "PASS: 11 files, 118 tests",
+    "mcp_targeted_typecheck": "PASS",
+    "mcp_security_check": "PASS",
+    "production_dependency_audit": "FAIL: 85 advisories (9 low, 37 moderate, 38 high, 1 critical)"
+  },
+  "findings": [
+    "MCP fixtures/import/workflow repairs pass the focused tests, targeted MCP typecheck, and security:mcp146 step on this head.",
+    "The mandatory production dependency audit still fails on the pre-existing dependency tree; this PR changes no manifests or lockfile. The high/critical findings include vulnerable production dependency chains and cannot be bypassed or downgraded.",
+    "A safe fix is not yet established: exploratory pnpm audit --fix --prod generated 66 overrides, including cross-major constraints. Those overrides were not applied or committed pending dependency-owner compatibility review.",
+    "Live-contract evidence exits fail-closed because the authorized endpoint and token are absent."
+  ],
+  "classification": "BASELINE_SECURITY_GATE_AND_EXTERNAL_AUTHORITY_BLOCK",
+  "next_action": "Dependency/security owners triage and approve compatible patched dependency updates in an isolated PR; CI/runtime owner configures authorized live MCP endpoint/token. Then rerun mandatory gates before integrating PR #403."
+}

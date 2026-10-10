@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, act, within } from "@testing-library/react";
 import React from "react";
 
 // Mutable mock data that tests can change
 let notificationCountData = { count: 3 };
 let notificationsData: any[] = [];
+let recentNotificationsData: any[] = [];
 let urgentRemindersData: any[] = [];
 let currentLocation = "/";
 let mockLocale: "en" | "th" = "en";
@@ -21,7 +22,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     scheduledMessages: {
       getNotificationCount: { useQuery: () => ({ data: notificationCountData }) },
-      getNotifications: { useQuery: () => ({ data: notificationsData }) },
+      getNotifications: { useQuery: (input: { limit?: number }) => ({ data: input?.limit === 10 ? recentNotificationsData : notificationsData }) },
       getUrgentReminders: { useQuery: () => ({ data: urgentRemindersData }) },
       markAllRead: { useMutation: () => ({ mutate: vi.fn(), isLoading: false }) },
       markRead: { useMutation: () => ({ mutate: vi.fn(), isLoading: false }) },
@@ -37,13 +38,51 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: 1, role: viewerRole } }),
+  useAuth: () => ({ user: { id: 1, role: viewerRole, currentTenantId: "tenant-1" } }),
 }));
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
   useScopedTranslation: () => ({
     locale: mockLocale,
-    t: (key: string) => key,
+    t: (key: string, options?: { count?: number }) => {
+      const count = options?.count ?? 0;
+      const messages: Record<string, string> = {
+        "admin.notificationBell.unread": `${count} unread notification${count === 1 ? "" : "s"}`,
+        "admin.notificationBell.recentHistory": `No unread alerts, but ${count} recent item${count === 1 ? "" : "s"} available`,
+        "admin.notificationBell.none": "No notifications yet",
+        "admin.notificationBell.recent": "Recent",
+        "admin.notificationBell.title": "Notifications",
+        "admin.notificationBell.titleCount": `Notifications (${count})`,
+        "admin.notificationBell.close": "Close notifications",
+        "admin.notificationBell.markAllRead": "Mark all as read",
+        "admin.notificationBell.markRead": "Mark as read",
+        "admin.notificationBell.expandActions": "Expand quick actions",
+        "admin.notificationBell.collapseActions": "Collapse quick actions",
+        "admin.notificationBell.viewDetails": "View details",
+        "admin.notificationBell.openChat": "Open Chat",
+        "admin.notificationBell.viewSchedule": "View schedule",
+        "admin.notificationBell.viewAll": "View all notifications",
+        "admin.notificationBell.history": "View recent history",
+        "admin.notificationBell.scheduledAlerts": "Scheduled alerts",
+        "admin.notificationBell.viewDetailsButton": "View details",
+        "admin.notificationBell.openChatButton": "Open Chat",
+        "admin.notificationBell.viewScheduleButton": "View schedule",
+        "admin.notificationBell.openMediaStudio": "Open Media Studio",
+        "admin.notificationBell.adminSettings": "Admin Settings",
+        "admin.notificationBell.systemGuardian": "System Guardian",
+        "admin.notificationBell.viewFeedback": "View Feedback",
+        "admin.notificationBell.back": "Back",
+        "admin.notificationBell.errorDetails": "Error details",
+        "admin.notificationBell.code": "Code",
+        "admin.notificationBell.duration": "Duration",
+        "admin.notificationBell.cost": "Cost",
+        "admin.notificationBell.retry": "Retry",
+        "admin.notificationBell.nextRetry": "Next retry",
+        "admin.notificationBell.source": "Source",
+        "admin.notificationBell.emptyList": "Your notification list is empty.",
+      };
+      return messages[key] ?? key;
+    },
   }),
 }));
 
@@ -81,6 +120,7 @@ import {
   isJobCompletionNotification,
   parseNotificationSSEEvent,
 } from "../GlobalAlerts";
+import { OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, ASSISTANT_NOTIFICATION_ARRIVAL_EVENT } from "@/lib/assistantMascotEvents";
 
 describe("job completion notification events", () => {
   it("parses a valid SSE payload and recognizes job-completion metadata", () => {
@@ -110,6 +150,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     localStorage.clear();
     notificationCountData = { count: 3 };
     notificationsData = [];
+    recentNotificationsData = [];
     urgentRemindersData = [];
     currentLocation = "/";
     mockLocale = "en";
@@ -158,7 +199,6 @@ describe("GlobalNotificationBell occurrence badge", () => {
         occurrenceCount: 5,
       },
     ];
-
     render(<GlobalAlerts />);
 
     await act(async () => {
@@ -242,7 +282,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     render(<GlobalAlerts />);
 
-    expect(screen.getByLabelText(/0 unread notification/i)).toBeTruthy();
+    expect(screen.getByLabelText("No notifications yet")).toBeTruthy();
   });
 
   it("hides the bell on non-dashboard pages when unread count is zero", () => {
@@ -269,7 +309,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     const { rerender } = render(<GlobalAlerts />);
 
-    expect(screen.getByLabelText(/0 unread notification/i)).toBeTruthy();
+    expect(screen.getByLabelText("No notifications yet")).toBeTruthy();
 
     currentLocation = "/chat";
 
@@ -291,31 +331,113 @@ describe("GlobalNotificationBell occurrence badge", () => {
         occurrenceCount: 1,
       },
     ];
+    recentNotificationsData = notificationsData;
 
     render(<GlobalAlerts />);
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText(/0 unread notification/i));
+      fireEvent.click(screen.getByLabelText("No unread alerts, but 1 recent item available"));
     });
 
     expect(
-      screen.getByText(/No unread alerts, but 1 recent item available/i)
+      screen.getByText("No unread alerts, but 1 recent item available")
     ).toBeTruthy();
-    expect(screen.getByText("ดูย้อนหลัง")).toBeTruthy();
+    expect(screen.getByText("View recent history")).toBeTruthy();
   });
 
   it("shows a no-history message when there are no notifications at all", async () => {
     notificationCountData = { count: 0 };
     currentLocation = "/dashboard";
     notificationsData = [];
+    recentNotificationsData = [];
 
     render(<GlobalAlerts />);
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText(/0 unread notification/i));
+      fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
-    expect(screen.getByText("No notifications yet")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).getByText("Your notification list is empty.")).toBeTruthy();
+  });
+
+  it("uses recent polling data in the bell summary before the dropdown query loads", () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/dashboard";
+    notificationsData = [];
+    recentNotificationsData = [
+      {
+        id: 6,
+        title: "Read notification",
+        content: "Previously viewed",
+        isRead: true,
+        priority: "normal",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(screen.getByLabelText("No unread alerts, but 1 recent item available")).toBeTruthy();
+  });
+
+  it("keeps the empty Bell label truthful and returns focus after closing its popover", async () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/dashboard";
+    notificationsData = [];
+    recentNotificationsData = [];
+
+    render(<GlobalAlerts />);
+    const bell = screen.getByRole("button", { name: "No notifications yet" });
+    expect(screen.queryByText("Recent")).toBeNull();
+
+    await act(async () => fireEvent.click(bell));
+    expect(screen.getByRole("dialog", { name: "Notifications" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("dialog"));
+
+    await act(async () => fireEvent.keyDown(document, { key: "Escape" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(bell);
+  });
+
+  it("opens the existing notification surface from the explicit bell intent", async () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/dashboard";
+    notificationsData = [];
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT));
+    });
+
+    expect(screen.getByRole("dialog").textContent).toContain("No notifications yet");
+  });
+
+  it("uses the existing Notification Center route when the bell is unavailable", async () => {
+    notificationCountData = { count: 0 };
+    currentLocation = "/settings";
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT));
+    });
+
+    expect(setLocationMock).toHaveBeenCalledWith("/notifications");
+  });
+
+  it("does not project an unverified SSE payload to cosmetic attention", async () => {
+    const arrivals: CustomEvent[] = [];
+    const onArrival = (event: Event) => arrivals.push(event as CustomEvent);
+    window.addEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, onArrival);
+    render(<GlobalAlerts />);
+    const eventSource = (globalThis.EventSource as any).instances[0];
+
+    await act(async () => {
+      eventSource.emit("notification", { data: JSON.stringify({ id: 777, title: "Private title", content: "Private body", metadata: { source: "private" } }) });
+      eventSource.emit("notification", { data: JSON.stringify({ id: 777, title: "Private title", content: "Private body", metadata: { source: "private" } }) });
+    });
+
+    window.removeEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, onArrival);
+    expect(arrivals).toHaveLength(0);
   });
 
   it("moves the bell when dragged", async () => {
@@ -973,10 +1095,10 @@ describe("GlobalNotificationBell occurrence badge", () => {
     render(<GlobalAlerts />);
 
     await act(async () => {
-      fireEvent.click(screen.getByLabelText(/0 unread notification/i));
+      fireEvent.click(screen.getByLabelText("No notifications yet"));
     });
 
-    fireEvent.click(screen.getByText("ดูย้อนหลัง"));
+    fireEvent.click(screen.getByText("View recent history"));
 
     expect(setLocationMock).toHaveBeenCalledWith("/notifications");
   });

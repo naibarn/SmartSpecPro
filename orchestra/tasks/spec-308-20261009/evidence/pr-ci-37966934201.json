@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "check": "SPEC-308 Browser Simulation",
+  "head_sha": "214f3d04c8b615609d6da3c18444357fd1d5a363",
+  "run_id": 37966934201,
+  "run_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/37966934201",
+  "outcomes": {
+    "install_web_workspace_dependencies": "PASS",
+    "build_remotion_render_schema": "PASS",
+    "install_chromium": "PASS",
+    "start_ui_only_vite": "PASS",
+    "playwright_chromium": "PASS",
+    "playwright_tests": "12 passed, 0 failed"
+  },
+  "coverage": [
+    "mocked authenticated Chat and Feedback tabs and draft retention",
+    "mocked tenant-flag rollback with open drafts and no chat, feedback, or notification-read mutation",
+    "responsive overflow checks at 320, 360, 390, 767, 768, and 1440 CSS pixels",
+    "Bell animation and existing action",
+    "five settings styles and tenant-scoped local preference storage",
+    "balloon dismissal and CTA side-effect checks"
+  ],
+  "classification": "SIMULATED_BROWSER_EVIDENCE_NOT_LIVE_ACCEPTANCE",
+  "limitations": [
+    "The Vite server and API responses were mocked; this is not a live authenticated runtime or server-side tenant authorization test.",
+    "Live notification transport/read behavior, production behavior, deployment approval, and authenticated acceptance remain unverified.",
+    "A GitCommitInfo helper emitted a 3-second origin fetch timeout, but the 12-test Playwright job completed successfully."
+  ],
+  "artifacts": [
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/320x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/360x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/390x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/767x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/768x-authenticated-ci-simulation.png",
+    "orchestra/tasks/spec-308-20261009/evidence/screenshots/1440x-authenticated-ci-simulation.png"
+  ],
+  "next_action": "Run required exact-head integrated verification after PR #405 and #403 gates are resolved; obtain approved non-production runtime and test identity for live SPEC-308 acceptance."
+}

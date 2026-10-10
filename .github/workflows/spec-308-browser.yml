@@ -1,0 +1,124 @@
+name: SPEC-308 Browser Simulation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/spec-308-browser.yml"
+      - "apps/web/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-308-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-simulation:
+    name: Mocked SPEC-308 browser simulation
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 399
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the exact event revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install web workspace dependencies
+        run: pnpm install --frozen-lockfile --filter @smartspec/web...
+
+      - name: Build generated workspace schema used by web routes
+        run: pnpm --filter @smartspec/remotion-render build
+
+      - name: Run focused SPEC-308 component regressions
+        working-directory: apps/web
+        env:
+          JWT_SECRET: test-jwt-secret-32-chars-minimum-1234567890
+        run: >-
+          pnpm exec vitest run
+          client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx
+          client/src/components/assistant-mascot/AssistantMascot.test.tsx
+          client/src/components/guardian/__tests__/FeedbackButton.test.tsx
+          client/src/components/settings/AssistantAppearancePreferences.test.tsx
+          client/src/components/settings/NotificationPreferencesPanel.test.tsx
+          client/src/lib/notificationAttention.test.ts
+          client/src/lib/assistantMascotPreferences.test.ts
+          client/src/lib/assistantMascotFeatureGate.test.ts
+
+      - name: Install Chromium and system dependencies
+        run: pnpm --filter @smartspec/web exec playwright install --with-deps chromium
+
+      - name: Start UI-only Vite server
+        working-directory: apps/web
+        env:
+          VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW: "true"
+          VITE_SENTRY_ENABLED: "false"
+          VITE_POSTHOG_API_KEY: ""
+        run: |
+          nohup pnpm exec vite --host 127.0.0.1 --port 3017 --strictPort \
+            > /tmp/spec-308-vite.log 2>&1 < /dev/null &
+          echo "$!" > /tmp/spec-308-vite.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3017/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/spec-308-vite.log
+          exit 1
+
+      - name: Run SPEC-308 mocked browser simulation
+        working-directory: apps/web
+        env:
+          PLAYWRIGHT_SKIP_WEB_SERVER: "1"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3017
+          PLAYWRIGHT_E2E_PORT: "3017"
+          VITE_ASSISTANT_MASCOT_GLOBAL_ALLOW: "true"
+          VITE_SENTRY_ENABLED: "false"
+          VITE_POSTHOG_API_KEY: ""
+        run: >-
+          pnpm exec playwright test
+          tests/e2e/spec-308-dual-surface.spec.ts
+          tests/e2e/spec-308-side-effects.spec.ts
+          tests/e2e/spec-308-route-surfaces.spec.ts
+          --project=chromium
+          --workers=1
+
+      - name: Publish simulation and acceptance boundary
+        if: always()
+        run: |
+          {
+            echo "## SPEC-308 browser simulation"
+            echo
+            echo "This job runs the isolated Playwright fixture with mocked authentication and API responses against a UI-only Vite server. It is simulated evidence, not live authenticated acceptance, tenant-runtime validation, or deployment approval."
+            echo
+            echo "Checked-out revision: \`$(git rev-parse HEAD)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Playwright report and Vite log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-308-browser-simulation-${{ github.run_id }}
+          path: |
+            apps/web/test-results/production-director/
+            orchestra/tasks/spec-308-20261009/evidence/screenshots/*.png
+            /tmp/spec-308-vite.log
+          if-no-files-found: warn
+          retention-days: 14

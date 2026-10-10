@@ -1,0 +1,750 @@
+{
+  "config": {
+    "argv": [
+      "/opt/hostedtoolcache/node/22.22.3/x64/bin/node",
+      "/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/node_modules/@playwright/test/cli.js",
+      "test",
+      "tests/e2e/spec-308-dual-surface.spec.ts",
+      "--project=chromium",
+      "--workers=1"
+    ],
+    "configFile": "/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/playwright.config.ts",
+    "rootDir": "/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "ci": {
+        "commitHref": "https://github.com/naibarn/SmartSpecPro/commit/0d922d2aa24a1c394970f4dc158fa3f3e5e384b5",
+        "commitHash": "0d922d2aa24a1c394970f4dc158fa3f3e5e384b5",
+        "prHref": "https://github.com/naibarn/SmartSpecPro/pull/399",
+        "prTitle": "feat(spec-308): gated cooperative mascot surfaces",
+        "prBaseHash": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+        "buildHref": "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610472"
+      },
+      "gitCommit": {
+        "shortHash": "0fdda958",
+        "hash": "0fdda9580ff80988266f7677980991481637c076",
+        "subject": "fix(spec-308): anchor reminder to committed drag placement",
+        "body": "fix(spec-308): anchor reminder to committed drag placement\n",
+        "author": {
+          "name": "dev",
+          "email": "dev@smartaihub.app",
+          "time": 1791592427000
+        },
+        "committer": {
+          "name": "dev",
+          "email": "dev@smartaihub.app",
+          "time": 1791592427000
+        },
+        "branch": "HEAD"
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/naibarn/SmartSpecPro/commit/0d922d2aa24a1c394970f4dc158fa3f3e5e384b5",
+            "commitHash": "0d922d2aa24a1c394970f4dc158fa3f3e5e384b5",
+            "prHref": "https://github.com/naibarn/SmartSpecPro/pull/399",
+            "prTitle": "feat(spec-308): gated cooperative mascot surfaces",
+            "prBaseHash": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+            "buildHref": "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610472"
+          },
+          "gitCommit": {
+            "shortHash": "0fdda958",
+            "hash": "0fdda9580ff80988266f7677980991481637c076",
+            "subject": "fix(spec-308): anchor reminder to committed drag placement",
+            "body": "fix(spec-308): anchor reminder to committed drag placement\n",
+            "author": {
+              "name": "dev",
+              "email": "dev@smartaihub.app",
+              "time": 1791592427000
+            },
+            "committer": {
+              "name": "dev",
+              "email": "dev@smartaihub.app",
+              "time": 1791592427000
+            },
+            "branch": "HEAD"
+          },
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/production-director/playwright-evidence.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "spec-308-dual-surface.spec.ts",
+      "file": "spec-308-dual-surface.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "SPEC-308 isolated authenticated simulation covers launcher, Chat, Feedback and draft preservation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5453,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:35:45.527Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-aed8e604666897befdc1",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 139,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 notification popover stays inside a narrow viewport and restores keyboard focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1845,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:35:53.088Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-1785a89d4e77ff6cbd2d",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 185,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 tenant flag rollback preserves open Chat and Feedback drafts and actions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6243,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:35:54.950Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-065419d08167bc2a7f57",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 209,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 authenticated simulation has no horizontal overflow at 320px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2080,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:01.213Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-4402b84db6f3201b6ee8",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 277,
+          "column": 3
+        },
+        {
+          "title": "SPEC-308 authenticated simulation has no horizontal overflow at 360px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1891,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:03.310Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-5336cd217ed31deb6755",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 277,
+          "column": 3
+        },
+        {
+          "title": "SPEC-308 authenticated simulation has no horizontal overflow at 390px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1874,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:05.218Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-304d56895f009d020727",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 277,
+          "column": 3
+        },
+        {
+          "title": "SPEC-308 authenticated simulation has no horizontal overflow at 767px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2032,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:07.105Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-d0b6c2e5655030af1c28",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 277,
+          "column": 3
+        },
+        {
+          "title": "SPEC-308 authenticated simulation has no horizontal overflow at 768px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1841,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:09.148Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-1a357df93a05f3e1bd57",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 277,
+          "column": 3
+        },
+        {
+          "title": "SPEC-308 authenticated simulation has no horizontal overflow at 1440px",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2001,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:11.006Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-4d48de7cc2f568e9e851",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 277,
+          "column": 3
+        },
+        {
+          "title": "SPEC-308 unauthorised SSE stays decorative-static and retains Bell action",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2907,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:13.021Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-00f6fa1f38a3acc592f6",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 295,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 configured normal motion does not animate unverified SSE",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1766,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:15.942Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-7b9ac0af6661910deb7a",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 314,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 manual motion off disables decorative balloon entrance",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1759,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:17.720Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-604fc68939f1d6ab1e07",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 336,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 settings expose five accessible choices and appearance changes stay local",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7353,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:19.495Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-286500726ad00ba831d6",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 361,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 demo balloon dismiss is presentation-only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2759,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:26.862Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-d451ef44a5c67cb9b5f3",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 418,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 unverified SSE does not replace demo hint and mascot still opens Chat",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3531,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:29.634Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-cb0dff48497f08b1a132",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 451,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 reminder follows the launcher after drag and stays inside the viewport",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3434,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:33.178Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-6dfc4ac38ab1f3e858a8",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 484,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 balloon CTA opens the existing notification Bell",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2746,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:36.626Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-bc02d43567d62ebacd8d",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 555,
+          "column": 1
+        },
+        {
+          "title": "SPEC-308 Thai launcher and reminder labels are localized",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3229,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-10T00:36:39.385Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b4a4aeaebe2066250c33-d2bf44285a6fa7a9c205",
+          "file": "spec-308-dual-surface.spec.ts",
+          "line": 575,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-10T00:35:38.984Z",
+    "duration": 63733.774999999994,
+    "expected": 18,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

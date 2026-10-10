@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "check": "MCP v2 Compatibility Gates",
+  "head_sha": "91f52f0726d02e447c5ce85f736c38ab451263b7",
+  "run_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/37896740084",
+  "outcomes": {
+    "contract_and_security": "FAIL",
+    "live_contract_evidence": "FAIL",
+    "build_preview": "SKIPPED"
+  },
+  "findings": [
+    "Contract/security logs report 44 failed and 76 passed across 11 files; protocol fixture failures occur because MCP session persistence now uses PostgreSQL while the test fixture does not mock that owner and CI has no DATABASE_URL.",
+    "A stale module import in an existing MCP security test is present on origin/main and unchanged in PR #399; the MCP fixture/import and workflow repair is isolated in PR #403.",
+    "Live-contract evidence exits fail-closed because MCP_SMOKE_URL and MCP_SMOKE_TOKEN are not configured. No secret was read, fabricated, or used.",
+    "build-preview was skipped; this is not a build pass."
+  ],
+  "classification": "BASELINE_CI_FAILURE_AND_EXTERNAL_AUTHORITY_BLOCK",
+  "next_action": "Review PR #403 after its contract-and-security check completes; obtain CI owner configuration for the authorized live MCP endpoint/token; rerun #399 after the separate repair integrates."
+}

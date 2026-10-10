@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useReducer, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -44,6 +44,15 @@ import {
   type ReportErrorEventDetail,
 } from "@/lib/systemErrorMonitor";
 import { EMERGENCY_MAP_CHAT_EVENT, parseEmergencyMapChatRequest } from "@/components/emergency/mapChatHandoff";
+import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
+import { ASSISTANT_MASCOT_GLOBAL_ALLOW, isAssistantMascotEnabled } from "@/lib/assistantMascotFeatureGate";
+import { AssistantMascot } from "@/components/assistant-mascot/AssistantMascot";
+import { AssistantMascotErrorBoundary } from "@/components/assistant-mascot/AssistantMascotErrorBoundary";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
+import { loadAssistantMascotPreferences, assistantMascotStorageKey, DEFAULT_ASSISTANT_MASCOT_PREFERENCES } from "@/lib/assistantMascotPreferences";
+import { ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, ASSISTANT_NOTIFICATION_BASELINE_EVENT, ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT, OPEN_GLOBAL_NOTIFICATION_BELL_EVENT, SHOW_ASSISTANT_MASCOT_DEMO_EVENT, type AssistantNotificationProjection } from "@/lib/assistantMascotEvents";
+import { createInitialAttentionState, reduceNotificationAttention } from "@/lib/notificationAttention";
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -75,6 +84,100 @@ type FeedbackDragState = {
 };
 
 type HelpPanel = "chat" | "control-plane" | "feedback";
+
+export function isAssistantBalloonEligible(input: {
+  dialogOpen: boolean;
+  dragging: boolean;
+  documentVisible: boolean;
+  keyboardOpen: boolean;
+  editableControlFocused: boolean;
+  criticalOverlayOpen: boolean;
+  routeSuppressed: boolean;
+}) {
+  return !input.dialogOpen
+    && !input.dragging
+    && input.documentVisible
+    && !input.keyboardOpen
+    && !input.editableControlFocused
+    && !input.criticalOverlayOpen
+    && !input.routeSuppressed;
+}
+
+export function isAssistantBalloonSuppressedRoute(location: string) {
+  const pathname = location.split(/[?#]/, 1)[0].replace(/\/+$/, "") || "/";
+  return pathname === "/video-studio"
+    || pathname.startsWith("/video-studio/")
+    || pathname === "/video-editor"
+    || /^\/presentation-editor\/[^/]+$/.test(pathname)
+    || /^\/presentation\/[^/]+\/play$/.test(pathname)
+    || pathname === "/disaster/map";
+}
+
+type AssistantHintAnchor = { left: number; top: number; right: number; bottom: number; width: number };
+type AssistantHintSize = { width: number; height: number };
+type AssistantHintObstacle = { left: number; top: number; right: number; bottom: number };
+const ASSISTANT_COLLISION_CONTROL_SELECTOR = [
+  "button",
+  "a[href]",
+  "input",
+  "select",
+  "textarea",
+  "nav",
+  "header",
+  "[aria-label]",
+  "[role='button']",
+  "[role='dialog']",
+  "[role='menu']",
+  "[role='navigation']",
+  "[role='toolbar']",
+  "[data-spec308-critical-control]",
+].join(", ");
+
+/** Return fixed-position coordinates only when the complete hint fits in the visible viewport. */
+export function getAssistantHintPosition(
+  anchor: AssistantHintAnchor,
+  size: AssistantHintSize,
+  viewport: Pick<VisualViewport, "offsetLeft" | "offsetTop" | "width" | "height"> | null =
+    typeof window === "undefined" ? null : window.visualViewport,
+  fallbackViewport = typeof window === "undefined"
+    ? { width: 0, height: 0 }
+    : { width: window.innerWidth, height: window.innerHeight },
+  obstacles: AssistantHintObstacle[] = [],
+): CSSProperties | null {
+  const viewportLeft = viewport?.offsetLeft ?? 0;
+  const viewportTop = viewport?.offsetTop ?? 0;
+  const viewportWidth = viewport?.width ?? fallbackViewport.width;
+  const viewportHeight = viewport?.height ?? fallbackViewport.height;
+  const inset = 16;
+  const gap = 8;
+
+  if (![viewportLeft, viewportTop, viewportWidth, viewportHeight, size.width, size.height].every(Number.isFinite)
+    || viewportWidth <= inset * 2 || viewportHeight <= inset * 2
+    || size.width <= 0 || size.height <= 0
+    || size.width > viewportWidth - inset * 2 || size.height > viewportHeight - inset * 2) {
+    return null;
+  }
+
+  const minLeft = viewportLeft + inset;
+  const maxLeft = viewportLeft + viewportWidth - size.width - inset;
+  const left = Math.max(minLeft, Math.min(maxLeft, anchor.left + anchor.width / 2 - size.width / 2));
+  const minTop = viewportTop + inset;
+  const maxTop = viewportTop + viewportHeight - size.height - inset;
+  const above = anchor.top - size.height - gap;
+  const below = anchor.bottom + gap;
+  const candidates = [
+    ...(above >= minTop ? [Math.min(above, maxTop)] : []),
+    ...(below <= maxTop ? [Math.max(below, minTop)] : []),
+  ];
+  const top = candidates.find(candidateTop => !obstacles.some(obstacle =>
+    left < obstacle.right
+    && left + size.width > obstacle.left
+    && candidateTop < obstacle.bottom
+    && candidateTop + size.height > obstacle.top,
+  ));
+
+  return top === undefined ? null : { left: `${left}px`, top: `${top}px` };
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -150,12 +253,36 @@ function getFileIcon(name: string) {
 }
 
 export function FeedbackButton() {
-  const [, setLocation] = useLocation();
+  return ASSISTANT_MASCOT_GLOBAL_ALLOW
+    ? <FeedbackButtonFeatureGate />
+    : <FeedbackButtonContent mascotEnabled={false} />;
+}
+
+function FeedbackButtonFeatureGate() {
+  const flag = useTenantFeatureFlagStatus("livingMascotDualSurface");
+  const enabled = isAssistantMascotEnabled({
+    globalAllowed: ASSISTANT_MASCOT_GLOBAL_ALLOW,
+    tenantEnabled: flag.enabled,
+    tenantResolved: flag.isResolved,
+    tenantError: flag.isError,
+  });
+  return <FeedbackButtonContent mascotEnabled={enabled} />;
+}
+
+function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
+  const [location, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const mascotIdentity = user?.id && user.currentTenantId ? assistantMascotStorageKey(user.id, user.currentTenantId) : null;
+  const conversationIdentity = user?.id
+    ? `${encodeURIComponent(String(user.id))}:${user.currentTenantId == null ? "no-tenant" : encodeURIComponent(String(user.currentTenantId))}`
+    : null;
+  const conversationIdentityRef = useRef(conversationIdentity);
   const { t } = useScopedTranslation("chat");
+  const { t: settingsT } = useScopedTranslation("settings");
   const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<HelpPanel>("chat");
+  const helpTabRefs = useRef<Partial<Record<HelpPanel, HTMLButtonElement>>>({});
   const [chatConversationId, setChatConversationId] = useState<number | null>(null);
   const [chatPromptRequest, setChatPromptRequest] = useState<{
     id: number;
@@ -172,9 +299,29 @@ export function FeedbackButton() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [feedbackPlacement, setFeedbackPlacement] = useState<FeedbackPlacement>(() => getInitialFeedbackPlacement());
   const [isButtonDragging, setIsButtonDragging] = useState(false);
+  const [dragCompletionVersion, setDragCompletionVersion] = useState(0);
+  const completedDragPositionVersionRef = useRef(0);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1024 : window.innerWidth,
   );
+  const [loadedMascotPreferences, setLoadedMascotPreferences] = useState<{
+    identity: string | null;
+    preferences: typeof DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
+  }>({ identity: null, preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES });
+  const mascotPreferences = loadedMascotPreferences.identity === mascotIdentity
+    ? loadedMascotPreferences.preferences
+    : DEFAULT_ASSISTANT_MASCOT_PREFERENCES;
+  const [showMascotDemo, setShowMascotDemo] = useState(false);
+  const [showChatOnboardingHint, setShowChatOnboardingHint] = useState(false);
+  const [balloonSurfaceBlocked, setBalloonSurfaceBlocked] = useState(false);
+  const [assistantHintStyle, setAssistantHintStyle] = useState<CSSProperties | null>(null);
+  const [attention, dispatchAttention] = useReducer(
+    reduceNotificationAttention,
+    undefined,
+    () => createInitialAttentionState({ scopeGeneration: 1, enabled: false }),
+  );
+  const attentionScopeKeyRef = useRef(mascotIdentity);
+  const attentionScopeGenerationRef = useRef(1);
   // Holds the ticket ID when ticket was created but file upload failed
   const [pendingUploadTicketId, setPendingUploadTicketId] = useState<number | null>(null);
   // Diagnostics bundle from a "แจ้งปัญหา" system-error-toast report, if this
@@ -188,16 +335,255 @@ export function FeedbackButton() {
   const openRef = useRef(open);
   const pasteImageCounterRef = useRef(0);
   const chatConversationPromiseRef = useRef<Promise<number> | null>(null);
+  const chatConversationScopeGenerationRef = useRef(0);
+  const previousLocationRef = useRef(location);
+  const routeSuppressesBalloon = isAssistantBalloonSuppressedRoute(location);
+
+  useEffect(() => {
+    const updateSurfaceEligibility = () => {
+      const activeElement = document.activeElement;
+      const editableControlFocused = activeElement instanceof HTMLElement && activeElement.matches(
+        'input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="hidden"]), textarea, select, [contenteditable="true"], [role="textbox"]',
+      );
+      const viewport = window.visualViewport;
+      const keyboardOpen = Boolean(viewport && window.innerHeight - viewport.height > 120);
+      const criticalOverlayOpen = Boolean(document.querySelector(
+        '[role="alertdialog"], [aria-modal="true"]:not([data-state="closed"])',
+      ));
+      setBalloonSurfaceBlocked(!isAssistantBalloonEligible({
+        dialogOpen: open,
+        dragging: isButtonDragging,
+        documentVisible: document.visibilityState !== "hidden",
+        keyboardOpen,
+        editableControlFocused,
+        criticalOverlayOpen,
+        routeSuppressed: routeSuppressesBalloon,
+      }));
+    };
+    updateSurfaceEligibility();
+    document.addEventListener("focusin", updateSurfaceEligibility);
+    document.addEventListener("focusout", updateSurfaceEligibility);
+    document.addEventListener("visibilitychange", updateSurfaceEligibility);
+    window.addEventListener("resize", updateSurfaceEligibility);
+    window.visualViewport?.addEventListener("resize", updateSurfaceEligibility);
+    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(updateSurfaceEligibility);
+    observer?.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["role", "aria-modal", "data-state"] });
+    return () => {
+      document.removeEventListener("focusin", updateSurfaceEligibility);
+      document.removeEventListener("focusout", updateSurfaceEligibility);
+      document.removeEventListener("visibilitychange", updateSurfaceEligibility);
+      window.removeEventListener("resize", updateSurfaceEligibility);
+      window.visualViewport?.removeEventListener("resize", updateSurfaceEligibility);
+      observer?.disconnect();
+    };
+  }, [open, isButtonDragging, routeSuppressesBalloon]);
+
+  useEffect(() => {
+    if (previousLocationRef.current === location) return;
+    previousLocationRef.current = location;
+    dispatchAttention({ type: "DISMISS", now: Date.now() });
+    setShowChatOnboardingHint(false);
+  }, [location]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotIdentity || typeof window === "undefined") {
+      setLoadedMascotPreferences({ identity: null, preferences: DEFAULT_ASSISTANT_MASCOT_PREFERENCES });
+      return;
+    }
+    setLoadedMascotPreferences({
+      identity: mascotIdentity,
+      preferences: loadAssistantMascotPreferences(window.localStorage, mascotIdentity),
+    });
+  }, [mascotEnabled, mascotIdentity]);
+
+  useLayoutEffect(() => {
+    if (conversationIdentityRef.current === conversationIdentity) return;
+    conversationIdentityRef.current = conversationIdentity;
+    chatConversationScopeGenerationRef.current += 1;
+    chatConversationPromiseRef.current = null;
+    setChatConversationId(null);
+    setChatPromptRequest(null);
+    setMapContextDraft(null);
+    setOpen(false);
+    setActivePanel("chat");
+    setTicketType("bug");
+    setTitle("");
+    setDescription("");
+    setIsUrgent(false);
+    setIsConfirmingUrgent(false);
+    setFiles([]);
+    setPendingUploadTicketId(null);
+    setPendingDiagnostics(null);
+  }, [conversationIdentity]);
+
+  useLayoutEffect(() => {
+    if (attentionScopeKeyRef.current === mascotIdentity) return;
+    attentionScopeKeyRef.current = mascotIdentity;
+    const scopeGeneration = attentionScopeGenerationRef.current + 1;
+    attentionScopeGenerationRef.current = scopeGeneration;
+    dispatchAttention({ type: "SET_SCOPE", scopeGeneration, now: Date.now() });
+    setShowMascotDemo(false);
+    setShowChatOnboardingHint(false);
+  }, [mascotIdentity]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotIdentity) return;
+    const syncPreferences = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; preferences?: typeof DEFAULT_ASSISTANT_MASCOT_PREFERENCES }>).detail;
+      if (detail?.key !== mascotIdentity || !detail.preferences) return;
+      setLoadedMascotPreferences({ identity: mascotIdentity, preferences: detail.preferences });
+    };
+    window.addEventListener(ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, syncPreferences);
+    return () => window.removeEventListener(ASSISTANT_MASCOT_PREFERENCES_CHANGED_EVENT, syncPreferences);
+  }, [mascotEnabled, mascotIdentity]);
+
+  useLayoutEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) {
+      setShowMascotDemo(false);
+      return;
+    }
+    const showDemo = () => setShowMascotDemo(true);
+    window.addEventListener(SHOW_ASSISTANT_MASCOT_DEMO_EVENT, showDemo);
+    return () => window.removeEventListener(SHOW_ASSISTANT_MASCOT_DEMO_EVENT, showDemo);
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders]);
+
+  useEffect(() => {
+    dispatchAttention({ type: "SET_ENABLED", enabled: mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders, now: Date.now() });
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders]);
+
+  useLayoutEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders || !mascotIdentity) return;
+    const acceptBaseline = (event: Event) => {
+      const detail = (event as CustomEvent<AssistantNotificationProjection>).detail;
+      if (detail?.scopeKey !== mascotIdentity || !Array.isArray(detail.signals)) return;
+      dispatchAttention({
+        type: "BASELINE",
+        signals: detail.signals.map((signal) => ({
+          ...signal,
+          scopeGeneration: attentionScopeGenerationRef.current,
+        })),
+      });
+    };
+    const acceptArrival = (event: Event) => {
+      const detail = (event as CustomEvent<AssistantNotificationProjection>).detail;
+      if (detail?.scopeKey !== mascotIdentity || !Array.isArray(detail.signals)) return;
+      for (const signal of detail.signals) {
+        dispatchAttention({
+          type: "NEW_NOTIFICATION",
+          signal: { ...signal, scopeGeneration: attentionScopeGenerationRef.current },
+          source: "live",
+          now: Date.now(),
+          viewport: window.innerWidth < 768 ? "mobile" : "desktop",
+        });
+      }
+    };
+    window.addEventListener(ASSISTANT_NOTIFICATION_BASELINE_EVENT, acceptBaseline);
+    window.addEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, acceptArrival);
+    window.dispatchEvent(new Event(ASSISTANT_NOTIFICATION_BASELINE_REQUEST_EVENT));
+    return () => {
+      window.removeEventListener(ASSISTANT_NOTIFICATION_BASELINE_EVENT, acceptBaseline);
+      window.removeEventListener(ASSISTANT_NOTIFICATION_ARRIVAL_EVENT, acceptArrival);
+    };
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, mascotIdentity]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
+    const hidden = document.visibilityState === "hidden";
+    if (open || isButtonDragging || hidden || balloonSurfaceBlocked || routeSuppressesBalloon) {
+      dispatchAttention({ type: "SUSPEND", now: Date.now() });
+      return;
+    }
+    dispatchAttention({ type: "SET_VISIBLE", visible: true, now: Date.now() });
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked, routeSuppressesBalloon]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.notificationReminders) return;
+    const syncVisibility = () => {
+      const now = Date.now();
+      if (document.visibilityState === "hidden" || open || isButtonDragging || balloonSurfaceBlocked || routeSuppressesBalloon) {
+        dispatchAttention({ type: "SUSPEND", now });
+      } else {
+        dispatchAttention({ type: "SET_VISIBLE", visible: true, now });
+      }
+    };
+    document.addEventListener("visibilitychange", syncVisibility);
+    window.addEventListener("focus", syncVisibility);
+    window.addEventListener("blur", syncVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", syncVisibility);
+      window.removeEventListener("focus", syncVisibility);
+      window.removeEventListener("blur", syncVisibility);
+    };
+  }, [mascotEnabled, mascotPreferences.enabled, mascotPreferences.notificationReminders, open, isButtonDragging, balloonSurfaceBlocked, routeSuppressesBalloon]);
+
+  useEffect(() => {
+    if (attention.deadlineAt === null) return;
+    const timer = window.setTimeout(() => dispatchAttention({ type: "ADVANCE", now: Date.now() }), Math.max(0, attention.deadlineAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [attention.deadlineAt, attention.status]);
+
+  useEffect(() => {
+    if (!showMascotDemo) return;
+    const timer = window.setTimeout(() => setShowMascotDemo(false), window.innerWidth < 768 ? 3_000 : 5_000);
+    return () => window.clearTimeout(timer);
+  }, [showMascotDemo]);
+
+  useEffect(() => {
+    if (attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE") {
+      setShowMascotDemo(false);
+    }
+  }, [attention.status]);
+
+  const chatHintSessionKey = `assistant-mascot:chat-hint:v1:${mascotIdentity ?? "guest"}`;
+  const dismissChatOnboardingHint = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(chatHintSessionKey, "dismissed");
+    } catch {
+      // Session storage is optional; the in-memory dismissal still applies.
+    }
+    setShowChatOnboardingHint(false);
+  }, [chatHintSessionKey]);
+
+  useEffect(() => {
+    if (!mascotEnabled || !mascotPreferences.enabled || !mascotPreferences.chatOnboarding || viewportWidth >= 768) {
+      setShowChatOnboardingHint(false);
+      return;
+    }
+    if (open || showMascotDemo || attention.status === "BALLOON_VISIBLE") {
+      dismissChatOnboardingHint();
+      return;
+    }
+    if (isButtonDragging || document.visibilityState === "hidden") {
+      setShowChatOnboardingHint(false);
+      return;
+    }
+    try {
+      setShowChatOnboardingHint(window.sessionStorage.getItem(chatHintSessionKey) !== "dismissed");
+    } catch {
+      setShowChatOnboardingHint(true);
+    }
+  }, [
+    attention.status,
+    chatHintSessionKey,
+    dismissChatOnboardingHint,
+    isButtonDragging,
+    mascotEnabled,
+    mascotPreferences.chatOnboarding,
+    mascotPreferences.enabled,
+    open,
+    showMascotDemo,
+    viewportWidth,
+  ]);
 
   const createChatConversationMutation =
     trpc.chat.createConversation.useMutation({
-      onSuccess: data => {
-        setChatConversationId(data.id);
-      },
       onError: error => {
-        toast.error(error.message || "เปิด AI Chat ไม่สำเร็จ");
+        toast.error(error.message || t("conversation.startFailed"));
       },
     });
+  useEffect(() => {
+    createChatConversationMutation.reset();
+  }, [conversationIdentity, createChatConversationMutation.reset]);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -244,6 +630,9 @@ export function FeedbackButton() {
       suppressNextClickRef.current = dragState.moved;
       dragStateRef.current = null;
       setIsButtonDragging(false);
+      if (dragState.moved) {
+        setDragCompletionVersion(version => version + 1);
+      }
     };
 
     document.addEventListener("pointermove", handlePointerMove);
@@ -338,12 +727,12 @@ export function FeedbackButton() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        toast.error(err.error || "File upload failed");
+        toast.error(err.error || t("feedback.uploadFailed"));
         return false;
       }
       return true;
     } catch {
-      toast.error("File upload failed — you can retry");
+      toast.error(t("feedback.uploadFailedRetry"));
       return false;
     } finally {
       setUploading(false);
@@ -358,11 +747,11 @@ export function FeedbackButton() {
         setPendingUploadTicketId(data.id);
         return;
       }
-      toast.success("Feedback submitted! Thank you.");
+      toast.success(t("feedback.submitted"));
       resetForm();
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to submit feedback");
+      toast.error(err.message || t("feedback.submitFailed"));
     },
   });
 
@@ -370,7 +759,7 @@ export function FeedbackButton() {
 
   const ensureChatConversation = useCallback(async () => {
     if (!user) {
-      throw new Error("Sign in to use AI Chat");
+      throw new Error(t("guest.signInRequired"));
     }
     if (chatConversationId) {
       return chatConversationId;
@@ -379,20 +768,30 @@ export function FeedbackButton() {
       return chatConversationPromiseRef.current;
     }
 
-    const request = createChatConversationMutation
-      .mutateAsync({ title: "AI Chat Assistant" })
+    const requestScopeGeneration = chatConversationScopeGenerationRef.current;
+    const requestIdentity = conversationIdentity;
+    let request: Promise<number>;
+    request = createChatConversationMutation
+      .mutateAsync({ title: t("feedback.conversationTitle") })
       .then(result => {
+        if (
+          requestScopeGeneration !== chatConversationScopeGenerationRef.current ||
+          requestIdentity !== conversationIdentityRef.current
+        ) {
+          if (chatConversationPromiseRef.current === request) chatConversationPromiseRef.current = null;
+          return result.id;
+        }
         setChatConversationId(result.id);
-        chatConversationPromiseRef.current = null;
+        if (chatConversationPromiseRef.current === request) chatConversationPromiseRef.current = null;
         return result.id;
       })
       .catch(error => {
-        chatConversationPromiseRef.current = null;
+        if (chatConversationPromiseRef.current === request) chatConversationPromiseRef.current = null;
         throw error;
       });
     chatConversationPromiseRef.current = request;
     return request;
-  }, [chatConversationId, createChatConversationMutation, user]);
+  }, [chatConversationId, createChatConversationMutation, conversationIdentity, t, user]);
 
   useEffect(() => {
     if (
@@ -435,15 +834,49 @@ export function FeedbackButton() {
     [authLoading, ensureChatConversation, user],
   );
 
+  const handleHelpTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const panels: HelpPanel[] = user && !authLoading
+      ? ["chat", "control-plane", "feedback"]
+      : ["chat", "feedback"];
+    const currentIndex = panels.indexOf(activePanel);
+    const isRtl = document.documentElement.dir === "rtl";
+    let nextPanel: HelpPanel | undefined;
+
+    if (event.key === (isRtl ? "ArrowRight" : "ArrowLeft")) {
+      nextPanel = panels[(currentIndex - 1 + panels.length) % panels.length];
+    } else if (event.key === (isRtl ? "ArrowLeft" : "ArrowRight")) {
+      nextPanel = panels[(currentIndex + 1) % panels.length];
+    } else if (event.key === "Home") {
+      nextPanel = panels[0];
+    } else if (event.key === "End") {
+      nextPanel = panels[panels.length - 1];
+    }
+
+    if (nextPanel) {
+      event.preventDefault();
+      // This tablist uses manual activation: moving focus must not start a Chat
+      // conversation or otherwise perform work until the user activates a tab.
+      helpTabRefs.current[nextPanel]?.focus();
+    }
+  };
+
   const handleOpenTaskPrompt = useCallback(
     async (prompt: string) => {
+      const requestScopeGeneration = chatConversationScopeGenerationRef.current;
+      const requestIdentity = conversationIdentity;
       const conversationId = await ensureChatConversation();
+      if (
+        requestScopeGeneration !== chatConversationScopeGenerationRef.current ||
+        requestIdentity !== conversationIdentityRef.current
+      ) {
+        throw new Error("Conversation scope changed while opening Task Control");
+      }
       setChatPromptRequest({ id: Date.now(), text: prompt });
       setActivePanel("chat");
       setOpen(true);
       return conversationId;
     },
-    [ensureChatConversation],
+    [ensureChatConversation, conversationIdentity],
   );
 
   useEffect(() => {
@@ -481,19 +914,26 @@ export function FeedbackButton() {
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim() || isSubmitting || isConfirmingUrgent) return;
+    const submitScopeGeneration = chatConversationScopeGenerationRef.current;
+    const submitIdentity = conversationIdentity;
 
     if (isUrgent) {
       setIsConfirmingUrgent(true);
       const confirmed = await confirm({
-        title: "Send urgent feedback?",
-        description:
-          "This will immediately alert every eligible admin with a critical center-screen notification. Use this only for issues that need immediate attention.",
-        confirmText: "Send Urgent Feedback",
-        cancelText: "Go Back",
+        title: t("feedback.urgentConfirmTitle"),
+        description: t("feedback.urgentConfirmDescription"),
+        confirmText: t("feedback.urgentConfirmSend"),
+        cancelText: t("feedback.urgentConfirmCancel"),
         tone: "danger",
       });
       setIsConfirmingUrgent(false);
       if (!confirmed) return;
+    }
+    if (
+      submitScopeGeneration !== chatConversationScopeGenerationRef.current ||
+      submitIdentity !== conversationIdentityRef.current
+    ) {
+      return;
     }
 
     submitMutation.mutate({
@@ -513,9 +953,11 @@ export function FeedbackButton() {
     isConfirmingUrgent,
     isSubmitting,
     isUrgent,
+    conversationIdentity,
     pendingDiagnostics,
     submitMutation,
     ticketType,
+    t,
     title,
   ]);
 
@@ -523,10 +965,10 @@ export function FeedbackButton() {
     if (!pendingUploadTicketId) return;
     const ok = await uploadFiles(pendingUploadTicketId);
     if (ok) {
-      toast.success("Feedback submitted! Thank you.");
+      toast.success(t("feedback.submitted"));
       resetForm();
     }
-  }, [pendingUploadTicketId, files, resetForm]);
+  }, [pendingUploadTicketId, files, resetForm, t]);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const fileArray = Array.from(newFiles);
@@ -535,7 +977,7 @@ export function FeedbackButton() {
     setFiles((prev) => {
       const remaining = MAX_FILES - prev.length;
       if (remaining <= 0) {
-        errors.push(`Maximum ${MAX_FILES} files allowed`);
+        errors.push(t("feedback.maxFilesAllowed", { count: MAX_FILES }));
         return prev;
       }
 
@@ -543,15 +985,15 @@ export function FeedbackButton() {
       for (const file of fileArray.slice(0, remaining)) {
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
         if (!ALLOWED_EXTENSIONS.has(ext)) {
-          errors.push(`${file.name}: type not allowed (jpg, png, webp, pdf, md)`);
+          errors.push(t("feedback.fileTypeNotAllowed", { name: file.name }));
           continue;
         }
         if (file.size === 0) {
-          errors.push(`${file.name}: file is empty`);
+          errors.push(t("feedback.fileEmpty", { name: file.name }));
           continue;
         }
         if (file.size > MAX_FILE_SIZE) {
-          errors.push(`${file.name}: too large (max 5 MB)`);
+          errors.push(t("feedback.fileTooLarge", { name: file.name }));
           continue;
         }
         valid.push(file);
@@ -559,7 +1001,7 @@ export function FeedbackButton() {
 
       if (fileArray.length > remaining) {
         const skipped = fileArray.slice(remaining).map((f) => f.name).join(", ");
-        errors.push(`Skipped (limit reached): ${skipped}`);
+        errors.push(t("feedback.filesSkipped", { names: skipped }));
       }
 
       if (errors.length > 0) {
@@ -568,7 +1010,7 @@ export function FeedbackButton() {
 
       return [...prev, ...valid];
     });
-  }, []);
+  }, [t]);
 
   const removeFile = useCallback((index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -616,6 +1058,158 @@ export function FeedbackButton() {
   );
 
   const shouldDockLeftOnMobile = viewportWidth < 640;
+  const canShowDecorativeBalloon = !balloonSurfaceBlocked && !routeSuppressesBalloon && !open && !isButtonDragging;
+  const attentionScopeCurrent = attention.scopeGeneration === attentionScopeGenerationRef.current;
+  const hasVisibleNotificationBalloon = attentionScopeCurrent && attention.status === "BALLOON_VISIBLE" && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
+  const notificationAttentionPending = attentionScopeCurrent && (attention.status === "COALESCING" || attention.status === "BALLOON_VISIBLE");
+  const hasVisibleDemoBalloon = showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.notificationReminders;
+  const hasVisibleOnboardingHint = showChatOnboardingHint && !showMascotDemo && !notificationAttentionPending && mascotEnabled && mascotPreferences.enabled && mascotPreferences.chatOnboarding;
+  const assistantHintPositionStyle = assistantHintStyle ?? { visibility: "hidden" as const };
+
+  useLayoutEffect(() => {
+    if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
+    let updateHintPosition: () => void = () => undefined;
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(() => updateHintPosition());
+    const observedCollisionControls = new Set<HTMLElement>();
+    let mutationFrame: number | null = null;
+    updateHintPosition = () => {
+      const launcher = feedbackButtonRef.current;
+      const measuredAnchor = launcher?.getBoundingClientRect();
+      if (!measuredAnchor) {
+        setAssistantHintStyle(null);
+        return;
+      }
+      // During pointerup, the launcher's DOM rect can briefly reflect an
+      // intermediate drag frame even after React has committed its final
+      // custom placement. Use that committed placement as the anchor so the
+      // reminder cannot settle beside a stale position.
+      const anchor = feedbackPlacement.mode === "custom"
+        ? {
+          left: feedbackPlacement.x,
+          top: feedbackPlacement.y,
+          right: feedbackPlacement.x + measuredAnchor.width,
+          bottom: feedbackPlacement.y + measuredAnchor.height,
+          width: measuredAnchor.width,
+        }
+        : measuredAnchor;
+      const hint = document.querySelector<HTMLElement>(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
+      const bounds = hint?.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const viewportWidth = viewport?.width ?? window.innerWidth;
+      const hintWidth = bounds?.width ?? Math.min(viewportWidth < 768 ? 216 : 360, viewportWidth - 32);
+      const hintHeight = bounds?.height ?? 132;
+      const collisionControls = Array.from(document.querySelectorAll<HTMLElement>(ASSISTANT_COLLISION_CONTROL_SELECTOR));
+      const obstacleElements = new Set<HTMLElement>();
+      collisionControls.forEach(control => {
+        if (control === launcher || launcher.contains(control) || control.contains(hint) || hint?.contains(control)) return;
+        let candidate: HTMLElement | null = control;
+        while (candidate && candidate !== launcher && !hint?.contains(candidate)) {
+          const style = window.getComputedStyle(candidate);
+          if (["fixed", "sticky"].includes(style.position)) {
+            if (style.display !== "none"
+              && style.visibility !== "hidden"
+              && style.pointerEvents !== "none"
+              && Number(style.opacity) !== 0) {
+              obstacleElements.add(candidate);
+            }
+            break;
+          }
+          candidate = candidate.parentElement;
+        }
+      });
+      const nextObservedControls = new Set<HTMLElement>();
+      const obstacles = Array.from(obstacleElements).flatMap(control => {
+        const rect = control.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return [];
+        nextObservedControls.add(control);
+        resizeObserver?.observe(control);
+        return [{ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }];
+      });
+      observedCollisionControls.forEach(control => {
+        if (!nextObservedControls.has(control)) resizeObserver?.unobserve(control);
+      });
+      observedCollisionControls.clear();
+      nextObservedControls.forEach(control => observedCollisionControls.add(control));
+      setAssistantHintStyle(getAssistantHintPosition(
+        anchor,
+        { width: hintWidth, height: hintHeight },
+        viewport,
+        undefined,
+        obstacles,
+      ));
+    };
+    const schedulePositionUpdate = () => {
+      if (mutationFrame !== null) return;
+      mutationFrame = window.requestAnimationFrame(() => {
+        mutationFrame = null;
+        updateHintPosition();
+      });
+    };
+    const mutationObserver = typeof MutationObserver === "undefined"
+      ? null
+      : new MutationObserver(records => {
+        const relevantMutation = records.some(record => {
+          const target = record.target;
+          const launcher = feedbackButtonRef.current;
+          const hint = document.querySelector<HTMLElement>(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
+          if (target instanceof Node && (launcher?.contains(target) || hint?.contains(target))) return false;
+          if (record.type === "childList") {
+            return [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element
+              && (node.matches(ASSISTANT_COLLISION_CONTROL_SELECTOR)
+                || node.querySelector(ASSISTANT_COLLISION_CONTROL_SELECTOR) !== null));
+          }
+          return target instanceof HTMLElement
+            && (observedCollisionControls.has(target)
+              || target.matches(ASSISTANT_COLLISION_CONTROL_SELECTOR)
+              || target.querySelector(ASSISTANT_COLLISION_CONTROL_SELECTOR) !== null);
+        });
+        if (relevantMutation) schedulePositionUpdate();
+      });
+    mutationObserver?.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-hidden"],
+      childList: true,
+      subtree: true,
+    });
+    updateHintPosition();
+    // Re-measure after the launcher/balloon have completed this layout pass.
+    // This is needed after a drag, when the hint is intentionally unmounted
+    // during movement and its first measurement can still reflect the old spot.
+    const positionFrames: number[] = [window.requestAnimationFrame(updateHintPosition)];
+    if (dragCompletionVersion > completedDragPositionVersionRef.current) {
+      // The launcher placement and remounted balloon can settle in separate
+      // commits after pointerup. Measure after two paint opportunities so the
+      // balloon's final dimensions are used with the committed launcher anchor.
+      const firstSettleFrame = window.requestAnimationFrame(() => {
+        const finalSettleFrame = window.requestAnimationFrame(() => {
+          updateHintPosition();
+          completedDragPositionVersionRef.current = dragCompletionVersion;
+        });
+        positionFrames.push(finalSettleFrame);
+      });
+      positionFrames.push(firstSettleFrame);
+    }
+    window.addEventListener("resize", updateHintPosition);
+    window.addEventListener("scroll", updateHintPosition, true);
+    if (feedbackButtonRef.current) resizeObserver?.observe(feedbackButtonRef.current);
+    const hint = document.querySelector(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
+    if (hint) resizeObserver?.observe(hint);
+    window.visualViewport?.addEventListener("resize", updateHintPosition);
+    window.visualViewport?.addEventListener("scroll", updateHintPosition);
+    return () => {
+      positionFrames.forEach(frame => window.cancelAnimationFrame(frame));
+      if (mutationFrame !== null) window.cancelAnimationFrame(mutationFrame);
+      mutationObserver?.disconnect();
+      window.removeEventListener("resize", updateHintPosition);
+      window.removeEventListener("scroll", updateHintPosition, true);
+      window.visualViewport?.removeEventListener("resize", updateHintPosition);
+      window.visualViewport?.removeEventListener("scroll", updateHintPosition);
+      resizeObserver?.disconnect();
+    };
+  }, [canShowDecorativeBalloon, dragCompletionVersion, feedbackPlacement, hasVisibleDemoBalloon, hasVisibleNotificationBalloon, hasVisibleOnboardingHint]);
+
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
       left: `${feedbackPlacement.x}px`,
@@ -686,8 +1280,8 @@ export function FeedbackButton() {
           ref={feedbackButtonRef}
           size="sm"
           variant="outline"
-          aria-label="Open AI Chat and Feedback"
-          className="z-50 h-11 w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 sm:h-8 sm:w-auto sm:gap-2 sm:px-3"
+          aria-label={settingsT("assistantAppearance.launcherAriaLabel")}
+          className="z-50 h-11 min-h-11 w-11 min-w-11 rounded-full bg-white p-0 text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 md:h-11 md:w-auto md:min-w-11 md:gap-2 md:px-3"
           style={{
             position: "fixed",
             touchAction: "none",
@@ -697,10 +1291,32 @@ export function FeedbackButton() {
           onPointerDown={handleFeedbackPointerDown}
           onClick={handleFeedbackClick}
         >
-          <MessageSquarePlus className="h-4 w-4" />
-          <span className="hidden sm:inline">AI Chat &amp; Feedback</span>
+          {mascotEnabled && mascotPreferences.enabled
+            ? <AssistantMascotErrorBoundary fallback={<MessageSquarePlus className="h-4 w-4" />}>
+              <AssistantMascot
+                style={mascotPreferences.style}
+                size={24}
+                className={attention.status === "BALLOON_VISIBLE" && mascotPreferences.motion !== "off" ? `assistant-mascot-greeting-${mascotPreferences.motion}` : undefined}
+              />
+            </AssistantMascotErrorBoundary>
+            : <MessageSquarePlus className="h-4 w-4" />}
+          <span className="hidden md:inline">{settingsT("assistantAppearance.launcherLabel")}</span>
         </Button>
       </DialogTrigger>
+      {canShowDecorativeBalloon && (hasVisibleDemoBalloon || hasVisibleNotificationBalloon) && (
+        <HStack as="aside" gap={2} align="start" className={`assistant-reminder-balloon flex-wrap${mascotPreferences.motion === "off" ? " assistant-motion-off" : ""}`} style={assistantHintPositionStyle} role="status" aria-live="polite" onFocus={() => { if (hasVisibleNotificationBalloon) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: true, now: Date.now() }); }} onBlur={(event) => { if (hasVisibleNotificationBalloon && !event.currentTarget.contains(event.relatedTarget as Node | null)) dispatchAttention({ type: "SET_FOCUS_WITHIN_BALLOON", focused: false, now: Date.now() }); }}>
+          <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.reminderCopy")}</Text>
+          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { setShowMascotDemo(false); if (hasVisibleNotificationBalloon) dispatchAttention({ type: "DISMISS", now: Date.now() }); window.dispatchEvent(new Event(OPEN_GLOBAL_NOTIFICATION_BELL_EVENT)); }}>{settingsT("assistantAppearance.viewNotifications")}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissReminder")} onClick={() => { setShowMascotDemo(false); if (hasVisibleNotificationBalloon) dispatchAttention({ type: "DISMISS", now: Date.now() }); }}>×</Button>
+        </HStack>
+      )}
+      {canShowDecorativeBalloon && hasVisibleOnboardingHint && (
+        <HStack as="aside" gap={2} align="start" className={`assistant-chat-onboarding-hint flex-wrap${mascotPreferences.motion === "off" ? " assistant-motion-off" : ""}`} style={assistantHintPositionStyle} role="note">
+          <Text as="p" type="body" maxLines={2}>{settingsT("assistantAppearance.chatHintCopy")}</Text>
+          <Button type="button" variant="link" size="sm" className="shrink-0" onClick={() => { dismissChatOnboardingHint(); setActivePanel("chat"); setOpen(true); }}>{settingsT("assistantAppearance.openChat")}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={settingsT("assistantAppearance.dismissChatHint")} onClick={dismissChatOnboardingHint}>×</Button>
+        </HStack>
+      )}
       <DialogContent
         className={
           activePanel === "chat" && (authLoading || !user)
@@ -713,50 +1329,71 @@ export function FeedbackButton() {
       >
         <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
           <DialogTitle className="pr-10 text-left text-base sm:text-lg">
-            {user && !authLoading ? "AI Chat & Feedback" : t("chat.guest.panelTitle")}
+            {user && !authLoading ? t("feedback.panelTitle") : t("chat.guest.panelTitle")}
           </DialogTitle>
         </DialogHeader>
         <nav
-          aria-label="AI Chat and Feedback sections"
+          aria-label={t("feedback.sections")}
           role="tablist"
+          onKeyDown={handleHelpTabKeyDown}
           className={`grid shrink-0 ${user && !authLoading ? "grid-cols-3" : "grid-cols-2"} gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2`}
         >
           <Button
+            ref={element => { helpTabRefs.current.chat = element ?? undefined; }}
             type="button"
+            id="assistant-help-tab-chat"
             role="tab"
+            aria-controls="assistant-help-panel-chat"
             aria-selected={activePanel === "chat"}
+            tabIndex={activePanel === "chat" ? 0 : -1}
             variant={activePanel === "chat" ? "secondary" : "ghost"}
             className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("chat")}
           >
             <Bot className="h-4 w-4" aria-hidden="true" />
-            {user && !authLoading ? "AI Chat" : t("chat.guest.chatTab")}
+            {user && !authLoading ? t("feedback.chatTab") : t("chat.guest.chatTab")}
           </Button>
           {user && !authLoading && <Button
+            ref={element => { helpTabRefs.current["control-plane"] = element ?? undefined; }}
             type="button"
+            id="assistant-help-tab-control-plane"
             role="tab"
+            aria-controls="assistant-help-panel-control-plane"
             aria-selected={activePanel === "control-plane"}
+            tabIndex={activePanel === "control-plane" ? 0 : -1}
             variant={activePanel === "control-plane" ? "secondary" : "ghost"}
             className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("control-plane")}
           >
             <Network className="h-4 w-4" aria-hidden="true" />
-            Task Control
+            {t("feedback.taskControlTab")}
           </Button>}
           <Button
+            ref={element => { helpTabRefs.current.feedback = element ?? undefined; }}
             type="button"
+            id="assistant-help-tab-feedback"
             role="tab"
+            aria-controls="assistant-help-panel-feedback"
             aria-selected={activePanel === "feedback"}
+            tabIndex={activePanel === "feedback" ? 0 : -1}
             variant={activePanel === "feedback" ? "secondary" : "ghost"}
             className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("feedback")}
           >
             <Siren className="h-4 w-4" aria-hidden="true" />
-            {user && !authLoading ? "Send Feedback" : t("chat.guest.feedbackTab")}
+            {user && !authLoading ? t("feedback.feedbackTab") : t("chat.guest.feedbackTab")}
           </Button>
         </nav>
 
-        <section hidden={activePanel !== "chat"} className="min-h-0 flex-1 overflow-hidden" aria-label="AI Chat Assistant">
+        <section
+          id="assistant-help-panel-chat"
+          role="tabpanel"
+          aria-labelledby="assistant-help-tab-chat"
+          tabIndex={0}
+          hidden={activePanel !== "chat"}
+          className="min-h-0 flex-1 overflow-hidden"
+          aria-label={t("feedback.chatSection")}
+        >
           {authLoading ? (
             <section className="flex min-h-[16rem] flex-col items-center justify-center gap-3 p-6 text-center" aria-live="polite">
               <p className="text-sm text-muted-foreground">{t("chat.guest.checkingSession")}</p>
@@ -774,15 +1411,15 @@ export function FeedbackButton() {
           ) : createChatConversationMutation.isPending && !chatConversationId ? (
             <section className="flex h-full items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Starting AI Chat...
+              {t("conversation.starting")}
             </section>
           ) : createChatConversationMutation.error && !chatConversationId ? (
             <section className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm text-destructive">
-                {createChatConversationMutation.error.message || "เปิด AI Chat ไม่สำเร็จ"}
+                {createChatConversationMutation.error.message || t("conversation.startFailed")}
               </p>
               <Button type="button" variant="outline" onClick={() => void ensureChatConversation()}>
-                Try again
+                {t("conversation.retry")}
               </Button>
             </section>
           ) : (
@@ -805,24 +1442,24 @@ export function FeedbackButton() {
         </section>
 
         {user && !authLoading && activePanel === "control-plane" && (
-          <section className="min-h-0 flex-1 overflow-hidden" aria-label="Task Control Center">
+          <section id="assistant-help-panel-control-plane" role="tabpanel" aria-labelledby="assistant-help-tab-control-plane" tabIndex={0} className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.taskControlSection")}>
             <UniversalControlPlanePanel
               conversationId={chatConversationId}
               onClose={() => selectHelpPanel("chat")}
               onOpenPrompt={prompt => {
-                void handleOpenTaskPrompt(prompt);
+                void handleOpenTaskPrompt(prompt).catch(() => undefined);
               }}
             />
           </section>
         )}
 
-        {activePanel === "feedback" && <div className="space-y-4 p-4 sm:p-5">
+        {activePanel === "feedback" && <section id="assistant-help-panel-feedback" role="tabpanel" aria-labelledby="assistant-help-tab-feedback" tabIndex={0} className="space-y-4 p-4 sm:p-5">
           {/* Show retry banner if ticket created but upload failed */}
           {pendingUploadTicketId && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
-              <p className="text-amber-800 font-medium">Ticket created but file upload failed</p>
+              <p className="text-amber-800 font-medium">{t("feedback.ticketCreatedUploadFailed")}</p>
               <p className="text-amber-600 text-xs mt-1">
-                You can retry uploading or skip to submit without files.
+                {t("feedback.uploadRetryOrSkip")}
               </p>
               <div className="flex gap-2 mt-2">
                 <Button
@@ -833,18 +1470,18 @@ export function FeedbackButton() {
                   onClick={handleRetryUpload}
                 >
                   <RefreshCw className={`h-3 w-3 ${uploading ? "animate-spin" : ""}`} />
-                  {uploading ? "Uploading..." : "Retry Upload"}
+                  {uploading ? t("feedback.uploading") : t("feedback.retryUpload")}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7 text-xs"
                   onClick={() => {
-                    toast.success("Feedback submitted without attachments.");
+                    toast.success(t("feedback.submittedWithoutAttachments"));
                     resetForm();
                   }}
                 >
-                  Skip
+                  {t("feedback.skipAttachments")}
                 </Button>
               </div>
             </div>
@@ -854,24 +1491,24 @@ export function FeedbackButton() {
             <>
               <Select value={ticketType} onValueChange={setTicketType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t("feedback.typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bug">Bug Report</SelectItem>
-                  <SelectItem value="feature_request">Feature Request</SelectItem>
-                  <SelectItem value="observation">Observation</SelectItem>
-                  <SelectItem value="question">Question</SelectItem>
+                  <SelectItem value="bug">{t("feedback.types.bug")}</SelectItem>
+                  <SelectItem value="feature_request">{t("feedback.types.featureRequest")}</SelectItem>
+                  <SelectItem value="observation">{t("feedback.types.observation")}</SelectItem>
+                  <SelectItem value="question">{t("feedback.types.question")}</SelectItem>
                 </SelectContent>
               </Select>
               <Textarea
-                placeholder="Title"
+                placeholder={t("feedback.titlePlaceholder")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 rows={2}
                 className="min-h-16 break-words"
               />
               <Textarea
-                placeholder="Describe in detail..."
+                placeholder={t("feedback.descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -882,12 +1519,12 @@ export function FeedbackButton() {
                   <Siren className={`mt-0.5 h-4 w-4 shrink-0 ${isUrgent ? "text-red-600" : "text-muted-foreground"}`} />
                   <div className="min-w-0">
                     <label htmlFor="feedback-urgent-switch" className="text-sm font-medium cursor-pointer">
-                      Send as urgent
+                      {t("feedback.sendAsUrgent")}
                     </label>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {isUrgent
-                        ? "All eligible admins will receive a critical alert immediately."
-                        : "Normal feedback is reviewed through the regular queue."}
+                        ? t("feedback.urgentDescription")
+                        : t("feedback.normalDescription")}
                     </p>
                   </div>
                 </div>
@@ -896,7 +1533,7 @@ export function FeedbackButton() {
                   checked={isUrgent}
                   onCheckedChange={setIsUrgent}
                   disabled={isSubmitting || isConfirmingUrgent}
-                  aria-label="Send feedback as urgent"
+                  aria-label={t("feedback.sendAsUrgent")}
                 />
               </div>
             </>
@@ -932,13 +1569,13 @@ export function FeedbackButton() {
               />
               <Paperclip className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
-                {isDragOver ? "Drop files here" : "Drag & drop or click to attach files"}
+                {isDragOver ? t("feedback.dropFiles") : t("feedback.attachFiles")}
               </p>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                jpg, png, webp, pdf, md — max 5 MB each — up to {MAX_FILES} files
+                {t("feedback.fileLimits", { count: MAX_FILES })}
               </p>
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                วางภาพจากคลิปบอร์ดได้ (Ctrl+V) สูงสุด {MAX_FILES} ไฟล์
+                {t("feedback.pasteImagesHint", { count: MAX_FILES })}
               </p>
             </div>
 
@@ -957,7 +1594,7 @@ export function FeedbackButton() {
                     <button
                       type="button"
                       onClick={() => removeFile(idx)}
-                      aria-label={`Remove ${file.name}`}
+                      aria-label={t("feedback.removeFile", { name: file.name })}
                       className="text-muted-foreground hover:text-destructive shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -965,7 +1602,7 @@ export function FeedbackButton() {
                   </div>
                 ))}
                 <p className="text-[10px] text-muted-foreground">
-                  {files.length}/{MAX_FILES} files
+                  {t("feedback.fileCount", { count: files.length, max: MAX_FILES })}
                 </p>
               </div>
             )}
@@ -976,12 +1613,11 @@ export function FeedbackButton() {
           {pendingDiagnostics && !pendingUploadTicketId && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 break-words">
               <p className="break-words">
-                ระบบจะแนบข้อมูลวินิจฉัยทางเทคนิค (รหัสติดตาม, หน้าที่เกิดปัญหา, ข้อความ error)
-                ไปให้ผู้ดูแลโดยอัตโนมัติ
+                {t("feedback.diagnosticsNotice")}
               </p>
               {pendingDiagnostics.primaryError?.traceId && (
                 <p className="mt-1 break-all font-mono text-[10px] text-blue-600">
-                  traceId: {pendingDiagnostics.primaryError.traceId}
+                  {t("feedback.traceIdLabel")}: {pendingDiagnostics.primaryError.traceId}
                 </p>
               )}
             </div>
@@ -994,12 +1630,12 @@ export function FeedbackButton() {
               onClick={handleSubmit}
             >
               {uploading
-                ? "Uploading files..."
+                ? t("feedback.uploadingFiles")
                 : isConfirmingUrgent
-                  ? "Waiting for confirmation..."
+                  ? t("feedback.waitingForConfirmation")
                 : submitMutation.isPending
-                  ? "Submitting..."
-                  : "Submit Feedback"}
+                  ? t("feedback.submitting")
+                  : t("feedback.submit")}
             </Button>
           )}
           <button
@@ -1007,7 +1643,7 @@ export function FeedbackButton() {
             className="text-xs text-muted-foreground hover:text-primary text-center w-full"
             onClick={() => { setMapContextDraft(null); setOpen(false); setLocation("/my-feedback"); }}
           >
-            View my submitted feedback &rarr;
+            {t("feedback.viewSubmitted")}
           </button>
           {user?.role === "admin" && (
             <button
@@ -1022,7 +1658,7 @@ export function FeedbackButton() {
               Admin Feedback Hub &rarr;
             </button>
           )}
-        </div>}
+        </section>}
       </DialogContent>
     </Dialog>
   );

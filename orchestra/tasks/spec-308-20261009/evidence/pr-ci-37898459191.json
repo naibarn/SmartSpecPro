@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "check": "MCP v2 Compatibility Gates",
+  "head_sha": "2686a8e6abaafa210d952410f9daeb43b514fad5",
+  "run_url": "https://github.com/naibarn/SmartSpecPro/actions/runs/37898459191",
+  "outcomes": {
+    "contract_and_security": "FAIL",
+    "live_contract_evidence": "FAIL",
+    "build_preview": "SKIPPED"
+  },
+  "findings": [
+    "Latest PR #399 head reproduces the unchanged baseline MCP tests: 44 failed and 76 passed across 11 files. The failures match the PostgreSQL session fixture and stale test import failures; the separate repair is not integrated.",
+    "Live MCP smoke exits fail-closed because the authorized endpoint/token are unavailable; no security gate was weakened or bypassed.",
+    "Preview was skipped and is not a passing build result."
+  ],
+  "classification": "BASELINE_CI_FAILURE_AND_EXTERNAL_AUTHORITY_BLOCK",
+  "next_action": "Resolve the separate PR #403 dependency audit and live-contract blockers, integrate it only after all required gates pass, then rerun PR #399 on the updated base."
+}

@@ -49,6 +49,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AssistantAppearancePreferences } from "./AssistantAppearancePreferences";
+import { ASSISTANT_MASCOT_GLOBAL_ALLOW } from "@/lib/assistantMascotFeatureGate";
 
 const NOTIFICATION_CATEGORIES = [
   "system_health",
@@ -510,6 +512,7 @@ export function NotificationPreferencesPanel() {
           <WebhookManagement scope="user" />
         </div>
       )}
+      {ASSISTANT_MASCOT_GLOBAL_ALLOW && <AssistantAppearancePreferences />}
     </div>
   );
 }

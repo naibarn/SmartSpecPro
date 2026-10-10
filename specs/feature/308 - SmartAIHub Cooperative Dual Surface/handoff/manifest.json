@@ -1,0 +1,2196 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "claims": [],
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      },
+      {
+        "kind": "USER_DIRECTIVE",
+        "path": "orchestra/tasks/spec-308-20261009/plan.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [
+    {
+      "class": "AUTHENTICATED_RUNTIME",
+      "id": "SPEC308_NONPROD_APP_RUNTIME",
+      "next_action": "Project/runtime owner provisions an isolated non-production SmartSpecPro endpoint and authorizes a persistent synthetic test tenant/user through approved secret management.",
+      "root_cause": "No approved non-production endpoint and authorized persistent acceptance identity are available; mocked CI is not live acceptance."
+    },
+    {
+      "class": "LIVE_CONTRACT_AUTHORITY",
+      "id": "SPEC308_MCP_LIVE_CI",
+      "next_action": "CI/runtime owner configures MCP_SMOKE_URL and MCP_SMOKE_TOKEN through approved GitHub secret management for an authorized endpoint and test identity, then reruns the required live gate.",
+      "root_cause": "Current #403 live smoke fails closed because MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent; no approved MCP test endpoint or identity is provisioned."
+    },
+    {
+      "class": "SECURITY_GATE_BASELINE",
+      "id": "SPEC308_PRODUCTION_DEPENDENCY_AUDIT",
+      "next_action": "Security and Media/Runtime owners record whether HyperFrames optional dynamic ONNX and the separately signed WSL2 bundle are in scope, with approved mitigation/rebuild or scoped expiring risk disposition. Then refresh #405 and merge only if exact gates remain green.",
+      "root_cause": "#405 application production audit passes, but CLI can dynamically install vulnerable ONNX Runtime 1.21.1 for optional features and signed WSL2 runtime remains on 0.7.5; existing PR decision requires named owner disposition."
+    },
+    {
+      "class": "SECURITY_GATE_BASELINE",
+      "id": "MCP_DEPENDENCY_AUDIT_INTEGRATION",
+      "next_action": "After #405 has authorized disposition and is integrated, refresh #403 and require its high audit to pass without suppressions or lowered thresholds.",
+      "root_cause": "#403 high audit runs against a main dependency graph without #405; current audit still reports 85 findings (9 low, 37 moderate, 38 high, 1 critical)."
+    },
+    {
+      "class": "FEATURE_AUTHORITY",
+      "id": "SPEC308_FEATURE049_NOTIFICATION_TENANT_REVISION",
+      "next_action": "Feature-049 owner confirms tenant-scoped source authorization and monotonic grouped-occurrence revision through an existing authorized query/stream; until then keep live cosmetic attention static.",
+      "root_cause": "Existing authenticated notification query/SSE are user-wide and do not expose proof for active-tenant grouped notification arrivals."
+    }
+  ],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
+  },
+  "continuation": {
+    "next_action": "Security and Media/Runtime owners record disposition for optional CLI ONNX and signed WSL2 pack. If authorized as out of mandatory scope or remediation is completed, merge #405 through normal PR workflow. Then refresh #403 against resulting main, require mandatory audit to pass and provision authorized non-production MCP endpoint/test identity for live smoke. Merge #403; refresh #399 and require contract/security plus browser gates, obtain authorized SPEC-308 live acceptance, then merge. Reconcile requirements and record actual integration SHA.",
+    "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
+    "reactivation_predicate": "Resume when a verifiable external condition changes: Security/Media-Runtime owner records disposition for residual runtime scope; authorized MCP endpoint/token and test identity are provisioned; or a SPEC-308 non-production endpoint and persistent synthetic tenant are authorized. Before any merge, fetch current main, refresh that PR, and rerun only gates invalidated by code changes.",
+    "resume_point": "Latest origin/main observed for this checkpoint is 3ef4363962808d843ceecd4560b55b76d636767e. Existing PRs: #399 head 97a56c0da170e7745eb0b649ae2cb34e97486015 (docs-only after UI source 8bd3b687), #403 head c15821cadfe3f2657ffc154d45a85f87b43f7caa, #405 head 16633e89c89a5f93c9330dd86d87828c37d2bf4a. All PR bases are 085cc0420fd5b16b9e9189489f1cb97158aff732 and are stale relative to the observed main. #399 UI simulation passes 146+23 at code SHA 8bd3; contract/live gates fail due unintegrated #403 repair and missing authorized endpoint/token. #403 118 MCP tests, scoped diagnostics, and 23-file secret scan pass; high audit/live fail. #405 full audit and 18/238 compatibility tests pass; owner disposition remains unresolved. No PR merged; integration.canonical_sha is null; all 66 requirement rows stay OPEN.",
+    "waiting_predicate": "Security/Media-Runtime owner disposition is recorded; MCP_SMOKE_URL/TOKEN are set through approved secret management for an authorized non-production identity; SPEC-308 non-production app endpoint and test tenant are authorized. Until then, PR #405 is audit-green but owner-gated, #403 is test-green but dependency-audit/live-gated, and #399 is browser-green but MCP/live-acceptance-gated."
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38034489869",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38034489779",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38034489323",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38034490774",
+      "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/evidence/hyperframes-08143-linux-candidate-20261010.md",
+      "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+    ],
+    "next_action": "Obtain Security/Media-Runtime disposition; provision approved non-production MCP and SPEC-308 test identities; refresh and merge PRs in dependency order only after exact mandatory gates pass.",
+    "rationale": "Application security remediation and focused/browser verification are materially improved, but the existing security owner decision, dependency integration order, MCP live authority, and authenticated SPEC-308 acceptance remain unresolved. No merge or acceptance claim is justified.",
+    "residual_requirements": [
+      "66/66 canonical requirement rows remain OPEN; no PR merged and no integration SHA exists.",
+      "#405 full application production audit and compatibility pass, but optional dynamic ONNX 1.21.1 path and separately signed WSL2 runtime remain under required owner disposition; Windows/WSL2/GPU/ONNX inference NOT_TESTED.",
+      "#403 focused tests 118/118, MCP-scoped diagnostics and secret scan pass; high audit fails against dependency baseline because #405 is not integrated; live MCP endpoint/token are absent.",
+      "#399 mocked browser simulation passes 146+23; its MCP workflow needs #403 changes and authorized live MCP evidence; authenticated non-production app acceptance and Feature-049 tenant revision proof remain open.",
+      "Production flags OFF; no production deployment is authorized."
+    ],
+    "resume_point": "Current canonical main is 564ccc092ca4be93dfc12b8d548bd729bfdbe78b; PR heads #399 b5802c40c368dbc1614a433bb6e0c6b6cc8413e6, #403 bdde69e2dd7c70ba032f0c7cb9f698a526ee54b4, #405 64aac26cbced4583483eb42845c7c3fec05f8a59. The PR branches contain main through 26df7b3a341370063fff65b0d0ee21057ac6d232; only SPEC-269 handoff documentation has since integrated. #399 browser CI 38034489869 passes 146 component tests and 23 mocked Chromium cases; its MCP CI fails because #403 fixture repair is not integrated and live endpoint/token are absent. #403 CI 38034489323 passes 118 MCP tests, scoped MCP diagnostics and secret scan, but high audit and live smoke fail. #405 CI 38034490774 passes full production audit and compatibility regressions; its owner disposition for optional dynamic ONNX and signed WSL2 runtime remains open. No PR has merged; no integration SHA exists; keep all 66 requirements OPEN."
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      },
+      {
+        "kind": "SOURCE_AUDIT",
+        "path": "orchestra/tasks/spec-308-20261009/plan.md"
+      }
+    ],
+    "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 73,
+  "identity": {
+    "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+    "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-10-09T16:53:41.854515Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": "2026-10-09T11:06:48+07:00",
+      "spec_last_changed_at": "2026-10-09T11:06:48+07:00"
+    },
+    "revision": "1.2",
+    "slug": "308 - SmartAIHub Cooperative Dual Surface",
+    "spec_id": "308",
+    "title": "SmartAIHub Cooperative Dual Surface — Living Chat Mascot, Notification Bell & Reminder Balloon"
+  },
+  "implementation": {
+    "checkpoint_shas": [
+      "9432a1ec4dbb4412c06d8cb49d6da426831d1ada",
+      "cfaf435a87f528ca3360a4be99405641b8059ccf",
+      "fcbda4737fa3ce899c9d7f81924917c2fb901447",
+      "243aa5fdd3e26c7e66539e24e10a0b42ee9525ee",
+      "0287181e53accb9303151a2ad0d42f890a22064a",
+      "d2ad4f240e8853c717583481e6c0b95d9ba7df3f",
+      "dd6a42f82ba1452dcc7a58a7626455b31970ee4d",
+      "a5093fdcf2641939deb8afd1891cb4a9b05d8608",
+      "da4d7d8214ffa0e144ccf89988e503663956a9f0",
+      "2d554f2097d230d957cbfbacfcd822bdb62b9568",
+      "4ef64feffd275225dc6df050f01e7c8cf225b803",
+      "583f65404dddc9b722d9abc4b63b41e10c44c728",
+      "eee0fa4cc389590d378307fff3af5a15f74c42e0",
+      "f0fa060c55779beb6d55c7baeba727d9dd3a517c",
+      "f4f3733f13f06f7fe9568f1012cbd75bf6895dfd",
+      "c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503",
+      "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+      "0fdda9580ff80988266f7677980991481637c076",
+      "7cb19e03905efa724d538129a26a4c1355aa139a",
+      "5107487cf569d20c39b93d53cfac9bebc29b88e6",
+      "57a3eeba1fd64b62499cb86493a7e24bab25ae51"
+    ],
+    "mapping": [
+      {
+        "coverage": "PR #399 browser workflow 38004846321 passed on exact PR head d06a310f13f92c518d1185b3f9f32152b3fe8325: 8 focused files / 144 tests and Chromium 18/18. This is mocked UI-only simulation; it supports tested sub-behaviors only and does not close requirements before canonical integration and live acceptance.",
+        "scope": "Gated dual surface, five mascot renderer/settings, identity-scoped appearance and attention state, static notification fallback until tenant/revision proof, localized hints, responsive placement, draft-safe Chat/Feedback/Task Control, and bounded local preferences.",
+        "source_paths": [
+          "apps/web/client/src/components/GlobalAlerts.tsx",
+          "apps/web/client/src/components/assistant-mascot/AssistantMascot.tsx",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+          "apps/web/client/src/lib/notificationAttention.ts",
+          "apps/web/client/src/lib/assistantMascotPreferences.ts",
+          "apps/web/client/src/index.css",
+          "apps/web/client/src/locales/en/chat.json",
+          "apps/web/client/src/locales/th/chat.json",
+          "apps/web/client/src/locales/en/settings.json",
+          "apps/web/client/src/locales/th/settings.json",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts",
+          ".github/workflows/spec-308-browser.yml",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.test.tsx",
+          "apps/web/client/src/lib/notificationAttention.test.ts",
+          "apps/web/client/src/lib/assistantMascotPreferences.test.ts",
+          "apps/web/client/src/components/assistant-mascot/AssistantMascotErrorBoundary.tsx",
+          "apps/web/client/src/components/assistant-mascot/AssistantMascot.test.tsx",
+          "apps/web/client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx",
+          "apps/web/client/src/locales/en/admin.json",
+          "apps/web/client/src/locales/th/admin.json",
+          "orchestra/tasks/spec-308-20261009/evidence/discoverability-metrics.md",
+          "apps/web/client/src/components/guardian/__tests__/FeedbackButton.test.tsx"
+        ],
+        "source_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe"
+      }
+    ],
+    "source_paths": [
+      "apps/web/client/src/components/GlobalAlerts.tsx",
+      "apps/web/client/src/components/guardian/FeedbackButton.tsx",
+      "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx",
+      "apps/web/client/src/components/settings/AssistantAppearancePreferences.test.tsx",
+      "apps/web/client/src/lib/notificationAttention.ts",
+      "apps/web/client/src/lib/notificationAttention.test.ts",
+      "apps/web/client/src/lib/assistantMascotPreferences.ts",
+      "apps/web/client/src/lib/assistantMascotPreferences.test.ts",
+      "apps/web/client/src/index.css",
+      "apps/web/client/src/locales/en/settings.json",
+      "apps/web/client/src/locales/th/settings.json",
+      "apps/web/tests/e2e/spec-308-dual-surface.spec.ts",
+      "apps/web/client/src/locales/en/chat.json",
+      "apps/web/client/src/locales/th/chat.json",
+      "apps/web/client/src/components/assistant-mascot/AssistantMascotErrorBoundary.tsx",
+      "apps/web/client/src/components/assistant-mascot/AssistantMascot.test.tsx",
+      "apps/web/client/src/components/__tests__/GlobalAlerts.notificationBell.test.tsx",
+      "apps/web/client/src/locales/en/admin.json",
+      "apps/web/client/src/locales/th/admin.json",
+      "orchestra/tasks/spec-308-20261009/evidence/discoverability-metrics.md",
+      "apps/web/client/src/components/guardian/__tests__/FeedbackButton.test.tsx",
+      "apps/web/tests/e2e/helpers/spec308-metrics.ts"
+    ],
+    "source_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "started": true,
+    "status": "PARTIAL"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "VALIDATING",
+    "previous_state": "DISCOVERING",
+    "state_evidence": [
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave6.md",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921704",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921716",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151623.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151602",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151602.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967358012.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967353996.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37967358012",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37967353996",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave8.md",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38004846321",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38004846369",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38004111980",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38006779631.json",
+      "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38006779631/spec-308-browser-simulation-38006779631/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779631",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38006435762.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38006779712.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007259981.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38006435762",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779712",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574644.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574817.json",
+      "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38007574644/spec-308-browser-simulation-38007574644/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574644",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574817",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave12.md",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610472",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610509",
+      "orchestra/tasks/spec-308-20261009/evidence/metrics-harness-wave13.md",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave14.md",
+      "orchestra/tasks/spec-308-20261009/lifecycle.md",
+      "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965",
+      "orchestra/tasks/spec-308-20261009/evidence/canonical-reconcile-20261010.md",
+      "https://github.com/naibarn/SmartSpecPro/commit/6e95c9ad66993d10266f5cc07cef76e77d083cb9",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525646.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525649.json",
+      "orchestra/tasks/spec-308-20261009/evidence/pr405-audit-38004111980.json",
+      "orchestra/tasks/spec-308-20261009/evidence/onnx-wsl2-environment-20261010.md",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525646",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525649"
+    ],
+    "updated_at": "2026-10-09T04:27:07.605340Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "claims": [],
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+        },
+        {
+          "kind": "USER_DIRECTIVE",
+          "path": "orchestra/tasks/spec-308-20261009/plan.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38034489869",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38034489779",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38034489323",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38034490774",
+        "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/evidence/hyperframes-08143-linux-candidate-20261010.md",
+        "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
+      ],
+      "next_action": "Obtain Security/Media-Runtime disposition; provision approved non-production MCP and SPEC-308 test identities; refresh and merge PRs in dependency order only after exact mandatory gates pass.",
+      "rationale": "Application security remediation and focused/browser verification are materially improved, but the existing security owner decision, dependency integration order, MCP live authority, and authenticated SPEC-308 acceptance remain unresolved. No merge or acceptance claim is justified.",
+      "residual_requirements": [
+        "66/66 canonical requirement rows remain OPEN; no PR merged and no integration SHA exists.",
+        "#405 full application production audit and compatibility pass, but optional dynamic ONNX 1.21.1 path and separately signed WSL2 runtime remain under required owner disposition; Windows/WSL2/GPU/ONNX inference NOT_TESTED.",
+        "#403 focused tests 118/118, MCP-scoped diagnostics and secret scan pass; high audit fails against dependency baseline because #405 is not integrated; live MCP endpoint/token are absent.",
+        "#399 mocked browser simulation passes 146+23; its MCP workflow needs #403 changes and authorized live MCP evidence; authenticated non-production app acceptance and Feature-049 tenant revision proof remain open.",
+        "Production flags OFF; no production deployment is authorized."
+      ],
+      "resume_point": "Current canonical main is 564ccc092ca4be93dfc12b8d548bd729bfdbe78b; PR heads #399 b5802c40c368dbc1614a433bb6e0c6b6cc8413e6, #403 bdde69e2dd7c70ba032f0c7cb9f698a526ee54b4, #405 64aac26cbced4583483eb42845c7c3fec05f8a59. The PR branches contain main through 26df7b3a341370063fff65b0d0ee21057ac6d232; only SPEC-269 handoff documentation has since integrated. #399 browser CI 38034489869 passes 146 component tests and 23 mocked Chromium cases; its MCP CI fails because #403 fixture repair is not integrated and live endpoint/token are absent. #403 CI 38034489323 passes 118 MCP tests, scoped MCP diagnostics and secret scan, but high audit and live smoke fail. #405 CI 38034490774 passes full production audit and compatibility regressions; its owner disposition for optional dynamic ONNX and signed WSL2 runtime remains open. No PR has merged; no integration SHA exists; keep all 66 requirements OPEN."
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+        },
+        {
+          "kind": "SOURCE_AUDIT",
+          "path": "orchestra/tasks/spec-308-20261009/plan.md"
+        }
+      ],
+      "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "VALIDATING",
+      "previous_state": "DISCOVERING",
+      "state_evidence": [
+        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave6.md",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921704",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/37985921716",
+        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151623.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151602",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37986151602.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967358012.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-37967353996.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/37967358012",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/37967353996",
+        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave8.md",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38004846321",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38004846369",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38004111980",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38006779631.json",
+        "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38006779631/spec-308-browser-simulation-38006779631/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779631",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38006435762.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38006779712.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007259981.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38006435762",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38006779712",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007259981",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574644.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38007574817.json",
+        "orchestra/tasks/spec-308-20261009/evidence/ci-artifacts/38007574644/spec-308-browser-simulation-38007574644/home/runner/work/SmartSpecPro/SmartSpecPro/apps/web/test-results/production-director/playwright-evidence.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574644",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38007574817",
+        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave12.md",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610472",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38009610509",
+        "orchestra/tasks/spec-308-20261009/evidence/metrics-harness-wave13.md",
+        "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave14.md",
+        "orchestra/tasks/spec-308-20261009/lifecycle.md",
+        "orchestra/tasks/spec-308-20261009/evidence/recovery-reconcile-20261010.md",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076887.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38014076965.json",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076887",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38014076965",
+        "orchestra/tasks/spec-308-20261009/evidence/canonical-reconcile-20261010.md",
+        "https://github.com/naibarn/SmartSpecPro/commit/6e95c9ad66993d10266f5cc07cef76e77d083cb9",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525646.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr-ci-38021525649.json",
+        "orchestra/tasks/spec-308-20261009/evidence/pr405-audit-38004111980.json",
+        "orchestra/tasks/spec-308-20261009/evidence/onnx-wsl2-environment-20261010.md",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525646",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525649"
+      ],
+      "updated_at": "2026-10-09T04:27:07.605340Z"
+    },
+    "requirements": {
+      "AC-308-001": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L288"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L288",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "tools/spec_handoff/cli.py (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN. Missing integration SHA and validation receipt on it. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "b247ccc0318ed27137212abf56530b227142a9ab402b3e0016165c58faa74d25",
+        "requirement_id": "AC-308-001",
+        "requirement_text": "- **AC-308-001:** Canonical SPEC-308 resolves to this logical capability without ID collision; registry/index/handoff validate on integration SHA. No generated handoff file is edited manually.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Handoff/index validation in progress notes.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-002": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L289"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L289",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/assistant-mascot/AssistantMascot.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "7e2c1e0385c292d3528132e3c570ef914b9995a063aedc72240941a6d5d12688",
+        "requirement_id": "AC-308-002",
+        "requirement_text": "- **AC-308-002:** Exactly five **original** styles (`droplet`,`star`,`shield`,`chat`,`orbit`) render distinct at 24/32/40px and have legal/source evidence.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-003": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L290"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L290",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "e129ff069732cc6faabcc2849ab977c32387d8fb7ac1c68cf923f8382a5e8874",
+        "requirement_id": "AC-308-003",
+        "requirement_text": "- **AC-308-003:** Users select any style, change motion/hint settings, and revert to original Feedback launcher; validated scoped preferences survive reload only to the documented MVP extent.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-004": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L291"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L291",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "6a899faf319b051390a2bd698a1829f508b9a338671d35ab5794f0f13f2c2d58",
+        "requirement_id": "AC-308-004",
+        "requirement_text": "- **AC-308-004:** Desktop/tablet bottom launcher visibly and persistently says **AI Chat & Feedback** or an equivalent verified localization (not hidden in hover); no overlapping balloon obscures its purpose.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-005": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L292"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L292",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "cfb3297b3cfa021f9a1db1f0015f00d0560ebed87093ff6a394af77a7c9d901a",
+        "requirement_id": "AC-308-005",
+        "requirement_text": "- **AC-308-005:** Mobile shows compact recognizable chat/mascot hit target ≥44px, optionally bounded one-time onboarding, and no unintentional horizontal overflow on 320px/zoom. Tablet retains full `AI Chat & Feedback` label at normal widths.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-006": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L293"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L293",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/assistant-mascot/AssistantMascot.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "c5413b58c13237e50bcc812ceb316442516950a07fe6171ab0f8835e6ae414d8",
+        "requirement_id": "AC-308-006",
+        "requirement_text": "- **AC-308-006:** Five mascot styles all invoke the **same existing Chat & Feedback dialog** and preserve all 3 tabs and auth/guest rules; a plain legacy launcher is fallback.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-007": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L297"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L297",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "8ca9fb7e11950076eac787af40a5a0aee3aeaa96f6f27e30fa4fc0146e2d1d9e",
+        "requirement_id": "AC-308-007",
+        "requirement_text": "- **AC-308-007:** Top icon remains a **bell**, authentic unread badge and `Recent` state; no mascot replaces it even while the flag is on.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-008": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L298"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L298",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "3f8f2fb1085f6bf59fcc80061494c21689eafbe0f794c26aaf7a94d066a5a0ab",
+        "requirement_id": "AC-308-008",
+        "requirement_text": "- **AC-308-008:** Bell click preserves dropdown, details, mark read/all read, grouped occurrence and safe deep-link navigation on all tested routes.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-009": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L299"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L299",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing before/after request and connection capture and exact-head consolidated run. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "5f0ee7aec6687e1f67d0185299f7f695d0ff067d0ba6ec77cefd0e60424582b6",
+        "requirement_id": "AC-308-009",
+        "requirement_text": "- **AC-308-009:** Existing notification SSE and query/polling behavior and job-completion toast remain functionally equivalent; no additional transport/query created by SPEC-308.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Browser assertions retain Bell action and no unverified SSE animation; source inspection.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-010": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L300"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L300",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing exact-head browser test for 9+ unread through reconnect/refetch/tenant switch. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "21673dfd463a97304057b707deffcf22ac5d9cbf55b3d203dd7216550a989c7e",
+        "requirement_id": "AC-308-010",
+        "requirement_text": "- **AC-308-010:** Historical 9+ unread on mount/reconnect/refetch/tenant switch does not produce a false new-item animation or balloon.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Reducer baseline/replay tests; browser source assertion updated.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-011": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L301"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L301",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / blocked on authority. No currently proven authorized-arrival source; keep decorative attention static until owner contract and exact-head acceptance. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "c7783888fc2a9ee0c05352850fc151181fa3b7d42a74e882ec160326e7e155c6",
+        "requirement_id": "AC-308-011",
+        "requirement_text": "- **AC-308-011:** A distinct, verified new authorized notification triggers ≤1 bounded bell episode; badge reflects actual existing data without count fabrication.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Browser assertions require no cosmetic response to unverified SSE.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-012": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L302"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L302",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / gap. Trusted critical/approval category contract is absent; missing tests for critical/emergency/approval with visuals off/cooling. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "e8c5d461a43054b886db9a9f55328eae1d59e24494b265e6e68fc8e7ebbf2b62",
+        "requirement_id": "AC-308-012",
+        "requirement_text": "- **AC-308-012:** Critical/emergency/approval handling preserves existing alert delivery and access controls even if mascot visuals are disabled/cooling down.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Existing Bell urgent-flow tests.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-013": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L306"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L306",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotEvents.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing authorized event-to-balloon, locale and privacy integration test on authenticated runtime. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "ffd9b282a8c8bdc7e1de2d77b36262d5e68c2d09dac6892358f7be6de9776fbd",
+        "requirement_id": "AC-308-013",
+        "requirement_text": "- **AC-308-013:** Confirmed eligible new notification may show a **single**, localized bounded balloon near the bottom mascot, no raw notification content or repeated count.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Demo balloon/browser copy assertions; source-only unverified SSE suppression assertion.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-014": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L307"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L307",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotEvents.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "ab28035742a2699d1e807db41fd5af49d3a90969398494571e7a0a94d4db6cd1",
+        "requirement_id": "AC-308-014",
+        "requirement_text": "- **AC-308-014:** Clicking balloon/CTA opens **Notification**, and neither creates a Chat conversation nor opens the Chat dialog; if bell unavailable, navigates to canonical notification center.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-015": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L308"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L308",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "ce397c10004d8fe0701fa304d5f5e9a92c5a59767da82fa5a9d607aaf3938330",
+        "requirement_id": "AC-308-015",
+        "requirement_text": "- **AC-308-015:** Clicking mascot itself opens **AI Chat & Feedback**, not Notification, even while a reminder balloon is visible; no nested-button interaction ambiguity.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-016": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L309"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L309",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "ee24cb7ae44f8a15bb6048ec4d0a7f43ab364103d0b665d9c2fb0bcb56eb016b",
+        "requirement_id": "AC-308-016",
+        "requirement_text": "- **AC-308-016:** Clicking bell itself opens **Notification**, not Chat, under every mascot style and motion setting.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-017": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L310"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L310",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "74df3dcd2a8426e5cb721fa84fb5452b213f07492695a4d4c254916ba4a8afb9",
+        "requirement_id": "AC-308-017",
+        "requirement_text": "- **AC-308-017:** Balloon dismiss does not mark alerts read; balloon never sends feedback, approval, LLM prompt, tool call or credit-consuming request.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-018": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L311"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L311",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Re-run exact-source browser timing, desktop timeout/teardown, and live-runtime verification remain missing. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "45bbef3b22cf4f78dfcdae0e38c564c936d33c2444c4f0873c7292af7dc21e4b",
+        "requirement_id": "AC-308-018",
+        "requirement_text": "- **AC-308-018:** Normal balloon coalescing, 60s cooldown, 5s desktop/3s mobile timeouts, 15s distinct critical visual cooldown, focus pause/dismiss and timer teardown pass fake-timer tests.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Run 37974426321 exposed a race at the 2,999ms UI-effect boundary; assertion margin updated in 0287181e. Reducer timing tests remain source-only.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-019": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L312"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L312",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/locales/en/settings.json (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/locales/th/settings.json (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "62882ffe71c82301ba3e4cfd57fe5756d0097cf985ae8f9b819855411fb33b3f",
+        "requirement_id": "AC-308-019",
+        "requirement_text": "- **AC-308-019:** Onboarding/chat hint and notification balloon never appear simultaneously; copy and icons make intent distinguishable in Thai and English.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-020": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L313"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L313",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing grouped revision authority and exact-head browser tests for count-only, 10-row truncation, out-of-order query, tab restore and tenant scope. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "358a21bea36f33485445f3a8c601fb45fe226d9a9526956cd990d991773bc0cd",
+        "requirement_id": "AC-308-020",
+        "requirement_text": "- **AC-308-020:** Duplicated/reordered SSE, count-only changes, grouped occurrence, 10-item truncation, out-of-order queries, tab restore and old user/tenant scope never produce unauthorized/false balloon episodes.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Reducer scope tests added; browser assertions updated; neither run on this source.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-021": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L317"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L317",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "d0f726aabf5789d9a14f5fcb119d9381d3b055a261d9cd38c0ccf8482c0a785a",
+        "requirement_id": "AC-308-021",
+        "requirement_text": "- **AC-308-021:** 320/360/375/390/768/1024/1440px, 200% zoom, safe areas, rotated/tablet split-screen and keyboard opening show zero critical control occlusions. When no space, bubble suppresses gracefully.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-022": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L318"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L318",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "9eda2a2f183441d7e75626eee539b6761454941e0e7eba15e66617d7718da5fe",
+        "requirement_id": "AC-308-022",
+        "requirement_text": "- **AC-308-022:** Bell/mascot/balloon CTA/dismiss are keyboard and screen-reader operable with accurate roles/names; focus returns; no nested controls or duplicated announcements.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-023": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L319"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L319",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/index.css (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "3f18e98b07edd60f3f112d08fbb6429c3c290fd293a4232ba00d079bd02f5ab3",
+        "requirement_id": "AC-308-023",
+        "requirement_text": "- **AC-308-023:** Reduced-motion disables **all** decorative movement while keeping unread count, static mascot and text cues; users may independently disable balloon hints.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-024": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L320"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L320",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/assistant-mascot/AssistantMascot.test.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/assistant-mascot/AssistantMascotErrorBoundary.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing CSP/asset provenance audit and browser pointer/focus verification. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "6bd4ee465b12e7b63effe631fd78b4677ff1b4544b5576edd835657de2bc7e38",
+        "requirement_id": "AC-308-024",
+        "requirement_text": "- **AC-308-024:** SVG/CSP audit shows no unsafe scripts, external fetches, bad focus or pointer interception; crash/missing assets degrade to usable existing components.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Added renderer-crash fallback regression; run 37984601979 pending; existing SVG safety checks remain.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-025": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L321"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L321",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotPreferences.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "b8c60458cb01012ef3d313d0877de27cf794c2c5a74a53301e10e6e91759183a",
+        "requirement_id": "AC-308-025",
+        "requirement_text": "- **AC-308-025:** Logout, guest transitions, tenant changes, mute/snooze, invalid storage and revoked authorization do not leak notification content/state/style across scopes.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-026": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L322"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L322",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "5d763c644f388ea37f0d632a8d50551ade20abf4dc067ef08c9f76d12e44bc82",
+        "requirement_id": "AC-308-026",
+        "requirement_text": "- **AC-308-026:** Existing `REPORT_ERROR_EVENT`, emergency-map chat handoff, file attachments, feedback urgent confirmation, Chat conversation guard and Task Control remain functional in regression tests.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-027": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L323"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L323",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotFeatureGate.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "a1a15428bf175712944bdb195e0985789b59bb1833f39b09fee6372dc9126d1a",
+        "requirement_id": "AC-308-027",
+        "requirement_text": "- **AC-308-027:** Feature gate **fails closed** unless explicitly true and global allow is true; OFF/kill switch restores exact functional legacy UI without extra service calls and preserves drafts/actions.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-028": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L324"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L324",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotEvents.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing exact-head API/network spy and migration/transport evidence. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "491165357f75a4d2c34e151c3c909e8b27dededeb7770e90cb7cad10d92c46a2",
+        "requirement_id": "AC-308-028",
+        "requirement_text": "- **AC-308-028:** No new notification backend, DB migration, SSE/WS connection, read mutation, LLM/credit call, or permission expansion for aesthetic cues.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Source diff; consolidated API/network spy is deferred.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-029": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L328"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L328",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_IMPLEMENTATION_OR_MEASUREMENT",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "OPEN. Missing measurements and budget comparison. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "8693bc1dc02b1a564b42c236e7a7a8de111bd4e11fbdd6426e4b03fb78b14387",
+        "requirement_id": "AC-308-029",
+        "requirement_text": "- **AC-308-029:** Before/after measurable network, memory, layout/CLS and event timer traces collected; missing or worse-than-agreed budgets recorded as blocking/partial, not glossed over.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: None.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-030": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L329"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L329",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN. Missing snapshots for dashboard, notifications, editor/map, all five styles, and live authenticated runtime. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "e2e8d0bc9ff0e69fd864cffc03cb4d0a2edb3107befd4f08d7c9eb36b76f8385",
+        "requirement_id": "AC-308-030",
+        "requirement_text": "- **AC-308-030:** Full app UI regression and device snapshots include ordinary dashboard, /notifications, /chat, editor/map and narrow mobile, all five styles where relevant.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: evidence/browser-simulation-37967564075.md includes authenticated mock Chat full-page captures at six viewport widths.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-031": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L330"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L330",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing independent QA receipt; severity not consistently recorded; rerun affected checks at exact SHA. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "eabdb83e7d93dbdd5b32ec8cfc3840f49ede8f7996fcfcbd7c960298be355302",
+        "requirement_id": "AC-308-031",
+        "requirement_text": "- **AC-308-031:** At least **12 independent QA review lenses** are documented, every discovered gap corrected or owned as explicit unresolved with severity/evidence; rerun affected checks after fixes.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: evidence/qa-gap-audit.md records 17 browser dimensions plus prior source QA rounds.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-032": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L331"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L331",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_IMPLEMENTATION_OR_MEASUREMENT",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "OPEN. Missing integration SHA, final verification and release-gate receipts. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "9101345058ddbca4b467c954131e2b3180a621cf00ea2d86207023786ee75817",
+        "requirement_id": "AC-308-032",
+        "requirement_text": "- **AC-308-032:** Integration SHA, PR references, canonical generator output, focused test logs, final verification and release gates recorded in handoff; no unsupported COMPLETE/DEPLOYED claim.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Current handoff and CI evidence files.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-033": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L332"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L332",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "orchestra/tasks/spec-308-20261009/evidence/discoverability-metrics.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Definitions exist; privacy/analytics owner approval, baseline, telemetry availability and measured outcomes remain missing. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "2aae07b5d158fac55512ee050d7861b34cc62fb474d368407d7a64ee3d17233a",
+        "requirement_id": "AC-308-033",
+        "requirement_text": "- **AC-308-033:** Notification and Chat discoverability outcomes have measurable definitions and privacy-safe metrics; no fabricated uplift or invented delivery timings.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Definition document added on source checkpoint eee0fa4cc389590d378307fff3af5a15f74c42e0; no collection or uplift claimed.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-034": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L333"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L333",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing app-wide runtime duplicate-launcher audit with feature flag on/off. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "0009eee358a42d24f3f5632c2fd8881a8f4e9ff8b54a991adf7638cc139c3002",
+        "requirement_id": "AC-308-034",
+        "requirement_text": "- **AC-308-034:** R1.1 notification-in-bell concept is explicitly superseded; no code path leaves a bell-replacement mascot or an additional duplicate launcher behind.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Bell/Feedback focused tests; source review.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "AC-308-035": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L334"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L334",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "ba0d1edbbbfef1df214c41dbc59aa73b05c30cd28445a5bbf51977e0ce528acf",
+        "requirement_id": "AC-308-035",
+        "requirement_text": "- **AC-308-035:** In-app localization (TH/EN) is correct with labels/hints/dismiss/error states; mockup image text is never copied as authoritative language.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "AC-308-036": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L335"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L335",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotFeatureGate.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced.",
+        "requirement_digest": "070c47ede2a52c618bf794e6658e98077f4f998bdc4a4766d1f9d34fee5a1933",
+        "requirement_id": "AC-308-036",
+        "requirement_text": "- **AC-308-036:** Rollback tested during animation, while balloon open, when Chat dialog open, and after user/tenant switch; Bell/Feedback remain independently usable.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+          "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+        ],
+        "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note."
+      },
+      "R1.2": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L36"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L36",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial source support. Missing authenticated browser test for both surfaces and flag-off rollback. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "631b8e9132c691f87dc1cda2e8a099488c1b0515c4f426b7d99e7abf9080f8d5",
+        "requirement_id": "R1.2",
+        "requirement_text": "**Revision precedence:** This R1.2 supersedes the R1.1 idea that replaced the bell with the mascot. Preserve the R1.1 source authorization, de-duplication, performance, accessibility, five-style selection, flags, and QA hardening, but **relocate the mascot to FeedbackButton**. The top bell stays visually identifiable as a bell, optionally moving lightly. A disabled feature MUST restore both original components and all existing behavior.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Bell and Feedback focused tests; evidence/qa-gap-audit.md.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-0CE6AC7B09DE": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L86"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L86",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing browser/ARIA/log privacy assertions in both locales. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "a743b1833e28825a151841e3dbe6fddb8d33822154ab6c3b2478fedd3c9d6071",
+        "requirement_id": "REQ-0CE6AC7B09DE",
+        "requirement_text": "**Never say** just `มีข้อความใหม่`, `มีคนทัก`, `new chat message` or imply an inbound human chat when a generic notification arrived. Do not copy notification titles/content/error traces into bubbles, analytics, logs or aria labels. Language MUST come from versioned i18n templates; mocked images' Thai typography is not normative.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: notificationAttention.test.ts; Bell SSE projection test; notificationTranslations.test.ts.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-0DFA9191092E": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L98"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L98",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing priority-matrix integration test for urgent UI, dialog, keyboard, intentional action and hints. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "07efc801761b25d63b92bd2a41c66163d9d964ac4aef4d26727df163787594cd",
+        "requirement_id": "REQ-0DFA9191092E",
+        "requirement_text": "Priority of *visual interruption* after authorization: existing critical/urgent UI > open dialog/keyboard/focused task > intentional user action > new high-priority notification hint > normal notification hint > first-run Chat onboarding > idle expression. Existing notification delivery/action is independent of this ranking. Hints must not compete: `onboarding` and `notification` balloon cannot coexist. If a new priority event supersedes an open optional hint, dismiss/replace without stacking.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Attention reducer focus/cooldown tests.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-15DABEFB3703": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L352"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L352",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/__tests__/FeedbackButton.test.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Exact-head simulated browser suite passes; live authenticated runtime evidence remains unavailable. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "69c150f608b16f7ff0d8c04ae78ffe2af1f30fcdb6bd2f61a406abc80e07e385",
+        "requirement_id": "REQ-15DABEFB3703",
+        "requirement_text": "Start with `GlobalAlerts.notificationBell.test.tsx` and tests around `FeedbackButton.tsx` discovered from the checked-out repository. The exact test runner/package commands must be read from repository scripts; do not invent success or run a memory-heavy full build for isolated visual changes unless integration gates require it. Collect before/after visual screenshots at individual page scale, not tiny thumbnails. Any screenshot depicting example alerts is synthetic, not a claim about live user data.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Focused Vitest logs; evidence/browser-simulation-37967564075.md; exact run JSON and screenshots.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-1E2B28EDCCB0": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L279"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L279",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing independent QA receipt, authenticated regression, and release approvals. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "de7109c10db58c5bf50c4fae361772aae8427fa22aee4babebadcd60bf8f0aa1",
+        "requirement_id": "REQ-1E2B28EDCCB0",
+        "requirement_text": "| WP7 Integration & QA | P0 release gate | Explicit feature flag, rollback, accessibility, full regression, 12-pass gap audit, independent QA, PR/handoff receipts. | Tests+evidence and required release approvals |",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: evidence/qa-gap-audit.md records 17 browser dimensions plus prior source QA rounds.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-23B5CA4BB00B": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L410"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L410",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/SPEC-308-R1.2-Overview-Mockup.png (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing exact-head full-route/browser review for fabricated mock content and production-like surfaces. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "856ac797f79adf220af24453ec15631977c3670afab2ad06b8e5b5e1fb9e4e53",
+        "requirement_id": "REQ-23B5CA4BB00B",
+        "requirement_text": "**Precedence:** normative interactions in this spec > current authorized application behavior for untouched functionality > current design tokens/components > generated mockups. Never blindly reproduce invented notification data, Thai text artifacts, fake dates/counts, avatars or mock screen elements from images. Production mockup fidelity must concentrate on **one top bell / one bottom mascot with label / correct separate balloon target / reasonable mobile compact behavior**. Use real i18n and actual application state.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Source/QA review; mockup files under SPEC-308.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-23E2C2078029": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L147"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L147",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Runtime Feature-049 owner must provide tenant-scoped authorization and monotonic grouped revision; then one exact-head consolidated browser run must verify authorized arrivals. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "55284cbef5907102f08fc0d115e1169b57f06397bb5b876a4a1e99a4265bd44b",
+        "requirement_id": "REQ-23E2C2078029",
+        "requirement_text": "At WP0 inspect existing `getNotificationCount`, background `getNotifications({limit:10})`, on-demand `{limit:20}`, parsed SSE payload and grouping (`occurrenceCount`, `updatedAt` or known revision) to document verified `newAuthorizedVisibleNotification` semantics. An SSE parser validating JSON **does not authorize the payload**. Only use a payload directly if source ownership/tenant/user authorization is independently proven in current code; otherwise confirm against the **existing authorized query data** without adding a second query for mascot. Where 10-item truncation means existence/identity cannot be proven, suppress cosmetic attention; never show a fake “new” event merely because count rose. Only map `critical`, `approval`, `success`, `error` from documented trusted **typed** fields—not regex guesses based on title. Historical/delayed/duplicated SSE, reconnect, stale query, grouped duplicate occurrence, account switch, tenant switch, logout, background restore, mark-read, error, data gaps and unmapped categories must not produce false attention. A grouped item requires verified monotonic occurrence revision to produce a *new* attention episode. If exact source proof is absent, ship static bell and static mascot with working Chat, and log the block as an unresolved runtime capability (do not claim animated arrival works).",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Browser assertions now require unverified SSE to leave Bell/mascot static; reducer dedupe/reorder tests. Source changes not run.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-30653CACBAAA": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L9"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L9",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "tools/spec_handoff/cli.py (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "tools/spec_handoff/index.py (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN. Missing registry, index and handoff validation tied to the integrated SHA. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "466ddc6e1ffe5104fd991d6849b543917243f0f935d728c80301ad16e36bff01",
+        "requirement_id": "REQ-30653CACBAAA",
+        "requirement_text": "canonical_registry_gate: REQUIRED",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Registry/index/handoff validation commands recorded in task progress.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-317C0EC9DFE9": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L215"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L215",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing exact-head dependency/build evidence and final integration ownership receipt. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "ac7054700d99f6da75cad74bce6c31041a822928d33bc6f8d44a8ecdefaceb9a",
+        "requirement_id": "REQ-317C0EC9DFE9",
+        "requirement_text": "Do not overbuild a new framework, provider stack or animation dependency for two components. Prefer existing app event/action/context conventions after checking them. Keep pure reducer independent from React for deterministic tests. One integration owner must own shared files; WP1 assets and WP2 reducer can run in separate worktrees.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Reducer fake-time tests; source diff.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-56A8ED737913": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L240"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L240",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotFeatureGate.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing rollout approvals and rollback tests during animation, balloon, identity switch, and live runtime. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "3c95f32dbb6cf9b3502f1c9e587fd452bf87e411a7befe5cb7aa5337cd99b4ed",
+        "requirement_id": "REQ-56A8ED737913",
+        "requirement_text": "**Rollout:** flag OFF baseline -> internal preview -> authorized beta cohort -> production approval -> staged tenant rollout; monitor errors, suppression rates and UX signals. Kill switch must revert both launchers independently of pending CSS timers and without losing unread count, open messages, Chat drafts or urgent-feedback flow. Rollback rehearsal documented before production.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Gate and Feedback draft focused tests; browser run 37967564075 covers flag OFF with Chat/Feedback drafts open and no read/chat/feedback mutations.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-5B301EF2CE2C": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L65"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L65",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "orchestra/tasks/spec-308-20261009/progress.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing refreshed exact-head audit and authenticated tenant-scoped runtime capture. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "01e34ea57131a1ab8a81430bf06a0a2b75fda10f6084a43a0991535721b44188",
+        "requirement_id": "REQ-5B301EF2CE2C",
+        "requirement_text": "**WP0 verification requirement:** Codex must inspect fresh source rather than assuming any file/function stays at these locations. Capture exact git SHA, current behavior, event payload schema, tenant-scoping guarantees, route visibility, layer ordering, mobile placement, auth/guest behavior, and existing tests. If verified source differs, record the delta and semantically adapt this spec without undoing recent fixes.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: WP0 progress notes and QA audit.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-5EDFB2509D5E": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L196"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L196",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Pending simulation; authenticated cross-route acceptance remains missing. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "2ff66aca8b2ea150395a4cfd6b2fd49243c0abedbb946c7f65cd1707d41e152b",
+        "requirement_id": "REQ-5EDFB2509D5E",
+        "requirement_text": "**Open notification command:** Use an explicit `openNotifications()` intent handled by the existing bell instance and existing popover state. When the bell is absent or inaccessible on the current route, navigate to the **existing** Notification Center (`/notifications`, verified by WP0) rather than fabricating a hidden bell. On 320px view, the popover must clamp width and remain usable; fallback to the full notification page when better for mobile. Do not mark read automatically when tapping the balloon; any current bell behavior on row-open remains unchanged. Every action respects existing routing and authentication.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Bell tests for explicit intent/fallback; new 320px popover and Escape focus-return browser test pending exact-head CI.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-5F5B8C22FD37": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L60"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L60",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotFeatureGate.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing authenticated browser proof of off/error behavior and restored legacy UI. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "51645d2b28a2b712ace9e54b406489f9a95e74f63f02136729188e9e29eac079",
+        "requirement_id": "REQ-5F5B8C22FD37",
+        "requirement_text": "| Feature flags | `apps/web/shared/featureFlags.ts`; documentation notes that most existing tenant flags default true. **NEW SPEC-308 flag must explicitly require `=== true`** and a global allow/killswitch, unknown/error = off. |",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Feature-gate/shared flag tests (see source suite); QA lens 4.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-6B3358EF3BA6": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L200"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L200",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing assistive-technology audit, drag behavior and live acceptance. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "47e0ebf640a77ea067b65b27c0486c5df1ead2476dbbe7bb30d1529fcc3a58d7",
+        "requirement_id": "REQ-6B3358EF3BA6",
+        "requirement_text": "**Animation UI implementation:** `BellMotionDecorator` is a lightweight `transform` animation around the existing Bell icon without changing its button event handlers/ARIA. `AssistantMascotLauncher` changes the **existing FeedbackButton trigger's visuals only**, keeping its DialogTrigger click semantics and drag threshold. Balloon is a separate sibling surface, not a descendant of the trigger button. The decorator/renderer exception boundary must not unmount the existing bell/feedback services; fall back to original plain button or static mascot. On flag OFF, legacy DOM behavior remains as close to baseline as practical.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Bell focus/status and mascot-boundary regressions added; exact-head run 37984108309 is pending.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-6C62E2934BF0": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L38"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L38",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "orchestra/tasks/spec-308-20261009/progress.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN. Missing exact-head source/event/auth audit and authenticated runtime evidence. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "03f606fdff2aa522f915297dedc6e329f1dd598fed957efcd35cdeb674961859",
+        "requirement_id": "REQ-6C62E2934BF0",
+        "requirement_text": "**Status honesty:** Source inspection of `naibarn/SmartSpecPro` on 2026-10-09 showed `GlobalAlerts.tsx` (notification bell + SSE + queries) and `components/guardian/FeedbackButton.tsx` (ChatView + Task Control + Feedback). This spec and mockups do not establish a working production implementation or verified browser tests. `308` appeared in the canonical registry's next-safe list when checked, but **Codex MUST recheck live origin/main, registry, current SPEC-308 ownership, index, handoff, and source files** before modifying or importing. Never overwrite newer canonical work or seize an occupied ID. If a legitimate collision exists, stop identity mutation and reconcile through the canonical allocator/owner.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Progress, QA audit, CI evidence.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-72B6A3690568": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L94"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L94",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing browser integration on editor/map, keyboard, modal and focused-control surfaces. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "af49f1aa78706d0958bcbb0ea36e811ba5a91977bd16b5613805447306865f3f",
+        "requirement_id": "REQ-72B6A3690568",
+        "requirement_text": "- **Critical/emergency/video-editor/map/immersive surfaces**: the coordinator must respect existing fixed controls, modal layers, keyboard and safety UI. Hide *nonessential balloon* during keyboard/chat dialogs, drag, focused editor controls or an urgent full-screen modal; do not make the bell/launcher unreachable without another equivalent entry. Do not hard-code z-index higher than all dialogs and system/critical overlays.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Attention focus/suspension reducer tests; QA lens 11.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-7307875D109B": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L377"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L377",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/tests/e2e/spec-308-dual-surface.spec.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "orchestra/tasks/spec-308-20261009/evidence/qa-gap-audit.md (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. This run is documented with exact SHA/scope/result, but independent QA receipts and live runtime evidence remain missing. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "7655c94f91dcd758f5200a98d6d78662c4f777cca6c14d70d22206470a3d1239",
+        "requirement_id": "REQ-7307875D109B",
+        "requirement_text": "Each pass logs `pass_id`, baseline SHA, scope, gap, fix or justified deferral, test/evidence artifact and PASS/FAIL/PARTIAL/BLOCKED. Re-review changed items until resolved. A static document review is **not** a substitute for executed runtime tests; the same pass number must not be counted as repeated tests. Do not label 12/12 runtime PASS from prose alone.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: evidence/qa-gap-audit.md; evidence/pr-ci-37967564075.json; responsive screenshots.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-7A55187E5BFE": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L110"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L110",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/assistant-mascot/AssistantMascot.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing 24/32/40px visual assertions, asset provenance evidence, and CSP/reduced-motion browser audit. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "7bd71fb9ac72083239fc7741b40c5af539cd4714d5e5e63f3c3d430fe397aad7",
+        "requirement_id": "REQ-7A55187E5BFE",
+        "requirement_text": "All five use a **single renderer/state/interaction contract**, not five copies of business logic. Shapes must read at 24–40px; live icon may be 28–36px *inside* a ≥44px touch target. Render original optimized SVG + CSS transform/opacity animation; mockup PNG is **not** production UI or font asset. No external scripts/fonts/images in SVG; no watermark or lifted mascot art. Maintain consistent art bounds, color contrast, neutral expressions for sensitive events and a conventional mini chat visual affordance on mobile (e.g., small chat outline attached to the icon) if needed to convey function.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: AssistantMascot.test.tsx; screenshot captures.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-7F1D802E9677": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L91"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L91",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Captures support component label at breakpoints; missing authenticated 768–1023px and constrained-layout test. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "1e9fbf0dce7c3b98605cf5878c0f3c5f1ad5eb3b21c5671ddaa7f6bd7d56ae47",
+        "requirement_id": "REQ-7F1D802E9677",
+        "requirement_text": "- **Tablet 768–1023px**: same dual entry; keep the **full visible** `AI Chat & Feedback` label as required, using a compact pill or safe dock position; do **not** silently shorten it to `AI Chat` or hide the Feedback word. If a true exceptionally constrained tablet/split viewport cannot display the full pill without blocking controls, invoke the documented narrow/compact breakpoint based on **available width**, with an onboarding accessible explanation and QA evidence, not an unexplained loss of functionality.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: FeedbackButton.test.tsx; ui-capture.md and 768/1024 screenshots.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-82E9E73AE3B9": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L143"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L143",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/assistantMascotPreferences.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing storage-spy test proving IDs/titles/bodies are never persisted through UI integration. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "741155d65c4989e6d0030a687e56f85e8bfa78e43f5e08ce1a5b8c22a5e04442",
+        "requirement_id": "REQ-82E9E73AE3B9",
+        "requirement_text": "- do not persist notification IDs, titles or bodies to localStorage. A bounded in-memory seen/episode map (example 200) and monotonic session clock suffice; read/decrement/reconnect must not backfill.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Attention reducer scope/ceiling tests; preference tests.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-85CE8E62EB17": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L59"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L59",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/settings/NotificationPreferencesPanel.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing assertion that appearance changes do not modify delivery preferences. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "14c8aa6e416fe3d4295c86a4e676283205cf5dfa759e8862353e6dce5d83cedb",
+        "requirement_id": "REQ-85CE8E62EB17",
+        "requirement_text": "| Existing settings | `apps/web/client/src/components/settings/NotificationPreferencesPanel.tsx` has categories, channels, mute and snooze. Presentation settings may be linked from this surface but must not alter notification delivery preferences. |",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: NotificationPreferencesPanel.test.tsx; AssistantAppearancePreferences.test.tsx.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-92DA433C209B": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L43"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L43",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing authenticated mobile discoverability/browser check. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "a793ce2457b958a56f658616b43e4c6b13baa23d2f118d2f9dcd6b168fe58ea1",
+        "requirement_id": "REQ-92DA433C209B",
+        "requirement_text": "2. The existing bottom “AI Chat & Feedback” button is often not discovered, especially on mobile where its text disappears; people assume Chat must be reached from the main menu.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: guardian/__tests__/FeedbackButton.test.tsx; evidence/ui-capture.md; responsive component screenshots.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-92F4061C5435": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L132"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L132",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/assistantMascotEvents.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing browser/API assertions that balloon actions cause no read, approval, Chat, LLM, tool or credit request. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "ea68335d3fb8c7032aa7274d38bdfa02fc3b91490dabb06f8350369a0e49991d",
+        "requirement_id": "REQ-92F4061C5435",
+        "requirement_text": "The helper balloon is a **non-authoritative secondary attention surface**. Notification badge/list/toast/critical overlay must update without waiting for any coalescing/animation. The balloon cannot modify unread status, push history, mark a notification read, auto-approve, or auto-open anything. The *same* verified event may legitimately drive both a bell ring and one balloon presentation episode without launching another SSE subscription, query or delivery record.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Attention and Bell focused tests.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-BAE8E6B0A985": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L198"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L198",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Simulated browser flow passes; missing live authorized identity, upload, urgent confirmation, and runtime acceptance. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "c6481a3a586c081ad6b5c1a72edaec0c494f12e0a1a905d646f099b0ce000901",
+        "requirement_id": "REQ-BAE8E6B0A985",
+        "requirement_text": "**Dialog:** Keep the existing `FeedbackButton`'s `<Dialog>` and its `chat`, `control-plane`, `feedback` tabs. Existing `REPORT_ERROR_EVENT`, emergency-map Chat handoff, `createConversation` guard, file upload/retry, drag, confirm for urgent Feedback, keyboard/paste and all guest authentication behavior remain functional. In particular, clicking a *notification balloon* must never call the Chat dialog's `onOpenChange` or `ensureChatConversation`; ordinary mascot click retains the existing Chat default (subject to current login gate). A feedback form with unsent text/files must not be reset because a balloon appears/disappears.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: guardian/__tests__/FeedbackButton.test.tsx; evidence/browser-simulation-37967564075.md covers mocked authenticated dialog, tabs, draft rollback and no extra mutations.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-C1D12FE65B73": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L93"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L93",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing collision audit against real app controls and flag-off comparison. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "70499b297dedcfdc50c69632cd4f82dd7c65fe8588e50daf33ab973e0ee7e052",
+        "requirement_id": "REQ-C1D12FE65B73",
+        "requirement_text": "- **Mobile placement decision:** because current code places the Feedback button bottom-left on screens below 640px whereas mockups illustrate bottom-right, rollout must test both; the implementation may use *bottom-right in flag-on mode only when collision audit permits* and must document final chosen baseline. In flag-off mode preserve the old mobile bottom-left behavior. Drag/dock, recovery after resize/rotation, main bottom navigation and safe areas are regression tests. Never move into a non-visible area.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Feedback placement tests; responsive screenshots.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-CF1C7A726AA8": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L112"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L112",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/settings/AssistantAppearancePreferences.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing one-round verification, preview/revert and independent hint-toggle evidence, and live tenant acceptance. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "1cd65445a3a5eb9c687dad99c932b6bce818caf3cef5e47ae20089d9a32bd286",
+        "requirement_id": "REQ-CF1C7A726AA8",
+        "requirement_text": "**Settings:** add `Assistant mascot` appearance control in an appropriate existing Settings/Personalization area and link to it from Notification Preferences if discoverability benefits. Provide five radio-style previews with accessible names, live local preview and deterministic fake `Demo` button (never sends an actual event). Controls: style (5), animation (`off|subtle|normal`), reminder balloons (`on|off`), onboarding hints (`on|off`), launcher mascot (`on|off`, reverting to current labeled/icon Feedback button). **Disabling mascot must not disable Chat or notifications.** If tenant disables mascot, preserve the legacy Chat & Feedback launcher; if motion off, show static chosen mascot. Do not turn the plain bell into a sixth mascot choice.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Accessible-name and browser assertions updated; parser oversize test added. All are unrun on current source.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-D446F6AEE5DF": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L71"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L71",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing authenticated combined-surface browser test at required layouts. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "65ad12f40d4c084b00e543631ae32c573fb57afbdda25ca80a66db7e5b799598",
+        "requirement_id": "REQ-D446F6AEE5DF",
+        "requirement_text": "| Surface | Desktop/tablet | Mobile | Tap/click effect | Must never do |",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Bell and Feedback tests; responsive screenshots.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-EAAA066D4991": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L264"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L264",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_IMPLEMENTATION_OR_MEASUREMENT",
+        "evidence_sha": null,
+        "final_state": "OPEN",
+        "implementation_evidence": [],
+        "implementation_status": "UNVERIFIED",
+        "next_action": "OPEN. Missing before/after network, memory, CLS, timer and gzip-size evidence. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "40325b9700845728daa935a9c3163a1c9bb64e2a63c6c1251ac868d67397876e",
+        "requirement_id": "REQ-EAAA066D4991",
+        "requirement_text": "**Targets (must measure, not assert in advance):** no new notification SSE/WS/poller/query/LLM calls; no extra DB migration; no new per-frame loop; one bounded UI timer episode; zero CLS from appearance/bubble; mascot trigger assets collectively modest size after vector optimization (provisional total SVG goal <100 KiB gzip across five styles; verify actual); nominal launcher click perceived responsive at 60Hz on baseline devices, with frame-time regression measured against control; no sustained hidden-tab CPU. Measure low-end Android/tablet and desktop network/heap in before/after traces. Set explicit thresholds with QA owner from baseline rather than inventing p95 numbers. If measurements exceed agreed budget, fall back to static mascot/bell without risking function.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: None.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-EBE5BE2EAF7F": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L134"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L134",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/lib/notificationAttention.ts (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing complete UI state-machine integration and style-change/no-restart test. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "867af43c04f412220e689b23be9e3671be7e23132994c1f8eb1d565191236c9f",
+        "requirement_id": "REQ-EBE5BE2EAF7F",
+        "requirement_text": "**Presentation states:** `INITIALIZING`, `QUIET`, `COALESCING`, `BALLOON_VISIBLE`, `COOLDOWN`, `SUSPENDED`, `DISABLED`. Transition only on authorized, stable new event IDs and user/page visibility; timer effects isolated in one hook/reducer, not five characters. Changing mascot style or re-rendering must not restart balloon.",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: notificationAttention.test.ts fake-time reducer tests.. Not run on this candidate SHA; no verification evidence is attached."
+      },
+      "REQ-F0F107D65422": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L53"
+        ],
+        "authority_source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md#L53",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "PENDING_CANONICAL_INTEGRATION",
+        "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/client/src/components/GlobalAlerts.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)",
+          "apps/web/client/src/components/guardian/FeedbackButton.tsx (source review at c8be83e7ed86dc43ea1cd3a1ec4e2a7987800503)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "OPEN / partial. Missing one integration test verifying these owners together. Reconcile after the consolidated exact-SHA test run; keep OPEN until all mandatory and applicable live-authority gates pass.",
+        "requirement_digest": "ca1275dcc0beb8acaf6a1612372c9ac8af97ae45f0e390d02a832fe16f08b173",
+        "requirement_id": "REQ-F0F107D65422",
+        "requirement_text": "| Domain | Existing authoritative owner / required integration behavior |",
+        "source_spec_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "successor_mapping": [],
+        "verification_evidence": [],
+        "verification_method": "Planned checks: Bell, Feedback, and settings focused suites.. Not run on this candidate SHA; no verification evidence is attached."
+      }
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-09T16:53:41.854515Z",
+    "sources": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+        "source_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "value": "PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES"
+      }
+    ],
+    "stale_fields": [],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES",
+        "line": 5,
+        "source": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+        "source_digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "value": "PROPOSED_IMPLEMENTATION_READY_PENDING_CANONICAL_IMPORT_AND_RUNTIME_GATES"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 66,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 66,
+    "unresolved": 66
+  },
+  "schema_version": 1,
+  "updated_at": "2026-10-10T08:36:13.893036Z",
+  "verification": {
+    "baseline_issues": [
+      "Current origin/main is e20e13db2f01f5eb19d7dc611d753328ed084de4. All three PRs were refreshed by normal GitHub merge commits onto this SHA. Exact PR heads: #399=15c9c4fa635d9421e0feecb1b66c6983dd09efc8, #403=2681346dd8dbace3f98b40634d3a6d7a93e1d777, #405=556e74fd40a761f334b0ce336fa1bbd99ccd6d40. `git merge-tree` reported no conflicts; GitHub mergeability was being recomputed following the final #399 documentation commit.",
+      "#399 run 38037949886 passed mocked Chromium 23/23 on exact head 15c9c4fa. Contract/security failed 44/120 MCP-focused tests because #399 does not yet contain the fixture repair from dependent PR #403, including tests calling retired agencyMcpService. Live acceptance fails closed because MCP_SMOKE_URL/TOKEN are absent. Prior UI focused evidence: 146 tests passed at source SHA 8bd3b687 (run 38036424904); not all 66 requirements are individually mapped to those cases.",
+      "#403 exact refreshed head 2681346dd run 38037833334: MCP focused 118/118, check:mcp146 and security:mcp146 passed; production audit failed on 85 findings (1 Critical, 38 High, 37 Moderate, 9 Low); live smoke fails closed because MCP_SMOKE_URL/TOKEN are absent. The existing fixture repair is present; no duplicate/retired implementation was added.",
+      "#405 exact refreshed head 556e74fd run 38037826210: production audit and compatibility regressions passed. HyperFrames and lockfile bytes match the Linux render evidence candidate. PR remains Draft pending Security + Media/Runtime disposition of optional CLI ONNX and signed WSL2 pack; package proposal is orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/decision-sprintf-js.md.",
+      "Only GitHub environment found is production; no authorized non-production MCP/SPEC-308 endpoint or synthetic test identity is available. Mocked tests are not live acceptance.",
+      "All 66 requirements remain OPEN (63 PARTIAL; REQ-EAAA066D4991, AC-308-029, AC-308-032 UNVERIFIED). See orchestra/tasks/spec-308-20261009/evidence/requirement-acceptance-reconciliation-20261010.md. No criteria changed, no PR merged, no integration SHA, no production readiness."
+    ],
+    "evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037949857",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037949886",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037833334",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38037826210",
+      "orchestra/tasks/spec-308-20261009/evidence/requirement-acceptance-reconciliation-20261010.md",
+      "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/decision-sprintf-js.md"
+    ],
+    "freshness": "Exact refreshed PR heads tested: #399 browser pass but MCP prerequisite contract failure and live authority missing; #403 118 focused tests pass but mandatory dependency audit/live MCP fail; #405 audit and compatibility pass but required owner disposition pending. No canonical integration.",
+    "required_profiles": [
+      "quick"
+    ],
+    "sha": "15c9c4fa635d9421e0feecb1b66c6983dd09efc8",
+    "status": "PARTIAL",
+    "task_regressions": []
+  }
+}

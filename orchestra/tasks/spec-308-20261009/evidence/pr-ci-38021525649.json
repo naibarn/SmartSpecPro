@@ -1,0 +1,22 @@
+{
+  "run_id": 38021525649,
+  "workflow": "MCP v2 Compatibility Gates",
+  "event": "pull_request",
+  "head_sha": "a067ad36fc05b49d33752af3d42f14f2f0a261dd",
+  "status": "completed",
+  "conclusion": "failure",
+  "contract_and_security": {
+    "conclusion": "failure",
+    "focused_mcp_tests": "failure; 44 failed / 76 passed; 2 test files failed and 9 passed",
+    "check_mcp146": "skipped",
+    "security_mcp146": "skipped",
+    "mandatory_production_audit": "skipped because focused tests failed",
+    "failure_class": "pre-existing MCP fixture/import drift; log identifies removed agencyMcpService import; do not restore retired service"
+  },
+  "live_contract_evidence": {
+    "conclusion": "failure",
+    "result": "failed closed because authorized MCP_SMOKE_URL and MCP_SMOKE_TOKEN are absent; no secret values were read"
+  },
+  "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/38021525649",
+  "observed_at": "2026-10-10T03:44:07Z"
+}

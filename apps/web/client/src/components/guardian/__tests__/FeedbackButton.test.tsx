@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 
 const mockRoute = vi.hoisted(() => ({
@@ -35,6 +35,7 @@ vi.mock("@/lib/trpc", () => ({
           mutateAsync: feedbackMocks.createChat,
           isPending: false,
           error: null,
+          reset: vi.fn(),
         }),
       },
     },
@@ -91,22 +92,174 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.guest.signInRequired": "Sign in to use AI Chat",
       "chat.guest.description": "Public emergency information remains available.",
       "chat.guest.signIn": "Sign in to continue",
+      "feedback.panelTitle": "AI Chat & Feedback",
+      "feedback.chatTab": "AI Chat",
+      "feedback.taskControlTab": "Task Control",
+      "feedback.feedbackTab": "Send Feedback",
+      "feedback.sections": "Help sections",
+      "feedback.chatSection": "AI Chat",
+      "feedback.taskControlSection": "Task Control",
+      "feedback.titlePlaceholder": "Title",
+      "feedback.descriptionPlaceholder": "Describe in detail...",
+      "feedback.submit": "Submit Feedback",
+      "feedback.sendAsUrgent": "Send feedback as urgent",
+      "feedback.normalDescription": "Tell us what happened and how we can improve.",
+      "feedback.urgentDescription": "Use this for urgent issues only.",
+      "feedback.urgentConfirmTitle": "Send urgent feedback?",
+      "feedback.urgentConfirmDescription": "This will be sent to the emergency response team.",
+      "feedback.urgentConfirmSend": "Send urgent feedback",
+      "feedback.urgentConfirmCancel": "Cancel",
+      "feedback.conversationTitle": "AI Chat Assistant",
+      "assistantAppearance.launcherLabel": "AI Chat & Feedback",
+      "assistantAppearance.launcherAriaLabel": "Open AI Chat & Feedback",
     })[key] ?? key,
   }),
 }));
 
-import { FeedbackButton } from "../FeedbackButton";
+import { FeedbackButton, getAssistantHintPosition, isAssistantBalloonEligible, isAssistantBalloonSuppressedRoute } from "../FeedbackButton";
+
+describe("assistant reminder balloon eligibility", () => {
+  const eligibleSurface = {
+    dialogOpen: false,
+    dragging: false,
+    documentVisible: true,
+    keyboardOpen: false,
+    editableControlFocused: false,
+    criticalOverlayOpen: false,
+    routeSuppressed: false,
+  };
+
+  it.each([
+    ["an open dialog", { dialogOpen: true }],
+    ["launcher dragging", { dragging: true }],
+    ["a hidden document", { documentVisible: false }],
+    ["an open virtual keyboard", { keyboardOpen: true }],
+    ["a focused editable control", { editableControlFocused: true }],
+    ["a modal or critical overlay", { criticalOverlayOpen: true }],
+    ["an immersive route", { routeSuppressed: true }],
+  ])("suppresses decorative balloons during %s", (_reason, blocked) => {
+    expect(isAssistantBalloonEligible({ ...eligibleSurface, ...blocked })).toBe(false);
+  });
+
+  it("allows a balloon when no blocking surface is active", () => {
+    expect(isAssistantBalloonEligible(eligibleSurface)).toBe(true);
+  });
+
+  it.each([
+    "/video-studio",
+    "/video-studio/project-123",
+    "/video-editor?projectId=123",
+    "/presentation-editor/doc-123",
+    "/presentation/123/play",
+    "/disaster/map",
+  ])("suppresses balloons on the immersive route %s", route => {
+    expect(isAssistantBalloonSuppressedRoute(route)).toBe(true);
+  });
+
+  it.each([
+    "/video-studiox/project-123",
+    "/video-editor-help",
+    "/presentation-editor",
+    "/presentation/123",
+    "/disaster",
+    "/dashboard/emergency",
+  ])("does not classify unrelated route %s as an immersive route", route => {
+    expect(isAssistantBalloonSuppressedRoute(route)).toBe(false);
+  });
+});
+
+describe("assistant hint visual viewport placement", () => {
+  const originalVisualViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+
+  afterEach(() => {
+    if (originalVisualViewport) {
+      Object.defineProperty(window, "visualViewport", originalVisualViewport);
+    } else {
+      Reflect.deleteProperty(window, "visualViewport");
+    }
+  });
+
+  it("keeps the complete balloon inside a panned and zoomed visual viewport", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 120, offsetTop: 80, width: 280, height: 400 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 300, top: 250, right: 348, bottom: 290, width: 48 },
+      { width: 180, height: 100 },
+    )).toEqual({ left: "204px", top: "142px" });
+  });
+
+  it("uses the visible space below the launcher when the keyboard reduces the viewport", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 280, width: 390, height: 240 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 170, top: 320, right: 218, bottom: 350, width: 48 },
+      { width: 180, height: 100 },
+    )).toEqual({ left: "104px", top: "358px" });
+  });
+
+  it("suppresses the balloon when neither side of the launcher has safe space", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 300, width: 320, height: 132 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 136, top: 340, right: 184, bottom: 370, width: 48 },
+      { width: 180, height: 100 },
+    )).toBeNull();
+  });
+
+  it("moves below the launcher when a fixed control blocks the preferred space above", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 0, width: 390, height: 844 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 170, top: 600, right: 218, bottom: 648, width: 48 },
+      { width: 180, height: 100 },
+      window.visualViewport,
+      { width: 390, height: 844 },
+      [{ left: 100, top: 480, right: 290, bottom: 590 }],
+    )).toEqual({ left: "104px", top: "656px" });
+  });
+
+  it("suppresses the balloon when fixed controls block both safe placements", () => {
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: { offsetLeft: 0, offsetTop: 0, width: 390, height: 844 },
+    });
+
+    expect(getAssistantHintPosition(
+      { left: 170, top: 600, right: 218, bottom: 648, width: 48 },
+      { width: 180, height: 100 },
+      window.visualViewport,
+      { width: 390, height: 844 },
+      [
+        { left: 100, top: 480, right: 290, bottom: 590 },
+        { left: 100, top: 650, right: 290, bottom: 760 },
+      ],
+    )).toBeNull();
+  });
+});
 
 describe("FeedbackButton placement", () => {
   it("keeps the floating trigger readable over dark public sections", () => {
     render(<FeedbackButton />);
-    const trigger = screen.getByLabelText("Open AI Chat and Feedback");
+    const trigger = screen.getByLabelText("Open AI Chat & Feedback");
     expect(trigger).toHaveClass(
       "bg-white",
       "text-slate-900",
       "dark:bg-white",
       "dark:text-slate-900",
     );
+    expect(screen.getByText("AI Chat & Feedback")).toHaveClass("hidden", "md:inline");
   });
 
   beforeEach(() => {
@@ -129,14 +282,14 @@ describe("FeedbackButton placement", () => {
   });
 
   function openFeedbackForm() {
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     fireEvent.click(screen.getByRole("tab", { name: "Send Feedback" }));
   }
 
   it("docks to the bottom right by default", () => {
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -146,7 +299,7 @@ describe("FeedbackButton placement", () => {
   it("preserves the existing Chat draft when switching to Task Control and back", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
     fireEvent.change(draft, { target: { value: "Keep this unsent message" } });
     fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
@@ -158,7 +311,7 @@ describe("FeedbackButton placement", () => {
   it("attaches map context without replacing the draft and removes only the context", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
     fireEvent.change(draft, { target: { value: "My existing question" } });
     act(() => window.dispatchEvent(new CustomEvent("smartspec:emergency-map:ask-ai", {
@@ -173,7 +326,7 @@ describe("FeedbackButton placement", () => {
 
   it("keeps the anonymous public panel focused on sign-in and feedback", () => {
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
 
     expect(screen.getByRole("tab", { name: "AI Chat" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Send Feedback" })).toBeInTheDocument();
@@ -193,10 +346,34 @@ describe("FeedbackButton placement", () => {
     expect(feedbackMocks.createChat).not.toHaveBeenCalled();
   });
 
+  it("supports manual-activation keyboard navigation for the dialog tabs", () => {
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
+
+    const chatTab = screen.getByRole("tab", { name: "AI Chat" });
+    const feedbackTab = screen.getByRole("tab", { name: "Send Feedback" });
+    expect(chatTab).toHaveAttribute("aria-controls", "assistant-help-panel-chat");
+    expect(chatTab).toHaveAttribute("aria-selected", "true");
+    expect(chatTab).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "assistant-help-tab-chat");
+
+    chatTab.focus();
+    fireEvent.keyDown(chatTab, { key: "ArrowRight" });
+    expect(feedbackTab).toHaveFocus();
+    expect(feedbackTab).toHaveAttribute("aria-selected", "false");
+    expect(feedbackTab).toHaveAttribute("tabindex", "-1");
+    expect(feedbackMocks.createChat).not.toHaveBeenCalled();
+
+    fireEvent.click(feedbackTab);
+    expect(feedbackTab).toHaveAttribute("aria-selected", "true");
+    expect(feedbackTab).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "assistant-help-tab-feedback");
+  });
+
   it("waits for session restoration before creating an authenticated conversation", async () => {
     feedbackMocks.loading = true;
     const view = render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
 
     expect(screen.getByText("Checking your sign-in…")).toBeInTheDocument();
     expect(feedbackMocks.createChat).not.toHaveBeenCalled();
@@ -220,7 +397,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -237,7 +414,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -252,7 +429,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open AI Chat and Feedback");
+    const button = screen.getByLabelText("Open AI Chat & Feedback");
     expect(button.style.left).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.right).toBe("");
@@ -302,7 +479,7 @@ describe("FeedbackButton placement", () => {
   it("opens AI Chat from the single combined Help and Feedback button", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
 
     expect(screen.getByRole("tab", { name: "AI Chat" })).toHaveAttribute(
       "aria-selected",
@@ -329,7 +506,7 @@ describe("FeedbackButton placement", () => {
   it("keeps Task Control Center in the same combined panel", () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
     fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
 
     expect(screen.getByTestId("global-control-plane")).toBeInTheDocument();

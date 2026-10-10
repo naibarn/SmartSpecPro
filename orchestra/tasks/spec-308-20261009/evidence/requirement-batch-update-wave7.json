@@ -1,0 +1,386 @@
+{
+  "REQ-30653CACBAAA": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "R1.2": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-6C62E2934BF0": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-92DA433C209B": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-F0F107D65422": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-85CE8E62EB17": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-5F5B8C22FD37": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-5B301EF2CE2C": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-D446F6AEE5DF": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-0CE6AC7B09DE": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-7F1D802E9677": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-C1D12FE65B73": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-72B6A3690568": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-0DFA9191092E": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-7A55187E5BFE": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-CF1C7A726AA8": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-92F4061C5435": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-EBE5BE2EAF7F": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-82E9E73AE3B9": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-23E2C2078029": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-5EDFB2509D5E": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-BAE8E6B0A985": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-6B3358EF3BA6": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-317C0EC9DFE9": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-56A8ED737913": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-EAAA066D4991": {
+    "evidence_sha": null,
+    "evidence_freshness": "PENDING_IMPLEMENTATION_OR_MEASUREMENT"
+  },
+  "REQ-1E2B28EDCCB0": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-001": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-002": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-003": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-004": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-005": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-006": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-007": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-008": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-009": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-010": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-011": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-012": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-013": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-014": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-015": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-016": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-017": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-018": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-019": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-020": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-021": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-022": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-023": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-024": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-025": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-026": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-027": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-028": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-029": {
+    "evidence_sha": null,
+    "evidence_freshness": "PENDING_IMPLEMENTATION_OR_MEASUREMENT"
+  },
+  "AC-308-030": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-031": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-032": {
+    "evidence_sha": null,
+    "evidence_freshness": "PENDING_IMPLEMENTATION_OR_MEASUREMENT"
+  },
+  "AC-308-033": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-034": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "AC-308-035": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "AC-308-036": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION_AND_LIVE_ACCEPTANCE",
+    "verification_evidence": [
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/37986151623",
+      "orchestra/tasks/spec-308-20261009/evidence/implementation-gap-update-20261010-wave7.md"
+    ],
+    "verification_method": "Exact PR-head CI on 7325a117b2f342ef54af82fdb9b52235ae81adbe passed 8 focused files / 144 tests and 18/18 Chromium mocked simulations. This supports only the tested sub-behavior; it is not integrated-SHA or live authenticated acceptance. See the row-level gap in the wave 7 evidence note.",
+    "next_action": "Keep OPEN. Reconcile and verify on the exact integrated SHA, then obtain required live authenticated/non-production and authority evidence; close only when every subcriterion is evidenced."
+  },
+  "REQ-15DABEFB3703": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-7307875D109B": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  },
+  "REQ-23B5CA4BB00B": {
+    "evidence_sha": "7325a117b2f342ef54af82fdb9b52235ae81adbe",
+    "evidence_freshness": "PENDING_CANONICAL_INTEGRATION"
+  }
+}
