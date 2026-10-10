@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 358 unresolved of 358
 - Next action: Continue W2 now: wire the app Runner-owned Moli process to the merged non-production isolation boundary and test cancellation/cleanup. W3 waits for an explicitly approved disposable worker_jobs database and Runner authorization target. W4 fixed dependency candidates are identified; reproducible rebuild, publisher provenance, deployed-target inventory, and notices review remain open.
-- Manifest generation: 40
+- Manifest generation: 42
 
 ## Source-declared status and relationship claims
 
