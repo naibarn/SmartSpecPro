@@ -11,9 +11,9 @@ def load_shared_lifecycle_policy(plugin_root: Path | str | None = None) -> Modul
     candidates: list[Path] = []
     if plugin_root:
         candidates.append(Path(plugin_root).expanduser().resolve().parent / "development-lifecycle" / "lifecycle_policy.py")
+    candidates.append(Path(__file__).resolve().parents[4] / "skills/development-lifecycle/lifecycle_policy.py")
     if os.environ.get("CODEX_HOME"):
         candidates.append(Path(os.environ["CODEX_HOME"]).expanduser() / "skills/development-lifecycle/lifecycle_policy.py")
-    candidates.append(Path(__file__).resolve().parents[4] / "skills/development-lifecycle/lifecycle_policy.py")
     candidates.append(Path.home() / ".codex/skills/development-lifecycle/lifecycle_policy.py")
     for candidate in candidates:
         if not candidate.is_file():

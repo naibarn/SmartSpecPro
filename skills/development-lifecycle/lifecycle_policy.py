@@ -197,7 +197,37 @@ def outcome_complete(
     user_workspace_converged: bool = False,
     worktree_lifecycle_settled: bool = False,
 ) -> bool:
-    """Require fresh closure proof and settled canonical workspace lifecycle."""
+    """Require task proof plus canonical user-workspace lifecycle convergence."""
+    if not implementation_outcome_complete(
+        requirements,
+        integrated=integrated,
+        required_verification_fresh=required_verification_fresh,
+        task_regressions_clear=task_regressions_clear,
+        deployment_required=deployment_required,
+        deployed=deployed,
+        acceptance_required=acceptance_required,
+        accepted=accepted,
+        authority_resolved=authority_resolved,
+        canonical_verified=canonical_verified,
+    ):
+        return False
+    return user_workspace_converged and worktree_lifecycle_settled
+
+
+def implementation_outcome_complete(
+    requirements: Iterable[Mapping[str, Any]],
+    *,
+    integrated: bool,
+    required_verification_fresh: bool,
+    task_regressions_clear: bool = False,
+    deployment_required: bool = False,
+    deployed: bool = False,
+    acceptance_required: bool = False,
+    accepted: bool = False,
+    authority_resolved: bool = False,
+    canonical_verified: bool = False,
+) -> bool:
+    """Close scoped implementation proof independently from workspace convergence."""
     rows = list(requirements)
     if not authority_resolved or not rows or remaining_requirements(rows):
         return False
@@ -206,8 +236,6 @@ def outcome_complete(
         or not required_verification_fresh
         or not task_regressions_clear
         or not canonical_verified
-        or not user_workspace_converged
-        or not worktree_lifecycle_settled
     ):
         return False
     if deployment_required and not deployed:
@@ -250,6 +278,10 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
         if facts.get("compatible_fallback"):
             return "SUBSTITUTE"
         return "WAITING_CAPABILITY" if facts.get("verification_optional") else "BLOCKED_CAPABILITY"
+    if event == "nonproduction_preview_unavailable":
+        return "WAITING_CAPABILITY" if facts.get("preview_optional") else "BLOCKED_CAPABILITY"
+    if event == "deployed_feature_gate_unresolved":
+        return "WAITING_DEPENDENCY"
     if event == "unauthorized_action":
         return "DENY_AND_CONTINUE_SAFE_WORK" if facts.get("independent_work") else "DENY_AND_WAIT_AUTHORITY"
     if event == "concurrent_writer_collision":
@@ -271,14 +303,22 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     if event in {"section_checkpoint_missing_evidence", "all_sections_checkpointed_with_requirement_failure"}:
         requirements = facts.get("requirements", [])
         closed = bool(requirements) and not remaining_requirements(requirements)
-        workspace_settled = (
-            facts.get("canonical_verified") is True
+        evidence_ready = facts.get("required_evidence", True) is True
+        if not closed or not evidence_ready:
+            return "VALIDATION_PENDING"
+        if facts.get("canonical_verified") is not True:
+            return "VALIDATION_PENDING"
+        if facts.get("user_workspace_converged") is not True or facts.get("worktree_lifecycle_settled") is not True:
+            return "IMPLEMENTATION_COMPLETE"
+        return "COMPLETE"
+    if event == "development_complete_convergence":
+        return (
+            "COMPLETE"
+            if facts.get("canonical_verified") is True
             and facts.get("user_workspace_converged") is True
             and facts.get("worktree_lifecycle_settled") is True
+            else "CANONICAL_CONVERGENCE_PENDING"
         )
-        if not workspace_settled:
-            return "CANONICAL_CONVERGENCE_PENDING"
-        return "COMPLETE" if closed and facts.get("required_evidence", True) else "VALIDATION_PENDING"
     if event == "unrelated_dirty_session_worktree":
         return "PRESERVE_AND_CONTINUE" if not facts.get("ownership_overlap") else "RECONCILE_OWNERSHIP"
     if event == "unrelated_baseline_failure":

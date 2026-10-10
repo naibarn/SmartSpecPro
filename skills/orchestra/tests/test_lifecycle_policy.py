@@ -8,6 +8,7 @@ from skills.orchestra.tools.lifecycle_policy import (
     decide_closure,
     next_ready_workunit,
     outcome_complete,
+    implementation_outcome_complete,
     resume_capsule,
 )
 
@@ -132,6 +133,57 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
         self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True, deployment_required=True))
         self.assertFalse(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True, acceptance_required=True))
         self.assertTrue(outcome_complete(requirements, integrated=True, required_verification_fresh=True, task_regressions_clear=True, authority_resolved=True, deployment_required=True, deployed=True, acceptance_required=True, accepted=True, **settled))
+
+    def test_scoped_implementation_closes_without_waiting_for_other_workspaces(self):
+        requirements = [{
+            "requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS",
+            "completion_predicate": {"kind": "test_passes", "source": "tests/r1.py"},
+            "completion_predicate_satisfied": True, "evidence": ["evidence/r1.log"], "evidence_fresh": True,
+        }]
+        kwargs = dict(
+            integrated=True, required_verification_fresh=True, task_regressions_clear=True,
+            authority_resolved=True, canonical_verified=True,
+        )
+        self.assertTrue(implementation_outcome_complete(requirements, **kwargs))
+        self.assertFalse(outcome_complete(requirements, **kwargs))
+        self.assertFalse(implementation_outcome_complete(requirements, **dict(kwargs, acceptance_required=True)))
+        self.assertFalse(implementation_outcome_complete(requirements, **dict(kwargs, canonical_verified=False)))
+
+    def test_implementation_and_workspace_convergence_are_reported_separately(self):
+        requirement = {
+            "requirement_id": "R1", "applicability": "APPLICABLE", "final_state": "PASS",
+            "completion_predicate": {"kind": "evidence_exists", "locator": "evidence/r1.md"},
+            "completion_predicate_satisfied": True, "evidence": ["evidence/r1.md"], "evidence_fresh": True,
+        }
+        facts = {"requirements": [requirement], "required_evidence": True, "canonical_verified": True}
+        self.assertEqual("IMPLEMENTATION_COMPLETE", decide_closure({
+            "event": "section_checkpoint_missing_evidence",
+            "facts": dict(facts, user_workspace_converged=False, worktree_lifecycle_settled=False),
+        }))
+        self.assertEqual("CANONICAL_CONVERGENCE_PENDING", decide_closure({
+            "event": "development_complete_convergence",
+            "facts": dict(facts, user_workspace_converged=False, worktree_lifecycle_settled=False),
+        }))
+        self.assertEqual("VALIDATION_PENDING", decide_closure({
+            "event": "section_checkpoint_missing_evidence",
+            "facts": dict(facts, required_evidence=False, user_workspace_converged=False),
+        }))
+
+    def test_nine_deadlock_regressions_keep_gates_scoped_and_truthful(self):
+        cases = [
+            ("UI work beside unrelated runtime blocker", "local_blocker_with_independent_work", {"independent_work": True, "blocker_scoped": True}, "ISOLATE_BLOCKER_AND_CONTINUE"),
+            ("unrelated advisory beside independent work", "unrelated_baseline_failure", {"task_regression": False, "independent_work": True}, "ISOLATE_AND_CONTINUE"),
+            ("optional preview remains a capability wait", "nonproduction_preview_unavailable", {"preview_optional": True}, "WAITING_CAPABILITY"),
+            ("deployed but unresolved tenant flag remains inactive", "deployed_feature_gate_unresolved", {"global_flag_enabled": False, "tenant_flag_resolved": False}, "WAITING_DEPENDENCY"),
+            ("no-progress handoff changes strategy", "same_blocker_no_delta", {"repeat_count": 3, "meaningful_delta": False, "alternative_available": True}, "STALLED_STRATEGY"),
+            ("external wait leaves independent work runnable", "full_verification_resource_wait", {"ready_independent_unit": True}, "QUEUE_AND_CONTINUE"),
+            ("passing tests do not replace required acceptance", "production_acceptance_evidence_missing", {"acceptance_required": True, "acceptance_evidence": False}, "CONTINUE_UNTIL_ACCEPTANCE"),
+            ("missing live authorization never grants permission", "unauthorized_action", {"independent_work": True}, "DENY_AND_CONTINUE_SAFE_WORK"),
+        ]
+        for label, event, facts, expected in cases:
+            with self.subTest(regression=label):
+                self.assertEqual(expected, decide_closure({"event": event, "facts": facts}))
+        self.assertEqual("TRUE_BLOCKER", classify_failure("CRITICAL_SECURITY_ACCEPTANCE"))
 
 
 if __name__ == "__main__":

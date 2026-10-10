@@ -71,6 +71,24 @@ passes; deployed means the exact artifact is running; accepted means required
 acceptance evidence exists; complete means every applicable outcome criterion
 is satisfied. A later lifecycle state requires evidence for that state.
 
+Scoped implementation completion and workspace lifecycle convergence are
+separate milestones. `IMPLEMENTATION_COMPLETE` requires integrated source,
+fresh required verification, resolved task requirements, and any acceptance or
+deployment explicitly required by that outcome. It must not wait for unrelated
+sessions' worktrees to become clean or retireable. `DEVELOPMENT_COMPLETE` may
+add canonical user-workspace convergence and temporary-worktree settlement
+when the repository or spec requires them; preserve those as explicit pending
+milestones and never claim them from implementation evidence alone. Use
+`implementation_outcome_complete` for the scoped milestone and
+`outcome_complete` for the stricter workspace-converged milestone.
+
+For feature-flagged UI, track preview, integration, runtime deployment,
+global/tenant flag resolution, authenticated acceptance, and production
+authorization as distinct evidence. A mocked browser simulation is not live
+acceptance. A deployed bundle with a disabled, unresolved, or unauthorized
+tenant flag remains activation-pending; never enable production behavior to
+make a completion status pass.
+
 ## Outcome and requirement ownership
 
 A WorkUnit owns the user's outcome through closure, not merely the assigned
