@@ -5,6 +5,9 @@ import path from "node:path";
 import { runnerNodes } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { workspaceFactsFromSnapshot } from "../services/spec224WorkspaceSpecSet";
+import { enqueueWorkspaceAuthorityAction } from "../services/workspaceAuthoritySafeActions";
+import { canonicalGithubRepository, listOpenPullRequests } from "./workspaceAuthorityGithub";
 import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcMinuteOccurrence } from "./feature186SystemScheduler";
 
 export const WORKSPACE_AUDIT_JOB_TYPE = "workspace.authority.audit";
@@ -14,6 +17,7 @@ const execFileAsync = promisify(execFile);
 export type LocalWorkspaceAudit = {
   status: "OBSERVED" | "NOT_CONFIGURED" | "UNAVAILABLE" | "ERROR";
   result?: Record<string, unknown>;
+  authority?: Record<string, unknown>;
   missionControl?: { status: "OBSERVED" | "UNAVAILABLE" | "ERROR"; result?: Record<string, unknown>; reason?: string };
   reason?: string;
 };
@@ -32,11 +36,29 @@ export async function collectLocalWorkspaceAudit(env: NodeJS.ProcessEnv = proces
     if (result.status !== "WORKTREE_AUDIT_COMPLETE" || result.mode !== "AUDIT_ONLY")
       return { status: "ERROR", reason: "collector_contract_invalid" };
     try {
+      const { stdout: authorityStdout } = await execFileAsync(env.SMARTSPEC_PYTHON_EXECUTABLE?.trim() || "python3", [
+        script, "resolve", "--repository", root,
+      ], { timeout: 120_000, maxBuffer: 5 * 1024 * 1024, cwd: root });
+      const authority = JSON.parse(authorityStdout) as Record<string, unknown>;
+      const authorityWorkspaces = Array.isArray(authority.workspaces) ? authority.workspaces : [];
+      const safeAuthority = {
+        status: authority.status,
+        project_id: authority.project_id,
+        repository_id: authority.repository_id,
+        canonical_ref: authority.canonical_ref,
+        workspaces: authorityWorkspaces.flatMap(value => {
+          if (!value || typeof value !== "object") return [];
+          const row = value as Record<string, unknown>;
+          return [{ workspace_id: row.workspace_id, role: row.role, task_id: row.task_id,
+            head_sha: row.head_sha, branch: row.branch, dirty: row.dirty,
+            session_state: row.session_state, lifecycle_state: row.lifecycle_state }];
+        }),
+      };
       const { stdout: missionControlStdout } = await execFileAsync(env.SMARTSPEC_PYTHON_EXECUTABLE?.trim() || "python3", [
         script, "mission-control", "--repository", root,
       ], { timeout: 120_000, maxBuffer: 5 * 1024 * 1024, cwd: root });
       const missionControl = JSON.parse(missionControlStdout) as Record<string, unknown>;
-      return { status: "OBSERVED", result, missionControl: missionControl.status === "MISSION_CONTROL_SNAPSHOT_READY"
+      return { status: "OBSERVED", result, authority: safeAuthority, missionControl: missionControl.status === "MISSION_CONTROL_SNAPSHOT_READY"
         ? { status: "OBSERVED", result: missionControl }
         : { status: "ERROR", reason: "mission_control_contract_invalid" } };
     } catch (error) {
@@ -54,14 +76,25 @@ export async function executeWorkspaceAuthorityAudit(input: {
   tenantId: string;
   now?: Date;
   collectLocal?: () => Promise<LocalWorkspaceAudit>;
+  reconcilePullRequests?: typeof reconcileOwnedPullRequests;
 }) {
   const now = input.now ?? new Date();
   const rows = await getDb().select({
-    runnerId: runnerNodes.runnerId, trustState: runnerNodes.trustState, status: runnerNodes.status,
+    runnerId: runnerNodes.runnerId, ownerUserId: runnerNodes.ownerUserId, currentSnapshotJson: runnerNodes.currentSnapshotJson,
+    trustState: runnerNodes.trustState, status: runnerNodes.status,
     snapshotExpiresAt: runnerNodes.snapshotExpiresAt, snapshotObservedAt: runnerNodes.snapshotObservedAt,
     revokedAt: runnerNodes.revokedAt, activeSessionId: runnerNodes.activeSessionId,
   }).from(runnerNodes).where(and(eq(runnerNodes.tenantId, input.tenantId), isNull(runnerNodes.revokedAt)));
   const localWorkspaceAudit = await (input.collectLocal ?? collectLocalWorkspaceAudit)();
+  let pullRequestReconciliation: Record<string, unknown>;
+  try {
+    pullRequestReconciliation = await (input.reconcilePullRequests ?? reconcileOwnedPullRequests)({
+      tenantId: input.tenantId, now, runners: rows, local: localWorkspaceAudit,
+    });
+  } catch {
+    // GitHub or local authority outages must not suppress unrelated audit evidence.
+    pullRequestReconciliation = { status: "UNAVAILABLE", reason: "reconciliation_dependency_unavailable", discovered: 0, enqueued: 0 };
+  }
   const localWorkspaceRows = localWorkspaceAudit.result?.workspaces;
   const locallyExpiredOwners = localWorkspaceAudit.status === "OBSERVED" && Array.isArray(localWorkspaceRows)
     ? localWorkspaceRows.filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object" &&
@@ -111,8 +144,79 @@ export async function executeWorkspaceAuthorityAudit(input: {
     ownerLeaseExpirationEventCount: locallyExpiredOwners.length,
     canonicalConvergenceSuccessEventCount: canonicalConvergenceSucceeded ? 1 : 0,
     integrationFinishEventCount: integrationSucceeded ? 1 : 0,
+    pullRequestReconciliation,
     localWorkspaceAudit,
   };
+}
+
+type OwnedPullRequestRunner = {
+  runnerId: string; ownerUserId: number | null; currentSnapshotJson: unknown; trustState: string; status: string;
+  snapshotExpiresAt: Date | null; snapshotObservedAt: Date | null; revokedAt: Date | null; activeSessionId: string | null;
+};
+
+/** Discover only same-repository PRs whose branch, SHA and task workspace are bound to an inactive trusted Runner. */
+export async function reconcileOwnedPullRequests(input: {
+  tenantId: string; now: Date; runners: OwnedPullRequestRunner[]; local: LocalWorkspaceAudit;
+}, dependencies: {
+  repository?: (root: string) => Promise<string>;
+  list?: typeof listOpenPullRequests;
+  enqueue?: typeof enqueueWorkspaceAuthorityAction;
+  env?: NodeJS.ProcessEnv;
+} = {}) {
+  const authority = input.local.authority;
+  const repositoryRoot = (dependencies.env ?? process.env).SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY?.trim();
+  if (input.local.status !== "OBSERVED" || !authority || authority.status !== "AUTHORITY_RESOLVED" || !repositoryRoot)
+    return { status: "NOT_RECONCILED", reason: "owned_workspace_authority_unavailable", discovered: 0, enqueued: 0 };
+  const projectId = typeof authority.project_id === "string" ? authority.project_id : "";
+  const repositoryId = typeof authority.repository_id === "string" ? authority.repository_id : "";
+  const canonicalRef = typeof authority.canonical_ref === "string" ? authority.canonical_ref.replace(/^refs\/heads\//, "") : "";
+  const workspaces = Array.isArray(authority.workspaces) ? authority.workspaces as Array<Record<string, unknown>> : [];
+  if (!projectId || !repositoryId || !canonicalRef)
+    return { status: "NOT_RECONCILED", reason: "canonical_project_binding_unavailable", discovered: 0, enqueued: 0 };
+  const repository = await (dependencies.repository ?? canonicalGithubRepository)(path.resolve(repositoryRoot));
+  const runnerBindings = input.runners.flatMap(runner => {
+    const observedAt = runner.snapshotObservedAt?.getTime() ?? Number.NaN;
+    const expiresAt = runner.snapshotExpiresAt?.getTime() ?? Number.NaN;
+    if (!runner.ownerUserId || runner.trustState !== "trusted" || runner.status !== "online" || runner.revokedAt ||
+        runner.activeSessionId || !Number.isFinite(observedAt) || observedAt > input.now.getTime() || expiresAt <= input.now.getTime()) return [];
+    return workspaceFactsFromSnapshot(runner.currentSnapshotJson)
+      .filter(fact => fact.projectId === projectId && fact.repositoryId === repositoryId && fact.dirty === false && fact.taskId)
+      .map(fact => ({ runner, fact }));
+  });
+  const ownedWorkspaces = workspaces.flatMap(workspace => {
+    const eligibleLocalState = workspace.role === "TASK_WORKTREE" && workspace.dirty === false &&
+      ["NO_ACTIVE_SESSION", "STALE_CLOSED_SESSION"].includes(String(workspace.session_state)) &&
+      workspace.lifecycle_state !== "INTEGRATING" && typeof workspace.task_id === "string" && Boolean(workspace.task_id);
+    if (!eligibleLocalState || typeof workspace.workspace_id !== "string" || typeof workspace.branch !== "string" ||
+        typeof workspace.head_sha !== "string" || !/^[a-f0-9]{40,64}$/.test(workspace.head_sha)) return [];
+    return runnerBindings.flatMap(({ runner, fact }) => fact.workspaceId === workspace.workspace_id &&
+      fact.gitBranch === workspace.branch && fact.gitHead === workspace.head_sha && fact.taskId === workspace.task_id
+      ? [{ runner, workspace }] : []);
+  });
+  if (!ownedWorkspaces.length) return { status: "OBSERVED", reason: "no_inactive_owned_task_workspaces", discovered: 0, enqueued: 0 };
+  const pullRequests = await (dependencies.list ?? listOpenPullRequests)(path.resolve(repositoryRoot), repository, canonicalRef);
+  const exactMatches = pullRequests.flatMap(pr => {
+    if (pr.state !== "OPEN" || pr.isDraft || pr.baseRefName !== canonicalRef || pr.headRepository !== repository ||
+        !pr.mergeable || !["CLEAN", "HAS_HOOKS"].includes(pr.mergeStateStatus) ||
+        !Number.isSafeInteger(pr.number) || !/^[a-f0-9]{40,64}$/.test(pr.headRefOid)) return [];
+    return ownedWorkspaces.flatMap(({ runner, workspace }) => pr.headRefName === workspace.branch &&
+      pr.headRefOid === workspace.head_sha ? [{ pr, runner, workspace }] : []);
+  });
+  let enqueued = 0;
+  let enqueueFailures = 0;
+  for (const { pr, runner, workspace } of exactMatches) {
+    try {
+      await (dependencies.enqueue ?? enqueueWorkspaceAuthorityAction)({
+        tenantId: input.tenantId, actorId: runner.ownerUserId!, projectId, repositoryId,
+        workspaceId: String(workspace.workspace_id), action: "INTEGRATE_COMPLETED_WORK",
+        idempotencyKey: `autonomous-pr:${pr.number}:${pr.headRefOid}`,
+        payload: { pullRequestNumber: pr.number, expectedHeadSha: pr.headRefOid, automatedReconciliation: true },
+      });
+      enqueued += 1;
+    } catch { enqueueFailures += 1; }
+  }
+  return { status: enqueueFailures ? "PARTIAL" : "OBSERVED", reason: enqueueFailures ? "owned_pr_enqueue_failed" : "exact_owned_prs_reconciled",
+    discovered: exactMatches.length, enqueued, enqueueFailures };
 }
 
 /** Event producers use stable event IDs; duplicate lifecycle events converge in worker_jobs. */

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { enqueueWorkspaceAuthorityAuditEvent } from "./workspaceAuthorityAuditJob";
+import { canonicalGithubRepository } from "./workspaceAuthorityGithub";
 import {
   resolveOwnedWorkspaceAuthority,
   type WorkspaceAuthorityAction,
@@ -68,23 +69,6 @@ type CheckGateEvidence = {
   requiredChecks: Array<{ context: string; integrationId: number | null; state: string }>;
   observedChecks: Array<{ context: string; source: "check_run" | "commit_status"; state: string }>;
 };
-
-async function canonicalGithubRepository(repository: string): Promise<string> {
-  const [remote] = await execFileAsync("git", ["remote", "get-url", "origin"], { cwd: repository, timeout: 10_000 });
-  const remoteUrl = remote.trim();
-  const sshRemote = /^git@github\.com:([^/]+\/[^/]+?)(?:\.git)?$/.exec(remoteUrl);
-  let repositorySlug = sshRemote?.[1]?.replace(/\.git$/, "");
-  if (!repositorySlug) {
-    try {
-      const parsedRemote = new URL(remoteUrl);
-      if (parsedRemote.hostname.toLowerCase() === "github.com" && !parsedRemote.username && !parsedRemote.password)
-        repositorySlug = parsedRemote.pathname.replace(/^\//, "").replace(/\.git$/, "");
-    } catch { /* malformed or non-GitHub remote */ }
-  }
-  if (!repositorySlug || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repositorySlug))
-    throw new Error("WORKSPACE_ACTION_CANONICAL_REPOSITORY_UNAVAILABLE");
-  return repositorySlug;
-}
 
 async function inspectPullRequest(repository: string, number: number): Promise<PullRequestFact> {
   const { stdout } = await execFileAsync("gh", ["pr", "view", String(number), "--json", "state,isDraft,baseRefName,baseRefOid,headRefOid,mergeable,mergeStateStatus"], {
@@ -330,7 +314,14 @@ async function integratePullRequest(
       eventId: `pull-request:${number}:${integratedSha}:${(convergence.receipt as Record<string, unknown>).receipt_id}`,
     });
   }
-  return { status: "INTEGRATION_RECORDED", pullRequestNumber: number, integratedSha, checkGate, convergence };
+  let cleanup: Record<string, unknown> | null = null;
+  if (input.payload.automatedReconciliation === true && input.workspaceId &&
+      convergence.status === "USER_WORKSPACE_CONVERGED" &&
+      convergence.receipt && typeof convergence.receipt === "object" &&
+      (convergence.receipt as Record<string, unknown>).integrated_sha === integratedSha) {
+    cleanup = await executeAuthority(repository, env, ["retire", "--workspace-id", input.workspaceId, "--apply"]);
+  }
+  return { status: "INTEGRATION_RECORDED", pullRequestNumber: number, integratedSha, checkGate, convergence, cleanup };
 }
 
 /** Canonical worker_jobs executor; all Git/worktree operations stay outside the API request path. */
@@ -379,6 +370,16 @@ export async function executeWorkspaceAuthoritySafeAction(
   const workspaces = Array.isArray(resolved.workspaces) ? resolved.workspaces as Array<Record<string, unknown>> : [];
   const target = input.workspaceId ? workspaces.find(row => row.workspace_id === input.workspaceId) : null;
   if (input.workspaceId && !target) throw new Error("WORKSPACE_ACTION_LOCAL_AUTHORITY_NOT_FOUND");
+
+  if (input.action === "INTEGRATE_COMPLETED_WORK" && input.payload.automatedReconciliation === true) {
+    const expectedHeadSha = input.payload.expectedHeadSha;
+    if (!target || target.role !== "TASK_WORKTREE" || target.dirty !== false || target.session_state === "ACTIVE_SESSION" ||
+        typeof expectedHeadSha !== "string" || target.head_sha !== expectedHeadSha ||
+        typeof target.branch !== "string" || !target.task_id)
+      throw new Error("WORKSPACE_ACTION_AUTONOMOUS_WORKSPACE_NOT_SAFE");
+    if (currentRunnerAuthority.activeSessionId)
+      throw new Error("WORKSPACE_ACTION_AUTONOMOUS_RUNNER_SESSION_ACTIVE");
+  }
 
   let result: Record<string, unknown>;
   if (input.action === "INTEGRATE_COMPLETED_WORK") {
