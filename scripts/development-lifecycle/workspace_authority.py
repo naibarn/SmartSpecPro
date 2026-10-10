@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import contextvars
 import hashlib
 import importlib.util
 import json
@@ -44,6 +45,9 @@ class WorkspaceAuthorityError(RuntimeError):
     pass
 
 
+_RESOLVER_DEADLINE: contextvars.ContextVar[float | None] = contextvars.ContextVar("workspace_resolver_deadline", default=None)
+
+
 _CONVERGENCE_CONTRACT_SPEC = importlib.util.spec_from_file_location(
     "workspace_authority_convergence_contract", Path(__file__).with_name("convergence_contract.py")
 )
@@ -54,10 +58,13 @@ _CONVERGENCE_CONTRACT_SPEC.loader.exec_module(_CONVERGENCE_CONTRACT)
 
 
 def _git(repo: Path, *args: str, check: bool = True, binary: bool = False) -> str | bytes:
+    deadline = _RESOLVER_DEADLINE.get()
+    timeout = max(0.05, min(3.0, deadline - time.monotonic())) if deadline is not None else None
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         text=not binary,
         capture_output=True,
+        timeout=timeout,
     )
     if check and result.returncode:
         stderr = result.stderr.decode(errors="replace") if binary else result.stderr
@@ -171,10 +178,12 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
     else:
         os.close(descriptor)
     os.chmod(path, 0o600)
-    connection = sqlite3.connect(path, timeout=20, isolation_level=None)
+    deadline = _RESOLVER_DEADLINE.get()
+    timeout = max(0.05, min(20.0, deadline - time.monotonic())) if deadline is not None else 20.0
+    connection = sqlite3.connect(path, timeout=timeout, isolation_level=None)
     try:
         os.chmod(path, 0o600)
-        connection.execute("PRAGMA busy_timeout = 20000")
+        connection.execute(f"PRAGMA busy_timeout = {int(timeout * 1000)}")
         connection.execute("PRAGMA journal_mode = DELETE")
         connection.execute("PRAGMA foreign_keys = ON")
         connection.executescript(
@@ -356,7 +365,7 @@ def _upsert_workspace(
                 _common_dir(workspace) != workspace_common_dir
                 or _git_dir(workspace) != git_dir
                 or _workspace_identity(workspace)[0] != workspace_id
-                or _git_facts(workspace) != facts
+                or str(_git(workspace, "rev-parse", "HEAD")).strip() != facts["head_sha"]
             ):
                 raise WorkspaceAuthorityError("WORKSPACE_CHANGED_DURING_REGISTRATION")
             _ensure_project(db, policy)
@@ -443,50 +452,119 @@ def _discover_worktrees(repo: Path) -> list[Path]:
     for block in raw.split("\n\n"):
         for line in block.splitlines():
             if line.startswith("worktree "):
-                result.append(Path(line[len("worktree ") :]).resolve())
+                result.append(Path(line[len("worktree ") :]))
                 break
-    return result
+    return result[:16]
 
 
-def resolve_project_authority(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
+def _resolve_project_authority_bounded(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
     repo = _repo_root(repo)
     policy = load_workspace_policy(repo, policy_path)
-    _upsert_workspace(repo, policy, repo)
+    discovery = {"complete": True, "limit": 16, "observed": 0, "skipped_foreign_or_unregistered": 0,
+                 "skipped_active": 0, "failed": []}
+    try:
+        _upsert_workspace(repo, policy, repo)
+    except (OSError, sqlite3.Error, WorkspaceAuthorityError, subprocess.TimeoutExpired) as error:
+        return {"status": "AUTHORITY_UNAVAILABLE", "project_id": policy.get("project_id"),
+                "repository_id": policy.get("repository_id"), "workspaces": [],
+                "worktree_discovery": {**discovery, "complete": False,
+                                       "failed": [{"kind": "registry_or_primary", "reason": type(error).__name__}]}}
     canonical_path = policy.get("canonical_user_workspace")
     if canonical_path and Path(canonical_path).exists():
-        if _common_dir(Path(canonical_path)) == _common_dir(repo):
-            _upsert_workspace(repo, policy, Path(canonical_path), role="CANONICAL_USER_WORKSPACE")
-    for path in _discover_worktrees(repo):
-        _upsert_workspace(repo, policy, path)
-    with _db(repo) as db:
-        _ensure_project(db, policy)
-        project = db.execute(
-            "SELECT * FROM projects WHERE project_id=? AND repository_id=?",
-            (policy["project_id"], policy["repository_id"]),
-        ).fetchone()
-        if project is None:
-            raise WorkspaceAuthorityError("PROJECT_AUTHORITY_NOT_REGISTERED")
-        keys = [column[0] for column in db.execute("SELECT * FROM projects LIMIT 0").description]
-        rows = db.execute(
-            "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? ORDER BY created_at,workspace_id",
-            (policy["project_id"], policy["repository_id"]),
-        ).fetchall()
-        convergence_row = db.execute(
-            "SELECT result_json FROM receipts WHERE project_id=? AND repository_id=? AND kind='CANONICAL_CONVERGENCE' ORDER BY created_at DESC LIMIT 1",
-            (policy["project_id"], policy["repository_id"]),
-        ).fetchone()
-        project_data = dict(zip(keys, project))
-        workspaces = []
-        for row in rows:
-            item = dict(zip([column[0] for column in db.execute("SELECT * FROM workspaces LIMIT 0").description], row))
-            item["dirty"] = bool(item["dirty"])
-            item["session_state"] = _owner_state(item)
-            workspaces.append(item)
+        try:
+            if _common_dir(Path(canonical_path)) == _common_dir(repo):
+                _upsert_workspace(repo, policy, Path(canonical_path), role="CANONICAL_USER_WORKSPACE")
+                discovery["observed"] += 1
+        except (OSError, sqlite3.Error, WorkspaceAuthorityError, subprocess.TimeoutExpired) as error:
+            discovery["failed"].append({"kind": "canonical_workspace", "reason": type(error).__name__})
+            discovery["complete"] = False
+    try:
+        discovered = _discover_worktrees(repo)
+    except (OSError, sqlite3.Error, WorkspaceAuthorityError, subprocess.TimeoutExpired) as error:
+        discovered = []
+        discovery["failed"].append({"kind": "worktree_listing", "reason": type(error).__name__})
+        discovery["complete"] = False
+    if len(discovered) >= discovery["limit"]:
+        discovery["complete"] = False
+        discovery["reason"] = "worktree_limit_reached"
+    for path in discovered:
+        try:
+            location = Path(os.path.abspath(path))
+            if location == repo or (canonical_path and location == Path(canonical_path)):
+                continue
+            # Never inspect an unregistered/foreign or live session merely because
+            # it appears in `git worktree list`; only explicit task-owned work is
+            # eligible for refresh by this resolver.
+            with _db(repo) as registry:
+                row = registry.execute("SELECT * FROM workspaces WHERE location=?", (str(location),)).fetchone()
+                if row is None:
+                    discovery["skipped_foreign_or_unregistered"] += 1
+                    continue
+                keys = [column[0] for column in registry.execute("SELECT * FROM workspaces LIMIT 0").description]
+                registered = dict(zip(keys, row))
+                registered["session_state"] = _owner_state(registered)
+            if registered.get("role") != "TASK_WORKTREE" or not registered.get("task_id"):
+                discovery["skipped_foreign_or_unregistered"] += 1
+                continue
+            if registered["session_state"] == "ACTIVE_SESSION":
+                discovery["skipped_active"] += 1
+                continue
+            _upsert_workspace(repo, policy, path)
+            discovery["observed"] += 1
+        except (OSError, sqlite3.Error, WorkspaceAuthorityError, subprocess.TimeoutExpired) as error:
+            discovery["complete"] = False
+            discovery["failed"].append({"kind": "registered_task_worktree", "reason": type(error).__name__})
+    try:
+        with _db(repo) as db:
+            _ensure_project(db, policy)
+            project = db.execute(
+                "SELECT * FROM projects WHERE project_id=? AND repository_id=?",
+                (policy["project_id"], policy["repository_id"]),
+            ).fetchone()
+            if project is None:
+                raise WorkspaceAuthorityError("PROJECT_AUTHORITY_NOT_REGISTERED")
+            keys = [column[0] for column in db.execute("SELECT * FROM projects LIMIT 0").description]
+            rows = db.execute(
+                "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? ORDER BY created_at,workspace_id",
+                (policy["project_id"], policy["repository_id"]),
+            ).fetchall()
+            convergence_row = db.execute(
+                "SELECT result_json FROM receipts WHERE project_id=? AND repository_id=? AND kind='CANONICAL_CONVERGENCE' ORDER BY created_at DESC LIMIT 1",
+                (policy["project_id"], policy["repository_id"]),
+            ).fetchone()
+            project_data = dict(zip(keys, project))
+            workspaces = []
+            for row in rows:
+                item = dict(zip([column[0] for column in db.execute("SELECT * FROM workspaces LIMIT 0").description], row))
+                item["dirty"] = bool(item["dirty"])
+                item["session_state"] = _owner_state(item)
+                workspaces.append(item)
+    except (OSError, sqlite3.Error, WorkspaceAuthorityError) as error:
+        return {
+            "status": "AUTHORITY_UNAVAILABLE",
+            "project_id": policy.get("project_id"),
+            "repository_id": policy.get("repository_id"),
+            "workspaces": [],
+            "worktree_discovery": {
+                **discovery,
+                "complete": False,
+                "failed": discovery["failed"] + [{"kind": "registry_read", "reason": type(error).__name__}],
+            },
+        }
     project_data["workspaces"] = workspaces
     project_data["workspace_count"] = len(workspaces)
     project_data["active_sessions"] = sum(row["session_state"] == "ACTIVE_SESSION" for row in workspaces)
     project_data["convergence_receipt"] = json.loads(convergence_row[0]) if convergence_row else None
+    project_data["worktree_discovery"] = discovery
     return project_data
+
+
+def resolve_project_authority(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
+    token = _RESOLVER_DEADLINE.set(time.monotonic() + 15.0)
+    try:
+        return _resolve_project_authority_bounded(repo, policy_path)
+    finally:
+        _RESOLVER_DEADLINE.reset(token)
 
 
 def _commit_ahead_behind(repo: Path | None, canonical_sha: str | None, workspace_sha: str | None) -> dict[str, Any]:

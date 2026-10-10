@@ -1,0 +1,38 @@
+name: Autonomous Completion Git Lifecycle
+
+on:
+  pull_request:
+    paths:
+      - "scripts/development-lifecycle/workspace_authority.py"
+      - "scripts/development-lifecycle/test_workspace_authority.py"
+      - "apps/web/server/jobs/workspaceAuthorityGithub.ts"
+      - "apps/web/server/jobs/workspaceAuthorityGithub.test.ts"
+      - "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts"
+      - "apps/web/server/jobs/workspaceAuthoritySafeActionJob.test.ts"
+      - ".github/workflows/autonomous-completion-git-lifecycle.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  git_lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Run workspace authority tests
+        run: python -m unittest scripts.development-lifecycle.test_workspace_authority
+      - name: Install web package dependencies
+        run: pnpm install --frozen-lockfile --filter @smartspec/web...
+      - name: Run Git lifecycle adapter and safe action tests
+        working-directory: apps/web
+        run: pnpm exec vitest run --maxWorkers=1 server/jobs/workspaceAuthorityGithub.test.ts server/jobs/workspaceAuthoritySafeActionJob.test.ts
