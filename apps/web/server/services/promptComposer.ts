@@ -529,9 +529,9 @@ export async function composePrompt(
     }
   }
 
-  const eligibleRuleMemories = authorizedProjectId
-    ? ruleMemories
-    : ruleMemories.filter((rule) => rule.projectId == null);
+  const eligibleRuleMemories = ruleMemories.filter(
+    (rule) => rule.projectId == null || rule.projectId === authorizedProjectId,
+  );
   if (eligibleRuleMemories.length > 0) {
     const ruleContent = eligibleRuleMemories
       .map((rule) => `- ${rule.title}: ${rule.content}`)
@@ -546,9 +546,19 @@ export async function composePrompt(
   if (memoryResults.length > 0) {
     const filteredMemoryResults = memoryResults.filter((result) => {
       if (result.memory.memoryKind === "rule") return false;
+      const isProjectScoped =
+        result.memory.ownerType === "project" || result.memory.projectId != null;
+      if (!isProjectScoped) return true;
+      if (!authorizedProjectId) return false;
       if (
-        !authorizedProjectId &&
-        (result.memory.ownerType === "project" || result.memory.projectId != null)
+        result.memory.projectId != null &&
+        result.memory.projectId !== authorizedProjectId
+      ) {
+        return false;
+      }
+      if (
+        result.memory.ownerType === "project" &&
+        result.memory.ownerId !== authorizedProjectId
       ) {
         return false;
       }

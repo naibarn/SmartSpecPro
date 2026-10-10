@@ -618,6 +618,90 @@ describe("composePrompt -- workspace memory parity", () => {
     expect(mockLeftJoinCalls).toBe(1);
   });
 
+  it("filters retrieved project memories and rules to the authorized project", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "project",
+          ownerId: "project-canonical",
+          projectId: "project-canonical",
+          memoryKind: "fact",
+          title: "Authorized project fact",
+          content: "authorized-project-content",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      },
+      {
+        memory: {
+          ownerType: "project",
+          ownerId: "other-project",
+          projectId: "other-project",
+          memoryKind: "fact",
+          title: "Other project secret",
+          content: "other-project-secret",
+        },
+        score: 0.95,
+        matchType: "keyword",
+      },
+      {
+        memory: {
+          ownerType: "project",
+          ownerId: "other-project",
+          projectId: "project-canonical",
+          memoryKind: "fact",
+          title: "Conflicting project binding",
+          content: "conflicting-project-binding-secret",
+        },
+        score: 0.94,
+        matchType: "keyword",
+      },
+      {
+        memory: {
+          ownerType: "user",
+          ownerId: "42",
+          projectId: null,
+          memoryKind: "fact",
+          title: "Personal memory",
+          content: "global-personal-memory",
+        },
+        score: 0.8,
+        matchType: "keyword",
+      },
+    ] as any);
+    mockGetRuleMemories.mockResolvedValue([
+      {
+        id: "authorized-rule",
+        projectId: "project-canonical",
+        title: "Authorized rule",
+        content: "authorized-project-rule",
+      },
+      {
+        id: "other-project-rule",
+        projectId: "other-project",
+        title: "Other project rule",
+        content: "other-project-rule-secret",
+      },
+    ] as any);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
+    });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      { tenantId: "tenant-1", lifecycle: "ACTIVE", principalId: "user:42" },
+    ]);
+
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const prompt = result.messages.map(message => message.content).join("\n");
+
+    expect(prompt).toContain("authorized-project-content");
+    expect(prompt).toContain("authorized-project-rule");
+    expect(prompt).toContain("global-personal-memory");
+    expect(prompt).not.toContain("other-project-secret");
+    expect(prompt).not.toContain("conflicting-project-binding-secret");
+    expect(prompt).not.toContain("other-project-rule-secret");
+  });
+
   it("keeps entity memory global-only for an unregistered legacy project ID", async () => {
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
@@ -639,6 +723,7 @@ describe("composePrompt -- workspace memory parity", () => {
       {
         memory: {
           ownerType: "project",
+          ownerId: "project-canonical",
           memoryKind: "fact",
           title: "Project secret",
           content: "project-memory-secret",
@@ -694,6 +779,7 @@ describe("composePrompt -- workspace memory parity", () => {
       {
         memory: {
           ownerType: "project",
+          ownerId: "project-canonical",
           memoryKind: "fact",
           title: "Project secret",
           content: "project-memory-secret",
@@ -729,6 +815,7 @@ describe("composePrompt -- workspace memory parity", () => {
       {
         memory: {
           ownerType: "project",
+          ownerId: "project-canonical",
           memoryKind: "fact",
           title: "Project secret",
           content: "project-memory-secret",
@@ -792,6 +879,7 @@ describe("composePrompt -- workspace memory parity", () => {
         {
           memory: {
             ownerType: "project",
+            ownerId: "project-canonical",
             memoryKind: "fact",
             title: "Project secret",
             content: "project-memory-secret",
@@ -825,6 +913,7 @@ describe("composePrompt -- workspace memory parity", () => {
       {
         memory: {
           ownerType: "project",
+          ownerId: "project-canonical",
           memoryKind: "fact",
           title: "Project secret",
           content: "project-memory-secret",
@@ -863,6 +952,7 @@ describe("composePrompt -- workspace memory parity", () => {
         {
           memory: {
             ownerType: "project",
+            ownerId: "project-canonical",
             memoryKind: "fact",
             title: "Project secret",
             content: "project-memory-secret",
@@ -970,6 +1060,7 @@ describe("composePrompt -- workspace memory parity", () => {
       {
         memory: {
           ownerType: "project",
+          ownerId: "legacy-project-id",
           projectId: "legacy-project-id",
           memoryKind: "fact",
           title: "Project secret",

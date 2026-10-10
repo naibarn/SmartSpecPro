@@ -34,14 +34,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
+    "expected_canonical_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
     "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
     "next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
     "reactivation_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing.",
-    "resume_point": "PR #451 integrated the minimum SPEC-302/304 runtime contract at fe6771c1cc93cd5cf3321c417210e082a2e8f86c: invocation-scoped read-only receipt with fresh ACL, server-only trusted App context slot, request Host/X-Forwarded-Host rejected as identity, and Project reads fail-closed without ingress proof. Durable Project-shared writes remain denied. Continue direct T-01–T-23 acceptance; do not mark SPEC-269 complete.",
+    "resume_point": "PR #462 merged at 3cc834f874361c64307631d1371f9109957c8ed3. Prompt memory rejects unknown Projects and cross-Project or inconsistent owner/project retrieval results after fresh canonical ACL validation; the exact merged SHA passed 7 focused files (102 tests, 11 TODO). Continue direct T-01–T-23 acceptance; component fixtures are not direct acceptance.",
     "waiting_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing."
   },
   "continuation_assessment": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 14,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
+    "canonical_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:02:51Z"
+    "integrated_at": "2026-10-10T07:10:44Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -272,6 +272,104 @@
     "reconciliation_confidence": {
       "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
       "value": "HIGH"
+    },
+    "requirements": {
+      "REQ-372BF7A1AC2F": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L10077"
+        ],
+        "authority_source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L10077",
+        "blocker": {
+          "detail": "Assessment is advisory only and has no trusted runtime caller to dispatch bounded recovery through SPEC-224.",
+          "kind": "RECOVERY_ADAPTER_PENDING",
+          "next_action": "Add an opt-in adapter at the existing recovery boundary; do not add another orchestrator or let evaluation own execution authority.",
+          "owner": "SPEC-224 orchestrator integration owner with SPEC-269 runtime owner"
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e0887ced8c5775269a74fcb1850713b09aad2396",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "path": "apps/web/server/services/agentRuntime/progressIntelligence.ts",
+            "pr": "https://github.com/naibarn/SmartSpecPro/pull/460",
+            "scope": "Detects STALLED and exposes an advisory recoveryRecommended flag; does not invoke SPEC-224 recovery.",
+            "source_sha": "e0887ced8c5775269a74fcb1850713b09aad2396"
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Integrate the advisory with the existing SPEC-224 recovery adapter after trusted runtime input wiring; preserve bounded retry and independent verification.",
+        "requirement_digest": "5e7bb924870ea854ad3fdef477e415ba8ca70e7006b9ce986942a3fee662ea5c",
+        "requirement_id": "REQ-372BF7A1AC2F",
+        "requirement_text": "The StallDetector SHALL trigger recovery rather than merely mark `STALLED`.",
+        "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "cases": [
+              "stalled classification",
+              "recovery recommendation advisory",
+              "recovery in progress classification"
+            ],
+            "failed": 0,
+            "passed": 16,
+            "result": "PASS",
+            "source_sha": "e0887ced8c5775269a74fcb1850713b09aad2396",
+            "test": "node --experimental-strip-types behavioral smoke"
+          }
+        ],
+        "verification_method": "Focused Node TypeScript-strip behavioral smoke against the integrated implementation; the package Vitest suite remains pending because vitest is unavailable in the shared checkout."
+      },
+      "REQ-7D96F41A5DB4": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L8475"
+        ],
+        "authority_source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L8475",
+        "blocker": {
+          "detail": "The pure assessment is available, but no production caller supplies live heartbeat/evidence/wait inputs; live stall detection is not established.",
+          "kind": "RUNTIME_INTEGRATION_PENDING",
+          "next_action": "Wire trusted progress inputs from an existing production runtime/task projection and verify it with focused tests.",
+          "owner": "SPEC-269 runtime integration owner"
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "e0887ced8c5775269a74fcb1850713b09aad2396",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "path": "apps/web/server/services/agentRuntime/progressIntelligence.ts",
+            "pr": "https://github.com/naibarn/SmartSpecPro/pull/460",
+            "scope": "Adds deterministic multi-signal stall classification requiring stale heartbeat and stale evidence, with task-profile windows and valid wait/in-flight operation suppression. No live event producer is wired.",
+            "source_sha": "e0887ced8c5775269a74fcb1850713b09aad2396"
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Wire trusted heartbeat/evidence/wait inputs into a production runtime projection; keep the requirement open until the integrated caller is verified.",
+        "requirement_digest": "772eeb2a0db6b73bc93bc15c23c3b785820dcbd710fc5ea6e3ce37484330427f",
+        "requirement_id": "REQ-7D96F41A5DB4",
+        "requirement_text": "28. no-heartbeat active work cannot remain silently “WORKING” forever;",
+        "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "cases": [
+              "stale heartbeat and evidence stall",
+              "active external operation suppresses stall",
+              "valid dependency wait suppresses stall",
+              "task profile window",
+              "input immutability"
+            ],
+            "failed": 0,
+            "passed": 16,
+            "result": "PASS",
+            "source_sha": "e0887ced8c5775269a74fcb1850713b09aad2396",
+            "test": "node --experimental-strip-types behavioral smoke"
+          }
+        ],
+        "verification_method": "Focused Node TypeScript-strip behavioral smoke against the integrated implementation; the package Vitest suite remains pending because vitest is unavailable in the shared checkout."
+      }
     }
   },
   "reconciliation": {
@@ -346,7 +444,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 2,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -355,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:03:55.355708Z",
+  "updated_at": "2026-10-10T07:12:50.883956Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -394,11 +492,18 @@
         "scope": "PR #457: unknown/noncanonical Project IDs fail closed at prompt memory boundary; canonical ACL revalidation retained; global/personal memory preserved; 2 Vitest files / 51 tests passed on exact merged SHA. Component/service evidence only; not direct T-01–T-23 or deployed ingress acceptance.",
         "source_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
         "status": "PASS"
+      },
+      {
+        "kind": "TARGETED_REGRESSION",
+        "path": "orchestra/tasks/smartaihub-marathon-r4-20261010/progress.md",
+        "scope": "PR #462: prompt boundary admits only memory/rules scoped to the freshly authorized canonical Project; rejects cross-Project and inconsistent owner/project bindings while preserving global/personal results. Exact merged SHA focused suite: 7 files, 102 passed, 11 TODO. Component evidence only; not direct T-01–T-23 acceptance.",
+        "source_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
+    "sha": "3cc834f874361c64307631d1371f9109957c8ed3",
     "status": "PARTIAL",
     "task_regressions": []
   }
