@@ -34,7 +34,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fc9e18afc5e271e8b898829efdf90eb20929bd3d",
+    "expected_canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 25,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fc9e18afc5e271e8b898829efdf90eb20929bd3d",
+    "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:57:37Z"
+    "integrated_at": "2026-10-10T08:54:36Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -369,6 +369,32 @@
           }
         ],
         "verification_method": "Focused Node TypeScript-strip behavioral smoke against the integrated implementation; the package Vitest suite remains pending because vitest is unavailable in the shared checkout."
+      },
+      "REQ-BD45C492BD57": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L18182"
+        ],
+        "authority_source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md#L18182",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [],
+        "implementation_status": "PARTIAL",
+        "next_action": "Complete the remaining T-01–T-23 cases, especially authoritative App-private isolation, genuine authenticated ingress producer, cross-tenant and two-App isolation, and provider-context acceptance; do not promote this partial matrix to PASS.",
+        "requirement_digest": "ffade486e05993b97f76e27be94ac23661e069be0ae19e2f175b762aa265156b",
+        "requirement_id": "REQ-BD45C492BD57",
+        "requirement_text": "At minimum cover: one user across two apps/projects; two users in one authorized shared project; same conversation changing Project A→B; no project and ambiguous project; near-equal semantic candidates; picker confirmation; pending memory promotion after confirmation; Chat embedded in two apps with distinct host IDs; App clone, transfer, and lease; ACL revocation during a conversation; and legacy memory cutover with replay/idempotency. Tests must prove no cross-app/project/tenant private-memory leakage and bind evidence to the exact implementation SHA.",
+        "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/persisted-acceptance-b3267af.json",
+          "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/persisted-memory-context-integration-e147.json",
+          "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/postintegration-memory-acceptance-eec4503.json"
+        ],
+        "verification_method": "Direct persisted acceptance on the canonical prompt-building path using a new disposable PostgreSQL 17 target; no external provider call."
       }
     }
   },
@@ -444,7 +470,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 2,
+    "applicable": 3,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -453,7 +479,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:15:19.892113Z",
+  "updated_at": "2026-10-10T08:55:52.716352Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
