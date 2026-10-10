@@ -13,6 +13,7 @@ pub mod external_agent;
 pub mod identity;
 pub mod journal;
 pub mod leasing;
+pub mod moli_isolation;
 pub mod process;
 pub mod protocol;
 pub mod resource_admission;
