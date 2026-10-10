@@ -497,20 +497,29 @@ export async function executeUnified(
       temperature: temperatureHint,
     };
 
-    if (projectAuthorizationBinding) {
-      const teamContext = request.teamContext;
-      if (!teamContext) throw new TeamProjectProviderAuthorizationError();
-      await revalidateTeamProjectProviderContextBinding(
-        projectAuthorizationBinding,
-        {
-          tenantId: request.tenantId,
-          roomId: teamContext.roomId,
-          teamId: teamContext.teamId,
-          userId: request.userId,
-          runId: teamContext.runId,
-        },
-      );
-    }
+    const providerBinding = projectAuthorizationBinding;
+    const beforeProviderRequest = providerBinding
+      ? async () => {
+          const teamContext = request.teamContext;
+          if (!teamContext) throw new TeamProjectProviderAuthorizationError();
+          await revalidateTeamProjectProviderContextBinding(
+            providerBinding,
+            {
+              tenantId: request.tenantId,
+              roomId: teamContext.roomId,
+              teamId: teamContext.teamId,
+              userId: request.userId,
+              runId: teamContext.runId,
+            },
+          );
+        }
+      : undefined;
+
+    // Keep the pre-executor check, then carry the same server-owned guard to
+    // the actual LLM/media request boundary. The second check catches revocation
+    // during model routing or executor preparation.
+    await beforeProviderRequest?.();
+    executorInput.beforeProviderRequest = beforeProviderRequest;
 
     const executorResult = await executor.execute(executorInput);
 

@@ -24,6 +24,7 @@ vi.mock("../promptEnhancementService", () => ({
 import { VideoGenerationExecutor } from "../executors/videoExecutor";
 import { mediaGenerationService } from "../mediaGenerationService";
 import { executeSkillLlmWithFallback } from "../skillModelFallback";
+import { TeamProjectProviderAuthorizationError } from "../teamProjectProviderAuthorization";
 
 const mockGenerateVideo = vi.mocked(mediaGenerationService.generateVideoAsync);
 const mockExecuteSkillLlmWithFallback = vi.mocked(executeSkillLlmWithFallback);
@@ -157,6 +158,20 @@ describe("VideoGenerationExecutor", () => {
       expect(result.mediaJob).toBeUndefined();
     });
 
+    it("fails closed before media dispatch when project authority is revoked", async () => {
+      const denied = new TeamProjectProviderAuthorizationError();
+      const beforeProviderRequest = vi.fn(async () => {
+        throw denied;
+      });
+
+      await expect(
+        executor.execute(makeInput({ beforeProviderRequest })),
+      ).rejects.toBe(denied);
+
+      expect(beforeProviderRequest).toHaveBeenCalledOnce();
+      expect(mockGenerateVideo).not.toHaveBeenCalled();
+    });
+
     it("classifies missing provider configuration as a non-generic media error", async () => {
       mockGenerateVideo.mockRejectedValue(
         new Error("503: KNPLabs not configured. Please add API key in Admin > Media Providers."),
@@ -192,8 +207,10 @@ describe("VideoGenerationExecutor", () => {
     });
 
     it("runs the video prompt skill before dispatching raw auto-team context", async () => {
+      const beforeProviderRequest = vi.fn(async () => {});
       const input = makeInput({
         channel: "team_room",
+        beforeProviderRequest,
         dynamicParams: {
           prompt: [
             "[OBJECTIVE]",
@@ -210,6 +227,7 @@ describe("VideoGenerationExecutor", () => {
         expect.objectContaining({
           skillSlug: "video-prompt-engineer",
           userId: 1,
+          beforeProviderRequest,
         }),
       );
       expect(mockGenerateVideo).toHaveBeenCalledWith(

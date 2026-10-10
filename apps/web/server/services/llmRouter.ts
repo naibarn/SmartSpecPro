@@ -863,6 +863,8 @@ function getAuditMessageContentLength(content: unknown): number {
 export async function executeWithFallback(params: {
   model: string;
   messages: Message[];
+  /** Server-owned authority check immediately before each provider request. */
+  beforeProviderRequest?: () => Promise<void>;
   stream: boolean;
   userId: number;
   tenantId?: string;
@@ -915,6 +917,9 @@ export async function executeWithFallback(params: {
     if (!params.tenantId) {
       return { type: "error", error: "Worker Local LLM requires tenant context", statusCode: 403 };
     }
+    // A worker-local model is a durable dispatch boundary rather than an HTTP
+    // provider call. Revalidate before persisting the request to the control plane.
+    await params.beforeProviderRequest?.();
     try {
       const queued = await queueWorkerLlmInvoke({
         tenantId: params.tenantId,
@@ -1048,6 +1053,8 @@ export async function executeWithFallback(params: {
     // SEPARATE block scope from `try {}`) can always clear it — see the
     // two-phase-timeout doc comment at the fetch call site.
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    let removeAbortListener: (() => void) | undefined;
+    let providerAuthorizationFailed = false;
 
     try {
       const requestApiStyle = candidate.apiStyle ?? "chat-completions";
@@ -1253,9 +1260,9 @@ export async function executeWithFallback(params: {
         },
       });
 
-      const fetchStart = Date.now();
       const abortController = new AbortController();
       const abortFromCaller = () => abortController.abort(params.signal?.reason);
+      removeAbortListener = () => params.signal?.removeEventListener("abort", abortFromCaller);
       if (params.signal?.aborted) {
         abortFromCaller();
       } else {
@@ -1305,7 +1312,6 @@ export async function executeWithFallback(params: {
        */
       const headersTimeoutMs = params.timeoutMs ?? 120_000; // unchanged default
       const bodyTimeoutMs = params.timeoutMs ?? 600_000; // NEW — was unbounded
-      timeoutHandle = setTimeout(() => abortController.abort(), headersTimeoutMs);
       const serializedRequestBody = JSON.stringify(requestBody);
       await notifyRawPayload({
         phase: "request_started",
@@ -1316,6 +1322,19 @@ export async function executeWithFallback(params: {
         model: candidate.providerModelId,
         requestBody: serializedRequestBody,
       });
+      try {
+        // This callback is outside the provider-error fallback semantics: a
+        // revoked binding is authorization failure, never a network failure.
+        await params.beforeProviderRequest?.();
+      } catch (error) {
+        providerAuthorizationFailed = true;
+        throw error;
+      }
+      if (params.signal?.aborted) {
+        return { type: "error", error: "LLM request cancelled before dispatch", statusCode: 499 };
+      }
+      const fetchStart = Date.now();
+      timeoutHandle = setTimeout(() => abortController.abort(), headersTimeoutMs);
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -1328,7 +1347,6 @@ export async function executeWithFallback(params: {
       // Headers arrived — switch from the headers-phase deadline to the
       // body-phase deadline (do NOT just clear-and-leave-unbounded).
       clearTimeout(timeoutHandle);
-      params.signal?.removeEventListener("abort", abortFromCaller);
       timeoutHandle = setTimeout(() => abortController.abort(), bodyTimeoutMs);
       const networkMs = Date.now() - fetchStart;
 
@@ -1662,6 +1680,9 @@ export async function executeWithFallback(params: {
 
       // Continue to next candidate
     } catch (err: any) {
+      if (providerAuthorizationFailed) {
+        throw err;
+      }
       recordFailure(candidate.providerId, "network_error");
       const networkMessage = compactText(
         sanitizeProviderErrorMessage(
@@ -1730,6 +1751,7 @@ export async function executeWithFallback(params: {
       // return, `fallback_required` return, thrown error, or falling through
       // to the next candidate. See the two-phase-timeout doc comment above.
       clearTimeout(timeoutHandle);
+      removeAbortListener?.();
       if (attemptOutcome === "unknown") {
         await notify({
           phase: "terminal", providerCallId, attemptOrdinal: i,

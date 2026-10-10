@@ -138,6 +138,8 @@ export interface UnifiedExecutionResult {
 
 export interface ExecutorInput {
   messages: Array<{ role: string; content: string | unknown[] }>;
+  /** Server-owned authority revalidation before each provider consumes team context. */
+  beforeProviderRequest?: () => Promise<void>;
   executionPolicy: Record<string, unknown>;
   extraBodyParams?: Record<string, unknown>;
   enableThinking?: boolean;

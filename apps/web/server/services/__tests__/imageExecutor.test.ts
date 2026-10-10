@@ -18,6 +18,7 @@ vi.mock("../executors/executorRegistry", () => ({
 
 import { ImageGenerationExecutor } from "../executors/imageExecutor";
 import { mediaGenerationService } from "../mediaGenerationService";
+import { TeamProjectProviderAuthorizationError } from "../teamProjectProviderAuthorization";
 
 const mockGenerateImage = vi.mocked(mediaGenerationService.generateImage);
 
@@ -165,6 +166,20 @@ describe("ImageGenerationExecutor", () => {
       // Error is sanitized — no raw provider details exposed
       expect(result.error).toBe("media_generation_failed");
       expect(result.mediaJob).toBeUndefined();
+    });
+
+    it("fails closed before media dispatch when project authority is revoked", async () => {
+      const denied = new TeamProjectProviderAuthorizationError();
+      const beforeProviderRequest = vi.fn(async () => {
+        throw denied;
+      });
+
+      await expect(
+        executor.execute(makeInput({ beforeProviderRequest })),
+      ).rejects.toBe(denied);
+
+      expect(beforeProviderRequest).toHaveBeenCalledOnce();
+      expect(mockGenerateImage).not.toHaveBeenCalled();
     });
 
     it("passes auditContext with traceId when present", async () => {
