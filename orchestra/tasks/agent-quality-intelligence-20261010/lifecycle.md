@@ -66,4 +66,7 @@ Completion invariants:
   no_stale_required_gate: false
   review_converged: true
   final_verify_fresh: false
-  checkpoint_classification: CHECKPOINT_PROMOTED_PARTIAL_PENDING_INTEGRATION
+  checkpoint_classification: CHECKPOINT_PROMOTED_PARTIAL
+  integrated_sha: e0887ced8c5775269a74fcb1850713b09aad2396
+  post_integration_vitest: PENDING (vitest missing in shared checkout)
+  canonical_user_workspace_convergence: PENDING (registered checkout is dirty/stale; preserve without overwrite)
