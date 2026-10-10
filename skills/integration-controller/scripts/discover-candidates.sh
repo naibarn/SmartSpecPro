@@ -42,6 +42,57 @@ mapfile -t refs < <(
     done | sort -u
 )
 
+# Worktree state is independent of branch refs. Collect it once and reuse it
+# below; rescanning every worktree for every ref is quadratic.
+declare -A WORKTREE_STATUS_BY_PATH=()
+declare -A WORKTREE_DIRTY_PATHS_BY_PATH=()
+declare -A BRANCH_WORKTREE_STATE=()
+declare -A BRANCH_WORKTREE_PATHS=()
+declare -A BRANCH_WORKTREE_DIRTY_PATHS=()
+mapfile -t worktree_lines < <(git worktree list --porcelain)
+wt_path=""; wt_branch=""
+record_worktree() {
+  [[ -n "$wt_path" ]] || return 0
+  local wt_status wt_state wt_dirty_paths existing_state branch_key
+  if wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null)"; then
+    if [[ -n "$wt_status" ]]; then
+      wt_state=DIRTY
+      wt_dirty_paths="$(format_dirty_paths "$wt_status")"
+    else
+      wt_state=CLEAN
+      wt_dirty_paths=""
+    fi
+  else
+    wt_state=UNAVAILABLE
+    wt_dirty_paths=""
+  fi
+  WORKTREE_STATUS_BY_PATH["$wt_path"]="$wt_state"
+  WORKTREE_DIRTY_PATHS_BY_PATH["$wt_path"]="$wt_dirty_paths"
+  if [[ "$wt_branch" == refs/heads/* ]]; then
+    branch_key="$wt_branch"
+    existing_state="${BRANCH_WORKTREE_STATE[$branch_key]:-NONE}"
+    if [[ "$wt_state" == DIRTY || "$existing_state" == DIRTY ]]; then
+      BRANCH_WORKTREE_STATE["$branch_key"]=DIRTY
+    elif [[ "$wt_state" == UNAVAILABLE || "$existing_state" == UNAVAILABLE ]]; then
+      BRANCH_WORKTREE_STATE["$branch_key"]=UNAVAILABLE
+    else
+      BRANCH_WORKTREE_STATE["$branch_key"]=CLEAN
+    fi
+    BRANCH_WORKTREE_PATHS["$branch_key"]="${BRANCH_WORKTREE_PATHS[$branch_key]:+${BRANCH_WORKTREE_PATHS[$branch_key]};}$wt_path"
+    if [[ -n "$wt_dirty_paths" ]]; then
+      BRANCH_WORKTREE_DIRTY_PATHS["$branch_key"]="${BRANCH_WORKTREE_DIRTY_PATHS[$branch_key]:+${BRANCH_WORKTREE_DIRTY_PATHS[$branch_key]};}$wt_dirty_paths"
+    fi
+  fi
+}
+for line in "${worktree_lines[@]}"; do
+  case "$line" in
+    "worktree "*) record_worktree; wt_path="${line#worktree }"; wt_branch="" ;;
+    "branch "*) wt_branch="${line#branch }" ;;
+    "") record_worktree; wt_path=""; wt_branch="" ;;
+  esac
+done
+record_worktree
+
 for ref in "${refs[@]}"; do
   [[ -n "$ref" ]] || continue
   branch="${ref#refs/heads/}"
@@ -68,35 +119,16 @@ for ref in "${refs[@]}"; do
     changed_paths=UNKNOWN
   fi
 
-  worktree_state=NONE
-  worktree_paths=""
-  dirty_paths=""
-  wt_path=""; wt_branch=""
-  flush_wt() {
-    if [[ -n "$wt_path" && "$wt_branch" == "refs/heads/$branch" ]]; then
-      wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)"
-      if [[ -n "$wt_status" ]]; then
-        worktree_state=DIRTY
-        wt_dirty_paths="$(format_dirty_paths "$wt_status")"
-        if [[ -z "$dirty_paths" ]]; then dirty_paths="$wt_dirty_paths"; else dirty_paths+=";$wt_dirty_paths"; fi
-      elif [[ "$worktree_state" != "DIRTY" ]]; then
-        worktree_state=CLEAN
-      fi
-      if [[ -z "$worktree_paths" ]]; then worktree_paths="$wt_path"; else worktree_paths="$worktree_paths;$wt_path"; fi
-    fi
-  }
-  while IFS= read -r line; do
-    case "$line" in
-      "worktree "*) flush_wt; wt_path="${line#worktree }"; wt_branch="" ;;
-      "branch "*) wt_branch="${line#branch }" ;;
-      "") flush_wt; wt_path=""; wt_branch="" ;;
-    esac
-  done < <(git worktree list --porcelain; echo)
+  worktree_state="${BRANCH_WORKTREE_STATE[refs/heads/$branch]:-NONE}"
+  worktree_paths="${BRANCH_WORKTREE_PATHS[refs/heads/$branch]:-}"
+  dirty_paths="${BRANCH_WORKTREE_DIRTY_PATHS[refs/heads/$branch]:-}"
 
   case "$branch" in
     *rescue*|*quarantine*) action=REVIEW_RESCUE_OR_QUARANTINE ;;
     *)
-      if [[ "$relation" != "ALREADY_CANONICAL" && "$changed_paths" == "0" && "$worktree_state" == "DIRTY" ]]; then
+      if [[ "$worktree_state" == "UNAVAILABLE" ]]; then
+        action=OWNER_AND_PATH_UNAVAILABLE
+      elif [[ "$relation" != "ALREADY_CANONICAL" && "$changed_paths" == "0" && "$worktree_state" == "DIRTY" ]]; then
         action=PRESERVE_DIRTY_THEN_CLASSIFY_BRANCH_DELTA
       elif [[ "$relation" != "ALREADY_CANONICAL" && "$changed_paths" == "0" ]]; then
         action=DUPLICATE_OR_SUPERSEDED
@@ -120,10 +152,24 @@ for ref in "${refs[@]}"; do
 done
 
 # Report every worktree separately, including detached and non-Codex worktrees
-# that cannot be associated with a branch candidate above.
-while IFS= read -r line; do
+# that cannot be associated with a branch candidate. Reuse the cached status
+# so each worktree receives exactly one status query.
+wt_path=""; wt_head=""; wt_branch="DETACHED"
+print_worktree() {
+  [[ -n "$wt_path" ]] || return 0
+  local wt_state wt_dirty_paths action
+  wt_state="${WORKTREE_STATUS_BY_PATH[$wt_path]:-UNAVAILABLE}"
+  wt_dirty_paths="${WORKTREE_DIRTY_PATHS_BY_PATH[$wt_path]:-}"
+  action=CLASSIFY_BEFORE_CLEANUP
+  [[ "$wt_state" == DIRTY ]] && action=PRESERVE_AND_CLASSIFY
+  [[ "$wt_state" == UNAVAILABLE ]] && action=OWNER_AND_PATH_UNAVAILABLE
+  printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t%s\t%s\t%s\n' \
+    "$wt_path" "$wt_head" "$wt_branch" "$wt_state" "$wt_path" "$wt_dirty_paths" "$action"
+}
+for line in "${worktree_lines[@]}"; do
   case "$line" in
     "worktree "*)
+      print_worktree
       wt_path="${line#worktree }"
       wt_head=""
       wt_branch="DETACHED"
@@ -131,18 +177,9 @@ while IFS= read -r line; do
     "HEAD "*) wt_head="${line#HEAD }" ;;
     "branch "*) wt_branch="${line#branch }" ;;
     "")
-      [[ -n "$wt_path" ]] || continue
-      wt_status="$(git -C "$wt_path" status --porcelain=v1 --untracked-files=all 2>/dev/null || true)"
-      wt_dirty_paths="$(format_dirty_paths "$wt_status")"
-      if [[ -n "$wt_status" ]]; then
-        wt_state=DIRTY
-      else
-        wt_state=CLEAN
-      fi
-      printf 'WORKTREE\t%s\t%s\t%s\t-\t-\t-\t-\t-\t-\t%s\t%s\t%s\t%s\n' \
-        "$wt_path" "$wt_head" "$wt_branch" "$wt_state" "$wt_path" "$wt_dirty_paths" \
-        "$([[ "$wt_state" == DIRTY ]] && echo PRESERVE_AND_CLASSIFY || echo CLASSIFY_BEFORE_CLEANUP)"
+      print_worktree
       wt_path=""
       ;;
   esac
-done < <(git worktree list --porcelain; echo)
+done
+print_worktree
