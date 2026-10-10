@@ -63,7 +63,7 @@
     "next_action": "Obtain accountable Security and Media/Runtime owner disposition for optional dynamic ONNX and signed WSL2 runtime; provision an approved non-production MCP endpoint/token and SPEC-308 synthetic authenticated test identity. Then fetch/merge latest origin/main into the existing PR branches, rerun exact required gates, and merge in order #405 -> #403 -> #399 only after each mandatory gate and authority requirement passes. Keep all requirement criteria and OPEN states unchanged until their actual evidence is complete.",
     "next_ready_workunit": "WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION",
     "reactivation_predicate": "Resume when a verifiable external condition changes: Security/Media-Runtime owner records disposition for residual runtime scope; authorized MCP endpoint/token and test identity are provisioned; or a SPEC-308 non-production endpoint and persistent synthetic tenant are authorized. Before any merge, fetch current main, refresh that PR, and rerun only gates invalidated by code changes.",
-    "resume_point": "origin/main latest observed d5360f494dc23e339d20d730532318fb49964774. PR heads: #399 8bd3b68787726df4ab2fbda2f203676dec816852, #403 c15821cadfe3f2657ffc154d45a85f87b43f7caa, #405 16633e89c89a5f93c9330dd86d87828c37d2bf4a. #399 mocked UI CI 38036424904 passes 146 component + 23 Chromium tests; #399 contract/live run 38036424826 fails due unintegrated #403 fixture repair and absent live credentials. #403 exact run 38036405341 had missing live authority and contract checks pending; preceding completed run 38035926445 passed 118 MCP tests, targeted diagnostics and 23-file scan, while high audit failed. #405 run 38036383876 passes full audit and 18/238 compatibility tests; Linux render evidence is bound to 9355ad930, with package/lock unchanged through 16633e89. No PR merged; integration.canonical_sha remains null; keep all 66 requirements OPEN.",
+    "resume_point": "Latest origin/main observed b632010eb7c01c68ab1f864f07fd4abad474aba9. PRs are OPEN: #399 head 04a99d6fc8cdaf25d12b571bdc017012019a558b (Handoff-only after UI source 8bd3b687); #403 head c15821cadfe3f2657ffc154d45a85f87b43f7caa; #405 head 16633e89c89a5f93c9330dd86d87828c37d2bf4a. PRs are based through 085cc0420fd5b16b9e9189489f1cb97158aff732 and require latest-main refresh before merge. UI simulation passes 146+23 on 8bd3b687. #399 contract/live fail as documented; #403 local-equivalent MCP CI tests, diagnostics and secret scan pass but high audit/live fail; #405 full production audit and 18/238 compatibility pass, with owner disposition unresolved. No PR merged; integration.canonical_sha remains null; keep the 66 row states OPEN.",
     "waiting_predicate": "Security/Media-Runtime owner disposition is recorded; MCP_SMOKE_URL/TOKEN are set through approved secret management for an authorized non-production identity; SPEC-308 non-production app endpoint and test tenant are authorized. Until then, PR #405 is audit-green but owner-gated, #403 is test-green but dependency-audit/live-gated, and #399 is browser-green but MCP/live-acceptance-gated."
   },
   "continuation_assessment": {
@@ -118,7 +118,7 @@
     "rationale": "The user explicitly directed implementation of the current canonical SPEC-308; existing Bell and Chat/Feedback owners provide the intended integration boundary.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 68,
+  "generation": 69,
   "identity": {
     "canonical_path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
     "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
@@ -2167,26 +2167,26 @@
     "unresolved": 66
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:08:14.729453Z",
+  "updated_at": "2026-10-10T08:11:14.879555Z",
   "verification": {
     "baseline_issues": [
-      "Latest origin/main observed at 2026-10-10: d5360f494dc23e339d20d730532318fb49964774. PR #399/#403/#405 heads 8bd3b68787726df4ab2fbda2f203676dec816852, c15821cadfe3f2657ffc154d45a85f87b43f7caa, and 16633e89c89a5f93c9330dd86d87828c37d2bf4a respectively; these heads currently contain main only through 085cc0420fd5b16b9e9189489f1cb97158aff732. Refresh before any merge.",
-      "#399 browser run 38036424904 on exact head 8bd3b68787726df4ab2fbda2f203676dec816852 passes 8 component files / 146 tests and 23 mocked Chromium cases. This is not authenticated acceptance.",
-      "#399 MCP contract run 38036424826 fails 44/120 because this PR branch still has tests importing retired agencyMcpService; the existing fixture repair is in #403 and has not integrated. Its live smoke fails closed because MCP_SMOKE_URL/TOKEN are absent.",
-      "#403 run 38036405341 has live smoke failure for absent MCP_SMOKE_URL/TOKEN; contract-and-security was still running at MCP-targeted check when recorded. Prior completed run 38035926445 on the preceding refreshed head passed 118 MCP tests, scoped MCP diagnostics and 23-file secret scan (0 findings), but audit failed on 85 baseline advisories (1 Critical, 38 High) because #405 is not integrated.",
-      "#405 run 38036383876 on head 16633e89c89a5f93c9330dd86d87828c37d2bf4a passed full pnpm audit --prod (no known vulnerabilities) and compatibility regressions (18 files / 238 tests). Exact Linux CLI render on 9355ad930c321f1213fe61c607b8f0cfdd6fb93d passed; package.json and lockfile are unchanged through 16633e89. The optional ONNX installer and separately signed WSL2 runtime at HyperFrames 0.7.5 still require the existing Security + Media/Runtime disposition.",
-      "All 66 ledger rows remain OPEN; no integrated SHA, authenticated non-production acceptance, or production readiness is established."
+      "Latest origin/main observed at 2026-10-10 is b632010eb7c01c68ab1f864f07fd4abad474aba9. PR heads #399=04a99d6fc8cdaf25d12b571bdc017012019a558b, #403=c15821cadfe3f2657ffc154d45a85f87b43f7caa, #405=16633e89c89a5f93c9330dd86d87828c37d2bf4a; each currently has base 085cc0420fd5b16b9e9189489f1cb97158aff732. Refresh from latest main before any merge.",
+      "#399 UI source SHA 8bd3b68787726df4ab2fbda2f203676dec816852 passed 8 component files / 146 tests and 23 mocked Chromium cases in run 38036424904. PR head 04a99d6fc is a Handoff-only commit; a repeat browser run is queued. No authenticated acceptance is claimed.",
+      "#399 run 38036868113 on head 04a99d6fc fails 44/120 MCP focused tests because this PR branch does not contain #403 fixture repair and the retired agencyMcpService tests remain in this branch; live smoke fails because MCP_SMOKE_URL/TOKEN are absent. Do not restore retired code or duplicate #403 repair into #399.",
+      "#403 run 38036405341 on exact head c15821cad passes 118/118 MCP tests, reports no MCP-targeted diagnostics through check:mcp146 (the wrapped full tsc exits 2 for unrelated baseline diagnostics), and the 23-file MCP secret scan has 0 findings. The mandatory high-threshold production audit fails on 85 baseline findings (1 Critical, 38 High); live smoke fails because MCP_SMOKE_URL/TOKEN are absent.",
+      "#405 run 38036383876 on exact head 16633e89 passes full pnpm audit --prod (no known vulnerabilities) and dependency compatibility regressions (18 files / 238 tests). Linux render on 9355ad930 passes; package.json and pnpm-lock.yaml are unchanged through 16633e89. Existing Security + Media/Runtime disposition for optional ONNX and signed WSL2 runtime remains required.",
+      "All 66 requirements remain individually OPEN. No integration SHA, live authenticated acceptance, or production readiness is established."
     ],
     "evidence": [
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38036424904",
-      "https://github.com/naibarn/SmartSpecPro/actions/runs/38036424826",
+      "https://github.com/naibarn/SmartSpecPro/actions/runs/38036868113",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38036405341",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38036383876",
       "https://github.com/naibarn/SmartSpecPro/actions/runs/38035926445",
       "orchestra/tasks/WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION-20261009/evidence/hyperframes-08143-linux-candidate-20261010.md",
       "specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation/evidence.md"
     ],
-    "freshness": "EXACT_PR_HEAD_UI_SIMULATION_PASS; MOCKED_ONLY; MCP_CONTRACT_DEPENDENCY_FAIL; LIVE_AUTHORITY_MISSING; NO_CANONICAL_INTEGRATION",
+    "freshness": "SPEC308_UI_SOURCE_8bd3b687_EXACT_BROWSER_PASS_146_COMPONENT_23_CHROMIUM; DOCUMENTATION_ONLY_HANDOFF_COMMIT_04a99d6fc; MCP_TEST_DEPENDENCY_FAIL; LIVE_AUTHORITY_MISSING; NO_CANONICAL_INTEGRATION",
     "required_profiles": [
       "quick"
     ],
