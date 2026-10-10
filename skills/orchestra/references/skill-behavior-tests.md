@@ -116,7 +116,7 @@ Level 2 behavioral validation:
   sub-agent fanout limits, and final stop reasons
 - lifecycle scenarios require `completion-loop.md`, a durable gap ledger, stale-gate
   invalidation, earliest-stage backtracking, and a typed resume pointer
-- all 37 autonomous completion scenarios pass the deterministic lifecycle decision kernel
+- all 38 autonomous completion scenarios pass the deterministic lifecycle decision kernel
 - recoverable asset/claim/provider/evidence/policy gaps choose substitution, downgrade,
   verification, or repair rather than terminal blocking
 - resource waits and unrelated dirty work preserve state while ready independent work continues

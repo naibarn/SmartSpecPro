@@ -19,7 +19,7 @@ SCENARIOS = ROOT / "skills/orchestra/references/autonomous-completion-scenarios.
 class AutonomousCompletionPolicyTests(unittest.TestCase):
     def test_required_scenarios(self):
         cases = json.loads(SCENARIOS.read_text(encoding="utf-8"))["scenarios"]
-        self.assertEqual(37, len(cases))
+        self.assertEqual(38, len(cases))
         for case in cases:
             with self.subTest(case=case["id"]):
                 self.assertEqual(case["expected"], decide_closure(case))

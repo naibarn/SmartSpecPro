@@ -37,6 +37,7 @@
     {"id":"AC-34","event":"missing_optional_runner","facts":{"compatible_fallback":false,"verification_optional":false},"expected":"BLOCKED_CAPABILITY"},
     {"id":"AC-35","event":"unauthorized_action","facts":{"independent_work":false},"expected":"DENY_AND_WAIT_AUTHORITY"},
     {"id":"AC-36","event":"concurrent_writer_collision","facts":{"isolated_workspace_available":false},"expected":"SERIALIZE_OWNED_PATH"},
-    {"id":"AC-37","event":"exact_sha_build","facts":{"source_sha":"sha-other","requested_sha":"sha-1","canonical_ancestor":false,"canonical_advanced":false},"expected":"REJECT_SOURCE"}
+    {"id":"AC-37","event":"exact_sha_build","facts":{"source_sha":"sha-other","requested_sha":"sha-1","canonical_ancestor":false,"canonical_advanced":false},"expected":"REJECT_SOURCE"},
+    {"id":"AC-38","event":"dependency_wake_resume","facts":{"predicate_revalidated":false,"outbox_available":true},"expected":"KEEP_WAITING_WITH_FALLBACK"}
   ]
 }

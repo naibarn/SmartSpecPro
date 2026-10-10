@@ -26,7 +26,7 @@ Scope: strengthen the existing Orchestra and shared lifecycle policy; no paralle
 | Missing Safari/Windows runner | Use compatible fallback; otherwise keep optional verification pending or report required capability blocked. |
 | Resource contention | Queue heavy verification and continue ready independent work. Never classify resource failure as code failure. |
 | Interrupted worker | Resume from durable capsule after canonical reconciliation. |
-| Dependency wake | Revalidate predicate and enqueue idempotent continuation through outbox; otherwise remain waiting with reconciliation fallback. |
+| Dependency wake | Revalidate predicate and enqueue idempotent continuation through outbox; an invalid predicate remains waiting with reconciliation fallback. |
 | Dirty canonical checkout | Preserve it and use an exact-SHA isolated verification workspace when available. |
 | Concurrent writer collision | Isolate worktrees or serialize the owned path. Never modify another owner's worktree. |
 | Unauthorized action | Deny the action while continuing authorized independent work. |
@@ -40,7 +40,7 @@ Windows, Safari, worker/outbox, GitHub protection, build, deployment, or UAT run
 
 - Linux installed root: `/home/dev/.codex/skills`; matching skill directories were present during audit.
 - Repository mirrors: `python3 skills/runtime_sync.py verify` passed at the unmodified base. After candidate edits it reports the expected `lifecycle_policy.py` difference; no installed files were changed.
-- Compatibility suite: 13 focused tests passed in 10 consecutive QA rounds; 37 unique lifecycle scenarios and Python syntax checks passed.
+- Compatibility suite: 13 focused tests passed in 10 consecutive QA rounds; 38 unique lifecycle scenarios and Python syntax checks passed.
 - Windows Codex installation: `INSTALLED_VERSION_UNVERIFIED` (not accessible from this Linux host).
 - Active Codex app-server processes were present. This candidate was not published to installed skills and does not restart or alter those sessions.
 - Hooks, triggers and device runners are host/application configuration, not established by the repository mirror check. They remain unverified unless a host exposes them directly.
