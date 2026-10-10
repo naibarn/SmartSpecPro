@@ -1,0 +1,36 @@
+{
+  "profile": "quick",
+  "revision": "06068ae9db6c433b9a10353f71f2becdba18218e",
+  "source_revision": "feeb1a95df207239a72901dc413ce9a27e808af9",
+  "source_pr": "https://github.com/naibarn/SmartSpecPro/pull/503",
+  "commands": [
+    {
+      "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/__tests__/feature192TimerPolicy.test.ts server/jobs/__tests__/feature186JobTypes.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
+      "result": "PASS",
+      "test_files": 6,
+      "tests": 30
+    },
+    {
+      "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/jobControlPlane.test.ts -t '<replay/idempotency/lease/duplicate callback contracts>'",
+      "result": "PASS",
+      "test_files": 1,
+      "tests": 7,
+      "skipped": 66
+    },
+    {"command": "git diff --check", "result": "PASS"},
+    {"command": "python3 -m tools.spec_handoff --repo . validate --all", "result": "PASS"}
+  ],
+  "not_run": [
+    {
+      "profile": "integration",
+      "command": "actual non-production AutoTeam recovery UAT",
+      "result": "NOT_RUN",
+      "reason": "No DATABASE_URL or API_BASE_URL is configured. Local PostgreSQL accepts connections but requires credentials unavailable to this session; the known smartspec_test schema is stale. No migration was run."
+    }
+  ],
+  "scope": "The added test proves three consecutive no_action evaluations for one unchanged running state suppress that run while a separate ready run is still enqueued. The worker control-plane subset covers replay, idempotency, stale lease fencing, duplicate callback/outbox and late completion.",
+  "remaining": [
+    "Actual asynchronous provider dispatch/completion and useful-work recovery are not demonstrated end to end.",
+    "Restart/resume, actual provider/resource/dependency waits, and failure injection still require a dedicated current-schema non-production UAT environment."
+  ]
+}
