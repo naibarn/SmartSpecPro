@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
+    "expected_canonical_sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Run focused contract suites and database-backed worker_jobs/outbox UAT when a provisioned package runner and non-production environment are available; verify external scheduler dispatch; gather actual recovery and post-action state-change evidence.",
-    "next_ready_workunit": "Post-integration focused worker-job contract tests, non-production recovery UAT, and scheduler-source verification",
-    "reactivation_predicate": null,
-    "resume_point": "PR #485 merged at 085cc0420fd5b16b9e9189489f1cb97158aff732. Task Control now receives only terminal AgentRuntime milestones with friendly summaries; streamed deltas remain archived but are not projected into the user timeline. Async evaluation remains PARTIAL until Vitest, stale-lease DB verification, and non-production recovery UAT pass.",
-    "waiting_predicate": null
+    "next_action": "Provision a non-production worker_jobs/outbox environment and externally managed Cloudflare schedule invocation; run end-to-end recovery UAT and capture a real run state change. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED until requirement/authority reconciliation is evidenced.",
+    "next_ready_workunit": "Non-production worker_jobs/outbox AutoTeam recovery UAT and external Cloudflare scheduler invocation verification",
+    "reactivation_predicate": "Resume UAT when the sanctioned non-production worker environment and scheduler invocation evidence are available.",
+    "resume_point": "At canonical SHA 00877132d21f2a675a143aefd6db679ef51fc66a, focused AgentRuntime/AutoTeam recovery contracts pass (26 tests) and stale-lease fencing contracts pass (3 tests). In-repo source audit found no production Cloudflare cron caller. Async evaluation remains PARTIAL; non-production UAT and external scheduler invocation are still unverified.",
+    "waiting_predicate": "A sanctioned non-production database/API worker environment and accessible external Cloudflare schedule configuration/invocation evidence are available."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -48,7 +48,7 @@
         "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
       }
     ],
-    "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+    "next_action": "Next executable WorkUnit: run non-production worker_jobs/outbox AutoTeam recovery UAT, capture actual recovery state change, and verify the externally managed Cloudflare scheduler invocation. Keep broader SPEC-277 authority/relevance and 429 requirement reconciliation unresolved.",
     "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
     "residual_requirements": [
       "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -126,7 +126,7 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
+    "canonical_sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "integrated": true,
     "integrated_at": "2026-10-10T07:59:39Z"
   },
@@ -165,7 +165,7 @@
           "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
         }
       ],
-      "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+      "next_action": "Next executable WorkUnit: run non-production worker_jobs/outbox AutoTeam recovery UAT, capture actual recovery state change, and verify the externally managed Cloudflare scheduler invocation. Keep broader SPEC-277 authority/relevance and 429 requirement reconciliation unresolved.",
       "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
       "residual_requirements": [
         "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -353,7 +353,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:00:24.084532Z",
+  "updated_at": "2026-10-10T08:05:52.347342Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -408,6 +408,29 @@
         "profile": "integration",
         "result": "SKIPPED",
         "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts server/services/__tests__/agentRuntimeTraceService.test.ts server/services/__tests__/skillRuntimeOpenAiAgents.test.ts",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a",
+        "test_files": 4,
+        "tests": 26
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/jobControlPlane.test.ts -t \"fences stale workers|fences a reporter|late completion after cancellation or fencing\"",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a",
+        "skipped": 67,
+        "tests": 3
+      },
+      {
+        "command": "rg -n 'createOccurrence\\(|team\\.run_recovery|startAutoTeamRecoverySweep|CloudflareCronSchedulerAdapter' --glob '!node_modules/**' --glob '!**/node_modules/**' .",
+        "profile": "quick",
+        "reason": "Source audit found timer policy/inventory and adapter implementation/tests, but no production createOccurrence caller or team.run_recovery dispatch source; external Cloudflare schedule remains unverified.",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a"
       }
     ],
     "freshness": "FRESH",
@@ -415,7 +438,7 @@
       "quick",
       "integration"
     ],
-    "sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
+    "sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "status": "PARTIAL",
     "task_regressions": []
   }
