@@ -423,13 +423,15 @@ class TestInferSessionState:
             }],
             "integrated": True, "required_verification_fresh": True,
             "task_regressions_clear": True, "authority_resolved": True,
-            "canonical_verified": True, "user_workspace_converged": True,
-            "worktree_lifecycle_settled": True,
+            "canonical_verified": True, "user_workspace_converged": False,
+            "worktree_lifecycle_settled": False,
         }
         (mock_implementation_dir / "deep_implement_config.json").write_text(json.dumps(config))
         closed = infer_session_state(mock_sections_dir, mock_implementation_dir, mock_git_repo)
         assert closed["mode"] == "complete"
         assert closed["outcome_complete"] is True
+        assert closed["development_complete"] is False
+        assert closed["workspace_convergence_complete"] is False
 
 
 class TestDetectSectionReviewState:

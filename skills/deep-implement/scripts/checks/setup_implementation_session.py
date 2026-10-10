@@ -501,7 +501,7 @@ def infer_session_state(
     all_sections = config.get("sections", [])
     outcome = config.get("outcome", {})
     policy = load_shared_lifecycle_policy(config.get("plugin_root"))
-    outcome_complete = policy.outcome_complete(
+    outcome_complete = policy.implementation_outcome_complete(
         outcome.get("requirements", []),
         integrated=outcome.get("integrated", False),
         required_verification_fresh=outcome.get("required_verification_fresh", False),
@@ -512,8 +512,10 @@ def infer_session_state(
         accepted=outcome.get("accepted", False),
         authority_resolved=outcome.get("authority_resolved", False),
         canonical_verified=outcome.get("canonical_verified", False),
-        user_workspace_converged=outcome.get("user_workspace_converged", False),
-        worktree_lifecycle_settled=outcome.get("worktree_lifecycle_settled", False),
+    )
+    workspace_convergence_complete = (
+        outcome.get("user_workspace_converged", False)
+        and outcome.get("worktree_lifecycle_settled", False)
     )
 
     if len(checkpointed) >= len(all_sections) and all_sections:
@@ -522,6 +524,8 @@ def infer_session_state(
             "checkpointed_sections": checkpointed,
             "completed_sections": checkpointed,
             "outcome_complete": outcome_complete,
+            "development_complete": outcome_complete and workspace_convergence_complete,
+            "workspace_convergence_complete": workspace_convergence_complete,
             "resume_from": None,
             "resume_section_state": None
         }

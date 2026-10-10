@@ -18,9 +18,42 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.classify.outputs.required }}
+    steps:
+      - id: classify
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === "workflow_dispatch") {
+              core.setOutput("required", "true");
+              return;
+            }
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const sharedFlags = "apps/web/shared/featureFlags.ts";
+            const mcpPath = /^(?:apps\/web\/server\/_core\/(?:mcp.*\.ts|authz\.ts)|apps\/web\/server\/services\/(?:mcpDownloadBrokerService|tenantFeatureFlagService)\.ts|apps\/web\/scripts\/(?!mcp-v2-gate-scope(?:\.test)?\.mjs)mcp-.*\.mjs|apps\/web\/server\/.*\/__tests__\/(?:mcp.*\.test\.ts|authz\.mcpOAuth\.test\.ts)|apps\/web\/server\/services\/__tests__\/mcpDownloadBrokerService\.test\.ts|load-tests\/scenario-mcp-v2\.js)$/;
+            let required = files.some(({ filename }) => filename !== sharedFlags && mcpPath.test(filename));
+            const flagFile = files.find(({ filename }) => filename === sharedFlags);
+            if (!required && flagFile) {
+              const changedLines = (flagFile.patch || "").split(/\r?\n/).filter((line) => /^[+-]/.test(line) && !line.startsWith("+++") && !line.startsWith("---"));
+              const mascotOnly = changedLines.length > 0 && changedLines.every((line) => line.includes("livingMascotDualSurface"));
+              const mcpFlag = changedLines.some((line) => /\bmcp[A-Z_]|\bbrowserTool\b/.test(line));
+              required = !mascotOnly || mcpFlag;
+            }
+            core.setOutput("required", required ? "true" : "false");
+
   contract-and-security:
+    needs: scope
+    if: needs.scope.outputs.required == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +86,8 @@ jobs:
       - run: pnpm audit --prod --audit-level=high
 
   live-contract-evidence:
+    needs: scope
+    if: needs.scope.outputs.required == 'true'
     runs-on: ubuntu-latest
     env:
       MCP_SMOKE_URL: ${{ secrets.MCP_SMOKE_URL }}

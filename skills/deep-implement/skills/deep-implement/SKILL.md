@@ -342,6 +342,13 @@ Triage the review findings and interview the user only on important items:
 2. Interview user only on items that need their input
 3. Write transcript with both interview decisions AND auto-fixes to `{code_review_dir}/section-NN-interview.md`
 
+Do not hold routine, in-scope implementation or finalization for another
+session's dirty/active worktree. Close the implementation outcome when its
+requirements, exact canonical integration, fresh required checks, and explicit
+acceptance/deployment obligations pass. Report canonical user-workspace
+convergence and temporary-worktree settlement separately when still required;
+never claim those milestones without evidence.
+
 The goal is a useful conversation, not a comprehensive audit.
 
 ### Step 8: Apply Fixes
