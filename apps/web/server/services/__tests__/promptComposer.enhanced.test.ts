@@ -13,14 +13,12 @@ import {
 vi.mock("../personaService", () => ({
   buildPersonaPromptSegments: vi.fn(),
 }));
-vi.mock("../chatService", () => ({
-  getEntityMemories: vi.fn(),
-}));
 vi.mock("../scopedMemoryService", () => ({
   retrieveForPrompt: vi.fn(),
   getRuleMemories: vi.fn(),
 }));
 vi.mock("../memoryService", () => ({
+  getEntityMemoriesForContext: vi.fn(),
   getProjectSummaries: vi.fn(),
 }));
 
@@ -104,13 +102,12 @@ vi.mock("../../db", () => ({
 }));
 
 import { buildPersonaPromptSegments } from "../personaService";
-import { getEntityMemories } from "../chatService";
 import { retrieveForPrompt, getRuleMemories } from "../scopedMemoryService";
-import { getProjectSummaries } from "../memoryService";
+import { getEntityMemoriesForContext, getProjectSummaries } from "../memoryService";
 import { composePrompt, estimateTokens } from "../promptComposer";
 
 const mockBuildPersonaSegments = vi.mocked(buildPersonaPromptSegments);
-const mockGetEntityMemories = vi.mocked(getEntityMemories);
+const mockGetEntityMemoriesForContext = vi.mocked(getEntityMemoriesForContext);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
 const mockGetRuleMemories = vi.mocked(getRuleMemories);
 const mockGetProjectSummaries = vi.mocked(getProjectSummaries);
@@ -179,7 +176,7 @@ describe("composePrompt -- persona segments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockGetRuleMemories.mockResolvedValue([]);
     mockGetProjectSummaries.mockResolvedValue([]);
   });
@@ -287,7 +284,7 @@ describe("composePrompt -- tenant isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
   });
 
   it("should throw when room does not belong to tenant", async () => {
@@ -303,7 +300,7 @@ describe("composePrompt -- objective injection safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
   });
 
   it("should use user role with delimiters for objective", async () => {
@@ -333,8 +330,15 @@ describe("composePrompt -- entity memory injection", () => {
     mockGetProjectSummaries.mockResolvedValue([]);
   });
 
-  it("should call getEntityMemories with run initiator userId", async () => {
-    mockGetEntityMemories.mockResolvedValue([]);
+  it("loads only global entity memories when no authorized project is available", async () => {
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        entityType: "preference",
+        entityName: "global preference",
+        facts: ["global-memory-safe"],
+        projectId: null,
+      } as any,
+    ]);
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
       styleInstructions: null,
@@ -342,17 +346,20 @@ describe("composePrompt -- entity memory injection", () => {
     });
     setupMockDb({});
 
-    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
 
-    expect(mockGetEntityMemories).toHaveBeenCalledWith(
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
       42,
       undefined,
+      null,
       "persona-1"
     );
+    const prompt = result.messages.map(message => message.content).join("\n");
+    expect(prompt).toContain("global-memory-safe");
   });
 
   it("should include entity memories as system message", async () => {
-    mockGetEntityMemories.mockResolvedValue([
+    mockGetEntityMemoriesForContext.mockResolvedValue([
       {
         entityType: "preference",
         entityName: "coding style",
@@ -383,7 +390,7 @@ describe("composePrompt -- entity memory injection", () => {
   });
 
   it("should skip entity memories when initiatedByUserId not provided", async () => {
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
       styleInstructions: null,
@@ -393,11 +400,11 @@ describe("composePrompt -- entity memory injection", () => {
 
     await composePrompt(baseInput);
 
-    expect(mockGetEntityMemories).not.toHaveBeenCalled();
+    expect(mockGetEntityMemoriesForContext).not.toHaveBeenCalled();
   });
 
-  it("should handle getEntityMemories failure gracefully", async () => {
-    mockGetEntityMemories.mockRejectedValue(new Error("DB error"));
+  it("should handle scoped entity memory lookup failure gracefully", async () => {
+    mockGetEntityMemoriesForContext.mockRejectedValue(new Error("DB error"));
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
       styleInstructions: null,
@@ -414,7 +421,7 @@ describe("composePrompt -- history sanitization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockGetRuleMemories.mockResolvedValue([]);
     mockGetProjectSummaries.mockResolvedValue([]);
   });
@@ -464,7 +471,7 @@ describe("composePrompt -- history sanitization", () => {
 describe("composePrompt -- workspace memory parity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockGetRuleMemories.mockResolvedValue([]);
     mockGetProjectSummaries.mockResolvedValue([]);
     mockBuildPersonaSegments.mockReturnValue({
@@ -563,6 +570,14 @@ describe("composePrompt -- workspace memory parity", () => {
 
   it("allows canonical project context for an active member in the current tenant", async () => {
     mockRetrieveForPrompt.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        entityType: "project",
+        entityName: "Project fact",
+        facts: ["authorized-project-memory"],
+        projectId: "project-canonical",
+      } as any,
+    ]);
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
     });
@@ -576,14 +591,39 @@ describe("composePrompt -- workspace memory parity", () => {
       },
     ]);
 
-    await composePrompt({ ...baseInput, initiatedByUserId: 99 });
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 99 });
 
     expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
       initiatedByUserId: 99,
       projectId: "project-canonical",
     });
     expect(mockGetProjectSummaries).toHaveBeenCalledWith("project-canonical", 99, 3);
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
+      99,
+      undefined,
+      "project-canonical",
+      "persona-1",
+    );
+    expect(result.messages.map(message => message.content).join("\n")).toContain(
+      "authorized-project-memory",
+    );
     expect(mockLeftJoinCalls).toBe(1);
+  });
+
+  it("keeps entity memory global-only for an unregistered legacy project ID", async () => {
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
+    });
+    tableResults.set(canonicalProjects, []);
+
+    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
+      42,
+      undefined,
+      null,
+      "persona-1",
+    );
   });
 
   it("omits scoped context when membership is revoked during prompt assembly", async () => {
@@ -605,9 +645,16 @@ describe("composePrompt -- workspace memory parity", () => {
     mockGetProjectSummaries.mockResolvedValue([
       { id: 1, summary: "project-summary-secret" },
     ] as any);
-    mockGetEntityMemories.mockImplementation(async () => {
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
       tableResults.set(canonicalProjectMemberships, []);
-      return [];
+      return [
+        {
+          entityType: "project",
+          entityName: "Project secret",
+          facts: ["project-entity-secret"],
+          projectId: "project-canonical",
+        } as any,
+      ];
     });
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
@@ -627,6 +674,7 @@ describe("composePrompt -- workspace memory parity", () => {
     expect(prompt).not.toContain("project-memory-secret");
     expect(prompt).not.toContain("project-rule-secret");
     expect(prompt).not.toContain("project-summary-secret");
+    expect(prompt).not.toContain("project-entity-secret");
     expect(mockLeftJoinCalls).toBe(1);
   });
 
@@ -646,7 +694,7 @@ describe("composePrompt -- workspace memory parity", () => {
         matchType: "keyword",
       } as any,
     ]);
-    mockGetEntityMemories.mockImplementation(async () => {
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
       tableResults.set(canonicalProjects, projectRows);
       return [];
     });
@@ -681,7 +729,7 @@ describe("composePrompt -- workspace memory parity", () => {
         matchType: "keyword",
       } as any,
     ]);
-    mockGetEntityMemories.mockImplementation(async () => {
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
       tableResults.set(canonicalProjects, [
         {
           projectId: "legacy-project-id",
@@ -769,7 +817,7 @@ describe("composePrompt -- workspace memory parity", () => {
         matchType: "keyword",
       } as any,
     ]);
-    mockGetEntityMemories.mockImplementation(async () => {
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
       tableResults.set(canonicalProjects, []);
       return [];
     });
@@ -810,7 +858,7 @@ describe("composePrompt -- workspace memory parity", () => {
       mockGetProjectSummaries.mockResolvedValue([
         { id: 1, summary: "project-summary-secret" },
       ] as any);
-      mockGetEntityMemories.mockImplementation(async () => {
+      mockGetEntityMemoriesForContext.mockImplementation(async () => {
         queryFailureTable = canonicalProjectMemberships;
         return [];
       });

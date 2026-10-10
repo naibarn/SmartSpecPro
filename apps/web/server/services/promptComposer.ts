@@ -23,8 +23,7 @@ import {
   type MemorySearchResult,
 } from "./scopedMemoryService";
 import { buildPersonaPromptSegments, type PersonaPromptSegments } from "./personaService";
-import { getEntityMemories } from "./chatService";
-import { getProjectSummaries } from "./memoryService";
+import { getEntityMemoriesForContext, getProjectSummaries } from "./memoryService";
 import {
   estimateTokens,
   truncateToTokenBudget,
@@ -373,6 +372,10 @@ export async function composePrompt(
     // authorization are rechecked after prompt assembly.
     projectContextProjectIdForRevalidation = resolvedProjectId;
   }
+  // Legacy room IDs do not establish project authorization for entity memory.
+  // Only a canonical project with an active member may widen retrieval beyond
+  // the user's global memory.
+  const entityMemoryProjectId = projectWasCanonicalAtStart ? authorizedProjectId : null;
   const promptQuery = input.currentMessage?.trim() || input.objective;
 
   // Pre-fetch history count for adaptive budget detection
@@ -601,9 +604,10 @@ export async function composePrompt(
     budget.entityMemory >= ENTITY_MEMORY_FLOOR
   ) {
     try {
-      const entityMems = await getEntityMemories(
+      const entityMems = await getEntityMemoriesForContext(
         input.initiatedByUserId,
         undefined,
+        entityMemoryProjectId,
         profile.personaId ?? null,
       );
       if (entityMems.length > 0) {
@@ -611,8 +615,10 @@ export async function composePrompt(
           .map((em) => `- [${em.entityType}] ${em.entityName}: ${em.facts.join("; ")}`)
           .join("\n");
         const truncatedEntity = truncateToTokenBudget(entityContent, budget.entityMemory);
-        messages.push({ role: "system", content: `Known facts about the user:\n${truncatedEntity}` });
-        usedTokens += estimateTokens(truncatedEntity);
+        addScopedContextMessage(
+          { role: "system", content: `Known facts about the user:\n${truncatedEntity}` },
+          estimateTokens(truncatedEntity),
+        );
       }
     } catch (err) {
       console.warn("Entity memory retrieval failed:", err);
