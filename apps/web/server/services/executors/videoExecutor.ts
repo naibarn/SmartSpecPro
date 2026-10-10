@@ -6,6 +6,7 @@ import type {
   RouteDecision,
 } from "./types";
 import { registerExecutor } from "./executorRegistry";
+import { TeamProjectProviderAuthorizationError } from "../teamProjectProviderAuthorization";
 import { extractUserPrompt } from "./mediaExecutorHelpers";
 import { executeSkillLlmWithFallback } from "../skillModelFallback";
 import { parsePromptResponse } from "../promptEnhancementService";
@@ -94,6 +95,7 @@ async function refineAutoTeamVideoPromptIfNeeded(
   const result = await executeSkillLlmWithFallback({
     skillSlug: "video-prompt-engineer",
     userId: input.userId,
+    beforeProviderRequest: input.beforeProviderRequest,
     executionPolicy: {
       modelId: null,
       allowFreeModels: true,
@@ -171,6 +173,7 @@ export class VideoGenerationExecutor implements CapabilityExecutor {
       if (!userToken) {
         console.warn("[videoExecutor] No server token available — media API call may fail");
       }
+      await input.beforeProviderRequest?.();
       const task = await mediaGenerationService.generateVideoAsync(
         request,
         userToken,
@@ -196,6 +199,7 @@ export class VideoGenerationExecutor implements CapabilityExecutor {
           : undefined,
       };
     } catch (err: any) {
+      if (err instanceof TeamProjectProviderAuthorizationError) throw err;
       console.error("[videoExecutor] dispatch failed:", err);
       return {
         success: false,

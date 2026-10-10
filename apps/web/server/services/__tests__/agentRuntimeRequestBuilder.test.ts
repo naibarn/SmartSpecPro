@@ -155,6 +155,65 @@ describe("buildAgentRuntimeRequest", () => {
     });
   });
 
+  it("preserves the canonical TeamRoom provider binding beside the context pack", async () => {
+    const binding = {
+      version: "team-room-provider-context.v1" as const,
+      tenantId: "tenant-1",
+      roomId: "room-1",
+      teamId: "team-1",
+      userId: 42,
+      runId: "run-1",
+      historyScope: "run" as const,
+      projectId: "project-1",
+      projectAuthority: "canonical-member" as const,
+    };
+    const request = await buildAgentRuntimeRequest(
+      {
+        ...makeInput(),
+        surface: "skill",
+        originSurface: "team",
+        entryPoint: "team_step",
+        runId: "run-1",
+        contextPackRequest: {
+          surface: "team_room",
+          request: { tenantId: "tenant-1", teamContext: { roomId: "room-1" } },
+        } as any,
+      },
+      {
+        buildContextPack: vi.fn().mockResolvedValue({
+          contextPack: { ...makeContextPack(), surface: "team_room" },
+          teamProjectProviderBinding: binding,
+        }),
+        loadSkillCapabilityManifests: vi.fn().mockResolvedValue({
+          candidates: [],
+          diagnostics: [],
+        }),
+      },
+    );
+
+    expect(request.teamProjectProviderBinding).toEqual(binding);
+  });
+
+  it("fails closed for Team steps when context construction returns no provider binding", async () => {
+    await expect(
+      buildAgentRuntimeRequest(
+        {
+          ...makeInput(),
+          surface: "skill",
+          originSurface: "team",
+          entryPoint: "team_step",
+        },
+        {
+          buildContextPack: vi.fn().mockResolvedValue(makeContextPack()),
+          loadSkillCapabilityManifests: vi.fn().mockResolvedValue({
+            candidates: [],
+            diagnostics: [],
+          }),
+        },
+      ),
+    ).rejects.toThrow("team_project_provider_binding_required");
+  });
+
   it("carries the active persona snapshot for persona-bound chat turns", async () => {
     const request = await buildAgentRuntimeRequest(
       {
@@ -232,6 +291,17 @@ describe("buildAgentRuntimeRequest", () => {
             surface: "team_room",
           },
           contextPackRef: "context-pack:team:req-builder-1",
+          teamProjectProviderBinding: {
+            version: "team-room-provider-context.v1",
+            tenantId: "tenant-1",
+            roomId: "room-1",
+            teamId: "team-1",
+            userId: 42,
+            runId: null,
+            historyScope: "room",
+            projectId: null,
+            projectAuthority: "room-only",
+          },
         }),
         loadSkillCapabilityManifests: vi.fn().mockResolvedValue({
           candidates: [],

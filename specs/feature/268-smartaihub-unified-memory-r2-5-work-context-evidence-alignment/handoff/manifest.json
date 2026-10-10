@@ -32,9 +32,9 @@
   "blockers": [
     {
       "class": "IMPLEMENTATION",
-      "id": "SPEC268_RUNTIME_ACCEPTANCE",
-      "next_action": "Implement and test additive runtime integration.",
-      "root_cause": "R2.6 defines contract but does not implement runtime resolver/context binding or direct acceptance suite."
+      "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
+      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+      "root_cause": "Team-room entity memory is now scoped to a canonical project with active membership, but durable room-to-project binding and source-level persistent-memory provenance remain unverified. Project reassignment is blocked for new conversation updates; historical conversations may have been retargeted before that guard and messages carry no project scope."
     },
     {
       "class": "NOT_STARTED",
@@ -44,14 +44,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "expected_canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
     "expected_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93"
   },
   "continuation": {
-    "next_action": null,
-    "next_ready_workunit": null,
+    "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+    "next_ready_workunit": "SPEC268_TEAM_ROOM_CANONICAL_PROJECT_BINDING",
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "PR #434 and #436 are integrated at origin/main SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0. The former SPEC-269 worktree remains unchanged at 08426194c743381a20ee45b46c6741a9d2eb9af0; the R2 ownership record found no active owner/session/lease/process, and its delta was not reused because it removes PR #426 protections. Current prompt composition uses scoped entity memory only for canonical active membership and revalidates before insertion. Conversation project reassignment is now rejected; historical message-level project provenance remains unknown. Do not enable team-room persistent memory.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -64,13 +64,14 @@
         "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
       }
     ],
-    "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+    "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
     "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
     "residual_requirements": [
-      "R2.6 runtime MemoryContext integration",
-      "Project resolution receipt/state integration with SPEC-302",
+      "Authorized durable canonical project binding for team rooms",
+      "Source-level tenant/project provenance for persistent team-room memory",
       "Cross-App/Project isolation acceptance",
-      "Legacy Chat memory migration evidence"
+      "Legacy Chat memory migration evidence",
+      "Production migration and cutover under SPEC-295 authority"
     ]
   },
   "dependencies": {
@@ -146,7 +147,7 @@
     "rationale": "R2.5 was byte-recovered from an attached SpecR7 archive and independently verified against the prior session import record; R2.6 is an additive canonical amendment. Runtime and production acceptance remain open.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 8,
+  "generation": 14,
   "identity": {
     "canonical_path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md",
     "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
@@ -163,17 +164,31 @@
     "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "f5b9ab56d35dc07b95ef621cc69cc49002aaf4c4",
+      "3c1671e2cba1984ebe649f1d975e283949f72185",
+      "cd39cbd48007f1d436b20873d1e0bfa5e616a0b4",
+      "343a885ec61b3e52ef785b644228c71115ec2262"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/services/teamProjectProviderAuthorization.ts",
+      "apps/web/server/services/executors/contextBuilder.ts",
+      "apps/web/server/services/contextEngineAdapter.ts",
+      "apps/web/server/services/unifiedOrchestrator.ts",
+      "apps/web/server/services/__tests__/teamProjectProviderAuthorization.test.ts",
+      "apps/web/server/services/__tests__/contextBuilder.test.ts",
+      "apps/web/server/services/__tests__/contextEngineAdapter.test.ts",
+      "apps/web/server/services/__tests__/unifiedOrchestrator.test.ts"
+    ],
+    "started": true,
+    "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "canonical_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:22:30Z"
+    "integrated_at": "2026-10-10T00:33:03Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -217,13 +232,14 @@
           "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md"
         }
       ],
-      "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
       "rationale": "Authority source recovery and R2.6 contract are complete; runtime implementation and acceptance obligations are not.",
       "residual_requirements": [
-        "R2.6 runtime MemoryContext integration",
-        "Project resolution receipt/state integration with SPEC-302",
+        "Authorized durable canonical project binding for team rooms",
+        "Source-level tenant/project provenance for persistent team-room memory",
         "Cross-App/Project isolation acceptance",
-        "Legacy Chat memory migration evidence"
+        "Legacy Chat memory migration evidence",
+        "Production migration and cutover under SPEC-295 authority"
       ]
     },
     "disposition": {
@@ -257,6 +273,41 @@
     "reconciliation_confidence": {
       "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
       "value": "HIGH"
+    },
+    "requirements": {
+      "REQ-CF6F62069953": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8782"
+        ],
+        "authority_source": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/spec.md#L8782",
+        "blocker": "Project-scoped entity memory and future conversation project reassignment are constrained, but durable room-to-project binding and persistent source provenance remain open. Historical conversations may have been retargeted before the guard; messages lack project-level provenance, so their original scope cannot be inferred. App-switch isolation and downstream provider-use boundaries remain separate obligations.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          "apps/web/server/services/promptComposer.ts (PR #426; merge SHA 1d970c5a3925bf8f8f32516005d2a9be7bb67ae8)",
+          "apps/web/server/services/__tests__/promptComposer.enhanced.test.ts",
+          "apps/web/server/services/promptComposer.ts (PR #434 and #436; merge SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0)",
+          "apps/web/server/services/chatService.ts (PR #434; project binding change rejected; merge SHA 224fa6cd8ce122ee178f3a6040c32269f0f814a0)"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.",
+        "requirement_digest": "ae9fd8a682a371e0f503342746785ac7d8ca888725481ef7f2aa4618e5123bde",
+        "requirement_id": "REQ-CF6F62069953",
+        "requirement_text": "An App switch MUST NOT expose another App's private memory. A Project switch MUST NOT expose another Project's private or shared memory. Shared Project memory requires current Project authorization and the policy for the selected memory class. Revocation MUST be rechecked at the read/write boundary, including during a long-lived conversation.",
+        "source_spec_digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "orchestra/tasks/implementation-marathon-20261010/test-design.md",
+          "https://github.com/naibarn/SmartSpecPro/pull/426",
+          "4 focused Vitest files / 79 tests passed on tree 341200801fce5a69d7a838069d9d6c08a9e95ee1, identical to origin/main 224fa6cd8ce122ee178f3a6040c32269f0f814a0",
+          "https://github.com/naibarn/SmartSpecPro/pull/434",
+          "https://github.com/naibarn/SmartSpecPro/pull/436"
+        ],
+        "verification_method": "Focused prompt-composer, context-builder, memory-persona, and conversation-binding tests; validate canonical tenant/project/member authorization and final prompt-context insertion. This is local source verification, not deployed-runtime acceptance."
+      }
     }
   },
   "reconciliation": {
@@ -312,7 +363,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 0,
+    "applicable": 1,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -321,14 +372,18 @@
     "unresolved": 1101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:25:29.743509Z",
+  "updated_at": "2026-10-10T00:34:05.993361Z",
   "verification": {
     "baseline_issues": [],
-    "evidence": [],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "evidence": [
+      "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment/evidence/provider-boundary-context-343a885.json"
+    ],
+    "freshness": "FRESH",
+    "required_profiles": [
+      "quick"
+    ],
+    "sha": "343a885ec61b3e52ef785b644228c71115ec2262",
+    "status": "PASS",
     "task_regressions": []
   }
 }

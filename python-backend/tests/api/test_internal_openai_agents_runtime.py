@@ -35,6 +35,17 @@ def _make_request_payload() -> dict[str, object]:
         "tenantId": "tenant_demo",
         "roomId": "room_demo",
         "runId": "run_demo",
+        "teamProjectProviderBinding": {
+            "version": "team-room-provider-context.v1",
+            "tenantId": "tenant_demo",
+            "roomId": "room_demo",
+            "teamId": "team_demo",
+            "userId": 42,
+            "runId": "run_demo",
+            "historyScope": "run",
+            "projectId": "project_demo",
+            "projectAuthority": "canonical-member",
+        },
         "messageId": "message_demo",
         "requestId": "request_demo",
         "idempotencyKey": "idem_demo",
@@ -170,6 +181,7 @@ def test_run_delegates_to_adapter_and_uses_gateway_token():
     assert mock_adapter.run.await_count == 1
     called_request = mock_adapter.run.await_args.args[0]
     assert called_request.requestId == "request_demo"
+    assert called_request.teamProjectProviderBinding.userId == 42
     assert mock_adapter.run.await_args.kwargs["gateway_attribution_token"] == "gateway-attribution-token"
 
 

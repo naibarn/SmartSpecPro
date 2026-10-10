@@ -5,6 +5,14 @@ import * as path from "node:path";
 process.env.JWT_SECRET ??=
   "test-jwt-secret-32-chars-minimum-1234567890";
 
+const {
+  mockCaptureTeamProjectProviderContextBinding,
+  mockRevalidateTeamProjectProviderContextBinding,
+} = vi.hoisted(() => ({
+  mockCaptureTeamProjectProviderContextBinding: vi.fn(),
+  mockRevalidateTeamProjectProviderContextBinding: vi.fn(),
+}));
+
 // Mocks must be set up before importing the module under test
 vi.mock("../skillRegistry", () => ({
   getSkillByIdAsync: vi.fn(),
@@ -44,6 +52,16 @@ vi.mock("../tenantFeatureFlagService", () => ({
 vi.mock("../unifiedOrchestrator", () => ({
   executeUnified: vi.fn(),
 }));
+vi.mock("../teamProjectProviderAuthorization", async importOriginal => {
+  const actual = await importOriginal<typeof import("../teamProjectProviderAuthorization")>();
+  return {
+    ...actual,
+    captureTeamProjectProviderContextBinding: (...args: unknown[]) =>
+      mockCaptureTeamProjectProviderContextBinding(...args),
+    revalidateTeamProjectProviderContextBinding: (...args: unknown[]) =>
+      mockRevalidateTeamProjectProviderContextBinding(...args),
+  };
+});
 
 import {
   executeTeamRunSkillTurn,
@@ -54,6 +72,18 @@ import { executeSkillLlmWithFallback } from "../skillModelFallback";
 import { composePrompt } from "../promptComposer";
 import { resolveSkillExecutionPolicy } from "../skillExecutionPolicy";
 import { calculateCreditsForLLMDynamic } from "../creditService";
+
+const teamProviderBinding = {
+  version: "team-room-provider-context.v1",
+  tenantId: "tenant-1",
+  roomId: "room-1",
+  teamId: "team-1",
+  userId: 1,
+  runId: "run-1",
+  historyScope: "run",
+  projectId: "project-1",
+  projectAuthority: "canonical-member",
+} as const;
 
 // --- Helpers ---
 
@@ -146,6 +176,8 @@ beforeEach(() => {
     makeFallbackResult() as any
   );
   vi.mocked(calculateCreditsForLLMDynamic).mockResolvedValue(5);
+  mockCaptureTeamProjectProviderContextBinding.mockResolvedValue(teamProviderBinding);
+  mockRevalidateTeamProjectProviderContextBinding.mockResolvedValue(undefined);
 });
 
 // --- Tests ---
@@ -156,6 +188,37 @@ describe("executeTeamRunSkillTurn", () => {
 
     expect(executeSkillLlmWithFallback).toHaveBeenCalledOnce();
     expect(result.content).toBe("Here is the article content.");
+  });
+
+  it("revalidates the captured TeamRoom binding before legacy provider attempts", async () => {
+    await executeTeamRunSkillTurn(makeInput());
+
+    const beforeProviderRequest =
+      vi.mocked(executeSkillLlmWithFallback).mock.calls[0][0].beforeProviderRequest;
+    expect(beforeProviderRequest).toBeTypeOf("function");
+    await beforeProviderRequest?.();
+
+    expect(mockRevalidateTeamProjectProviderContextBinding).toHaveBeenCalledWith(
+      teamProviderBinding,
+      {
+        tenantId: "tenant-1",
+        roomId: "room-1",
+        teamId: "team-1",
+        userId: 1,
+        runId: "run-1",
+      },
+    );
+  });
+
+  it("propagates a revoked TeamRoom binding from the legacy provider guard", async () => {
+    mockRevalidateTeamProjectProviderContextBinding.mockRejectedValueOnce(
+      new Error("revoked"),
+    );
+    await executeTeamRunSkillTurn(makeInput());
+
+    const beforeProviderRequest =
+      vi.mocked(executeSkillLlmWithFallback).mock.calls[0][0].beforeProviderRequest;
+    await expect(beforeProviderRequest?.()).rejects.toThrow("revoked");
   });
 
   it("should use detected skill's systemPrompt in messages", async () => {

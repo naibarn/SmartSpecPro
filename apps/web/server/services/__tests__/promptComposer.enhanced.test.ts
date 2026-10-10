@@ -13,20 +13,21 @@ import {
 vi.mock("../personaService", () => ({
   buildPersonaPromptSegments: vi.fn(),
 }));
-vi.mock("../chatService", () => ({
-  getEntityMemories: vi.fn(),
-}));
 vi.mock("../scopedMemoryService", () => ({
   retrieveForPrompt: vi.fn(),
   getRuleMemories: vi.fn(),
 }));
 vi.mock("../memoryService", () => ({
+  getEntityMemoriesForContext: vi.fn(),
   getProjectSummaries: vi.fn(),
 }));
 
 // Track table results for the mock DB
 const tableResults = new Map<unknown, unknown[]>();
 let queryFailureTable: unknown;
+let mockLeftJoinCalls = 0;
+let mockLeftJoinPrincipalId = "user:42";
+let mockLeftJoinTenantId = "tenant-1";
 
 function makeChain(resolvedValue: unknown[] = []) {
   const chain: any = {};
@@ -58,6 +59,34 @@ function makeChain(resolvedValue: unknown[] = []) {
       limit: vi.fn().mockResolvedValue(result),
     });
     innerChain.limit = vi.fn().mockResolvedValue(result);
+    innerChain.leftJoin = vi.fn().mockImplementation((joinedTable: unknown) => {
+      mockLeftJoinCalls += 1;
+      const joinedChain: any = {};
+      joinedChain.where = vi.fn().mockReturnValue({
+        limit: vi.fn().mockImplementation(() => {
+          if (queryFailureTable === table || queryFailureTable === joinedTable) {
+            return Promise.reject(new Error("sensitive query details"));
+          }
+          const projectRows = tableResults.get(table) ?? resolvedValue;
+          const membershipRows = tableResults.get(joinedTable) ?? [];
+          return Promise.resolve(
+            projectRows.map(project => {
+              const membership = membershipRows.find(
+                row =>
+                  row.principalId === mockLeftJoinPrincipalId &&
+                  (row.tenantId === undefined || row.tenantId === mockLeftJoinTenantId) &&
+                  (row.lifecycle === undefined || row.lifecycle === "ACTIVE"),
+              );
+              return {
+                ...project,
+                activeMembershipPrincipalId: membership?.principalId ?? null,
+              };
+            }),
+          );
+        }),
+      });
+      return joinedChain;
+    });
     if (table === queryFailureTable) {
       innerChain.limit = vi.fn().mockRejectedValue(new Error("sensitive query details"));
     }
@@ -73,13 +102,12 @@ vi.mock("../../db", () => ({
 }));
 
 import { buildPersonaPromptSegments } from "../personaService";
-import { getEntityMemories } from "../chatService";
 import { retrieveForPrompt, getRuleMemories } from "../scopedMemoryService";
-import { getProjectSummaries } from "../memoryService";
+import { getEntityMemoriesForContext, getProjectSummaries } from "../memoryService";
 import { composePrompt, estimateTokens } from "../promptComposer";
 
 const mockBuildPersonaSegments = vi.mocked(buildPersonaPromptSegments);
-const mockGetEntityMemories = vi.mocked(getEntityMemories);
+const mockGetEntityMemoriesForContext = vi.mocked(getEntityMemoriesForContext);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
 const mockGetRuleMemories = vi.mocked(getRuleMemories);
 const mockGetProjectSummaries = vi.mocked(getProjectSummaries);
@@ -102,6 +130,9 @@ function setupMockDb(opts: {
 }) {
   tableResults.clear();
   queryFailureTable = undefined;
+  mockLeftJoinCalls = 0;
+  mockLeftJoinPrincipalId = "user:42";
+  mockLeftJoinTenantId = "tenant-1";
 
   const room =
     opts.room === undefined
@@ -145,7 +176,7 @@ describe("composePrompt -- persona segments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockGetRuleMemories.mockResolvedValue([]);
     mockGetProjectSummaries.mockResolvedValue([]);
   });
@@ -253,7 +284,7 @@ describe("composePrompt -- tenant isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
   });
 
   it("should throw when room does not belong to tenant", async () => {
@@ -269,7 +300,7 @@ describe("composePrompt -- objective injection safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
   });
 
   it("should use user role with delimiters for objective", async () => {
@@ -299,8 +330,15 @@ describe("composePrompt -- entity memory injection", () => {
     mockGetProjectSummaries.mockResolvedValue([]);
   });
 
-  it("should call getEntityMemories with run initiator userId", async () => {
-    mockGetEntityMemories.mockResolvedValue([]);
+  it("loads only global entity memories when no authorized project is available", async () => {
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        entityType: "preference",
+        entityName: "global preference",
+        facts: ["global-memory-safe"],
+        projectId: null,
+      } as any,
+    ]);
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
       styleInstructions: null,
@@ -308,17 +346,20 @@ describe("composePrompt -- entity memory injection", () => {
     });
     setupMockDb({});
 
-    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
 
-    expect(mockGetEntityMemories).toHaveBeenCalledWith(
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
       42,
       undefined,
+      null,
       "persona-1"
     );
+    const prompt = result.messages.map(message => message.content).join("\n");
+    expect(prompt).toContain("global-memory-safe");
   });
 
   it("should include entity memories as system message", async () => {
-    mockGetEntityMemories.mockResolvedValue([
+    mockGetEntityMemoriesForContext.mockResolvedValue([
       {
         entityType: "preference",
         entityName: "coding style",
@@ -349,7 +390,7 @@ describe("composePrompt -- entity memory injection", () => {
   });
 
   it("should skip entity memories when initiatedByUserId not provided", async () => {
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
       styleInstructions: null,
@@ -359,11 +400,11 @@ describe("composePrompt -- entity memory injection", () => {
 
     await composePrompt(baseInput);
 
-    expect(mockGetEntityMemories).not.toHaveBeenCalled();
+    expect(mockGetEntityMemoriesForContext).not.toHaveBeenCalled();
   });
 
-  it("should handle getEntityMemories failure gracefully", async () => {
-    mockGetEntityMemories.mockRejectedValue(new Error("DB error"));
+  it("should handle scoped entity memory lookup failure gracefully", async () => {
+    mockGetEntityMemoriesForContext.mockRejectedValue(new Error("DB error"));
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
       styleInstructions: null,
@@ -380,7 +421,7 @@ describe("composePrompt -- history sanitization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockGetRuleMemories.mockResolvedValue([]);
     mockGetProjectSummaries.mockResolvedValue([]);
   });
@@ -430,7 +471,7 @@ describe("composePrompt -- history sanitization", () => {
 describe("composePrompt -- workspace memory parity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([]);
     mockGetRuleMemories.mockResolvedValue([]);
     mockGetProjectSummaries.mockResolvedValue([]);
     mockBuildPersonaSegments.mockReturnValue({
@@ -529,19 +570,321 @@ describe("composePrompt -- workspace memory parity", () => {
 
   it("allows canonical project context for an active member in the current tenant", async () => {
     mockRetrieveForPrompt.mockResolvedValue([]);
+    mockGetEntityMemoriesForContext.mockResolvedValue([
+      {
+        entityType: "project",
+        entityName: "Project fact",
+        facts: ["authorized-project-memory"],
+        projectId: "project-canonical",
+      } as any,
+    ]);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
+    });
+    mockLeftJoinPrincipalId = "user:99";
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      {
+        tenantId: "tenant-1",
+        lifecycle: "ACTIVE",
+        principalId: "user:99",
+      },
+    ]);
+
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 99 });
+
+    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
+      initiatedByUserId: 99,
+      projectId: "project-canonical",
+    });
+    expect(mockGetProjectSummaries).toHaveBeenCalledWith("project-canonical", 99, 3);
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
+      99,
+      undefined,
+      "project-canonical",
+      "persona-1",
+    );
+    expect(result.messages.map(message => message.content).join("\n")).toContain(
+      "authorized-project-memory",
+    );
+    expect(mockLeftJoinCalls).toBe(1);
+  });
+
+  it("keeps entity memory global-only for an unregistered legacy project ID", async () => {
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
+    });
+    tableResults.set(canonicalProjects, []);
+
+    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
+      42,
+      undefined,
+      null,
+      "persona-1",
+    );
+  });
+
+  it("omits scoped context when membership is revoked during prompt assembly", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "project",
+          memoryKind: "fact",
+          title: "Project secret",
+          content: "project-memory-secret",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      } as any,
+    ]);
+    mockGetRuleMemories.mockResolvedValue([
+      { id: "rule-1", title: "Project rule", content: "project-rule-secret" },
+    ] as any);
+    mockGetProjectSummaries.mockResolvedValue([
+      { id: 1, summary: "project-summary-secret" },
+    ] as any);
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
+      tableResults.set(canonicalProjectMemberships, []);
+      return [
+        {
+          entityType: "project",
+          entityName: "Project secret",
+          facts: ["project-entity-secret"],
+          projectId: "project-canonical",
+        } as any,
+      ];
+    });
     setupMockDb({
       room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
     });
     tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
-    tableResults.set(canonicalProjectMemberships, [{ principalId: "user:42" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      {
+        tenantId: "tenant-1",
+        lifecycle: "ACTIVE",
+        principalId: "user:42",
+      },
+    ]);
 
-    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const prompt = result.messages.map(message => message.content).join("\n");
 
-    expect(mockRetrieveForPrompt.mock.calls.at(-1)?.[8]).toEqual({
-      initiatedByUserId: 42,
-      projectId: "project-canonical",
+    expect(prompt).not.toContain("project-memory-secret");
+    expect(prompt).not.toContain("project-rule-secret");
+    expect(prompt).not.toContain("project-summary-secret");
+    expect(prompt).not.toContain("project-entity-secret");
+    expect(mockLeftJoinCalls).toBe(1);
+  });
+
+  it.each([
+    ["project is archived", [{ tenantId: "tenant-1", lifecycle: "ARCHIVED" }]],
+    ["project changes tenant", [{ tenantId: "tenant-2", lifecycle: "ACTIVE" }]],
+  ])("omits scoped context when %s during prompt assembly", async (_case, projectRows) => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "project",
+          memoryKind: "fact",
+          title: "Project secret",
+          content: "project-memory-secret",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      } as any,
+    ]);
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
+      tableResults.set(canonicalProjects, projectRows);
+      return [];
     });
-    expect(mockGetProjectSummaries).toHaveBeenCalledWith("project-canonical", 42, 3);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
+    });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      {
+        tenantId: "tenant-1",
+        lifecycle: "ACTIVE",
+        principalId: "user:42",
+      },
+    ]);
+
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+    const prompt = result.messages.map(message => message.content).join("\n");
+
+    expect(prompt).not.toContain("project-memory-secret");
+  });
+
+  it("omits legacy-scoped context if its project becomes canonical during assembly", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "project",
+          memoryKind: "fact",
+          title: "Project secret",
+          content: "project-memory-secret",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      } as any,
+    ]);
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
+      tableResults.set(canonicalProjects, [
+        {
+          projectId: "legacy-project-id",
+          tenantId: "tenant-2",
+          lifecycle: "ACTIVE",
+        },
+      ]);
+      tableResults.set(canonicalProjectMemberships, [
+        {
+          tenantId: "tenant-1",
+          lifecycle: "ACTIVE",
+          principalId: "user:42",
+        },
+      ]);
+      return [];
+    });
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
+    });
+    tableResults.set(canonicalProjects, []);
+    tableResults.set(canonicalProjectMemberships, []);
+
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(result.messages.map(message => message.content).join("\n")).not.toContain(
+      "project-memory-secret",
+    );
+    expect(mockLeftJoinCalls).toBe(1);
+  });
+
+  it("omits legacy-scoped context if it becomes canonical without an initiating user", async () => {
+    mockRetrieveForPrompt.mockImplementation(async () => {
+      tableResults.set(canonicalProjects, [
+        {
+          projectId: "legacy-project-id",
+          tenantId: "tenant-1",
+          lifecycle: "ACTIVE",
+        },
+      ]);
+      tableResults.set(canonicalProjectMemberships, [
+        {
+          tenantId: "tenant-1",
+          lifecycle: "ACTIVE",
+          principalId: "user:undefined",
+        },
+      ]);
+      return [
+        {
+          memory: {
+            ownerType: "project",
+            memoryKind: "fact",
+            title: "Project secret",
+            content: "project-memory-secret",
+          },
+          score: 0.9,
+          matchType: "keyword",
+        } as any,
+      ];
+    });
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
+    });
+    tableResults.set(canonicalProjects, []);
+    tableResults.set(canonicalProjectMemberships, []);
+    mockLeftJoinPrincipalId = "user:undefined";
+
+    const result = await composePrompt({ ...baseInput });
+
+    expect(result.messages.map(message => message.content).join("\n")).not.toContain(
+      "project-memory-secret",
+    );
+    expect(mockLeftJoinCalls).toBe(1);
+  });
+
+  it("omits scoped context if a canonical project disappears during assembly", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "project",
+          memoryKind: "fact",
+          title: "Project secret",
+          content: "project-memory-secret",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      } as any,
+    ]);
+    mockGetEntityMemoriesForContext.mockImplementation(async () => {
+      tableResults.set(canonicalProjects, []);
+      return [];
+    });
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
+    });
+    tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+    tableResults.set(canonicalProjectMemberships, [
+      {
+        tenantId: "tenant-1",
+        lifecycle: "ACTIVE",
+        principalId: "user:42",
+      },
+    ]);
+
+    const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(result.messages.map(message => message.content).join("\n")).not.toContain(
+      "project-memory-secret",
+    );
+  });
+
+  it("omits scoped context when final joined authorization revalidation fails", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      mockRetrieveForPrompt.mockResolvedValue([
+        {
+          memory: {
+            ownerType: "project",
+            memoryKind: "fact",
+            title: "Project secret",
+            content: "project-memory-secret",
+          },
+          score: 0.9,
+          matchType: "keyword",
+        } as any,
+      ]);
+      mockGetProjectSummaries.mockResolvedValue([
+        { id: 1, summary: "project-summary-secret" },
+      ] as any);
+      mockGetEntityMemoriesForContext.mockImplementation(async () => {
+        queryFailureTable = canonicalProjectMemberships;
+        return [];
+      });
+      setupMockDb({
+        room: { tenantId: "tenant-1", language: "en", projectId: "project-canonical" } as any,
+      });
+      tableResults.set(canonicalProjects, [{ tenantId: "tenant-1", lifecycle: "ACTIVE" }]);
+      tableResults.set(canonicalProjectMemberships, [
+        {
+          tenantId: "tenant-1",
+          lifecycle: "ACTIVE",
+          principalId: "user:42",
+        },
+      ]);
+
+      const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+      const prompt = result.messages.map(message => message.content).join("\n");
+
+      expect(prompt).not.toContain("project-memory-secret");
+      expect(prompt).not.toContain("project-summary-secret");
+      expect(warning).toHaveBeenCalledWith(
+        "Canonical project authorization revalidation failed; project context omitted",
+      );
+    } finally {
+      warning.mockRestore();
+    }
   });
 
   it.each([

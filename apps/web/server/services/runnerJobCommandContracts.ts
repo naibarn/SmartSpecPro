@@ -138,6 +138,12 @@ export function validateRunnerJobCommand(
   )
     throw new Error("RUNNER_COMMAND_ADAPTER_UNSUPPORTED");
   if (
+    raw.executionKind === "computer_use.browser" &&
+    raw.browserEngineConstraint !== undefined &&
+    raw.browserEngineConstraint !== "chromium"
+  )
+    throw new Error("RUNNER_BROWSER_ENGINE_UNSUPPORTED");
+  if (
     raw.userId !== undefined &&
     (!Number.isSafeInteger(raw.userId) || raw.userId <= 0)
   )

@@ -2,6 +2,7 @@ import type { BuildContextPackRequest } from "../contextPackBuilder";
 import type { SkillLlmResult } from "../skillModelFallback";
 import type { SkillExecutionPolicyResult } from "../skillExecutionPolicy";
 import { getProviderForModel, type ProviderCandidate } from "../llmRouter";
+import { build_context_pack_with_provider_binding } from "../contextPackBuilder";
 import type { SkillCapabilityActivationGateResult } from "../skillCapabilityManifestService";
 import type { OpenAiAgentsRuntimeFlagSnapshot } from "./runtimeSelection";
 import type { ShadowEffectKind } from "./shadowPolicy";
@@ -202,6 +203,9 @@ export async function executeTeamRuntimeTurn(
     client: input.client,
     activationGate: input.activationGate ?? undefined,
     legacyExecute: input.legacyExecute,
+    builderDeps: {
+      buildContextPack: build_context_pack_with_provider_binding,
+    },
     activeTransform: async (runtimeResponse) => {
       const runtimeText = extractRuntimeTextResult(runtimeResponse);
       const resolvedModelId = runtimeText.modelId ?? modelId;

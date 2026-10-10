@@ -23,8 +23,7 @@ import {
   type MemorySearchResult,
 } from "./scopedMemoryService";
 import { buildPersonaPromptSegments, type PersonaPromptSegments } from "./personaService";
-import { getEntityMemories } from "./chatService";
-import { getProjectSummaries } from "./memoryService";
+import { getEntityMemoriesForContext, getProjectSummaries } from "./memoryService";
 import {
   estimateTokens,
   truncateToTokenBudget,
@@ -324,6 +323,8 @@ export async function composePrompt(
       ? String(room.projectId)
       : null);
   let authorizedProjectId = resolvedProjectId;
+  let projectWasCanonicalAtStart = false;
+  let projectContextProjectIdForRevalidation: string | null = null;
   if (resolvedProjectId) {
     // Canonical project IDs must be bound to the current tenant and member.
     // Only IDs absent from the canonical registry retain legacy behavior.
@@ -338,6 +339,7 @@ export async function composePrompt(
         .limit(1);
 
       if (canonicalProject) {
+        projectWasCanonicalAtStart = true;
         authorizedProjectId = null;
         if (
           input.initiatedByUserId !== undefined &&
@@ -365,6 +367,15 @@ export async function composePrompt(
       console.warn("Canonical project authorization lookup failed; project context omitted");
     }
   }
+  if (resolvedProjectId && authorizedProjectId) {
+    // Defer both canonical and legacy project context until its identity and
+    // authorization are rechecked after prompt assembly.
+    projectContextProjectIdForRevalidation = resolvedProjectId;
+  }
+  // Legacy room IDs do not establish project authorization for entity memory.
+  // Only a canonical project with an active member may widen retrieval beyond
+  // the user's global memory.
+  const entityMemoryProjectId = projectWasCanonicalAtStart ? authorizedProjectId : null;
   const promptQuery = input.currentMessage?.trim() || input.objective;
 
   // Pre-fetch history count for adaptive budget detection
@@ -464,6 +475,18 @@ export async function composePrompt(
     400,
     budget.scopedMemory - rulesBudget - projectSummaryBudget,
   );
+  const scopedContextInsertionIndex = messages.length;
+  const deferredScopedContextMessages: PromptMessage[] = [];
+  let deferredScopedContextTokens = 0;
+  const addScopedContextMessage = (message: PromptMessage, messageTokens: number) => {
+    if (projectContextProjectIdForRevalidation) {
+      deferredScopedContextMessages.push(message);
+      deferredScopedContextTokens += messageTokens;
+    } else {
+      messages.push(message);
+    }
+    usedTokens += messageTokens;
+  };
 
   let memoryResults: MemorySearchResult[] = [];
   if (memoryMode !== "off") {
@@ -499,6 +522,7 @@ export async function composePrompt(
         input.tenantId,
         input.initiatedByUserId,
         profile.personaId ?? null,
+        authorizedProjectId,
       );
     } catch (err) {
       console.warn("Rule memory retrieval failed:", err);
@@ -510,11 +534,10 @@ export async function composePrompt(
       .map((rule) => `- ${rule.title}: ${rule.content}`)
       .join("\n");
     const truncatedRules = truncateToTokenBudget(ruleContent, rulesBudget);
-    messages.push({
+    addScopedContextMessage({
       role: "system",
       content: `Persistent user rules and preferences:\n${truncatedRules}`,
-    });
-    usedTokens += estimateTokens(truncatedRules);
+    }, estimateTokens(truncatedRules));
   }
 
   if (memoryResults.length > 0) {
@@ -534,11 +557,10 @@ export async function composePrompt(
         memoryContent,
         scopedMemoryBudget,
       );
-      messages.push({
+      addScopedContextMessage({
         role: "system",
         content: `Relevant workspace memories:\n${truncatedMemory}`,
-      });
-      usedTokens += estimateTokens(truncatedMemory);
+      }, estimateTokens(truncatedMemory));
     }
   }
 
@@ -568,11 +590,10 @@ export async function composePrompt(
       summaryContent,
       projectSummaryBudget,
     );
-    messages.push({
+    addScopedContextMessage({
       role: "system",
       content: `Project continuity notes:\n${truncatedSummary}`,
-    });
-    usedTokens += estimateTokens(truncatedSummary);
+    }, estimateTokens(truncatedSummary));
   }
 
   // 3b. Entity memory injection (dedicated budget with floor guarantee)
@@ -583,9 +604,10 @@ export async function composePrompt(
     budget.entityMemory >= ENTITY_MEMORY_FLOOR
   ) {
     try {
-      const entityMems = await getEntityMemories(
+      const entityMems = await getEntityMemoriesForContext(
         input.initiatedByUserId,
         undefined,
+        entityMemoryProjectId,
         profile.personaId ?? null,
       );
       if (entityMems.length > 0) {
@@ -593,8 +615,10 @@ export async function composePrompt(
           .map((em) => `- [${em.entityType}] ${em.entityName}: ${em.facts.join("; ")}`)
           .join("\n");
         const truncatedEntity = truncateToTokenBudget(entityContent, budget.entityMemory);
-        messages.push({ role: "system", content: `Known facts about the user:\n${truncatedEntity}` });
-        usedTokens += estimateTokens(truncatedEntity);
+        addScopedContextMessage(
+          { role: "system", content: `Known facts about the user:\n${truncatedEntity}` },
+          estimateTokens(truncatedEntity),
+        );
       }
     } catch (err) {
       console.warn("Entity memory retrieval failed:", err);
@@ -605,6 +629,47 @@ export async function composePrompt(
   const objectiveSection = `[OBJECTIVE]\n${input.objective}\n[/OBJECTIVE]`;
   messages.push({ role: "user", content: objectiveSection });
   usedTokens += estimateTokens(objectiveSection);
+
+  if (projectContextProjectIdForRevalidation) {
+    try {
+      const principalId =
+        input.initiatedByUserId !== undefined && input.initiatedByUserId !== null
+          ? `user:${input.initiatedByUserId}`
+          : null;
+      // Read identity and membership in one statement to avoid combining
+      // project state from one snapshot with ACL state from another.
+      const [projectAccess] = await db
+        .select({
+          tenantId: canonicalProjects.tenantId,
+          lifecycle: canonicalProjects.lifecycle,
+          activeMembershipPrincipalId: canonicalProjectMemberships.principalId,
+        })
+        .from(canonicalProjects)
+        .leftJoin(canonicalProjectMemberships, and(
+          eq(canonicalProjectMemberships.projectId, canonicalProjects.projectId),
+          eq(canonicalProjectMemberships.tenantId, input.tenantId),
+          ...(principalId ? [eq(canonicalProjectMemberships.principalId, principalId)] : []),
+          eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
+        ))
+        .where(eq(canonicalProjects.projectId, projectContextProjectIdForRevalidation))
+        .limit(1);
+
+      const isStillAuthorized = projectAccess
+        ? projectAccess.tenantId === input.tenantId &&
+          projectAccess.lifecycle === "ACTIVE" &&
+          principalId !== null &&
+          projectAccess.activeMembershipPrincipalId === principalId
+        : !projectWasCanonicalAtStart;
+      if (isStillAuthorized) {
+        messages.splice(scopedContextInsertionIndex, 0, ...deferredScopedContextMessages);
+      } else {
+        usedTokens -= deferredScopedContextTokens;
+      }
+    } catch {
+      usedTokens -= deferredScopedContextTokens;
+      console.warn("Canonical project authorization revalidation failed; project context omitted");
+    }
+  }
 
   // 5. Conversation history — adaptive: rolling summary + raw tail
   const assistantNameMap = new Map<string, string>();

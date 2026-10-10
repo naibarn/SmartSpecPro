@@ -2,6 +2,7 @@ import { createMemory, deleteMemory, listMemories, updateMemory } from "./scoped
 import { extractEntitiesFromMessage, upsertEntityMemory } from "./memoryService";
 import { getMessages } from "./roomService";
 import { buildSmartSummary } from "./smartSummarizer";
+import { isTeamRoomMemoryEnabled } from "./teamRoomMemoryPolicy";
 
 function normalizeMemoryText(content: string, maxLength = 1600): string {
   const normalized = content.replace(/\s+/g, " ").trim();
@@ -134,6 +135,8 @@ export async function captureUserMemoryFromTeamMessage(input: {
   content: string;
   projectId?: string | null;
 }): Promise<number> {
+  if (!isTeamRoomMemoryEnabled()) return 0;
+
   const extracted = extractEntitiesFromMessage(input.content);
   if (extracted.length === 0) return 0;
 
@@ -185,6 +188,8 @@ export async function recordAssistantTurnScopedMemories(input: {
   projectId?: string | null;
   messageId?: string | null;
 }): Promise<string[]> {
+  if (!isTeamRoomMemoryEnabled()) return [];
+
   const normalizedObjective = normalizeMemoryText(input.objective, 220);
   const normalizedContent = normalizeMemoryText(input.content, 1600);
   if (!normalizedContent) return [];
@@ -258,6 +263,8 @@ export async function refreshRollingSummaryMemories(input: {
   projectId?: string | null;
   windowSize?: number;
 }): Promise<string[]> {
+  if (!isTeamRoomMemoryEnabled()) return [];
+
   const windowSize = Math.max(6, Math.min(input.windowSize ?? 12, 24));
   const messages = await getMessages(input.roomId, input.tenantId, {
     callerType: "system",

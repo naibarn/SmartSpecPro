@@ -7,6 +7,8 @@ const {
   mockCreateMemory,
   mockUpdateMemory,
   mockDeleteMemory,
+  mockExtractEntitiesFromMessage,
+  mockUpsertEntityMemory,
 } = vi.hoisted(() => ({
   mockGetMessages: vi.fn(),
   mockBuildSmartSummary: vi.fn(),
@@ -14,6 +16,8 @@ const {
   mockCreateMemory: vi.fn(),
   mockUpdateMemory: vi.fn(),
   mockDeleteMemory: vi.fn(),
+  mockExtractEntitiesFromMessage: vi.fn(),
+  mockUpsertEntityMemory: vi.fn(),
 }));
 
 vi.mock("../roomService", () => ({
@@ -31,7 +35,16 @@ vi.mock("../scopedMemoryService", () => ({
   updateMemory: mockUpdateMemory,
 }));
 
-import { refreshRollingSummaryMemories } from "../teamRoomMemoryService";
+vi.mock("../memoryService", () => ({
+  extractEntitiesFromMessage: mockExtractEntitiesFromMessage,
+  upsertEntityMemory: mockUpsertEntityMemory,
+}));
+
+import {
+  captureUserMemoryFromTeamMessage,
+  recordAssistantTurnScopedMemories,
+  refreshRollingSummaryMemories,
+} from "../teamRoomMemoryService";
 
 describe("teamRoomMemoryService", () => {
   beforeEach(() => {
@@ -41,89 +54,64 @@ describe("teamRoomMemoryService", () => {
     mockCreateMemory.mockReset();
     mockUpdateMemory.mockReset();
     mockDeleteMemory.mockReset();
+    mockExtractEntitiesFromMessage.mockReset();
+    mockUpsertEntityMemory.mockReset();
   });
 
-  it("creates room and team rolling summaries from recent messages", async () => {
-    mockGetMessages.mockResolvedValue([
-      { senderType: "user", content: "Need a concise plan", summaryContent: null },
-      { senderType: "assistant", content: "Draft plan: research, review, publish", summaryContent: null },
+  it("does not derive personal persistent memories from team-room messages", async () => {
+    mockExtractEntitiesFromMessage.mockReturnValue([
+      { type: "person", name: "Ada", fact: "likes plans" },
     ]);
-    mockBuildSmartSummary.mockResolvedValue({
-      summary: "Research, review, and publish a concise plan.",
-    });
-    mockListMemories.mockResolvedValue([]);
-    mockCreateMemory.mockResolvedValueOnce({ id: "room-summary-1" });
-    mockCreateMemory.mockResolvedValueOnce({ id: "team-summary-1" });
 
-    const result = await refreshRollingSummaryMemories({
-      tenantId: "tenant-1",
-      teamId: "team-1",
-      roomId: "room-1",
-      assistantId: "assistant-1",
-      objective: "Produce a concise plan",
-      initiatedByUserId: 9,
-      projectId: "project-1",
-      windowSize: 8,
-    });
+    await expect(
+      captureUserMemoryFromTeamMessage({
+        tenantId: "tenant-1",
+        userId: 9,
+        content: "Ada likes plans",
+        projectId: "project-1",
+      })
+    ).resolves.toBe(0);
 
-    expect(result).toEqual(["room-summary-1", "team-summary-1"]);
-    expect(mockBuildSmartSummary).toHaveBeenCalledTimes(1);
-    expect(mockCreateMemory).toHaveBeenCalledTimes(2);
-    expect(mockCreateMemory.mock.calls[0]?.[0]).toMatchObject({
-      ownerType: "room",
-      ownerId: "room-1",
-      memoryKind: "note",
-      sourceAssistantId: "assistant-1",
-      sourceRoomId: "room-1",
-    });
-    expect(mockCreateMemory.mock.calls[1]?.[0]).toMatchObject({
-      ownerType: "team",
-      ownerId: "team-1",
-      memoryKind: "note",
-      sourceAssistantId: "assistant-1",
-      sourceRoomId: "room-1",
-    });
+    expect(mockExtractEntitiesFromMessage).not.toHaveBeenCalled();
+    expect(mockUpsertEntityMemory).not.toHaveBeenCalled();
   });
 
-  it("updates existing rolling summary and prunes duplicates", async () => {
-    mockGetMessages.mockResolvedValue([
-      { senderType: "assistant", content: "Initial update", summaryContent: null },
-    ]);
-    mockBuildSmartSummary.mockResolvedValue({
-      summary: "Initial update",
-    });
-    mockListMemories.mockResolvedValue([
-      {
-        id: "old-summary-1",
-        title: "Working summary: room-1",
-        metadataJson: { contextRole: "working_summary" },
-        updatedAt: new Date("2026-04-01T00:00:00.000Z"),
-        reinforcementCount: 1,
-      },
-      {
-        id: "current-summary-1",
-        title: "Working summary: room-1",
-        metadataJson: { contextRole: "working_summary" },
-        updatedAt: new Date("2026-04-02T00:00:00.000Z"),
-        reinforcementCount: 2,
-      },
-    ]);
-    mockUpdateMemory.mockResolvedValue({ id: "current-summary-1" });
-    mockDeleteMemory.mockResolvedValue(true);
+  it("does not persist assistant outputs to run, room, or team scopes", async () => {
+    await expect(
+      recordAssistantTurnScopedMemories({
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        assistantId: "assistant-1",
+        objective: "Keep continuity",
+        content: "Assistant output",
+        initiatedByUserId: 9,
+        projectId: "project-1",
+      })
+    ).resolves.toEqual([]);
 
-    const result = await refreshRollingSummaryMemories({
-      tenantId: "tenant-1",
-      teamId: "team-1",
-      roomId: "room-1",
-      assistantId: "assistant-1",
-      objective: "Keep the room summary current",
-      initiatedByUserId: 9,
-      projectId: "project-1",
-    });
+    expect(mockCreateMemory).not.toHaveBeenCalled();
+  });
 
-    expect(result).toEqual(["current-summary-1", "current-summary-1"]);
-    expect(mockDeleteMemory).toHaveBeenCalledTimes(2);
-    expect(mockDeleteMemory).toHaveBeenCalledWith("old-summary-1", "tenant-1");
-    expect(mockUpdateMemory).toHaveBeenCalledTimes(2);
+  it("does not load room history or invoke a summarizer for persistent rolling summaries", async () => {
+    await expect(
+      refreshRollingSummaryMemories({
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        roomId: "room-1",
+        assistantId: "assistant-1",
+        objective: "Keep continuity",
+        initiatedByUserId: 9,
+        projectId: "project-1",
+      })
+    ).resolves.toEqual([]);
+
+    expect(mockGetMessages).not.toHaveBeenCalled();
+    expect(mockBuildSmartSummary).not.toHaveBeenCalled();
+    expect(mockListMemories).not.toHaveBeenCalled();
+    expect(mockCreateMemory).not.toHaveBeenCalled();
+    expect(mockUpdateMemory).not.toHaveBeenCalled();
+    expect(mockDeleteMemory).not.toHaveBeenCalled();
   });
 });

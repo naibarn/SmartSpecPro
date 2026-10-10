@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1101 unresolved of 1101
-- Next action: Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.
-- Manifest generation: 8
+- Next action: Continue the authorized team-room canonical project binding and source-provenance work. Keep persistent team-room memory disabled until tenant/project provenance and isolation pass. Preserve the global-only fallback for unbound and legacy entity memory. Treat pre-PR-434 conversation history whose project binding may have changed as ambiguous; do not infer or reattribute it.
+- Manifest generation: 14
 
 ## Source-declared status and relationship claims
 

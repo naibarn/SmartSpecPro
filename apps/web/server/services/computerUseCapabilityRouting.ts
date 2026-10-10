@@ -39,8 +39,12 @@ export function readMoliFeatureFlags(
 export function selectBrowserEngine(input: {
   moliEligible: boolean;
   flags?: MoliFeatureFlags;
+  environment?: string;
 }): { engine: BrowserEngine; shadowCandidate?: BrowserEngine; reason: string } {
   const flags = input.flags ?? DEFAULT_MOLI_FEATURE_FLAGS;
+  if ((input.environment ?? process.env.NODE_ENV) === "production") {
+    return { engine: "chromium", reason: "MOLI_PRODUCTION_DISABLED_PHASE1" };
+  }
   const candidate = input.moliEligible && flags.moli_enabled;
   if (candidate && flags.moli_shadow_mode) {
     return { engine: "chromium", shadowCandidate: "moli", reason: "MOLI_SHADOW_ONLY" };
