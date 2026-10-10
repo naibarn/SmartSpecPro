@@ -35971,7 +35971,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+      "canonical_sha": "f706b573873484c90af08e265ac2dfd98d14325a",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -36184,8 +36184,6 @@
         "requirement REQ-B013C68BCCCC is OPEN",
         "requirement REQ-F8C41892394F is OPEN",
         "requirement REQ-C441F746F22C is OPEN",
-        "requirement REQ-85D5A8E36B6D is PARTIAL",
-        "requirement REQ-927E3FEAD3CF is PARTIAL",
         "requirement REQ-A0E69731B6F1 is OPEN",
         "requirement REQ-F497EACD1B28 is OPEN",
         "requirement REQ-118B48D3FB06 is OPEN",
@@ -36464,8 +36462,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 364,
-        "pass": 1,
+        "open": 362,
+        "pass": 3,
         "total": 365
       },
       "review_priority": "R3_RELATIONSHIP_CLAIM",
