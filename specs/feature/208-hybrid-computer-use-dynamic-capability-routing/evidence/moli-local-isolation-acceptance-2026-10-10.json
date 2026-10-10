@@ -109,5 +109,34 @@
     "releaseAttestationLookup": "404; no authenticated publisher build attestation available",
     "w4Status": "OPEN: a dependency rebuild plus tests, refreshed SBOM/advisory/license evidence and new provenance are required; authoritative deployed image inventory and complete notices review remain unavailable",
     "dependencyGraphLimitation": "Cargo.lock edges do not prove enabled features, platform selection, or exploit-path reachability"
+  },
+  "implementationCommit": "6d0412e5c977734d4ded6d16e9fe815a12dc0bb1",
+  "integratedMergeSha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+  "postIntegrationRun": {
+    "canonicalSha": "a4fd8f3ad95e4fa582d910ae96ec1a6523b72aa4",
+    "profile": "integration",
+    "command": "scripts/spec208/run-moli-isolation-acceptance.sh /tmp/spec208-moli-acceptance/repro-rootfs7 sha256:2a0e24f1ea8e5bb7fe8a4696cde702f1ecf2bd5f5fe739c3ddbf3b3b85001fab spec208-postmerge-acceptance",
+    "leaseId": "b659503a-20c1-45a7-920f-4a1caaf7566a",
+    "exitCode": 0,
+    "serviceRuntime": "4.661s",
+    "cpuTime": "472ms",
+    "memoryPeak": "129.8M",
+    "attempts": [
+      {
+        "attempt": "tenant-a",
+        "pid": 2495972,
+        "exitStatus": 143,
+        "profileRemoved": true
+      },
+      {
+        "attempt": "tenant-b",
+        "pid": 2495992,
+        "exitStatus": 143,
+        "profileRemoved": true
+      }
+    ],
+    "localReceiptId": "local-acceptance:9bf77d5a-f3d6-4cc9-9ad5-51e38e743bb5",
+    "controlPlaneReceipt": false,
+    "rootfsDigestStableAfterService": true
   }
 }
