@@ -319,6 +319,18 @@ function assertWorkflowInterface(definition: WorkflowDefinitionV2): void {
 
 function assertBindingSource(source: WorkflowBindingSource, definition: WorkflowDefinitionV2): void {
   assertObject(source, "WORKFLOW_BINDING_SOURCE_INVALID");
+  const bindingSourceKinds: readonly string[] = [
+    "workflow-input",
+    "variable",
+    "literal",
+    "config",
+    "context",
+    "secret-ref",
+    "artifact-ref",
+    "previous-run",
+  ];
+  if (!bindingSourceKinds.includes(source.kind))
+    throw new WorkflowCompilerRuntimeError("WORKFLOW_BINDING_SOURCE_INVALID");
   if (source.kind === "workflow-input") {
     if (!definition.interface.inputs[source.inputId])
       throw new WorkflowCompilerRuntimeError("WORKFLOW_BINDING_SOURCE_INVALID");
@@ -338,10 +350,6 @@ function assertBindingSource(source: WorkflowBindingSource, definition: Workflow
   } else if (source.kind === "artifact-ref" && !source.artifactRef.trim()) {
     throw new WorkflowCompilerRuntimeError("WORKFLOW_BINDING_SOURCE_INVALID");
   } else if (source.kind === "previous-run" && (!source.workflowId.trim() || !source.outputId.trim() || !source.selector.trim())) {
-    throw new WorkflowCompilerRuntimeError("WORKFLOW_BINDING_SOURCE_INVALID");
-  } else if (source.kind !== "secret-ref" && source.kind !== "artifact-ref" &&
-      source.kind !== "previous-run" && source.kind !== "workflow-input" && source.kind !== "variable" &&
-      source.kind !== "literal" && source.kind !== "context" && source.kind !== "config") {
     throw new WorkflowCompilerRuntimeError("WORKFLOW_BINDING_SOURCE_INVALID");
   }
 }
@@ -368,7 +376,10 @@ function assertAttachments(definition: WorkflowDefinitionV2, nodeIds: Set<string
     const schema = configSchemas[kind];
     if (!schema || !attachmentValidator.compile(schema)(config)) throw new WorkflowCompilerRuntimeError(code);
   };
-  const objectArray = (values: unknown, code: string): asserts values is Array<Record<string, unknown>> => {
+  const objectArray: (
+    values: unknown,
+    code: string,
+  ) => asserts values is Array<Record<string, unknown>> = (values, code) => {
     if (!Array.isArray(values)) throw new WorkflowCompilerRuntimeError(code);
     for (const value of values) assertObject(value, code);
   };

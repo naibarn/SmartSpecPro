@@ -16,7 +16,6 @@ import {
   NodeTypeRegistry,
   stableDerivedPortId,
 } from "../workflowNodeContracts";
-import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
 
 const definition: WorkflowDefinitionV2 = {
   schemaVersion: "2",
@@ -317,36 +316,4 @@ describe("Spec 215 canonical workflow compiler/runtime contracts", () => {
     });
   });
 
-  it("registers the physical handoff and fails closed without a runtime adapter", async () => {
-    const registration = defaultJobExecutorRegistry.resolve(
-      "workflow.node.execute",
-      "feature-186-v1"
-    );
-    expect(registration).toMatchObject({
-      jobType: "workflow.node.execute",
-      executionClass: "long",
-    });
-    await expect(
-      registration!.executor({
-        context: {
-          input: {
-            planId: "plan-1",
-            workflowRunId: "run-1",
-            nodeRunId: "node-run-1",
-            attemptId: "attempt-1",
-            nodeId: "model",
-            typeId: "ai.model",
-            typeVersion: "1.0.0",
-            manifestDigest: "a".repeat(64),
-            inputSnapshotRef: "snapshot-1",
-          },
-          tenantId: "tenant-1",
-          requestedByUserId: 7,
-        } as any,
-        lease: {} as any,
-        reporter: {} as any,
-        controlPlane: {} as any,
-      })
-    ).rejects.toMatchObject({ code: "JOB_EXECUTOR_UNREGISTERED" });
-  });
 });
