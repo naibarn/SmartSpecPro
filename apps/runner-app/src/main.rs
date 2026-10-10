@@ -33,6 +33,13 @@ fn main() {
                 std::process::exit(3);
             }
         }
+        #[cfg(feature = "spec208-moli-acceptance")]
+        "__sah-spec208-moli-acceptance" => {
+            if let Err(error) = smartaihub_runner::moli_acceptance::run_cli(&config) {
+                eprintln!("runner Moli acceptance error: {error}");
+                std::process::exit(3);
+            }
+        }
         "version" => {
             println!(
                 "{{\"version\":\"{RUNNER_VERSION}\",\"contractVersion\":\"{RUNNER_CONTROL_CONTRACT_VERSION}\",\"connectSchemaRevision\":\"{RUNNER_CONNECT_SCHEMA_REVISION}\",\"minRunnerVersion\":\"{MIN_COMPATIBLE_RUNNER_VERSION}\"}}"

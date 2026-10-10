@@ -1,0 +1,499 @@
+{
+  "acceptance_output": {
+    "allProxyRequests": [
+      {
+        "authorizationPresent": false,
+        "host": "fixture.spec208.invalid",
+        "method": "GET",
+        "target": "http://fixture.spec208.invalid/acceptance?attempt=tenant-a&cdp=9222"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "127.0.0.1:9222",
+        "method": "GET",
+        "target": "http://127.0.0.1:9222/session"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "example.com",
+        "method": "GET",
+        "target": "http://example.com/"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "169.254.169.254",
+        "method": "GET",
+        "target": "http://169.254.169.254/latest/meta-data/"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "fixture.spec208.invalid",
+        "method": "GET",
+        "target": "http://fixture.spec208.invalid/acceptance?attempt=tenant-b&cdp=9223"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "127.0.0.1:9223",
+        "method": "GET",
+        "target": "http://127.0.0.1:9223/session"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "example.com",
+        "method": "GET",
+        "target": "http://example.com/"
+      },
+      {
+        "authorizationPresent": false,
+        "host": "169.254.169.254",
+        "method": "GET",
+        "target": "http://169.254.169.254/latest/meta-data/"
+      }
+    ],
+    "cleanupCancelled": {
+      "exitCode": 143,
+      "pid": 3209099,
+      "profileRemoved": true,
+      "receipt": {
+        "ackState": null,
+        "attemptId": "1",
+        "correlationId": "command-tenant-cancel",
+        "fencingVersion": null,
+        "idempotencyKey": "command-tenant-cancel:0",
+        "jobId": "spec208-tenant-cancel",
+        "leaseId": "lease-tenant-cancel",
+        "nodeId": "spec208-rootless-runner",
+        "nodeKind": "managed_container",
+        "payload": {
+          "receipt": {
+            "commandId": "command-tenant-cancel",
+            "correlation": {
+              "attempt": 1,
+              "fencingToken": 1,
+              "leaseId": "lease-tenant-cancel"
+            },
+            "eventId": "spec208:spec208-tenant-cancel:1:command-tenant-cancel",
+            "eventType": "CANCEL_ACKNOWLEDGED",
+            "jobId": "spec208-tenant-cancel",
+            "observedAt": "2026-10-10T15:49:06.246Z",
+            "payload": {
+              "exitCode": 143,
+              "pid": 3209099,
+              "profileRemoved": true,
+              "result": null,
+              "runtimeDigest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+              "signal": null,
+              "terminalAction": "cancel"
+            },
+            "runnerId": "spec208-rootless-runner",
+            "runnerSessionId": "session-tenant-cancel",
+            "sequence": 1,
+            "status": "cancelled"
+          },
+          "type": "runner.job.receipt"
+        },
+        "profile": "shared_container",
+        "protocolVersion": "sah-runner-v1",
+        "runnerId": "spec208-rootless-runner",
+        "sequence": 0
+      },
+      "runnerExitCode": 0,
+      "runnerPid": 3209097,
+      "signal": null
+    },
+    "cleanupCrashed": {
+      "exitCode": null,
+      "pid": 3209131,
+      "profileRemoved": true,
+      "receipt": {
+        "ackState": null,
+        "attemptId": "1",
+        "correlationId": "command-tenant-crash",
+        "fencingVersion": null,
+        "idempotencyKey": "command-tenant-crash:0",
+        "jobId": "spec208-tenant-crash",
+        "leaseId": "lease-tenant-crash",
+        "nodeId": "spec208-rootless-runner",
+        "nodeKind": "managed_container",
+        "payload": {
+          "receipt": {
+            "commandId": "command-tenant-crash",
+            "correlation": {
+              "attempt": 1,
+              "fencingToken": 1,
+              "leaseId": "lease-tenant-crash"
+            },
+            "eventId": "spec208:spec208-tenant-crash:1:command-tenant-crash",
+            "eventType": "EXECUTION_FAILED",
+            "jobId": "spec208-tenant-crash",
+            "observedAt": "2026-10-10T15:49:07.286Z",
+            "payload": {
+              "exitCode": null,
+              "pid": 3209131,
+              "profileRemoved": true,
+              "result": null,
+              "runtimeDigest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+              "signal": 9,
+              "terminalAction": "process_crashed"
+            },
+            "runnerId": "spec208-rootless-runner",
+            "runnerSessionId": "session-tenant-crash",
+            "sequence": 1,
+            "status": "failed"
+          },
+          "type": "runner.job.receipt"
+        },
+        "profile": "shared_container",
+        "protocolVersion": "sah-runner-v1",
+        "runnerId": "spec208-rootless-runner",
+        "sequence": 0
+      },
+      "runnerExitCode": 0,
+      "runnerPid": 3209129,
+      "signal": 9
+    },
+    "cleanupRevoked": {
+      "exitCode": 143,
+      "pid": 3209125,
+      "profileRemoved": true,
+      "receipt": {
+        "ackState": null,
+        "attemptId": "1",
+        "correlationId": "command-tenant-revoke",
+        "fencingVersion": null,
+        "idempotencyKey": "command-tenant-revoke:0",
+        "jobId": "spec208-tenant-revoke",
+        "leaseId": "lease-tenant-revoke",
+        "nodeId": "spec208-rootless-runner",
+        "nodeKind": "managed_container",
+        "payload": {
+          "receipt": {
+            "commandId": "command-tenant-revoke",
+            "correlation": {
+              "attempt": 1,
+              "fencingToken": 1,
+              "leaseId": "lease-tenant-revoke"
+            },
+            "eventId": "spec208:spec208-tenant-revoke:1:command-tenant-revoke",
+            "eventType": "CANCEL_ACKNOWLEDGED",
+            "jobId": "spec208-tenant-revoke",
+            "observedAt": "2026-10-10T15:49:06.717Z",
+            "payload": {
+              "exitCode": 143,
+              "pid": 3209125,
+              "profileRemoved": true,
+              "result": null,
+              "runtimeDigest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+              "signal": null,
+              "terminalAction": "revoke"
+            },
+            "runnerId": "spec208-rootless-runner",
+            "runnerSessionId": "session-tenant-revoke",
+            "sequence": 1,
+            "status": "cancelled"
+          },
+          "type": "runner.job.receipt"
+        },
+        "profile": "shared_container",
+        "protocolVersion": "sah-runner-v1",
+        "runnerId": "spec208-rootless-runner",
+        "sequence": 0
+      },
+      "runnerExitCode": 0,
+      "runnerPid": 3209122,
+      "signal": null
+    },
+    "defaultRoutePresent": false,
+    "deniedProxyRequests": [
+      {
+        "authorizationPresent": false,
+        "method": "CONNECT",
+        "target": "127.0.0.1:9222"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "GET",
+        "target": "http://127.0.0.1:9222/session"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "GET",
+        "target": "http://example.com/"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "GET",
+        "target": "http://169.254.169.254/latest/meta-data/"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "CONNECT",
+        "target": "127.0.0.1:9223"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "GET",
+        "target": "http://127.0.0.1:9223/session"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "GET",
+        "target": "http://example.com/"
+      },
+      {
+        "authorizationPresent": false,
+        "method": "GET",
+        "target": "http://169.254.169.254/latest/meta-data/"
+      }
+    ],
+    "deniedProxyUpgrades": [],
+    "externalRouteBlocked": true,
+    "harnessReceipt": {
+      "controlPlaneReceipt": false,
+      "receiptId": "local-acceptance:c0a47f18-baa5-4f0b-a7ed-68733d512811",
+      "resultSha256": "c2d4ba9e3fd13ac04aa134cbf1c46941ada4e9ff0fd6b14a64c8f4530747c50a",
+      "settlement": "synthetic-local-harness-success"
+    },
+    "hostContainerSocketVisible": false,
+    "hostHomeVisible": false,
+    "ipv4Routes": [],
+    "ipv6RouteCount": 3,
+    "ipv6Routes": [
+      "00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo",
+      "00000000000000000000000000000001 80 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000002 00000000 80200001       lo",
+      "00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo"
+    ],
+    "moliBinarySha256": "f927b72192905c092ec95c8f528e35087224f3fe8750f72fb2147efa676eab8d",
+    "moliExitA": 143,
+    "moliExitB": 143,
+    "moliPidA": 3209053,
+    "moliPidB": 3209076,
+    "moliSignalA": null,
+    "moliSignalB": null,
+    "moliVersion": "1.1.15",
+    "moliVersionOutput": "moli 1.1.15",
+    "nodeVersion": "v22.22.3",
+    "profileCleanupA": true,
+    "profileCleanupB": true,
+    "profileFsType": "1021994",
+    "profileWriteAllowed": true,
+    "result": "PASS",
+    "resultA": {
+      "body": "MOLI_SYNTHETIC_DOM_RESULT_tenant-a",
+      "cookie": "script_attempt=tenant-a",
+      "httpOnlyCookiePresent": true,
+      "localStorage": "tenant-a",
+      "protocolProbe": {
+        "bidi": "blocked",
+        "egress": "blocked",
+        "fetch": "blocked",
+        "metadata": "blocked"
+      },
+      "title": "SPEC208_ACCEPTANCE_tenant-a"
+    },
+    "resultB": {
+      "body": "MOLI_SYNTHETIC_DOM_RESULT_tenant-b",
+      "cookie": "script_attempt=tenant-b",
+      "httpOnlyCookiePresent": true,
+      "localStorage": "tenant-b",
+      "protocolProbe": {
+        "bidi": "blocked",
+        "egress": "blocked",
+        "fetch": "blocked",
+        "metadata": "blocked"
+      },
+      "title": "SPEC208_ACCEPTANCE_tenant-b"
+    },
+    "rootWriteBlocked": true,
+    "runnerExitA": 0,
+    "runnerExitB": 0,
+    "runnerNegativeCases": {
+      "expiredDeadline": {
+        "attempt": "tenant-expired-deadline",
+        "error": "RUNNER_COMMAND_DEADLINE_EXPIRED",
+        "exitCode": 3,
+        "profileAbsent": true
+      },
+      "expiredLease": {
+        "attempt": "tenant-expired-lease",
+        "error": "RUNNER_LEASE_EXPIRED",
+        "exitCode": 3,
+        "profileAbsent": true
+      },
+      "failedStartup": {
+        "attempt": "tenant-failed-startup",
+        "error": "RUNNER_MOLI_START_FAILED",
+        "exitCode": 3,
+        "profileAbsent": true
+      },
+      "staleFence": {
+        "attempt": "tenant-stale-fence",
+        "error": "RUNNER_LEASE_FENCE_MISMATCH",
+        "exitCode": 3,
+        "profileAbsent": true
+      }
+    },
+    "runnerPidA": 3209051,
+    "runnerPidB": 3209074,
+    "runnerReceiptA": {
+      "ackState": null,
+      "attemptId": "1",
+      "correlationId": "command-tenant-a",
+      "fencingVersion": null,
+      "idempotencyKey": "command-tenant-a:0",
+      "jobId": "spec208-tenant-a",
+      "leaseId": "lease-tenant-a",
+      "nodeId": "spec208-rootless-runner",
+      "nodeKind": "managed_container",
+      "payload": {
+        "receipt": {
+          "commandId": "command-tenant-a",
+          "correlation": {
+            "attempt": 1,
+            "fencingToken": 1,
+            "leaseId": "lease-tenant-a"
+          },
+          "eventId": "spec208:spec208-tenant-a:1:command-tenant-a",
+          "eventType": "EXECUTION_COMPLETED",
+          "jobId": "spec208-tenant-a",
+          "observedAt": "2026-10-10T15:49:05.151Z",
+          "payload": {
+            "exitCode": 143,
+            "pid": 3209053,
+            "profileRemoved": true,
+            "result": {
+              "body": "MOLI_SYNTHETIC_DOM_RESULT_tenant-a",
+              "cookie": "script_attempt=tenant-a",
+              "httpOnlyCookiePresent": true,
+              "localStorage": "tenant-a",
+              "protocolProbe": {
+                "bidi": "blocked",
+                "egress": "blocked",
+                "fetch": "blocked",
+                "metadata": "blocked"
+              },
+              "title": "SPEC208_ACCEPTANCE_tenant-a"
+            },
+            "runtimeDigest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+            "signal": null,
+            "terminalAction": "complete"
+          },
+          "runnerId": "spec208-rootless-runner",
+          "runnerSessionId": "session-tenant-a",
+          "sequence": 1,
+          "status": "completed"
+        },
+        "type": "runner.job.receipt"
+      },
+      "profile": "shared_container",
+      "protocolVersion": "sah-runner-v1",
+      "runnerId": "spec208-rootless-runner",
+      "sequence": 0
+    },
+    "runnerReceiptB": {
+      "ackState": null,
+      "attemptId": "1",
+      "correlationId": "command-tenant-b",
+      "fencingVersion": null,
+      "idempotencyKey": "command-tenant-b:0",
+      "jobId": "spec208-tenant-b",
+      "leaseId": "lease-tenant-b",
+      "nodeId": "spec208-rootless-runner",
+      "nodeKind": "managed_container",
+      "payload": {
+        "receipt": {
+          "commandId": "command-tenant-b",
+          "correlation": {
+            "attempt": 1,
+            "fencingToken": 1,
+            "leaseId": "lease-tenant-b"
+          },
+          "eventId": "spec208:spec208-tenant-b:1:command-tenant-b",
+          "eventType": "EXECUTION_COMPLETED",
+          "jobId": "spec208-tenant-b",
+          "observedAt": "2026-10-10T15:49:05.768Z",
+          "payload": {
+            "exitCode": 143,
+            "pid": 3209076,
+            "profileRemoved": true,
+            "result": {
+              "body": "MOLI_SYNTHETIC_DOM_RESULT_tenant-b",
+              "cookie": "script_attempt=tenant-b",
+              "httpOnlyCookiePresent": true,
+              "localStorage": "tenant-b",
+              "protocolProbe": {
+                "bidi": "blocked",
+                "egress": "blocked",
+                "fetch": "blocked",
+                "metadata": "blocked"
+              },
+              "title": "SPEC208_ACCEPTANCE_tenant-b"
+            },
+            "runtimeDigest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+            "signal": null,
+            "terminalAction": "complete"
+          },
+          "runnerId": "spec208-rootless-runner",
+          "runnerSessionId": "session-tenant-b",
+          "sequence": 1,
+          "status": "completed"
+        },
+        "type": "runner.job.receipt"
+      },
+      "profile": "shared_container",
+      "protocolVersion": "sah-runner-v1",
+      "runnerId": "spec208-rootless-runner",
+      "sequence": 0
+    },
+    "runtime": "rootless-systemd-acceptance-not-cloudflare-certified",
+    "runtimeImageDigest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+    "uid": 1000
+  },
+  "command": "SPEC208_RUNNER_ACCEPTANCE=1 bash scripts/spec208/run-moli-isolation-acceptance.sh /home/dev/.cache/spec208-moli-runner-rootfs-20261010k sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7 spec208-runner-owned-cleanupfix-20261010-003",
+  "exit_code": 0,
+  "qa_review_passes": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md",
+  "runner_binary_sha256": "a67d0aa27ae378d6376c8890b7b0084f77217544b8c25c67cb4ce26365f8ba6a",
+  "runner_source_sha": "691e504e6e5c556221b34a97bc0eebd16cb81c68",
+  "runner_source_sha_note": "Exact Runner implementation commit tested. Evidence-only updates are separate commits.",
+  "runtime": "rootless-systemd-acceptance-not-cloudflare-certified",
+  "runtime_digest": "sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7",
+  "scoped_checks": [
+    {
+      "command": "cargo test --manifest-path apps/runner-app/Cargo.toml --features spec208-moli-acceptance --lib moli_acceptance::tests::termination_kills_descendants_after_moli_leader_exits -- --exact",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "cargo test --manifest-path apps/runner-app/Cargo.toml --features spec208-moli-acceptance --lib --no-fail-fast",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 189,
+      "result": "PASS"
+    },
+    {
+      "command": "cargo test --manifest-path apps/runner-app/Cargo.toml --no-default-features --lib --no-fail-fast",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 188,
+      "result": "PASS"
+    },
+    {
+      "command": "cargo check --manifest-path apps/runner-app/Cargo.toml --no-default-features --all-targets",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "cargo build --release --features spec208-moli-acceptance --bin smartaihub-runner --manifest-path apps/runner-app/Cargo.toml",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "cargo fmt --manifest-path apps/runner-app/Cargo.toml -- --check; node --check scripts/spec208/moli-isolation-acceptance.mjs; bash -n scripts/spec208/run-moli-isolation-acceptance.sh scripts/spec208/extend-moli-rootfs-with-runner.sh; git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "systemd_log": "Running as unit: spec208-runner-owned-cleanupfix-20261010-003.service; invocation ID: fbe1a320f32044ae815fbc73c414907e\n{\"result\":\"PASS\",\"runtime\":\"rootless-systemd-acceptance-not-cloudflare-certified\",\"harnessReceipt\":{\"receiptId\":\"local-acceptance:c0a47f18-baa5-4f0b-a7ed-68733d512811\",\"resultSha256\":\"c2d4ba9e3fd13ac04aa134cbf1c46941ada4e9ff0fd6b14a64c8f4530747c50a\",\"settlement\":\"synthetic-local-harness-success\",\"controlPlaneReceipt\":false},\"uid\":1000,\"rootWriteBlocked\":true,\"profileWriteAllowed\":true,\"externalRouteBlocked\":true,\"hostHomeVisible\":false,\"hostContainerSocketVisible\":false,\"profileFsType\":\"1021994\",\"defaultRoutePresent\":false,\"ipv4Routes\":[],\"ipv6Routes\":[\"00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo\",\"00000000000000000000000000000001 80 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000002 00000000 80200001       lo\",\"00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo\"],\"ipv6RouteCount\":3,\"nodeVersion\":\"v22.22.3\",\"moliVersionOutput\":\"moli 1.1.15\",\"moliBinarySha256\":\"f927b72192905c092ec95c8f528e35087224f3fe8750f72fb2147efa676eab8d\",\"runtimeImageDigest\":\"sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7\",\"moliVersion\":\"1.1.15\",\"moliPidA\":3209053,\"runnerPidA\":3209051,\"runnerExitA\":0,\"moliExitA\":143,\"moliSignalA\":null,\"profileCleanupA\":true,\"runnerReceiptA\":{\"ackState\":null,\"attemptId\":\"1\",\"correlationId\":\"command-tenant-a\",\"fencingVersion\":null,\"idempotencyKey\":\"command-tenant-a:0\",\"jobId\":\"spec208-tenant-a\",\"leaseId\":\"lease-tenant-a\",\"nodeId\":\"spec208-rootless-runner\",\"nodeKind\":\"managed_container\",\"payload\":{\"receipt\":{\"commandId\":\"command-tenant-a\",\"correlation\":{\"attempt\":1,\"fencingToken\":1,\"leaseId\":\"lease-tenant-a\"},\"eventId\":\"spec208:spec208-tenant-a:1:command-tenant-a\",\"eventType\":\"EXECUTION_COMPLETED\",\"jobId\":\"spec208-tenant-a\",\"observedAt\":\"2026-10-10T15:49:05.151Z\",\"payload\":{\"exitCode\":143,\"pid\":3209053,\"profileRemoved\":true,\"result\":{\"body\":\"MOLI_SYNTHETIC_DOM_RESULT_tenant-a\",\"cookie\":\"script_attempt=tenant-a\",\"httpOnlyCookiePresent\":true,\"localStorage\":\"tenant-a\",\"protocolProbe\":{\"bidi\":\"blocked\",\"egress\":\"blocked\",\"fetch\":\"blocked\",\"metadata\":\"blocked\"},\"title\":\"SPEC208_ACCEPTANCE_tenant-a\"},\"runtimeDigest\":\"sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7\",\"signal\":null,\"terminalAction\":\"complete\"},\"runnerId\":\"spec208-rootless-runner\",\"runnerSessionId\":\"session-tenant-a\",\"sequence\":1,\"status\":\"completed\"},\"type\":\"runner.job.receipt\"},\"profile\":\"shared_container\",\"protocolVersion\":\"sah-runner-v1\",\"runnerId\":\"spec208-rootless-runner\",\"sequence\":0},\"moliPidB\":3209076,\"runnerPidB\":3209074,\"runnerExitB\":0,\"moliExitB\":143,\"moliSignalB\":null,\"profileCleanupB\":true,\"runnerReceiptB\":{\"ackState\":null,\"attemptId\":\"1\",\"correlationId\":\"command-tenant-b\",\"fencingVersion\":null,\"idempotencyKey\":\"command-tenant-b:0\",\"jobId\":\"spec208-tenant-b\",\"leaseId\":\"lease-tenant-b\",\"nodeId\":\"spec208-rootless-runner\",\"nodeKind\":\"managed_container\",\"payload\":{\"receipt\":{\"commandId\":\"command-tenant-b\",\"correlation\":{\"attempt\":1,\"fencingToken\":1,\"leaseId\":\"lease-tenant-b\"},\"eventId\":\"spec208:spec208-tenant-b:1:command-tenant-b\",\"eventType\":\"EXECUTION_COMPLETED\",\"jobId\":\"spec208-tenant-b\",\"observedAt\":\"2026-10-10T15:49:05.768Z\",\"payload\":{\"exitCode\":143,\"pid\":3209076,\"profileRemoved\":true,\"result\":{\"body\":\"MOLI_SYNTHETIC_DOM_RESULT_tenant-b\",\"cookie\":\"script_attempt=tenant-b\",\"httpOnlyCookiePresent\":true,\"localStorage\":\"tenant-b\",\"protocolProbe\":{\"bidi\":\"blocked\",\"egress\":\"blocked\",\"fetch\":\"blocked\",\"metadata\":\"blocked\"},\"title\":\"SPEC208_ACCEPTANCE_tenant-b\"},\"runtimeDigest\":\"sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7\",\"signal\":null,\"terminalAction\":\"complete\"},\"runnerId\":\"spec208-rootless-runner\",\"runnerSessionId\":\"session-tenant-b\",\"sequence\":1,\"status\":\"completed\"},\"type\":\"runner.job.receipt\"},\"profile\":\"shared_container\",\"protocolVersion\":\"sah-runner-v1\",\"runnerId\":\"spec208-rootless-runner\",\"sequence\":0},\"cleanupCancelled\":{\"pid\":3209099,\"runnerPid\":3209097,\"runnerExitCode\":0,\"exitCode\":143,\"signal\":null,\"profileRemoved\":true,\"receipt\":{\"ackState\":null,\"attemptId\":\"1\",\"correlationId\":\"command-tenant-cancel\",\"fencingVersion\":null,\"idempotencyKey\":\"command-tenant-cancel:0\",\"jobId\":\"spec208-tenant-cancel\",\"leaseId\":\"lease-tenant-cancel\",\"nodeId\":\"spec208-rootless-runner\",\"nodeKind\":\"managed_container\",\"payload\":{\"receipt\":{\"commandId\":\"command-tenant-cancel\",\"correlation\":{\"attempt\":1,\"fencingToken\":1,\"leaseId\":\"lease-tenant-cancel\"},\"eventId\":\"spec208:spec208-tenant-cancel:1:command-tenant-cancel\",\"eventType\":\"CANCEL_ACKNOWLEDGED\",\"jobId\":\"spec208-tenant-cancel\",\"observedAt\":\"2026-10-10T15:49:06.246Z\",\"payload\":{\"exitCode\":143,\"pid\":3209099,\"profileRemoved\":true,\"result\":null,\"runtimeDigest\":\"sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7\",\"signal\":null,\"terminalAction\":\"cancel\"},\"runnerId\":\"spec208-rootless-runner\",\"runnerSessionId\":\"session-tenant-cancel\",\"sequence\":1,\"status\":\"cancelled\"},\"type\":\"runner.job.receipt\"},\"profile\":\"shared_container\",\"protocolVersion\":\"sah-runner-v1\",\"runnerId\":\"spec208-rootless-runner\",\"sequence\":0}},\"cleanupRevoked\":{\"pid\":3209125,\"runnerPid\":3209122,\"runnerExitCode\":0,\"exitCode\":143,\"signal\":null,\"profileRemoved\":true,\"receipt\":{\"ackState\":null,\"attemptId\":\"1\",\"correlationId\":\"command-tenant-revoke\",\"fencingVersion\":null,\"idempotencyKey\":\"command-tenant-revoke:0\",\"jobId\":\"spec208-tenant-revoke\",\"leaseId\":\"lease-tenant-revoke\",\"nodeId\":\"spec208-rootless-runner\",\"nodeKind\":\"managed_container\",\"payload\":{\"receipt\":{\"commandId\":\"command-tenant-revoke\",\"correlation\":{\"attempt\":1,\"fencingToken\":1,\"leaseId\":\"lease-tenant-revoke\"},\"eventId\":\"spec208:spec208-tenant-revoke:1:command-tenant-revoke\",\"eventType\":\"CANCEL_ACKNOWLEDGED\",\"jobId\":\"spec208-tenant-revoke\",\"observedAt\":\"2026-10-10T15:49:06.717Z\",\"payload\":{\"exitCode\":143,\"pid\":3209125,\"profileRemoved\":true,\"result\":null,\"runtimeDigest\":\"sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7\",\"signal\":null,\"terminalAction\":\"revoke\"},\"runnerId\":\"spec208-rootless-runner\",\"runnerSessionId\":\"session-tenant-revoke\",\"sequence\":1,\"status\":\"cancelled\"},\"type\":\"runner.job.receipt\"},\"profile\":\"shared_container\",\"protocolVersion\":\"sah-runner-v1\",\"runnerId\":\"spec208-rootless-runner\",\"sequence\":0}},\"cleanupCrashed\":{\"pid\":3209131,\"runnerPid\":3209129,\"runnerExitCode\":0,\"exitCode\":null,\"signal\":9,\"profileRemoved\":true,\"receipt\":{\"ackState\":null,\"attemptId\":\"1\",\"correlationId\":\"command-tenant-crash\",\"fencingVersion\":null,\"idempotencyKey\":\"command-tenant-crash:0\",\"jobId\":\"spec208-tenant-crash\",\"leaseId\":\"lease-tenant-crash\",\"nodeId\":\"spec208-rootless-runner\",\"nodeKind\":\"managed_container\",\"payload\":{\"receipt\":{\"commandId\":\"command-tenant-crash\",\"correlation\":{\"attempt\":1,\"fencingToken\":1,\"leaseId\":\"lease-tenant-crash\"},\"eventId\":\"spec208:spec208-tenant-crash:1:command-tenant-crash\",\"eventType\":\"EXECUTION_FAILED\",\"jobId\":\"spec208-tenant-crash\",\"observedAt\":\"2026-10-10T15:49:07.286Z\",\"payload\":{\"exitCode\":null,\"pid\":3209131,\"profileRemoved\":true,\"result\":null,\"runtimeDigest\":\"sha256:22b6e190459d69275c33f39aed8292d201df743674fb1144e2b3f032f26aa8c7\",\"signal\":9,\"terminalAction\":\"process_crashed\"},\"runnerId\":\"spec208-rootless-runner\",\"runnerSessionId\":\"session-tenant-crash\",\"sequence\":1,\"status\":\"failed\"},\"type\":\"runner.job.receipt\"},\"profile\":\"shared_container\",\"protocolVersion\":\"sah-runner-v1\",\"runnerId\":\"spec208-rootless-runner\",\"sequence\":0}},\"runnerNegativeCases\":{\"staleFence\":{\"attempt\":\"tenant-stale-fence\",\"exitCode\":3,\"error\":\"RUNNER_LEASE_FENCE_MISMATCH\",\"profileAbsent\":true},\"expiredDeadline\":{\"attempt\":\"tenant-expired-deadline\",\"exitCode\":3,\"error\":\"RUNNER_COMMAND_DEADLINE_EXPIRED\",\"profileAbsent\":true},\"expiredLease\":{\"attempt\":\"tenant-expired-lease\",\"exitCode\":3,\"error\":\"RUNNER_LEASE_EXPIRED\",\"profileAbsent\":true},\"failedStartup\":{\"attempt\":\"tenant-failed-startup\",\"exitCode\":3,\"error\":\"RUNNER_MOLI_START_FAILED\",\"profileAbsent\":true}},\"resultA\":{\"title\":\"SPEC208_ACCEPTANCE_tenant-a\",\"body\":\"MOLI_SYNTHETIC_DOM_RESULT_tenant-a\",\"localStorage\":\"tenant-a\",\"cookie\":\"script_attempt=tenant-a\",\"protocolProbe\":{\"fetch\":\"blocked\",\"bidi\":\"blocked\",\"egress\":\"blocked\",\"metadata\":\"blocked\"},\"httpOnlyCookiePresent\":true},\"resultB\":{\"title\":\"SPEC208_ACCEPTANCE_tenant-b\",\"body\":\"MOLI_SYNTHETIC_DOM_RESULT_tenant-b\",\"localStorage\":\"tenant-b\",\"cookie\":\"script_attempt=tenant-b\",\"protocolProbe\":{\"fetch\":\"blocked\",\"bidi\":\"blocked\",\"egress\":\"blocked\",\"metadata\":\"blocked\"},\"httpOnlyCookiePresent\":true},\"allProxyRequests\":[{\"method\":\"GET\",\"target\":\"http://fixture.spec208.invalid/acceptance?attempt=tenant-a&cdp=9222\",\"host\":\"fixture.spec208.invalid\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://127.0.0.1:9222/session\",\"host\":\"127.0.0.1:9222\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://example.com/\",\"host\":\"example.com\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://169.254.169.254/latest/meta-data/\",\"host\":\"169.254.169.254\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://fixture.spec208.invalid/acceptance?attempt=tenant-b&cdp=9223\",\"host\":\"fixture.spec208.invalid\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://127.0.0.1:9223/session\",\"host\":\"127.0.0.1:9223\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://example.com/\",\"host\":\"example.com\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://169.254.169.254/latest/meta-data/\",\"host\":\"169.254.169.254\",\"authorizationPresent\":false}],\"deniedProxyRequests\":[{\"method\":\"CONNECT\",\"target\":\"127.0.0.1:9222\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://127.0.0.1:9222/session\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://example.com/\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://169.254.169.254/latest/meta-data/\",\"authorizationPresent\":false},{\"method\":\"CONNECT\",\"target\":\"127.0.0.1:9223\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://127.0.0.1:9223/session\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://example.com/\",\"authorizationPresent\":false},{\"method\":\"GET\",\"target\":\"http://169.254.169.254/latest/meta-data/\",\"authorizationPresent\":false}],\"deniedProxyUpgrades\":[]}\nFinished with result: success\nMain processes terminated with: code=exited, status=0/SUCCESS\nService runtime: 3.359s\nCPU time consumed: 1.442s\nMemory peak: 131.8M (swap: 0B)\n",
+  "task": "SPEC-208 W2-R Runner-owned Moli acceptance",
+  "unit_invocation_id": "fbe1a320f32044ae815fbc73c414907e"
+}

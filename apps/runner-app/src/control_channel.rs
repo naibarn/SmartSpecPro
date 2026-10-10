@@ -32,7 +32,8 @@ struct SemanticObservationBinding {
     browser_generation: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunnerExecutionBinding {
     pub runner_id: String,
     pub tenant_id: String,
@@ -321,7 +322,7 @@ impl ControlChannel {
             node_kind,
             &command.runner_id,
             Some(&command.job_id),
-            None,
+            Some(&command.attempt.to_string()),
             Some(&command.lease_id),
             serde_json::json!({ "type": "runner.job.receipt", "receipt": receipt }),
         );
@@ -427,6 +428,7 @@ mod tests {
             .unwrap();
         let wire_receipt = envelope.payload.get("receipt").unwrap();
 
+        assert_eq!(envelope.attempt_id.as_deref(), Some("1"));
         assert!(wire_receipt.get("resultRef").unwrap().is_string());
         assert!(wire_receipt.get("evidenceRefs").unwrap().is_array());
         assert!(wire_receipt.get("errorCode").is_none());
