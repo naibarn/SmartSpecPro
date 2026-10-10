@@ -175,6 +175,7 @@ export async function installSpec308MetricsProbe(page: Page) {
       });
     },
     async snapshot(phase: string, profile: string, mockedProcedureCalls: number): Promise<Spec308MetricSnapshot> {
+      await cdp.send("HeapProfiler.collectGarbage");
       const [viewport, browserProbe, resources, cdpMetrics] = await Promise.all([
         page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })),
         page.evaluate(() => {
