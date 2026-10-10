@@ -333,6 +333,46 @@ describe("executeSharedSkillTextRuntime", () => {
     expect(client.run).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps runtime execution successful when observational trace persistence fails", async () => {
+    const event = {
+      runtimeContractVersion: CURRENT_RUNTIME_CONTRACT_VERSION,
+      traceSchemaVersion: CURRENT_TRACE_SCHEMA_VERSION,
+      checkpointSchemaVersion: CURRENT_CHECKPOINT_SCHEMA_VERSION,
+      eventId: "evt-runtime-1",
+      eventName: "response.completed",
+      surface: "skill" as const,
+      requestId: "req-runtime-1",
+      idempotencyKey: "idem-runtime-1",
+      sequence: 0,
+      sourceComponent: "openai_agents_adapter",
+      sdkVersion: "sdk-test",
+      adapterVersion: "adapter-test",
+      redactedPayload: { status: "completed" },
+    };
+    const traceRepository = {
+      upsertRuntimeTrace: vi.fn().mockRejectedValue(new Error("trace store down")),
+    };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await executeSharedSkillTextRuntime({
+      ...makeInput(),
+      traceRepository,
+      client: {
+        run: vi.fn().mockResolvedValue(makeRuntimeResponse({ events: [event] })),
+      },
+      legacyExecute: vi.fn(),
+      featureFlags: {
+        ...makeInput().featureFlags,
+        openAiAgentsRuntimeSkillShadow: false,
+        openAiAgentsRuntimeSkillActive: true,
+      },
+    });
+
+    expect(result.value.rawContent).toBe("Runtime-enhanced prompt");
+    expect(traceRepository.upsertRuntimeTrace).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
   it("passes publicUrl into the context-pack request for relative reference images", async () => {
     const input = makeInput();
     const buildContextPack = vi.fn().mockResolvedValue({
