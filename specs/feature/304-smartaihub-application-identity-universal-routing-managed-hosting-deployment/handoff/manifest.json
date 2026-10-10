@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 20,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -374,7 +374,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:07:13.590744Z",
+  "updated_at": "2026-10-10T08:15:19.687854Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -426,11 +426,18 @@
         "scope": "Exact origin/main SHA f28ec35346a9668fc300195ec53343d350b52108: 3 focused files, 17 tests passed; stable App identity across aliases and fail-closed inactive/cross-tenant routing are contract-level evidence, not deployed T-15 acceptance.",
         "source_sha": "f28ec35346a9668fc300195ec53343d350b52108",
         "status": "PASS"
+      },
+      {
+        "kind": "R4_FOCUSED_RUNTIME_REGRESSION",
+        "path": "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: 21 focused files / 261 tests passed across trusted assertion composition, Host/XFH fail-closed memory context, alias identity, receipt ACL, worker wiring and independent evidence contracts. Synthetic only; no production ingress caller, deployed provenance, or positive authorized persisted Project-memory read.",
+        "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "f28ec35346a9668fc300195ec53343d350b52108",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }
