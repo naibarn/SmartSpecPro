@@ -5,7 +5,7 @@ Loop policy:
   purpose: scoped implementation with durable task evidence
   current_stage: FINAL_VERIFY
   resume_from: FINAL_VERIFY
-  iteration: 8/12
+  iteration: 9/12
   tool_call_batches: unknown/30 (conservative batches recorded in host session)
   estimated_cost_usd: unknown <= 0.50 proxy
   dispatch_waves: 3/6
@@ -35,3 +35,5 @@ Loop policy:
 - Fast gate: Vitest transpilation/execution passed for changed TS files; `git diff --cached --check` passed on the 8 task-owned paths; staged set contained only those paths; no secret pattern found in changed files.
 - PR #471 opened and handoff updated; reconciled base `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; review decision empty; only `build-preview` completed as `SKIPPED`.
 - Stop reason for this checkpoint: implementation PR is reviewable, but canonical integration requires normal PR review/check evidence. Keep branch/worktree active and do not report `SKIPPED` as passing.
+- Added explicit `workerJobs.adminDashboardSummary` response assertion. Focused run at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`: 2 files passed, 15 passed, 2 DB integration tests skipped. Reviewer confirmed the pass-through assertion and service scope; no material finding remains.
+- Refreshed `origin/main` to `dab53cb6e` after PR creation. The task branch is one commit ahead of its remote PR head and must be reconciled with this latest canonical SHA before updating the PR.

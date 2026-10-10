@@ -39,11 +39,11 @@ The task branch is a temporary candidate, not a canonical integration. It was re
 ## Verification evidence and remaining work
 
 - RED: focused monitor tests failed before the helper existed (`deriveIdleWithBacklogAlert is not a function`; 5 cases failed, 2 existing unit tests passed, 2 DB integration tests skipped).
-- Prior GREEN for service decision kernel: 1 file, 7 passed, 2 DB integration tests skipped at 2026-10-10 14:33 Asia/Bangkok.
-- The admin tRPC forwarding assertion was added after that run. Rerun of service + router files is pending before this PR revision is considered verified.
+- GREEN at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`: `pnpm exec vitest run server/services/__tests__/jobControlPlaneMonitor.test.ts server/routers/__tests__/workerJobs.test.ts` from `apps/web` — 2 files passed, 15 passed, 2 DB integration tests skipped. Completed at 2026-10-10 14:39 Asia/Bangkok; covers aggregate decision and admin tRPC field forwarding.
 - Passed: clean rebase onto canonical SHA `564ccc092ca4be93dfc12b8d548bd729bfdbe78b` and normal PR creation (#471).
-- Pending: rerun focused service + router tests and fast gate for the new route contract assertion.
+- Passed: focused service + router tests at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`; local fast gate for that code/test candidate.
 - Pending: required CI/review and post-merge ancestry verification. Current `build-preview` is skipped, not passed.
+- Canonical reconciliation update: `origin/main` advanced to `dab53cb6e` after PR #471 was opened. The task branch has not yet been reconciled with this newer SHA; do that before the next PR update and rerun the focused checks if code changes during reconciliation.
 - Not verified: six-spec normative amendment, UI presentation of the new field, job/worker capability compatibility, DB-backed monitor behavior, full failure/retry/conflict/runner-loss/duplicate-execution scenarios, automatic PR repair/merge/cleanup, benchmark, Windows/Debian execution, deployment, production readiness.
 
 ## Next safe actions
