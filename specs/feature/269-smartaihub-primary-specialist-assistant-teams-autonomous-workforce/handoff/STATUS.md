@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1677 unresolved of 1677
-- Next action: Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Keep App-bound Project reads fail-closed on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.
-- Manifest generation: 22
+- Next action: Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.
+- Manifest generation: 23
 
 ## Source-declared status and relationship claims
 
