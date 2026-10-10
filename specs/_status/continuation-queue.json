@@ -4884,7 +4884,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "priority": "P1",
-      "rationale": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "rationale": "Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.",
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "spec_id": "268"
     },

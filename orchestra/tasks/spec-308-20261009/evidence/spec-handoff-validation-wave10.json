@@ -1,0 +1,10 @@
+{
+  "discovered_records": 473,
+  "indexed_records": 473,
+  "canonical_specs": 315,
+  "missing_handoffs": [],
+  "invalid_manifests": [],
+  "generated_status_drift": [],
+  "global_index_equal": true,
+  "walk_complete": true
+}

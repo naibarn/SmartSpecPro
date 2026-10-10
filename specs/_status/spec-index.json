@@ -40,9 +40,9 @@
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 1,
     "verification.PARTIAL": 11,
-    "verification.PASS": 4,
+    "verification.PASS": 5,
     "verification.PENDING": 1,
-    "verification.UNKNOWN": 456
+    "verification.UNKNOWN": 455
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
   "record_count": 473,
@@ -119644,7 +119644,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "1d970c5a3925bf8f8f32516005d2a9be7bb67ae8",
+      "canonical_sha": "343a885ec61b3e52ef785b644228c71115ec2262",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -120748,8 +120748,7 @@
         "requirement REQ-58277C646788 is OPEN",
         "requirement REQ-EA40FDE33EAD is OPEN",
         "requirement REQ-E8F70441ADF8 is OPEN",
-        "requirement REQ-233CE93441E3 is OPEN",
-        "required verification evidence is missing"
+        "requirement REQ-233CE93441E3 is OPEN"
       ],
       "confidence": "HIGH",
       "configured_root": "specs/feature",
@@ -120787,17 +120786,17 @@
       "deployment": "UNKNOWN",
       "digest": "3a74aa552c580d234eb6a5162e7b1536621174bda24405852f51cefac4df0e93",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T05:05:37.875870Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Implement SPEC-268 R2.6 runtime bindings and executable context-isolation acceptance; keep production migration gated.",
+      "next_action": "Continue with an authorized team-room canonical project binding and source-provenance path; preserve global-only Chat entity memory and team-room memory suppression until that path is verified.",
       "path": "specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
-        "id": "SPEC268_RUNTIME_ACCEPTANCE",
-        "next_action": "Implement and test additive runtime integration.",
-        "root_cause": "R2.6 defines contract but does not implement runtime resolver/context binding or direct acceptance suite."
+        "id": "SPEC268_PROJECT_MEMORY_PROVENANCE",
+        "next_action": "Establish an authorized durable team-room-to-canonical-project binding and source-level memory provenance before enabling project-scoped team-room memory.",
+        "root_cause": "The room project field is a legacy integer and SPEC-302 currently provides an advisory resolver without an authenticated durable domain binding or receipt. Chat now requests only user-global entity memory; team-room persistent memory remains disabled."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/268-smartaihub-unified-memory-r2-5-work-context-evidence-alignment",
@@ -120854,7 +120853,7 @@
       "successors": [],
       "title": "SmartAIHub Unified Memory, Context Retrieval & Learning Runtime",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PASS"
     },
     {
       "acceptance": "UNKNOWN",

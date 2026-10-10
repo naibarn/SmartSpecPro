@@ -185,3 +185,13 @@ Loop policy:
 - MCP run `38004846369` still fails on baseline database/session fixture setup and stale imports of retired `agencyMcpService`; live smoke fails closed without authorized endpoint/token.
 - Workflow-dispatch `38004111980` on #405 head `868a5600ff770be91885666b7f584835e03fc690` passed compatibility regressions (18 files / 238 tests) and failed full production audit on residual Moderate `sprintf-js@1.1.3`; owner disposition remains required.
 - Requirement ledger remains 63 `PARTIAL`, 3 `UNVERIFIED`, all 66 `OPEN`. The PR browser simulation is mocked and does not satisfy live authenticated acceptance; production flags remain OFF.
+
+
+### 2026-10-10 — Wave 9: post-drag balloon geometry
+
+- Refreshed origin/main to `36fe5811a65b9c5a705f9ded6152607069077de4`, reconciled PR #399 through normal merge commits, and pushed candidate `a7765811ef0f6a21b5a1297090f5754d845b30c0` without force.
+- Fixed post-drag balloon positioning by signaling drag completion and remeasuring after two animation frames. The failed run `38006435762` on `d248a3f0ac25729a214b30ef14caf09fa354f342` retained a 56px geometry delta after the test advanced only 32ms; the test now advances 64ms while retaining the <=24px alignment threshold.
+- Exact candidate run `38006779631` passed 8 focused component files / 144 tests and 18/18 mocked Chromium cases. Evidence is in `evidence/pr-ci-38006779631.json` and `evidence/ci-artifacts/38006779631/`. This remains simulated evidence, not live acceptance.
+- Canonical ledger remains 63 PARTIAL, 3 UNVERIFIED, all 66 OPEN. Security audit (`sprintf-js`), MCP live authority, approved non-production runtime/test identity, and Feature-049 tenant authorization remain open. Production flags remain OFF.
+- Repeated the mocked browser run on the same exact candidate `a7765811ef0f6a21b5a1297090f5754d845b30c0`: run `38007259981` also passed 18/18. Both exact-SHA green runs are recorded separately.
+- The independent #399 contract run `38006779712` failed before its audit step on the established MCP fixture/retired-import baseline defects (44 failed / 76 passed across 11 files); its live smoke failed closed because approved endpoint/token are absent. #403 owns the focused fixture repair (118/118 on its head), but integration remains ordered behind the unresolved #405 mandatory security audit.
