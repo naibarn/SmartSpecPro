@@ -36,20 +36,44 @@ Generated `handoff/STATUS.md` files were read as projections; no generated statu
 
 The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `e6d33045f0b954444349213d5de88b941a9c5167`; intervening changes concern SPEC-269 handoff artifacts and do not overlap task-owned edits. It passed the local fast integration gate and was delivered through normal PR #471. The latest `build-preview` is `SKIPPED`; no review decision exists and no merge occurred. The primary user workspace remains at `ccd4cd11...` with unrelated dirty changes preserved, so no convergence was performed. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
 
+## Continuation audit: PR #471, scheduler recovery, and spec ownership
+
+### PR #471 reconciliation snapshot (2026-10-10 continuation)
+
+- PR API still reports open head `c69e06e9bd2599c5df9692acae6e17c1e87c94bf`, base `e6d33045f0b954444349213d5de88b941a9c5167`, `MERGEABLE/CLEAN`, no review decision, and only `build-preview=SKIPPED`. That mergeability result is stale because refreshed `origin/main` has advanced to `72439f958…` (it advanced during this audit).
+- Against refreshed `origin/main`, the PR head is 18 commits ahead / 33 behind. The user-reported 18/7 count corresponds to an earlier snapshot; the behind count grew as unrelated PRs integrated. The 18 PR-only commits are all task work, with duplicate feature patch IDs in the branch history. The PR changed-file set contains only the original monitor helper/service test, router test, and task evidence. No unrelated implementation files were found.
+- Current continuation worktree `HEAD` includes the task branch's prior canonical merges. `git merge-tree --write-tree origin/main HEAD` returned a tree without conflicts. The original PR branch and worktree remain intact. A regular merge of the refreshed canonical ref into the task branch, then a normal push, is the safe reconciliation; no clean candidate branch is needed unless the live merge result changes.
+- Repository branch-protection and ruleset inspection previously found no required checks/review rules. This does not convert the skipped preview to a pass. Local targeted tests are evidence for the changed scope; automatic merge is not yet recorded and must not be reported complete without rechecking live repo policy, PR checks, and ancestry.
+
+### Existing runtime and safe repair
+
+- SPEC-267's existing `worker_jobs` + outbox, `jobReconciler`, `jobOutboxPublisher`, authenticated worker claim path, per-worker capability selector, health/queue checks, and fenced leases already perform periodic due-retry and expired-lease recovery. Keep using these; no second queue or scheduler is needed.
+- The dashboard `backlogWithFreeWorkerCapacity` is aggregate telemetry. It cannot authorize dispatch to a specific worker because it does not establish that worker's job capability, runtime/adapter compatibility, live readiness, resource admission, or claim authority. The authenticated claim path performs those checks and CAS/fencing. Automatically claiming based only on the dashboard signal would risk duplicate execution and wrong-worker side effects.
+- A concrete deadlock gap was safe to fix locally: queued jobs with a multi-node dependency cycle could wait indefinitely. The existing transactional claim path now walks unresolved dependency edges with a 128-node budget. A proven cycle fails once with `dependency_cycle` and operator review; a scan over budget is left queued and is never mislabeled as a cycle. Existing failure event and outbox cancellation semantics are reused. Tests cover 2-node and transitive cycles, one-time failure event, independent work continuing, and budget exhaustion.
+- Remaining runtime gaps: no persisted generic `no_compatible_worker` reason, no trusted cross-runtime free-capacity placement, and no generic queue-stall classifier. External runner authorization/trust and resource authority remain real boundaries. Next work belongs to an owned SPEC-267/SPEC-276 WorkUnit after its current handoff; it must connect authoritative worker registration/capability/health/resource evidence to existing claims, not add a scheduler.
+
+### Spec consolidation and next WorkUnits
+
+- Feature 077 remains the existing Distributed Worker Fabric owner; no new Distributed Execution spec is warranted. The shared `autonomous-completion-contract.md` already defines completion evidence, blocker analysis, freshness, dependency waits and independent work.
+- Ownership audit remains: SPEC-224 owns goal/Git lifecycle reconciliation; SPEC-226 only the task-control bridge; SPEC-267 the durable jobs/scheduler/leases; SPEC-269 goal understanding and delegation; SPEC-276 execution capability and adapters; SPEC-277 task-control UX. Do not amend generated status/manifests or active handoffs from other owners' worktrees. No canonical spec or handoff was edited in this continuation.
+- Next WorkUnits: `WU-PR471-CANONICAL-RECONCILE` (conductor; merge latest `origin/main`, rerun exact fast gate, push normally, reconcile checks/review/merge eligibility); `WU-SPEC267-COMPATIBLE-PLACEMENT` (owner needed; prove compatible worker placement from authenticated capability/health/resource signals); `WU-SPEC224-GIT-LIFECYCLE` (owner needed; build PR repair/merge/cleanup only on owned refs with existing protection honored); `WU-SPEC077-BENCHMARK-RECOVERY` (owner needed; single-machine baseline, then controlled multi-machine failure recovery). Independent next work may proceed while PR status is pending.
+
 ## Verification evidence and remaining work
 
 - RED: focused monitor tests failed before the helper existed (`deriveIdleWithBacklogAlert is not a function`; 5 cases failed, 2 existing unit tests passed, 2 DB integration tests skipped).
 - GREEN at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`: `pnpm exec vitest run server/services/__tests__/jobControlPlaneMonitor.test.ts server/routers/__tests__/workerJobs.test.ts` from `apps/web` — 2 files passed, 15 passed, 2 DB integration tests skipped. Completed at 2026-10-10 14:39 Asia/Bangkok; covers aggregate decision and admin tRPC field forwarding.
-- Passed: clean rebase onto canonical SHA `564ccc092ca4be93dfc12b8d548bd729bfdbe78b` and normal PR creation (#471).
+- Passed: clean canonical reconciliations in prior snapshots and normal PR creation (#471); current exact fast gate for the continuation is pending its checkpoint.
 - Passed: focused service + router tests at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`; local fast gate for that code/test candidate.
-- Pending: required CI/review and post-merge ancestry verification. Current `build-preview` is skipped, not passed.
+- Passed (continuation): `pnpm exec vitest run server/services/__tests__/jobControlPlane.test.ts -t 'does not claim a dependent Job|fails a dependent Job closed|fails a multi-job dependency cycle|detects a dependency cycle through|keeps oversized dependency scans|rejects a known adapter|fences stale workers|increments the business attempt once|does not auto-dispatch an operator-review retry|recovers a lease-expired story checkpoint'` — 1 file, 10 passed, 63 skipped, 2026-10-10 15:13 Asia/Bangkok.
+- Passed (continuation, earlier run): 8 focused files across control plane, reconciler, outbox, worker registry/scheduler, monitor and router — 181 passed, 2 skipped. This is local targeted evidence only.
+- Pending: CI/review and post-merge ancestry verification. Current `build-preview` is skipped, not passed; there is no merge SHA.
 - Canonical reconciliation update: `origin/main` advanced to `e6d33045f0b954444349213d5de88b941a9c5167` after PR #471 was opened. The branch now contains this SHA in its ancestry; intervening changes touch SPEC-269 handoff artifacts, outside this slice's edits.
-- Not verified: six-spec normative amendment, UI presentation of the new field, job/worker capability compatibility, DB-backed monitor behavior, full failure/retry/conflict/runner-loss/duplicate-execution scenarios, automatic PR repair/merge/cleanup, benchmark, Windows/Debian execution, deployment, production readiness.
+- Not verified: six-spec normative amendment (deferred due ownership and active handoffs), UI presentation of the new field, per-job compatible-worker automatic dispatch, DB-backed monitor behavior, live runner loss/lease expiry, GitHub CI failure repair/automatic merge/cleanup, process restart UAT, single-machine benchmark followed by multi-machine verification, Windows/Debian execution, deployment, production readiness. `SKIPPED` checks are not passes.
 
 ## Next safe actions
 
-1. Create the implementation PR for this isolated monitor slice and verify CI/review without claiming `SKIPPED` as pass.
-2. Continue the six-spec allocation with existing work owners after their current handoffs/PRs reconcile; never edit another task's active paths.
-3. Reconcile SPEC-077 versus the proposed cross-machine capability/artifact/workspace portability boundary before assigning a registry number.
-4. Plan an owned SPEC-224 Git lifecycle work unit using the existing authority/workspace and job control-plane contracts; require a separate authorization check before any automatic merge or cleanup action.
-5. Add recovery matrix and same-task single-machine benchmark evidence before enabling remote placement by default.
+1. Reconcile and push the updated PR branch normally; recheck current repository rules and required checks on the refreshed exact head. Never treat `SKIPPED` as passed.
+2. Merge only when live repository policy permits and required checks/reviews pass; verify the resulting SHA is reachable from `origin/main` before recording integration.
+3. Continue spec allocation with existing work owners after their current handoffs/PRs reconcile; never edit another task's active paths.
+4. Implement compatible placement and Git lifecycle work only within an owned SPEC-267/SPEC-276 or SPEC-224 WorkUnit using existing authority/control-plane boundaries.
+5. Add restart/failure-repair recovery evidence and a single-machine benchmark before any default multi-machine execution; keep production readiness separate.
