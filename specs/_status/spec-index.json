@@ -125607,7 +125607,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+      "canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",

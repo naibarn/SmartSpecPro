@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+    "expected_canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
     "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
     "next_ready_workunit": "Actual non-production AutoTeam recovery UAT on a dedicated current-schema database, including asynchronous provider completion, restart/resume, stale lease/idempotency, and bounded no-progress suppression",
     "reactivation_predicate": "Resume when a dedicated approved current-schema non-production database and provider test capability are available; do not migrate the shared smartspec_test database.",
-    "resume_point": "PR #501 merged as 311bc1e39100a308efcadab61fa278d607a860aa on origin/main. Implemented a Feature 186 canonical auto-team.recovery.scan scheduler job through worker_jobs/outbox, registered it in the Node worker allowlist and executor registry, replaced the obsolete timer inventory entry, emitted useful-work evidence only for a persisted assistant turn or final review completion, classified capacity_wait as resource scheduling, and suppressed scans after three recent unchanged running-state evaluations report no_action/recovery_action_applied_unverified/recovery_dispatched_unverified. Focused contracts: 6 files / 29 tests pass. Actual non-production UAT remains NOT_RUN because the shared database is stale; no migrations were run. Next execute the bounded UAT WorkUnit above.",
+    "resume_point": "PR #501 recovery implementation is integrated at 311bc1e39100a308efcadab61fa278d607a860aa; PR #503 adds a direct no-progress loop contract and is integrated at 06068ae9db6c433b9a10353f71f2becdba18218e. AutoTeam/scheduler contracts pass 6 files / 30 tests, and selected worker_jobs/outbox replay/idempotency/lease/duplicate callback contracts pass 7 tests. The new test confirms a stalled unchanged run is suppressed after three no_action evaluations without blocking an independent ready run. Actual recovery UAT remains NOT_RUN: no database/API endpoint configured, local PostgreSQL requires unavailable credentials, and known shared test schema is stale. Next run UAT on a dedicated current-schema non-production environment.",
     "waiting_predicate": "Dedicated current-schema non-production database and safe provider test capability are provisioned; shared smartspec_test remains stale and repository-wide migrations include retired systems."
   },
   "continuation_assessment": {
@@ -53,6 +53,13 @@
         "path": "apps/web/server/services/autoTeamRecoveryService.ts",
         "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/501",
         "source_sha": "6823053e3836fac23f1af49dbd6984e92c9988f1"
+      },
+      {
+        "canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
+        "kind": "INTEGRATED_TEST_COVERAGE",
+        "path": "apps/web/server/services/__tests__/autoTeamRecoveryService.test.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/503",
+        "source_sha": "feeb1a95df207239a72901dc413ce9a27e808af9"
       }
     ],
     "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
@@ -91,7 +98,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 22,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -114,7 +121,8 @@
       "bce088f9242025d4eafa6f52791dbe3f5924f088",
       "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
       "085cc0420fd5b16b9e9189489f1cb97158aff732",
-      "311bc1e39100a308efcadab61fa278d607a860aa"
+      "311bc1e39100a308efcadab61fa278d607a860aa",
+      "06068ae9db6c433b9a10353f71f2becdba18218e"
     ],
     "mapping": [],
     "source_paths": [
@@ -134,9 +142,9 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+    "canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:29:00Z"
+    "integrated_at": "2026-10-10T08:34:49Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -178,6 +186,13 @@
           "path": "apps/web/server/services/autoTeamRecoveryService.ts",
           "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/501",
           "source_sha": "6823053e3836fac23f1af49dbd6984e92c9988f1"
+        },
+        {
+          "canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
+          "kind": "INTEGRATED_TEST_COVERAGE",
+          "path": "apps/web/server/services/__tests__/autoTeamRecoveryService.test.ts",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/503",
+          "source_sha": "feeb1a95df207239a72901dc413ce9a27e808af9"
         }
       ],
       "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
@@ -368,21 +383,22 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:31:09.083732Z",
+  "updated_at": "2026-10-10T08:35:13.416689Z",
   "verification": {
     "baseline_issues": [
       "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
     ],
     "evidence": [
       "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-scan-311bc1e.json",
-      "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-scan-311bc1e.json"
+      "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-scan-311bc1e.json",
+      "specs/feature/277-task-control-experience-r1-6/handoff/evidence/auto-team-recovery-contracts-06068ae.json"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick",
       "integration"
     ],
-    "sha": "311bc1e39100a308efcadab61fa278d607a860aa",
+    "sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
     "status": "PARTIAL",
     "task_regressions": []
   }
