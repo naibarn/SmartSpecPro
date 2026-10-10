@@ -20,6 +20,7 @@ def pull_request(**overrides):
         "isDraft": False,
         "headRefOid": "a" * 40,
         "baseRefName": "main",
+        "baseRefOid": "c" * 40,
         "mergeable": "MERGEABLE",
         "mergeStateStatus": "CLEAN",
         "reviewDecision": "",
@@ -81,6 +82,16 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
                     pr, checks, expected_head=expected_head
                 )
                 self.assertEqual("BLOCKED", result["status"])
+
+    def test_canonical_base_drift_blocks_until_candidate_is_refreshed(self):
+        result = PROMOTER.evaluate_pull_request(
+            pull_request(),
+            [{"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"}],
+            expected_head=None,
+            expected_base_sha="e" * 40,
+        )
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertIn("BASE_REF_STALE", result["blockers"])
 
     def test_execute_rechecks_head_and_uses_normal_github_merge(self):
         commands = []

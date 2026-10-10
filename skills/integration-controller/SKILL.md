@@ -76,8 +76,9 @@ make this preflight pass.
 
 Only when the slice gates and authority are satisfied, execute
 `python3 skills/integration-controller/scripts/promote_ready_pr.py --pr <number> --expected-head <sha> --execute`.
-The executor re-fetches the configured canonical ref, rechecks the exact PR
-head and CI immediately before merging, and uses GitHub's normal merge path
+The executor re-fetches the configured canonical ref, requires the PR's base
+revision to match it, rechecks the exact PR head and CI immediately before
+merging, and uses GitHub's normal merge path
 with an expected-head guard. It never requests administrator bypass, force
 updates, or branch deletion. GitHub remains authoritative for repository
 reviews, rulesets, and merge queues. Treat `MERGE_QUEUED_OR_PENDING` as pending,

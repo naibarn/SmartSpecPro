@@ -39,6 +39,7 @@ def evaluate_pull_request(
     checks: list[dict[str, Any]],
     *,
     expected_head: str | None,
+    expected_base_sha: str | None = None,
     canonical_branch: str = "main",
 ) -> dict[str, Any]:
     blockers: list[str] = []
@@ -58,6 +59,8 @@ def evaluate_pull_request(
     head_sha = pull_request.get("headRefOid")
     if expected_head and head_sha != expected_head:
         blockers.append("EXPECTED_HEAD_MISMATCH")
+    if expected_base_sha and pull_request.get("baseRefOid") != expected_base_sha:
+        blockers.append("BASE_REF_STALE")
 
     if not checks:
         blockers.append("NO_CI_CHECK_EVIDENCE")
@@ -113,7 +116,7 @@ def preflight(
     pull_request = _json_command(
         [
             "gh", "pr", "view", str(pr_number), "--json",
-            "state,isDraft,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision,url",
+            "state,isDraft,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision,url",
         ],
         cwd=repo,
         runner=runner,
@@ -129,6 +132,7 @@ def preflight(
         pull_request,
         checks,
         expected_head=expected_head,
+        expected_base_sha=canonical_sha,
         canonical_branch=canonical_branch,
     )
     result["canonical_ref"] = policy["canonical_ref"]
