@@ -113,6 +113,17 @@ describe("AutoTeamLedgerPanel", () => {
             currentStepKey: "storyboard",
             currentStepTitle: "Storyboard",
             latestOutcome: "Approved for finalization",
+            progressAssessment: {
+              status: "PARTIAL",
+              progress: 0.5,
+              runningPeakProgress: 0.5,
+              progressDelta: 0,
+              verifiedEvidenceCount: 1,
+              verifiedRequiredCriteria: 1,
+              requiredCriteriaCount: 2,
+              reasonCodes: ["required_outcomes_unverified"],
+              recoveryRecommended: false,
+            },
           },
           gates: [
             {
@@ -548,6 +559,7 @@ describe("AutoTeamLedgerPanel", () => {
     expect(screen.getByText(/Detailed audit metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/Runtime metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/openai_agents \/ active/i)).toBeInTheDocument();
+    expect(screen.getByText("Evidence incomplete · 50%")).toBeInTheDocument();
     expect(screen.getAllByText(/Changes requested/i).length).toBeGreaterThan(0);
   });
 
