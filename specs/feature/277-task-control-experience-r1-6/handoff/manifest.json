@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 14,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -353,7 +353,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:05:52.347342Z",
+  "updated_at": "2026-10-10T08:07:40.341518Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -431,6 +431,15 @@
         "reason": "Source audit found timer policy/inventory and adapter implementation/tests, but no production createOccurrence caller or team.run_recovery dispatch source; external Cloudflare schedule remains unverified.",
         "result": "PASS",
         "revision": "00877132d21f2a675a143aefd6db679ef51fc66a"
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/cloudflareJobAdapters.test.ts server/services/__tests__/jobControlPlane.test.ts -t \"timezone-validated Cron job intent|rejects a Cron occurrence whose tenant|creates one canonical job and outbox intent|deduplicated retry outbox|callback insert that loses the unique race\"",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "4707dd37439bdf6ce19442ff4fd68aca5e30687f",
+        "skipped": 76,
+        "test_files": 2,
+        "tests": 5
       }
     ],
     "freshness": "FRESH",
@@ -438,7 +447,7 @@
       "quick",
       "integration"
     ],
-    "sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
+    "sha": "4707dd37439bdf6ce19442ff4fd68aca5e30687f",
     "status": "PARTIAL",
     "task_regressions": []
   }
