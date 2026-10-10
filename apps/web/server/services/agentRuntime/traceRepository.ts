@@ -1,8 +1,11 @@
+import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 
-import { agentRuntimeTraces } from "../../../drizzle/schema";
+import {
+  agentRuntimeTraces,
+  autoTeamTraceEvents,
+} from "../../../drizzle/schema";
 import { getDb } from "../../db";
-import { emitAutoTeamTraceEvent } from "../autoTeamTraceEventService";
 import type {
   AgentRuntimeTraceRepository,
   RuntimeTracePersistenceRecord,
@@ -40,27 +43,55 @@ export const agentRuntimeTraceRepository: AgentRuntimeTraceRepository = {
   },
 
   async upsertTeamTraceEvent(record: TeamTraceProjectionRecord): Promise<void> {
-    await emitAutoTeamTraceEvent({
-      tenantId: record.tenantId,
-      roomId: record.roomId,
-      runId: record.runId,
-      traceEventId: record.eventId.slice(0, 120),
-      eventName: record.eventName.slice(0, 160),
-      sourceComponent: "agent_runtime",
-      severity: "info",
-      summary: record.eventName.slice(0, 500),
-      // Task Control receives only bounded identifiers. Runtime payloads can
-      // contain model or user content and remain in the redacted archive only.
-      redactedMetadataJson: {
-        eventId: record.eventId.slice(0, 255),
-        traceId: record.traceId?.slice(0, 255) ?? null,
-        stepKey: record.stepKey?.slice(0, 180) ?? null,
-        attemptId: record.attemptId?.slice(0, 120) ?? null,
-      },
-      idempotencyKey: `agent-runtime:${record.runId}:${record.eventId}`.slice(
-        0,
-        255,
-      ),
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const idempotencyKey = createHash("sha256")
+      .update(`agent-runtime:${record.runId}:${record.eventId}`)
+      .digest("hex");
+
+    await db.transaction(async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`auto-team-trace:${record.tenantId}:${record.runId}`}, 0))`);
+      const [existing] = await tx
+        .select({ id: autoTeamTraceEvents.id })
+        .from(autoTeamTraceEvents)
+        .where(and(
+          eq(autoTeamTraceEvents.tenantId, record.tenantId),
+          eq(autoTeamTraceEvents.runId, record.runId),
+          eq(autoTeamTraceEvents.idempotencyKey, idempotencyKey),
+        ))
+        .limit(1);
+      if (existing) return;
+
+      const [last] = await tx
+        .select({ sequence: autoTeamTraceEvents.sequence })
+        .from(autoTeamTraceEvents)
+        .where(and(
+          eq(autoTeamTraceEvents.tenantId, record.tenantId),
+          eq(autoTeamTraceEvents.runId, record.runId),
+        ))
+        .orderBy(desc(autoTeamTraceEvents.sequence))
+        .limit(1);
+
+      await tx.insert(autoTeamTraceEvents).values({
+        tenantId: record.tenantId,
+        roomId: record.roomId,
+        runId: record.runId,
+        traceEventId: record.eventId.slice(0, 120),
+        sequence: (last?.sequence ?? 0) + 1,
+        eventName: record.eventName.slice(0, 160),
+        sourceComponent: "agent_runtime",
+        severity: "info",
+        summary: record.eventName.slice(0, 500),
+        // Task Control receives only bounded identifiers. Runtime payloads can
+        // contain model or user content and remain in the redacted archive only.
+        redactedMetadataJson: {
+          eventId: record.eventId.slice(0, 255),
+          traceId: record.traceId?.slice(0, 255) ?? null,
+          stepKey: record.stepKey?.slice(0, 180) ?? null,
+          attemptId: record.attemptId?.slice(0, 120) ?? null,
+        },
+        idempotencyKey,
+      }).onConflictDoNothing();
     });
   },
 };
