@@ -1,0 +1,45 @@
+# Progress — Autonomous Completion PR #467 follow-on
+
+Loop policy:
+  orchestra_id: autonomous_completion_pr467_followup
+  purpose: scoped implementation with durable task evidence
+  current_stage: IMPLEMENT
+  resume_from: IMPLEMENT
+  iteration: 10/12
+  tool_call_batches: unknown/30 (conservative batches recorded in host session)
+  estimated_cost_usd: unknown <= 0.50 proxy
+  dispatch_waves: 3/6
+  active_subagents: 0/4
+  parallel_writers: 0/2
+  required_subagent_wait: 0/10 minutes
+  background_subagent_wait: 0/15 minutes
+  repair_rounds: 0/5
+  stop_conditions: lifecycle_converged, tests_passed, no_open_blockers
+  stop_reason: active; architecture outcome remains partial
+
+## Checkpoints
+
+- Canonical audit base: `26df7b3a341370063fff65b0d0ee21057ac6d232` (`origin/main` observed 2026-10-10); latest refreshed snapshot merged into this task branch is `d3566cc4e0f6011c1b262bf0456fcf5c83803d1f`.
+- Primary checkout `/home/dev/projects/SmartSpecPro` was dirty and behind; preserved without edits.
+- Task worktree `/home/dev/worktrees/autonomous-completion-idle-signal-20261010` registered as `TASK_WORKTREE`, task ID `autonomous-completion-pr467-20261010`.
+- Read-only scout 1: PR/spec/registry/worktree audit; returned, no edits.
+- Read-only scout 2: runtime/control-plane slice audit; returned, no edits.
+- Test RED: 5 new decision cases failed because the helper did not exist; 2 existing unit tests passed and 2 DB integration tests were skipped.
+- Test GREEN: focused Vitest file passed (7 passed, 2 DB integration tests skipped).
+- Read-only code review round 1 identified aggregate job/worker capability ambiguity, lack of UI rendering, and stale test-design evidence.
+- Repair: renamed the field to `backlogWithFreeWorkerCapacity` and documented that it is an aggregate capacity signal, not placement proof; refreshed test-design evidence. UI rendering remains a scoped follow-up because this slice is a machine-readable service diagnostic and current UI already displays counts/capacity separately.
+- Reverification after review repair: `pnpm exec vitest run server/services/__tests__/jobControlPlaneMonitor.test.ts` — 1 file passed, 7 passed, 2 DB integration tests skipped. `git diff --check` passed.
+- Review round 2 verified the aggregate-capacity naming/comment but found evidence timestamp inconsistency before the rerun; task evidence now records the fresh run.
+- Review round 3: read-only review clean, no remaining material findings.
+- Refreshed canonical `origin/main` to `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; task commit rebased cleanly onto that SHA. Exact task commit is recorded in Git history and final handoff.
+- Fast gate: Vitest transpilation/execution passed for changed TS files; `git diff --cached --check` passed on the 8 task-owned paths; staged set contained only those paths; no secret pattern found in changed files.
+- PR #471 opened and handoff updated; reconciled base `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; review decision empty; only `build-preview` completed as `SKIPPED`.
+- Stop reason for this checkpoint: implementation PR is reviewable, but canonical integration requires normal PR review/check evidence. Keep branch/worktree active and do not report `SKIPPED` as passing.
+- Added explicit `workerJobs.adminDashboardSummary` response assertion. Focused run at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`: 2 files passed, 15 passed, 2 DB integration tests skipped. Reviewer confirmed the pass-through assertion and service scope; no material finding remains.
+- Refreshed `origin/main` through `0b2eee336eb6bbddf26f3812054226ea95d5a814` after PR creation. Latest SmartAIHub ingress test changes do not overlap task-owned edits; task branch contains this canonical SHA in ancestry and is ready for a normal non-force PR update.
+- Final checkpoint before handoff: PR branch is pushed and clean; focused tests were run at code/test source SHA `8d8e67452d3539d3c2bb1701190894b7b0b226a9` (15 passed, 2 DB integration tests skipped); latest `build-preview` is `SKIPPED`, review is empty, and no canonical integration SHA exists. Primary workspace `/home/dev/projects/SmartSpecPro` stays untouched at `ccd4cd11...` with unrelated dirty changes; task worktree remains registered and must not be retired before integration.
+- Final canonical refresh: branch includes `origin/main` `e6d33045f0b954444349213d5de88b941a9c5167`; latest intervening SPEC-269 handoff changes do not overlap this task's files.
+- Continuation audit found an unbounded multi-job dependency-cycle wait in the existing SPEC-267 claim path. Added bounded graph inspection to the existing `worker_jobs` claim transaction: proven cycles transition once to failed/operator review; inconclusive scans remain queued. No scheduler, queue, approval engine, or runtime was added.
+- Cycle implementation tests: RED was observed before the fix. GREEN after fix: two-node, transitive, scan-budget, duplicate-event and independent-job continuation coverage. Fresh targeted run on this continuation: 1 file, 10 passed, 63 skipped. Earlier continuation verification also covered reconciler/outbox/worker/dashboard/control-plane: 8 files, 181 passed, 2 skipped.
+- Current PR snapshot before push: GitHub still points to stale head `c69e06e9…`; it was 18 commits ahead and 33 behind refreshed `origin/main` `72439f958…` at the last exact compare. The user-reported 18/7 count and GitHub `CLEAN` result refer to an older base snapshot. The 18 PR-only commits are task-local (duplicate implementation patch IDs explain history noise); no unrelated changed files were found. Task branch has now been normally merged with current `origin/main` `d3566cc4…` and the 8-file suite passed again (181 passed, 2 skipped); exact push/PR state remains pending.
+- `build-preview` remains `SKIPPED`, review decision is empty, and no PR merge SHA exists. No CI pass, restart UAT, or final architecture completion is claimed. PR branch/worktree remain preserved while the reconciliation checkpoint is prepared.

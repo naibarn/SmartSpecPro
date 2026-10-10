@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
     "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
@@ -915,7 +915,7 @@
     "unresolved": 287
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T09:07:15.775815Z",
+  "updated_at": "2026-10-10T08:15:20.334987Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1011,6 +1011,20 @@
         "kind": "GITHUB_PR",
         "merge_sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
         "reference": "https://github.com/naibarn/SmartSpecPro/pull/353"
+      },
+      {
+        "kind": "INDEPENDENT_SYNTHETIC_EVIDENCE_REGRESSION",
+        "path": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts",
+        "scope": "Exact origin/main SHA bf4f2cfa56d312b9ed46bf18e3b6598cd7077cb7: 8 focused SPEC-271/SPEC-224 suites, 68 tests passed for receipt/oracle/portable/durable-store contracts and DevelopmentRun/final verification/provenance components. Synthetic/in-memory only; no persistence across actual restart, no direct T-01–T-23 memory acceptance, and protected dispatch remains DENY.",
+        "source_sha": "bf4f2cfa56d312b9ed46bf18e3b6598cd7077",
+        "status": "PASS"
+      },
+      {
+        "kind": "R4_INDEPENDENT_ACCEPTANCE_COMPONENT_REGRESSION",
+        "path": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts",
+        "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: combined focused security and acceptance run: 21 files / 261 tests passed; includes SPEC-271 receipt/oracle and SPEC-224 synthetic DevelopmentRun/final verification contracts. No direct T-01–T-23 memory acceptance, real runner restart, remote trust, or protected dispatch.",
+        "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
@@ -1018,7 +1032,7 @@
       "quick",
       "integration"
     ],
-    "sha": "5b9730424642f45dbf58a2af45aeb1beebc303ab",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }

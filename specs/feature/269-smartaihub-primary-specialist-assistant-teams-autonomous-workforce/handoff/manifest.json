@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 23,
+  "generation": 25,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -453,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:58:17.439574Z",
+  "updated_at": "2026-10-10T08:15:19.892113Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -578,11 +578,25 @@
         "scope": "PR #482 merged at 866f718. Exact integrated SHA 866f718fb40b14eb6782c5dda425dd7c6db6ae16: real chatRouter.createCaller executeSkill request enters the active startSkillTask worker-job queue. Attacker-supplied projectId/appId/hostAppId/tenantId do not enter queued params; authenticated user and tenant are used; legacy inline unified/fallback executors are not invoked because the active route returns through queue admission. 1 file / 17 tests passed. This confirms client identity rejection only; trusted App context is not propagated to the worker and no positive App context or direct T-01–T-23 acceptance is claimed.",
         "source_sha": "866f718fb40b14eb6782c5dda425dd7c6db6ae16",
         "status": "PASS"
+      },
+      {
+        "kind": "T05_NO_PROJECT_RECEIPT_BOUNDARY",
+        "path": "apps/web/server/services/__tests__/projectResolutionAuthority.test.ts",
+        "scope": "Exact origin/main SHA b632010eb7c01c68ab1f864f07fd4abad474aba9: a server-bound NO_PROJECT conversation ignores a client-selected Project candidate, returns no canonical Project, and denies Project read validation. Paired HTTP runtime test confirms null Project scope and allowed Global entity memory when App provenance is untrusted. 2 focused files / 18 tests passed. Component/service evidence only; not persisted direct acceptance.",
+        "source_sha": "b632010eb7c01c68ab1f864f07fd4abad474aba9",
+        "status": "PASS"
+      },
+      {
+        "kind": "R4_MEMORY_ISOLATION_REGRESSION",
+        "path": "apps/web/server/services/__tests__/projectResolutionAuthority.test.ts",
+        "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: 21 focused files / 261 tests passed across App-context isolation, NO_PROJECT candidate denial, fresh receipt ACL, Global memory continuity, worker queue identity rejection and team-room write denial. Component/service evidence only; no persisted direct T-01–T-23 acceptance.",
+        "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "866f718fb40b14eb6782c5dda425dd7c6db6ae16",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }
