@@ -322,12 +322,13 @@ export async function composePrompt(
     (room.projectId !== null && room.projectId !== undefined
       ? String(room.projectId)
       : null);
-  let authorizedProjectId = resolvedProjectId;
+  let authorizedProjectId: string | null = null;
   let projectWasCanonicalAtStart = false;
   let projectContextProjectIdForRevalidation: string | null = null;
   if (resolvedProjectId) {
-    // Canonical project IDs must be bound to the current tenant and member.
-    // Only IDs absent from the canonical registry retain legacy behavior.
+    // Project memory is available only through a canonical project bound to
+    // the current tenant and active member. Legacy room IDs do not authorize
+    // project-scoped retrieval.
     try {
       const [canonicalProject] = await db
         .select({
@@ -368,13 +369,12 @@ export async function composePrompt(
     }
   }
   if (resolvedProjectId && authorizedProjectId) {
-    // Defer both canonical and legacy project context until its identity and
-    // authorization are rechecked after prompt assembly.
+    // Defer canonical project context until its identity and authorization
+    // are rechecked after prompt assembly.
     projectContextProjectIdForRevalidation = resolvedProjectId;
   }
-  // Legacy room IDs do not establish project authorization for entity memory.
-  // Only a canonical project with an active member may widen retrieval beyond
-  // the user's global memory.
+  // Only a canonical project with an active member may widen entity retrieval
+  // beyond the user's global memory.
   const entityMemoryProjectId = projectWasCanonicalAtStart ? authorizedProjectId : null;
   const promptQuery = input.currentMessage?.trim() || input.objective;
 
@@ -529,8 +529,11 @@ export async function composePrompt(
     }
   }
 
-  if (ruleMemories.length > 0) {
-    const ruleContent = ruleMemories
+  const eligibleRuleMemories = authorizedProjectId
+    ? ruleMemories
+    : ruleMemories.filter((rule) => rule.projectId == null);
+  if (eligibleRuleMemories.length > 0) {
+    const ruleContent = eligibleRuleMemories
       .map((rule) => `- ${rule.title}: ${rule.content}`)
       .join("\n");
     const truncatedRules = truncateToTokenBudget(ruleContent, rulesBudget);
@@ -541,9 +544,16 @@ export async function composePrompt(
   }
 
   if (memoryResults.length > 0) {
-    const filteredMemoryResults = memoryResults.filter(
-      (result) => result.memory.memoryKind !== "rule",
-    );
+    const filteredMemoryResults = memoryResults.filter((result) => {
+      if (result.memory.memoryKind === "rule") return false;
+      if (
+        !authorizedProjectId &&
+        (result.memory.ownerType === "project" || result.memory.projectId != null)
+      ) {
+        return false;
+      }
+      return true;
+    });
 
     if (filteredMemoryResults.length > 0) {
       const memoryContent = filteredMemoryResults

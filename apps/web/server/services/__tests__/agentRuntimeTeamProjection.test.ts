@@ -9,6 +9,7 @@ import {
   AgentRuntimeStepLinkSchema,
 } from "../../../shared/agentRuntime/types";
 import { projectTeamRuntimeResponse } from "../agentRuntime/teamProjection";
+import type { AgentProgressInput } from "../agentRuntime/progressIntelligence";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,6 +61,103 @@ describe("projectTeamRuntimeResponse", () => {
       terminalReason: "plan_completed",
       evidenceRefs: ["artifact://plan/approved"],
     });
+  });
+
+  it("keeps runtime completion partial until task-bound required evidence is verified", () => {
+    const response = AgentRuntimeResponseSchema.parse(
+      readJsonFixture("pass-verdict-response.json"),
+    );
+    const progressInput: Omit<AgentProgressInput, "executionStatus"> = {
+      tenantId: "tenant-a",
+      taskId: "run-a",
+      recoveryStatus: "none",
+      taskProfile: "standard",
+      nowMs: 1_000,
+      lastHeartbeatAtMs: 900,
+      lastMeaningfulProgressAtMs: 900,
+      stallWindowMsByTaskProfile: {
+        interactive: 60_000,
+        standard: 300_000,
+        long_running: 1_800_000,
+        provider_job: 900_000,
+      },
+      loopDetectionMinRepeats: 3,
+      previousPeakProgress: 0,
+      requiredCriteria: [
+        {
+          criterionId: "artifact-accepted",
+          required: true,
+          weight: 1,
+          status: "verified",
+          evidenceRefs: ["receipt:artifact-a"],
+        },
+      ],
+      evidence: [],
+      previousVerifiedEvidenceRefs: [],
+      invalidatedEvidenceRefs: [],
+      toolCalls: [],
+    };
+
+    const projection = projectTeamRuntimeResponse({
+      requestId: "req-pass-1",
+      response,
+      progressInput,
+    });
+
+    expect(projection.finalResult?.status).toBe("completed");
+    expect(projection.progressAssessment).toMatchObject({
+      status: "PARTIAL",
+      progress: 0,
+      reasonCodes: ["outcome_evidence_missing"],
+    });
+  });
+
+  it("marks completion only when the projected required criterion has verified evidence", () => {
+    const response = AgentRuntimeResponseSchema.parse(
+      readJsonFixture("pass-verdict-response.json"),
+    );
+    const projection = projectTeamRuntimeResponse({
+      requestId: "req-pass-evidence-1",
+      response,
+      progressInput: {
+        tenantId: "tenant-a",
+        recoveryStatus: "none",
+        taskProfile: "standard",
+        nowMs: 1_000,
+        lastHeartbeatAtMs: 900,
+        lastMeaningfulProgressAtMs: 900,
+        stallWindowMsByTaskProfile: {
+          interactive: 60_000,
+          standard: 300_000,
+          long_running: 1_800_000,
+          provider_job: 900_000,
+        },
+        loopDetectionMinRepeats: 3,
+        previousPeakProgress: 0,
+        requiredCriteria: [
+          {
+            criterionId: "artifact-accepted",
+            required: true,
+            weight: 1,
+            status: "verified",
+            evidenceRefs: ["receipt:artifact-a"],
+          },
+        ],
+        evidence: [
+          {
+            tenantId: "tenant-a",
+            evidenceRef: "receipt:artifact-a",
+            kind: "accepted_receipt",
+            status: "verified",
+          },
+        ],
+        previousVerifiedEvidenceRefs: [],
+        invalidatedEvidenceRefs: [],
+        toolCalls: [],
+      },
+    });
+
+    expect(projection.progressAssessment?.status).toBe("COMPLETED");
   });
 
   it("projects a needs-repair verdict without collapsing explicit repair links", () => {

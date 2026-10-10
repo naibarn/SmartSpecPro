@@ -4,6 +4,11 @@ import {
   type AgentRuntimeStepLink,
   type ReviewVerdict,
 } from "../../../shared/agentRuntime/types";
+import {
+  assessAgentProgress,
+  type AgentProgressAssessment,
+  type AgentProgressInput,
+} from "./progressIntelligence";
 
 export interface TeamExecutionStageProjection {
   stepKey: string;
@@ -44,6 +49,8 @@ export interface ProjectTeamRuntimeResponseInput {
   requestId: string;
   response: AgentRuntimeResponse;
   fallbackStepKey?: string | null;
+  /** Only trusted orchestration evidence belongs here; raw response refs are not verification. */
+  progressInput?: Omit<AgentProgressInput, "executionStatus">;
 }
 
 export interface TeamProjectionResult {
@@ -51,6 +58,7 @@ export interface TeamProjectionResult {
   reviewRecord: TeamReviewProjection | null;
   finalResult: TeamFinalResultProjection | null;
   messageMetadata: TeamMessageMetadataProjection | null;
+  progressAssessment: AgentProgressAssessment | null;
 }
 
 export function dedupeStepLinks(
@@ -109,6 +117,17 @@ export function projectTeamRuntimeResponse(
       reviewRecord: null,
       finalResult: null,
       messageMetadata: null,
+      progressAssessment: input.progressInput
+        ? assessAgentProgress({
+            ...input.progressInput,
+            executionStatus:
+              response.status === "completed" ||
+              response.status === "failed" ||
+              response.status === "cancelled"
+                ? response.status
+                : "running",
+          })
+        : null,
     };
   }
 
@@ -151,5 +170,16 @@ export function projectTeamRuntimeResponse(
       status: response.status,
       stepLinks,
     },
+    progressAssessment: input.progressInput
+      ? assessAgentProgress({
+          ...input.progressInput,
+          executionStatus:
+            response.status === "completed" ||
+            response.status === "failed" ||
+            response.status === "cancelled"
+              ? response.status
+              : "running",
+        })
+      : null,
   };
 }
