@@ -1521,6 +1521,14 @@ An atomic UI change MAY skip design generation.
 
 A substantial new product SHOULD produce at least a native canonical design artifact before implementation.
 
+### 11.1.1 Optional visual references for Mini App design
+
+`DesignRequest` MAY include zero or more `visualReferences`, `designPreferences`, and request-level `rights` metadata. Omitting these fields MUST preserve the existing spec/JSON-only request contract. A visual reference MAY identify a tenant-authorized stored image, video, or file, or an example-site URL; it MAY carry a page/flow hint, viewport, state, importance, imitate/ignore notes, reuse-rights declaration, and provenance. Reference IDs and hints are metadata, not authorization: every stored asset MUST be resolved through the existing tenant/project asset authority before reading it.
+
+Example-site URLs and all imported visual content are untrusted. URL capture MUST use the approved bounded browser/runtime path, reject credentials and private/reserved network targets after DNS resolution, prevent redirect-based SSRF, and record unavailable/blocked capture as unverified rather than inventing observations. The design provider adapter MUST apply the existing egress/data-handling policy before any reference content leaves SmartAIHub; opaque asset handles and signed URLs MUST NOT be forwarded as a substitute for authorized asset resolution.
+
+Functional requirements continue to govern behavior, data, validation, and permissions. Visual references govern only observable presentation and interaction patterns. `high_fidelity` similarity requires owned or authorized references; third-party examples default to `inspired` treatment and MUST NOT authorize reuse of protected branding, images, or copy. When no visual references are supplied, the established generation path is unchanged.
+
 ## 11.2 Existing Spec 224 authority is preserved
 
 Spec 270 MUST NOT create its own:

@@ -3,6 +3,7 @@ import {
   canonicalDesignDigestInput,
   designArtifactVersionSchema,
   designRequestSchema,
+  resolveDesignSimilarityMode,
   semanticDesignDiffSchema,
   type DesignArtifactVersion,
   type DesignRequest,
@@ -44,6 +45,10 @@ export interface DesignArtifactAuditPort {
   }): Promise<void>;
 }
 
+export interface DesignAssetReferenceAuthorizationPort {
+  authorizeReference(actor: DesignArtifactActor, sourceRef: string): Promise<boolean>;
+}
+
 export class DesignArtifactServiceError extends Error {
   constructor(public readonly code: "FEATURE_DISABLED" | "VERSION_CONFLICT" | "NOT_FOUND" | "FORBIDDEN" | "AUDIT_UNAVAILABLE" | "STORAGE_UNAVAILABLE" | "CONTEXT_INCOMPLETE" | "INVALID_REQUEST" | "DIFF_TOO_LARGE") {
     super(code);
@@ -55,6 +60,7 @@ export function createDesignArtifactService(input: {
   repository: DesignArtifactRepository;
   authorization: DesignArtifactAuthorizationPort;
   audit: DesignArtifactAuditPort;
+  assetReferences?: DesignAssetReferenceAuthorizationPort;
   flags: Pick<TenantFeatureFlags, "smartAiHubDesignIntelligence" | "smartAiHubDesignNative">;
   createId?: () => string;
   now?: () => Date;
@@ -109,6 +115,16 @@ export function createDesignArtifactService(input: {
     }
     await authorize(actor, "create");
     if (!request.componentCatalogSnapshotId) throw new DesignArtifactServiceError("CONTEXT_INCOMPLETE");
+    for (const reference of request.visualReferences ?? []) {
+      if (reference.sourceRef && (
+        !input.assetReferences || !(await input.assetReferences.authorizeReference(actor, reference.sourceRef))
+      )) {
+        throw new DesignArtifactServiceError("FORBIDDEN");
+      }
+    }
+    const designPreferences = request.visualReferences?.length
+      ? { ...request.designPreferences, similarityMode: resolveDesignSimilarityMode(request) }
+      : request.designPreferences;
 
     const fingerprint = `sha256:${createHash("sha256").update(canonicalDesignDigestInput(request)).digest("hex")}`;
     const idempotencyKey = `${request.tenantId}:${request.projectId}:${request.requestId}`;
@@ -125,6 +141,9 @@ export function createDesignArtifactService(input: {
       intent: request.intent,
       prompt: request.prompt,
       locale: request.locale,
+      ...(request.visualReferences ? { visualReferences: request.visualReferences } : {}),
+      ...(designPreferences ? { designPreferences } : {}),
+      ...(request.rights ? { rights: request.rights } : {}),
     };
     const systemSnapshot = {
       catalogSnapshotId: request.componentCatalogSnapshotId,

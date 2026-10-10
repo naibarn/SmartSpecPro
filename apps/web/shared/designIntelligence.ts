@@ -22,6 +22,69 @@ export const isSafeDesignText = safePromptText;
 const identifierSchema = z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/).refine(safePromptText);
 const sha256Schema = z.string().regex(/^sha256:[a-f0-9]{64}$/i);
 
+const visualReferenceUrlSchema = z.string().url().max(2_048).refine((value) => {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    // Refuse all IP literals at intake. The capture worker still has to pin
+    // DNS results and reject private/reserved answers to prevent rebinding.
+    const ipv4Literal = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+    const sensitiveQuery = [...url.searchParams.keys()].some((key) =>
+      /(?:token|secret|password|passwd|credential|authorization|cookie|signature|api.?key|access.?key)/i.test(key),
+    );
+    return (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      !url.username && !url.password &&
+      hostname !== "localhost" && !hostname.endsWith(".localhost") && !hostname.endsWith(".local") &&
+      !hostname.endsWith(".internal") && hostname !== "metadata.google.internal" &&
+      !ipv4Literal && !hostname.includes(":") && !sensitiveQuery && safePromptText(value)
+    );
+  } catch {
+    return false;
+  }
+}, { message: "URL must be public-facing and must not contain credentials or secret query parameters" });
+
+/**
+ * Metadata only: sourceRef is resolved through the existing tenant-scoped asset
+ * authority before use. URL consumers must also re-resolve and check every DNS
+ * result at fetch time; this schema alone is not an SSRF boundary.
+ */
+export const designVisualReferenceSchema = z.object({
+  id: identifierSchema,
+  type: z.enum(["image", "video", "url", "file"]),
+  sourceRef: identifierSchema.optional(),
+  url: visualReferenceUrlSchema.optional(),
+  pageHint: z.string().trim().max(500).refine(safePromptText).optional(),
+  flowHint: z.string().trim().max(500).refine(safePromptText).optional(),
+  viewport: z.object({ width: z.number().int().min(1).max(7_680), height: z.number().int().min(1).max(7_680) }).strict().optional(),
+  stateHint: z.enum(["default", "hover", "modal", "validation", "loading", "empty", "success", "error"]).optional(),
+  importance: z.enum(["low", "normal", "high"]).default("normal"),
+  imitate: z.string().trim().max(2_000).refine(safePromptText).optional(),
+  ignore: z.string().trim().max(2_000).refine(safePromptText).optional(),
+  rights: z.enum(["user_owned", "authorized", "third_party_inspiration", "unknown"]).default("unknown"),
+  assetReuseAllowed: z.boolean().default(false),
+}).strict().superRefine((reference, context) => {
+  if (reference.type === "url" && !reference.url) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["url"], message: "URL references require a URL" });
+  }
+  if (reference.type !== "url" && !reference.sourceRef) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["sourceRef"], message: "Uploaded references require a tenant-scoped asset reference" });
+  }
+  if (reference.rights === "third_party_inspiration" && reference.assetReuseAllowed) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["assetReuseAllowed"], message: "Third-party inspiration cannot authorize asset reuse" });
+  }
+  if (reference.assetReuseAllowed && !["user_owned", "authorized"].includes(reference.rights)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["rights"], message: "Asset reuse requires owned or authorized rights" });
+  }
+});
+
+export const designPreferencesSchema = z.object({
+  similarityMode: z.enum(["inspired", "close", "high_fidelity"]).optional(),
+  devices: z.array(z.enum(["mobile", "tablet", "desktop"])).min(1).max(3).optional(),
+  notes: z.string().trim().max(4_000).refine(safePromptText).optional(),
+  targetScreens: z.array(z.string().trim().max(200).refine(safePromptText)).max(100).optional(),
+}).strict();
+
 function isSafeCanonicalPayload(value: unknown, depth = 0, nodes = { count: 0 }): boolean {
   nodes.count += 1;
   if (depth > 32 || nodes.count > 10_000) return false;
@@ -65,7 +128,27 @@ export const designRequestSchema = z.object({
   prompt: designPromptEnvelopeSchema,
   locale: z.string().trim().min(2).max(35),
   componentCatalogSnapshotId: identifierSchema.optional(),
-}).strict();
+  visualReferences: z.array(designVisualReferenceSchema).optional(),
+  designPreferences: designPreferencesSchema.optional(),
+  rights: z.object({
+    userClaimsOwnership: z.boolean().optional(),
+    thirdPartyReferenceOnly: z.boolean().optional(),
+  }).strict().optional(),
+}).strict().superRefine((request, context) => {
+  const seenReferenceIds = new Set<string>();
+  for (const [index, reference] of (request.visualReferences ?? []).entries()) {
+    if (seenReferenceIds.has(reference.id)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["visualReferences", index, "id"], message: "Visual reference IDs must be unique" });
+    }
+    seenReferenceIds.add(reference.id);
+  }
+  if (
+    request.designPreferences?.similarityMode === "high_fidelity" &&
+    request.visualReferences?.some((reference) => !["user_owned", "authorized"].includes(reference.rights))
+  ) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["designPreferences", "similarityMode"], message: "High fidelity requires owned or authorized references" });
+  }
+});
 
 export const designArtifactVersionSchema = z.object({
   schemaVersion: z.literal(1),
@@ -238,6 +321,14 @@ export const visualVerificationEvidenceSchema = z.object({
 }).strict();
 
 export type DesignRequest = z.infer<typeof designRequestSchema>;
+
+export function resolveDesignSimilarityMode(request: Pick<DesignRequest, "visualReferences" | "designPreferences">): "inspired" | "close" | "high_fidelity" {
+  if (request.designPreferences?.similarityMode) return request.designPreferences.similarityMode;
+  if (request.visualReferences?.some((reference) => !["user_owned", "authorized"].includes(reference.rights))) {
+    return "inspired";
+  }
+  return "close";
+}
 export type DesignArtifactVersion = z.infer<typeof designArtifactVersionSchema>;
 
 export const designG0ReconciliationSchema = z.object({
