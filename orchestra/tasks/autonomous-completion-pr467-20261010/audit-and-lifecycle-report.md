@@ -34,7 +34,7 @@ Generated `handoff/STATUS.md` files were read as projections; no generated statu
 | This task workspace | `/home/dev/worktrees/autonomous-completion-idle-signal-20261010`, branch `codex/autonomous-completion-idle-signal-20261010`, registered as `TASK_WORKTREE` for `autonomous-completion-pr467-20261010` | Only this task's service, service-test, route-test files and task evidence are owned here. |
 | Existing related worktrees | SPEC-224 runner/trust, SPEC-269 acceptance, SPEC-277 evidence, skills candidates and other runner worktrees are present | Ownership could not be safely inferred from path/name. None were edited, deleted, pruned, or merged. |
 
-The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `859b5cb8cf5d6180d6552624964dd1e59ada671c` after related PRs advanced main; intervening changes concern AgentRuntime and SPEC-269 handoff paths, with no overlapping task-owned edits. It passed the local fast integration gate and was delivered through normal PR #471. `build-preview` is `SKIPPED`; no review decision exists and no merge occurred. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
+The task branch is a temporary candidate, not a canonical integration. It was reconciled against `origin/main` at `36fc8eb2df5e5432a899cc64e97cac75082b70f2` after related PRs advanced main; intervening changes concern AgentRuntime and SPEC-277 handoff paths, with no overlapping task-owned edits. It passed the local fast integration gate and was delivered through normal PR #471. `build-preview` is `SKIPPED`; no review decision exists and no merge occurred. No branch protection or required review is bypassed. Cleanup remains pending until remote PR state, exact ownership and integration are verified.
 
 ## Verification evidence and remaining work
 
@@ -43,7 +43,7 @@ The task branch is a temporary candidate, not a canonical integration. It was re
 - Passed: clean rebase onto canonical SHA `564ccc092ca4be93dfc12b8d548bd729bfdbe78b` and normal PR creation (#471).
 - Passed: focused service + router tests at source commit `8d8e67452d3539d3c2bb1701190894b7b0b226a9`; local fast gate for that code/test candidate.
 - Pending: required CI/review and post-merge ancestry verification. Current `build-preview` is skipped, not passed.
-- Canonical reconciliation update: `origin/main` advanced to `859b5cb8cf5d6180d6552624964dd1e59ada671c` after PR #471 was opened. The branch now contains this SHA in its ancestry; intervening changes touch AgentRuntime and SPEC-269 handoff paths, outside this slice's edits.
+- Canonical reconciliation update: `origin/main` advanced to `36fc8eb2df5e5432a899cc64e97cac75082b70f2` after PR #471 was opened. The branch now contains this SHA in its ancestry; intervening changes touch AgentRuntime and SPEC-277 handoff paths, outside this slice's edits.
 - Not verified: six-spec normative amendment, UI presentation of the new field, job/worker capability compatibility, DB-backed monitor behavior, full failure/retry/conflict/runner-loss/duplicate-execution scenarios, automatic PR repair/merge/cleanup, benchmark, Windows/Debian execution, deployment, production readiness.
 
 ## Next safe actions
