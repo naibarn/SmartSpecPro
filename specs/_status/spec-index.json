@@ -81505,7 +81505,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+      "canonical_sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -81934,7 +81934,19 @@
       "lifecycle": "PARTIAL_INTEGRATED",
       "next_action": "Continue Issue #435 with W2: implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation using the existing Feature 195 worker_jobs and Feature 197 Runner boundaries. Keep Moli undispatched until those gates pass.",
       "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
-      "primary_blocker": null,
+      "primary_blocker": {
+        "affected_requirements": [
+          "REQ-6B3BDC3E78E4",
+          "REQ-11E188B44450",
+          "REQ-6777AD15DB68",
+          "REQ-F8BA5E2946ED"
+        ],
+        "class": "IMPLEMENTATION_SECURITY",
+        "id": "SPEC208_W2_MOLI_RUNTIME_BOUNDARY",
+        "next_action": "Implement and exercise a Runner-owned per-attempt process/profile boundary with filesystem and credential isolation, private protocol access, resource caps, and egress enforcement; retain the production Moli reject guard.",
+        "recoverable": true,
+        "root_cause": "The current Moli process launcher is cfg(test) only. Production Runner does not spawn Moli, isolate its filesystem or protocol listener, enforce Moli egress, or apply Moli process resource limits."
+      },
       "problem": null,
       "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
       "record_kind": "CANONICAL_SPEC",
@@ -82094,7 +82106,7 @@
       "spec_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
       "successors": [],
       "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing",
-      "true_blockers": 0,
+      "true_blockers": 1,
       "verification": "PARTIAL"
     },
     {
@@ -93610,7 +93622,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "1df17e691f710df466737c586838c37f7c90ff6a",
+      "canonical_sha": "9cf6c5cc3984e3abceeee1ab1dcdd6aab5a88e19",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -94861,6 +94873,8 @@
         "requirement REQ-913E5CC5C102 is OPEN",
         "requirement REQ-897CC8404924 is OPEN",
         "requirement REQ-06430897214B is OPEN",
+        "requirement REQ-4649215EED54 is OPEN",
+        "requirement REQ-F216C41FD159 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -94879,7 +94893,7 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
         }
       ],
@@ -94892,16 +94906,16 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+          "source_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+      "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-08T02:06:09.264229Z",
+      "last_reconciled": "2026-10-10T09:34:00.604949Z",
       "lifecycle": "WAITING_APPROVAL",
       "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -96926,10 +96940,10 @@
             "path": "python-backend/tests/integration/test_spec224_approval_postgres.py"
           }
         ],
-        "conflict_duplication_risk": "REVIEW_REQUIRED",
+        "conflict_duplication_risk": "UNASSESSED",
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
-        "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+        "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
         "declared_claims": [
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -96938,14 +96952,14 @@
             "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certi",
             "line": 4,
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-            "source_digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+            "source_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
             "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; workspace-first Chat entry, evolving Spec Set ingestion/compiler, full production flow and live certification remain pending"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd",
+            "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
           }
@@ -96953,14 +96967,14 @@
         "implementation_equivalence": "UNASSESSED",
         "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED",
-        "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+        "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 1244,
+        "open": 1246,
         "pass": 0,
-        "total": 1244
+        "total": 1246
       },
-      "revision": "22",
+      "revision": "23",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "224-Autonomous Development Orchestrator Runtime",
@@ -125607,7 +125621,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "06068ae9db6c433b9a10353f71f2becdba18218e",
+      "canonical_sha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -134255,7 +134269,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
+      "canonical_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
