@@ -81505,7 +81505,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
+      "canonical_sha": "a321d6ade8499ea00ee9f27e24921ae8e2bbf5e7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -81942,10 +81942,11 @@
           "REQ-F8BA5E2946ED"
         ],
         "class": "IMPLEMENTATION_SECURITY",
+        "classification": "TRUE_EXTERNAL",
         "id": "SPEC208_W2_MOLI_RUNTIME_BOUNDARY",
-        "next_action": "Implement and exercise a Runner-owned per-attempt process/profile boundary with filesystem and credential isolation, private protocol access, resource caps, and egress enforcement; retain the production Moli reject guard.",
+        "next_action": "Obtain the approved non-production JOB_CONTAINERS binding, immutable Runner/Moli image digest, named runtime owner, and documented filesystem, protocol, egress, and resource controls from the deployment pipeline owner. Once present, implement the Runner-owned launch and prove its isolation before connecting a synthetic worker_jobs attempt; retain the Moli reject guard until then.",
         "recoverable": true,
-        "root_cause": "The current Moli process launcher is cfg(test) only. Production Runner does not spawn Moli, isolate its filesystem or protocol listener, enforce Moli egress, or apply Moli process resource limits."
+        "root_cause": "No authorized non-production Runner Container binding or image/network/resource policy is configured. apps/cloudflare/wrangler.production.jsonc says resource bindings are injected only after target-account preflight and the Feature 187 handoff gates. The only checked-in Moli launcher is cfg(test), lacks filesystem isolation, and is not an approved production runtime; local namespace tests cannot safely substitute."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
@@ -82106,7 +82107,7 @@
       "spec_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
       "successors": [],
       "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing",
-      "true_blockers": 1,
+      "true_blockers": 2,
       "verification": "PARTIAL"
     },
     {

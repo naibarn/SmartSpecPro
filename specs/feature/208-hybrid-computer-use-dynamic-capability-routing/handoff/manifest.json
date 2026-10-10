@@ -123,10 +123,11 @@
         "REQ-F8BA5E2946ED"
       ],
       "class": "IMPLEMENTATION_SECURITY",
+      "classification": "TRUE_EXTERNAL",
       "id": "SPEC208_W2_MOLI_RUNTIME_BOUNDARY",
-      "next_action": "Implement and exercise a Runner-owned per-attempt process/profile boundary with filesystem and credential isolation, private protocol access, resource caps, and egress enforcement; retain the production Moli reject guard.",
+      "next_action": "Obtain the approved non-production JOB_CONTAINERS binding, immutable Runner/Moli image digest, named runtime owner, and documented filesystem, protocol, egress, and resource controls from the deployment pipeline owner. Once present, implement the Runner-owned launch and prove its isolation before connecting a synthetic worker_jobs attempt; retain the Moli reject guard until then.",
       "recoverable": true,
-      "root_cause": "The current Moli process launcher is cfg(test) only. Production Runner does not spawn Moli, isolate its filesystem or protocol listener, enforce Moli egress, or apply Moli process resource limits."
+      "root_cause": "No authorized non-production Runner Container binding or image/network/resource policy is configured. apps/cloudflare/wrangler.production.jsonc says resource bindings are injected only after target-account preflight and the Feature 187 handoff gates. The only checked-in Moli launcher is cfg(test), lacks filesystem isolation, and is not an approved production runtime; local namespace tests cannot safely substitute."
     },
     {
       "affected_requirements": [
@@ -142,15 +143,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
+    "expected_canonical_sha": "a321d6ade8499ea00ee9f27e24921ae8e2bbf5e7",
     "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
   },
   "continuation": {
-    "next_action": "Implement the smallest real Runner-owned Moli runtime boundary under the existing worker_jobs/Runner ownership: per-attempt process and profile, filesystem/credential separation, private CDP access that blocks WebDriver/BiDi bypass, resource limits, and connection-time destination/redirect policy. Keep the Moli protocol guard and production dispatch disabled. Then connect one synthetic worker_jobs attempt through actual Moli navigation, extraction, receipt, terminal settlement, cancellation, and cleanup. Resolve W4 provenance/notices separately.",
+    "next_action": "W2 is waiting for the deployment pipeline owner to provide the approved non-production JOB_CONTAINERS binding, immutable Runner/Moli image digest, and filesystem/protocol/egress/resource controls. When those are available, implement and test a Runner-owned per-attempt boundary, then connect one synthetic worker_jobs attempt. Keep Moli rejected and production dispatch disabled. W4 remains independent but needs authoritative deployed-artifact inventory, publisher/rebuild provenance, and complete notices review.",
     "next_ready_workunit": "SPEC208_W2_RUNNER_PROTOCOL_TENANT_ISOLATION",
-    "reactivation_predicate": "A Runner-owned launcher has executable tests proving per-attempt filesystem/profile separation, loopback/private CDP access with no unauthorized WebDriver/BiDi exposure, bounded resource use, and egress enforcement; Moli remains disabled until those checks pass.",
-    "resume_point": "W0/W1 remain closed. PR #527 added only a cfg(test) Linux namespace harness (merge b7cb32964c9a8047162971ef4d0c8ee59cc77c7b). PR #531 (23e2601) added cancellable Runner-owned Chromium execution and cleanup receipts; PR #534 (12a20dc) capped active browser execution at one per Runner; PR #538 (434d494) completed cancellation binding comparisons. On exact main SHA 434d494, cargo fmt/check and eight focused Rust tests passed (evidence: specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md). This is not a Moli execution test. W2 remains open because no production Moli launcher/filesystem boundary/private listener/egress/resource enforcement is wired. W3 remains open because no real Moli job traverses receipts and settlement. W4 remains open: all 11 advisory records still apply to the pinned graph and provenance/deployed target inventory/notices are unresolved. W5/W6/W7 remain unrun. Chromium is production default and Moli dispatch remains disabled.",
-    "waiting_predicate": null
+    "reactivation_predicate": "On receipt of the approved non-production binding and policies, run a scoped boundary review, then implement filesystem/profile isolation, private CDP access, denied WebDriver/BiDi paths, connection-time DNS/IP egress enforcement, resource limits, and process cleanup tests. Only after those pass, run the synthetic worker_jobs to Runner to Moli to receipt/settlement slice.",
+    "resume_point": "W0/W1 remain closed. PR #527 added only a cfg(test) Linux namespace harness (b7cb329). PR #531 added cancellable Runner-owned Chromium execution (23e2601), PR #534 capped browser concurrency (12a20dc), and PR #538 repaired full cancellation binding checks (434d494). Eight focused Runner tests passed on code SHA 434d494. PR #540 merged the evidence/handoff checkpoint at canonical SHA a321d6ade8499ea00ee9f27e24921ae8e2bbf5e7. No actual Moli Runner E2E is proven. W2/W3 are waiting for an approved non-production runtime boundary; W4 provenance/deployed target/notices remain unresolved. W5/W6/W7 remain unrun. Chromium remains production default and Moli dispatch remains disabled.",
+    "waiting_predicate": "Authorized non-production JOB_CONTAINERS binding, immutable image digest, named runtime owner, and approved filesystem, CDP-only protocol, egress, and resource-limit policy are available from the deployment pipeline owner."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -357,7 +358,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 36,
+  "generation": 37,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
     "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
@@ -400,9 +401,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "434d49424a4dd03fd617615c26bd125b3f0bcc0a",
+    "canonical_sha": "a321d6ade8499ea00ee9f27e24921ae8e2bbf5e7",
     "integrated": true,
-    "integrated_at": "2026-10-10T10:05:21Z"
+    "integrated_at": "2026-10-10T10:16:03Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -812,7 +813,7 @@
     "unresolved": 358
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T10:10:44.048492Z",
+  "updated_at": "2026-10-10T10:20:35.444293Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
