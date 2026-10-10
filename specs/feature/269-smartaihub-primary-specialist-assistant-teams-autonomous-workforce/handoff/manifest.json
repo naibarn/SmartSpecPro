@@ -26,22 +26,23 @@
   },
   "blockers": [
     {
-      "class": "IMPLEMENTATION",
-      "id": "RUNTIME_CONTEXT_ACCEPTANCE",
-      "next_action": "Implement resolver/context bindings and run direct acceptance.",
-      "root_cause": "App/Project-aware runtime resolution and executable T acceptance are not implemented."
+      "class": "DEPENDENCY_AND_OWNERSHIP",
+      "id": "APP_PROJECT_RUNTIME_CONTEXT_AUTHORITY",
+      "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "recoverable": true,
+      "root_cause": "PR #443 binds TeamRoom project authority to AgentRuntime provider attempts, but the current contract does not supply the canonical App-aware MemoryContext and ProjectResolutionReceipt needed for full App/Project runtime acceptance. Candidate paths remain shared/reserved under SPEC-302/SPEC-304. The old dirty SPEC-269 worktree remains preserved; its delta removes PR #426 authorization checks and is not reusable."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "expected_canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
     "next_ready_workunit": null,
-    "reactivation_predicate": null,
-    "resume_point": null,
-    "waiting_predicate": null
+    "reactivation_predicate": "Recheck the canonical ownership registry and origin/main after SPEC-302/SPEC-304 publishes the binding contract and releases exact paths; then implement from latest main and execute direct T-01 through T-23 acceptance.",
+    "resume_point": "Continue from origin/main 0379c7d66de00b5c43892358459c7c51357012ca. PR #443 is integrated and focused regressions passed on an identical source tree. Do not repeat provider-boundary wiring or MiniAppRoute identity routing. Preserve the dirty legacy SPEC-269 and SPEC-268 worktrees. Keep team-room persistent memory disabled until source provenance and isolation are accepted.",
+    "waiting_predicate": "No App/Project context implementation is eligible until the SPEC-302/SPEC-304 path owners release the exact shared runtime paths and the canonical App identity plus ProjectResolutionReceipt contract is available."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -51,14 +52,22 @@
         "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+      },
+      {
+        "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+        "kind": "INTEGRATED_IMPLEMENTATION",
+        "merged_at": "2026-10-10T01:52:48Z",
+        "path": "apps/web/server/services/agentRuntime/teamRuntimeOrchestrator.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/443",
+        "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
       }
     ],
-    "next_action": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
-    "rationale": "The source-authority dependency is recovered; runtime resolver, app-aware bindings, and acceptance remain incomplete.",
+    "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+    "rationale": "PR #443 closes the TeamRoom-to-AgentRuntime provider-boundary gap by carrying and revalidating the canonical project binding before provider attempts. Spec 269 remains open: App-aware MemoryContext, ProjectResolutionReceipt integration, and direct T acceptance are not established.",
     "residual_requirements": [
-      "App-aware MemoryContext runtime binding",
-      "Project resolution receipt integration",
-      "Direct T-01 through T-23 acceptance"
+      "App-aware MemoryContext binding including canonical app installation and project identity",
+      "ProjectResolutionReceipt integration under the SPEC-302 authority",
+      "Direct T-01 through T-23 acceptance on the canonical runtime"
     ]
   },
   "dependencies": {
@@ -117,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 10,
+  "generation": 11,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -134,23 +143,53 @@
     "title": "SmartAIHub Primary Assistant, Specialist Assistant Teams & Autonomous Workforce Runtime"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "0379c7d66de00b5c43892358459c7c51357012ca"
+    ],
     "mapping": [],
-    "source_paths": [],
-    "started": false,
-    "status": "UNKNOWN"
+    "source_paths": [
+      "apps/web/server/__tests__/responsesRoutes.test.ts",
+      "apps/web/server/_core/responsesRoutes.ts",
+      "apps/web/server/services/__tests__/agentRuntimeRequestBuilder.test.ts",
+      "apps/web/server/services/__tests__/contextPackBuilder.test.ts",
+      "apps/web/server/services/__tests__/teamOpenAiAgentsRuntime.test.ts",
+      "apps/web/server/services/__tests__/teamRunSkillExecutor.test.ts",
+      "apps/web/server/services/agentRuntime/requestBuilder.ts",
+      "apps/web/server/services/agentRuntime/teamRuntimeOrchestrator.ts",
+      "apps/web/server/services/contextPackBuilder.ts",
+      "apps/web/server/services/teamRunSkillExecutor.ts",
+      "apps/web/shared/__tests__/agentRuntimeTypes.test.ts",
+      "apps/web/shared/agentRuntime/types.ts",
+      "python-backend/app/services/openai_agents_adapter.py",
+      "python-backend/app/services/openai_agents_contracts.py",
+      "python-backend/app/services/openai_agents_gateway_model.py",
+      "python-backend/tests/api/test_internal_openai_agents_runtime.py",
+      "python-backend/tests/unit/test_openai_agents_adapter.py",
+      "python-backend/tests/unit/test_openai_agents_contracts.py",
+      "python-backend/tests/unit/test_openai_agents_gateway_model.py"
+    ],
+    "started": true,
+    "status": "PARTIAL_INTEGRATED"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a4c5c85f51205c445107e33f6929fe5649d2836b",
+    "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
     "integrated": true,
-    "integrated_at": "2026-10-07T05:22:30Z"
+    "integrated_at": "2026-10-10T01:52:48Z"
   },
   "lifecycle": {
-    "current_state": "VALIDATION_PENDING",
+    "current_state": "PARTIAL_INTEGRATED",
     "previous_state": "VALIDATION_PENDING",
-    "state_evidence": [],
-    "updated_at": "2026-10-07T04:14:02.325224Z"
+    "state_evidence": [
+      {
+        "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+        "kind": "PARTIAL_INTEGRATION",
+        "merged_at": "2026-10-10T01:52:48Z",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/443",
+        "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
+      }
+    ],
+    "updated_at": "2026-10-10T02:00:37.700608Z"
   },
   "manual_decisions": {
     "authority": {
@@ -181,14 +220,22 @@
           "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
           "kind": "NORMATIVE_SPEC",
           "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
+        },
+        {
+          "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+          "kind": "INTEGRATED_IMPLEMENTATION",
+          "merged_at": "2026-10-10T01:52:48Z",
+          "path": "apps/web/server/services/agentRuntime/teamRuntimeOrchestrator.ts",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/443",
+          "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
         }
       ],
-      "next_action": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
-      "rationale": "The source-authority dependency is recovered; runtime resolver, app-aware bindings, and acceptance remain incomplete.",
+      "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "rationale": "PR #443 closes the TeamRoom-to-AgentRuntime provider-boundary gap by carrying and revalidating the canonical project binding before provider attempts. Spec 269 remains open: App-aware MemoryContext, ProjectResolutionReceipt integration, and direct T acceptance are not established.",
       "residual_requirements": [
-        "App-aware MemoryContext runtime binding",
-        "Project resolution receipt integration",
-        "Direct T-01 through T-23 acceptance"
+        "App-aware MemoryContext binding including canonical app installation and project identity",
+        "ProjectResolutionReceipt integration under the SPEC-302 authority",
+        "Direct T-01 through T-23 acceptance on the canonical runtime"
       ]
     },
     "disposition": {
@@ -209,10 +256,18 @@
       "value": "ACTIVE_CANONICAL"
     },
     "lifecycle": {
-      "current_state": "VALIDATION_PENDING",
+      "current_state": "PARTIAL_INTEGRATED",
       "previous_state": "VALIDATION_PENDING",
-      "state_evidence": [],
-      "updated_at": "2026-10-07T04:14:02.325224Z"
+      "state_evidence": [
+        {
+          "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+          "kind": "PARTIAL_INTEGRATION",
+          "merged_at": "2026-10-10T01:52:48Z",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/443",
+          "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
+        }
+      ],
+      "updated_at": "2026-10-10T02:00:37.700608Z"
     },
     "reconciliation_confidence": {
       "source_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -300,7 +355,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T05:25:29.789920Z",
+  "updated_at": "2026-10-10T02:00:37.744869Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -317,11 +372,19 @@
         "scope": "T-01 through T-23 direct scenarios",
         "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
         "status": "BLOCKED"
+      },
+      {
+        "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/__tests__/responsesRoutes.test.ts",
+        "scope": "PR #443 source candidate 1a056785eadea0b9a46487c97e51849d7d9a0f86, tree b59ee62462b1213bade5e0e9b3c6587ce06a87cc equals canonical origin/main 0379c7d66de00b5c43892358459c7c51357012ca; 10 Vitest files / 189 tests passed; Python AgentRuntime suites / 71 tests passed. Focused regressions only; no direct T acceptance or deployment.",
+        "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86",
+        "status": "PASS"
       }
     ],
-    "freshness": "STALE",
+    "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+    "sha": "0379c7d66de00b5c43892358459c7c51357012ca",
     "status": "PARTIAL",
     "task_regressions": []
   }

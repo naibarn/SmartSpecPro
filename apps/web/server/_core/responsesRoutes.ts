@@ -62,6 +62,13 @@ import {
 import { normalizeLlmUsage } from "../services/llmUsage";
 import { authorizeRequest, type AuthResult } from "./authz";
 import { selectResponsesRuntimeSelection } from "../services/agentRuntime/responsesRuntimeOrchestrator";
+import {
+  TeamProjectProviderContextBindingSchema,
+  type TeamProjectProviderContextBindingPayload,
+} from "../../shared/agentRuntime/types";
+import {
+  revalidateTeamProjectProviderContextBinding,
+} from "../services/teamProjectProviderAuthorization";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,6 +79,65 @@ const WEB_SEARCH_COST_USD = 0.01; // $0.01 per web_search call
 const DEFAULT_MAX_BUDGET_CREDITS = 500;
 const MAX_SEARCH_CALLS_PER_REQUEST = DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST;
 const SOCKET_TIMEOUT_MS = 600_000; // 10 min
+const MAX_TEAM_PROVIDER_BINDING_HEADER_LENGTH = 4096;
+const TEAM_PROVIDER_ORIGIN_HEADER = "x-agent-runtime-origin-surface";
+const TEAM_PROVIDER_BINDING_HEADER = "x-sah-team-project-provider-binding";
+
+type TeamProviderBindingResult =
+  | { ok: true; binding: TeamProjectProviderContextBindingPayload | null }
+  | { ok: false };
+
+function parseTeamProviderBinding(
+  req: Request,
+  isInternal: boolean,
+  tenantId: string,
+): TeamProviderBindingResult {
+  const originMarker = req.get(TEAM_PROVIDER_ORIGIN_HEADER);
+  const encodedBinding = req.get(TEAM_PROVIDER_BINDING_HEADER);
+  if (originMarker === undefined && encodedBinding === undefined) {
+    return { ok: true, binding: null };
+  }
+  if (
+    !isInternal ||
+    originMarker !== "team" ||
+    !encodedBinding ||
+    encodedBinding.length > MAX_TEAM_PROVIDER_BINDING_HEADER_LENGTH ||
+    !/^[A-Za-z0-9_-]+$/.test(encodedBinding)
+  ) {
+    return { ok: false };
+  }
+
+  try {
+    const json = Buffer.from(encodedBinding, "base64url").toString("utf8");
+    const parsed = TeamProjectProviderContextBindingSchema.safeParse(
+      JSON.parse(json),
+    );
+    if (
+      !parsed.success ||
+      parsed.data.tenantId !== tenantId ||
+      Buffer.from(json, "utf8").toString("base64url") !== encodedBinding
+    ) {
+      return { ok: false };
+    }
+    return { ok: true, binding: parsed.data };
+  } catch {
+    return { ok: false };
+  }
+}
+
+async function revalidateTeamProviderBinding(
+  binding: TeamProjectProviderContextBindingPayload | null,
+  revalidate: typeof revalidateTeamProjectProviderContextBinding,
+): Promise<void> {
+  if (!binding) return;
+  await revalidate(binding, {
+    tenantId: binding.tenantId,
+    roomId: binding.roomId,
+    teamId: binding.teamId,
+    userId: binding.userId,
+    runId: binding.runId,
+  });
+}
 
 // Lazy-initialized search result cache
 let _searchCacheInstance: SearchResultCache | null = null;
@@ -651,9 +717,13 @@ export function registerResponsesRoutes(
       inputTokens?: number,
       outputTokens?: number,
     ) => void;
+    revalidateTeamProjectProviderContextBinding?: typeof revalidateTeamProjectProviderContextBinding;
   },
 ) {
   const llmLimiter = rateLimit("llm-responses", { rpm: LLM_RPM });
+  const revalidateTeamBinding =
+    deps.revalidateTeamProjectProviderContextBinding ??
+    revalidateTeamProjectProviderContextBinding;
 
   app.post(
     "/v1/responses",
@@ -712,6 +782,16 @@ export function registerResponsesRoutes(
           },
         });
       }
+      const teamBindingResult = parseTeamProviderBinding(req, isInternal, tenantId);
+      if (!teamBindingResult.ok) {
+        return res.status(403).json({
+          error: {
+            code: "TEAM_PROJECT_AUTHORIZATION_DENIED",
+            message: "Team project context is not authorized for provider execution.",
+          },
+        });
+      }
+      const teamProviderBinding = teamBindingResult.binding;
       try {
         const tenantEnabled = await getTenantFeatureFlag(
           "responsesApi",
@@ -1003,6 +1083,8 @@ export function registerResponsesRoutes(
             internalToken,
             deps,
             plannerResult,
+            teamProviderBinding,
+            revalidateTeamBinding,
           );
         } else {
           await proxyResponsesJson(
@@ -1020,6 +1102,8 @@ export function registerResponsesRoutes(
             internalToken,
             deps,
             plannerResult,
+            teamProviderBinding,
+            revalidateTeamBinding,
             process.env.CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED === "true" &&
               req.get("x-sah-cache-test-fault") === "kv-get" &&
               externalAuth?.mode === "session" &&
@@ -1065,6 +1149,8 @@ async function proxyResponsesJson(
   internalToken: string,
   deps: any,
   plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
+  teamProviderBinding: TeamProjectProviderContextBindingPayload | null = null,
+  revalidateTeamBinding: typeof revalidateTeamProjectProviderContextBinding = revalidateTeamProjectProviderContextBinding,
   injectKvGetFailure = false,
 ) {
   const controller = new AbortController();
@@ -1143,6 +1229,21 @@ async function proxyResponsesJson(
     }
 
     const requestBody = { ...body, input: currentInput };
+
+    try {
+      await revalidateTeamProviderBinding(
+        teamProviderBinding,
+        revalidateTeamBinding,
+      );
+    } catch {
+      res.status(403).json({
+        error: {
+          code: "TEAM_PROJECT_AUTHORIZATION_DENIED",
+          message: "Team project context is no longer authorized for provider execution.",
+        },
+      });
+      return;
+    }
 
     let upstream: globalThis.Response;
     try {
@@ -1516,6 +1617,8 @@ async function proxyResponsesStream(
   internalToken: string,
   deps: any,
   plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
+  teamProviderBinding: TeamProjectProviderContextBindingPayload | null = null,
+  revalidateTeamBinding: typeof revalidateTeamProjectProviderContextBinding = revalidateTeamProjectProviderContextBinding,
 ) {
   const controller = new AbortController();
   let clientDisconnected = false;
@@ -1553,6 +1656,7 @@ async function proxyResponsesStream(
 
   let currentInput = body.input;
   let budgetExceeded = false;
+  let teamAuthorizationDenied = false;
   await enforceDelegatedWorkerSpendGuardrails({
     auth: req.auth,
     estimatedCredits: Math.max(1, Math.min(maxBudgetCredits, estimateNextRoundCredits(budget))),
@@ -1572,6 +1676,28 @@ async function proxyResponsesStream(
       if (clientDisconnected) break;
 
       const requestBody = { ...body, input: currentInput };
+
+      try {
+        await revalidateTeamProviderBinding(
+          teamProviderBinding,
+          revalidateTeamBinding,
+        );
+      } catch {
+        teamAuthorizationDenied = true;
+        const denial = {
+          error: {
+            code: "TEAM_PROJECT_AUTHORIZATION_DENIED",
+            message: "Team project context is no longer authorized for provider execution.",
+          },
+        };
+        if (!res.headersSent) {
+          res.status(403).json(denial);
+        } else if (!clientDisconnected) {
+          res.write(`event: error\ndata: ${JSON.stringify(denial)}\n\n`);
+          res.end();
+        }
+        return;
+      }
 
       let upstream: globalThis.Response;
       try {
@@ -1972,7 +2098,7 @@ async function proxyResponsesStream(
     deps.recordModelUsage(
       provider.providerName,
       requestedModelId,
-      true,
+      !teamAuthorizationDenied,
       budget.totalInputTokens,
       budget.totalOutputTokens,
     );
@@ -1986,7 +2112,7 @@ async function proxyResponsesStream(
       costUsd: budget.providerReportedCostUsd,
       creditsCharged: totalCredits,
       responseTimeMs: totalMs,
-      statusCode: 200,
+      statusCode: teamAuthorizationDenied ? 403 : 200,
       wasFallback: false,
       traceId,
     }).catch((err: any) =>
@@ -2000,7 +2126,7 @@ async function proxyResponsesStream(
       providerId: provider.providerId,
       providerName: provider.providerName,
       model: requestedModelId,
-      statusCode: 200,
+      statusCode: teamAuthorizationDenied ? 403 : 200,
       inputTokens: budget.totalInputTokens,
       outputTokens: budget.totalOutputTokens,
       creditsCharged: totalCredits,
@@ -2014,7 +2140,7 @@ async function proxyResponsesStream(
     });
 
     // Send summary event
-    if (!clientDisconnected) {
+    if (!clientDisconnected && !teamAuthorizationDenied && !res.writableEnded) {
       res.write(
         `event: responses_summary\ndata: ${JSON.stringify({
           traceId,
@@ -2034,6 +2160,8 @@ async function proxyResponsesStream(
       );
     }
 
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }

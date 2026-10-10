@@ -33,6 +33,17 @@ def _request(allowed_tools: list[str] | None = None) -> AgentRuntimeRequest:
             "tenantId": "tenant_demo",
             "roomId": "room_demo",
             "runId": "run_demo",
+            "teamProjectProviderBinding": {
+                "version": "team-room-provider-context.v1",
+                "tenantId": "tenant_demo",
+                "roomId": "room_demo",
+                "teamId": "team_demo",
+                "userId": 42,
+                "runId": "run_demo",
+                "historyScope": "run",
+                "projectId": "project_demo",
+                "projectAuthority": "canonical-member",
+            },
             "messageId": "message_demo",
             "requestId": "request_demo",
             "idempotencyKey": "idem_demo",
@@ -205,6 +216,7 @@ def test_vertical_drama_assurance_binds_trusted_output_type_and_guardrail(monkey
 
 def _media_request(plan_input: dict | None = None) -> AgentRuntimeRequest:
     payload = _request(["return_structured_intent"]).model_dump(mode="json")
+    payload["teamProjectProviderBinding"] = None
     payload["surface"] = "media_production"
     payload["originSurface"] = "marketplace_capture"
     payload["entryPoint"] = "marketplace_auto_review_stage"

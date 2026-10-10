@@ -160,6 +160,18 @@ export const AgentRuntimeStepLinkStatusSchema = z.enum(
 export const PersonaProvenanceKindSchema = z.enum(PERSONA_PROVENANCE_KINDS);
 export const TeamMemberKindSchema = z.enum(TEAM_MEMBER_KINDS);
 
+export const TeamProjectProviderContextBindingSchema = z.object({
+  version: z.literal("team-room-provider-context.v1"),
+  tenantId: z.string().min(1).max(512),
+  roomId: z.string().min(1).max(512),
+  teamId: z.string().min(1).max(512),
+  userId: z.number().int().positive().safe(),
+  runId: z.string().min(1).max(512).nullable(),
+  historyScope: z.enum(["room", "run"]),
+  projectId: z.string().min(1).max(512).nullable(),
+  projectAuthority: z.enum(["canonical-member", "room-only"]),
+}).strict();
+
 function isSupportedVersion(
   version: number,
   current: number,
@@ -581,6 +593,8 @@ export const AgentRuntimeRequestSchema =
     tenantId: z.string().min(1),
     roomId: z.string().min(1).nullable().optional(),
     runId: z.string().min(1).nullable().optional(),
+    teamProjectProviderBinding:
+      TeamProjectProviderContextBindingSchema.nullable().optional(),
     messageId: z.string().min(1).nullable().optional(),
     requestId: z.string().min(1),
     idempotencyKey: z.string().min(1),
@@ -624,6 +638,41 @@ export const AgentRuntimeRequestSchema =
       ProductionAgentsSdkCapabilityManifestSchema.nullable().optional(),
     assurance: OrchestraAssuranceRequestSchema.nullable().optional(),
   }).superRefine((value, ctx) => {
+    const teamProviderBinding = value.teamProjectProviderBinding;
+    const requiresTeamProviderBinding =
+      value.surface === "team" ||
+      (value.originSurface === "team" && value.entryPoint === "team_step");
+    if (requiresTeamProviderBinding && !teamProviderBinding) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["teamProjectProviderBinding"],
+        message: "team_project_provider_binding_required",
+      });
+    }
+    if (teamProviderBinding) {
+      if (
+        value.surface !== "team" &&
+        !(value.originSurface === "team" && value.entryPoint === "team_step")
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["teamProjectProviderBinding"],
+          message: "team_project_provider_binding_surface_mismatch",
+        });
+      }
+      const checks: Array<[boolean, (string | number)[], string]> = [
+        [teamProviderBinding.tenantId === value.tenantId, ["teamProjectProviderBinding", "tenantId"], "team_project_provider_tenant_mismatch"],
+        [teamProviderBinding.roomId === value.roomId, ["teamProjectProviderBinding", "roomId"], "team_project_provider_room_mismatch"],
+        [teamProviderBinding.runId === (value.runId ?? null), ["teamProjectProviderBinding", "runId"], "team_project_provider_run_mismatch"],
+        [teamProviderBinding.historyScope === (value.runId ? "run" : "room"), ["teamProjectProviderBinding", "historyScope"], "team_project_provider_history_scope_mismatch"],
+        [teamProviderBinding.projectAuthority !== "canonical-member" || teamProviderBinding.projectId !== null, ["teamProjectProviderBinding", "projectId"], "team_project_provider_canonical_project_required"],
+      ];
+      for (const [passes, path, message] of checks) {
+        if (!passes) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+        }
+      }
+    }
     if (value.executionEnvelope.tenantId !== value.tenantId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -905,6 +954,9 @@ export type AgentRuntimePersonaSnapshot = z.infer<
 >;
 export type AgentRuntimeTeamMemberSnapshot = z.infer<
   typeof AgentRuntimeTeamMemberSnapshotSchema
+>;
+export type TeamProjectProviderContextBindingPayload = z.infer<
+  typeof TeamProjectProviderContextBindingSchema
 >;
 export type AgentRuntimeStepAssignment = z.infer<
   typeof AgentRuntimeStepAssignmentSchema

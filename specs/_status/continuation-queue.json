@@ -2985,7 +2985,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "Start Phase 0 only after a source-pinned Moli release, artifact digest, transitive license/SBOM review, and adapter threat model are recorded; then open an implementation WorkUnit. Moli is not integrated or enabled.",
+      "next_action": "Continue Issue #435 with W2: implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation using the existing Feature 195 worker_jobs and Feature 197 Runner boundaries. Keep Moli undispatched until those gates pass.",
       "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/208-hybrid-computer-use-dynamic-capability-routing",
@@ -3870,7 +3870,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
+      "next_action": "Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
@@ -4889,15 +4889,6 @@
       "spec_id": "268"
     },
     {
-      "confidence": "HIGH",
-      "decision": "CONTINUE_REQUIRED",
-      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
-      "priority": "P1",
-      "rationale": "Implement runtime App/Project memory context bindings and execute direct T acceptance scenarios.",
-      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
-      "spec_id": "269"
-    },
-    {
       "confidence": "LOW",
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract",
@@ -4938,7 +4929,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "priority": "P1",
-      "rationale": "Obtain the approved Security and Media/Runtime Owner disposition for WP_SECURITY_BASELINE_DEPENDENCY_REMEDIATION, then refresh and verify PR #405; reconcile #403 next; after those gates, run one consolidated exact-SHA PR #399 unit/Chromium suite. Do not suppress mandatory audit, treat baseline MCP failures as SPEC-308 regressions, mark requirements PASS, merge before required gates, or deploy.",
+      "rationale": "Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
     },
@@ -4959,6 +4950,15 @@
       "rationale": "Keep SPEC-038 PARTIAL_INTEGRATED at 8 PASS / 98 OPEN. Do not dispatch the closed Lane 2 CMS KPI workunit until one of its exact blocker predicates is satisfied and its evidence is validated against canonical sources. Find and assign another independent eligible workunit separately.",
       "record_key": "canonical:specs/feature/038-Citation-Gated-Content-Quality",
       "spec_id": "038"
+    },
+    {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "priority": "P3",
+      "rationale": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
+      "spec_id": "269"
     },
     {
       "confidence": "MEDIUM",

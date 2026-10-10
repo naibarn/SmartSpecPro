@@ -179,6 +179,24 @@ class TeamMemberSnapshot(ContractModel):
     personaGuidanceSummary: str | None = None
 
 
+class TeamProjectProviderContextBinding(ContractModel):
+    version: Literal["team-room-provider-context.v1"]
+    tenantId: str = Field(min_length=1, max_length=512)
+    roomId: str = Field(min_length=1, max_length=512)
+    teamId: str = Field(min_length=1, max_length=512)
+    userId: int = Field(gt=0, le=9_007_199_254_740_991)
+    runId: str | None = Field(max_length=512)
+    historyScope: Literal["room", "run"]
+    projectId: str | None = Field(min_length=1, max_length=512)
+    projectAuthority: Literal["canonical-member", "room-only"]
+
+    @model_validator(mode="after")
+    def validate_project_authority(self) -> TeamProjectProviderContextBinding:
+        if self.projectAuthority == "canonical-member" and self.projectId is None:
+            raise ValueError("canonical project authority requires a project id")
+        return self
+
+
 class StepAssignment(ContractModel):
     ownerMemberId: str
     ownerPersonaId: str | None = None
@@ -437,6 +455,7 @@ class AgentRuntimeRequest(ContractVersions):
     tenantId: str
     roomId: str | None = None
     runId: str | None = None
+    teamProjectProviderBinding: TeamProjectProviderContextBinding | None = None
     messageId: str | None = None
     requestId: str
     idempotencyKey: str
@@ -470,6 +489,26 @@ class AgentRuntimeRequest(ContractVersions):
     def validate_request_consistency(self) -> AgentRuntimeRequest:
         if self.executionEnvelope.tenantId != self.tenantId:
             raise ValueError("execution envelope tenant must match request tenant")
+        binding = self.teamProjectProviderBinding
+        requires_binding = self.surface == "team" or (
+            self.originSurface == "team" and self.entryPoint == "team_step"
+        )
+        if requires_binding and binding is None:
+            raise ValueError("team step requires a provider authorization binding")
+        if binding is not None:
+            if self.surface != "team" and not (
+                self.originSurface == "team" and self.entryPoint == "team_step"
+            ):
+                raise ValueError("provider authorization binding is only valid for TeamRoom steps")
+            if binding.tenantId != self.tenantId:
+                raise ValueError("provider authorization binding tenant must match request tenant")
+            if binding.roomId != self.roomId:
+                raise ValueError("provider authorization binding room must match request room")
+            if binding.runId != self.runId:
+                raise ValueError("provider authorization binding run must match request run")
+            expected_scope = "run" if self.runId else "room"
+            if binding.historyScope != expected_scope:
+                raise ValueError("provider authorization binding scope must match request history scope")
         if self.surface == "media_production":
             if self.gatewayInvocationMetadata is None:
                 raise ValueError("media production requires gateway invocation metadata")

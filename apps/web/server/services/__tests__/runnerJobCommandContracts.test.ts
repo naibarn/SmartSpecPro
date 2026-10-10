@@ -72,6 +72,13 @@ describe("Runner Job Command/Receipt contract", () => {
     ).toThrow("RUNNER_COMMAND_SECRET_FIELD");
   });
 
+  it("rejects browser engines without a Runner security gate", () => {
+    expect(() =>
+      validateRunnerJobCommand({ ...command(), browserEngineConstraint: "moli" })
+    ).toThrow("RUNNER_BROWSER_ENGINE_UNSUPPORTED");
+    expect(validateRunnerJobCommand(command()).browserEngineConstraint).toBe("chromium");
+  });
+
   it("requires cancel commands to correlate to the original execute command", () => {
     const cancel = {
       ...command(),
