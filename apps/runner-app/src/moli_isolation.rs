@@ -71,9 +71,12 @@ pub fn bind_loopback_listener(address: SocketAddr) -> Result<TcpListener, String
     TcpListener::bind(address).map_err(|_| "RUNNER_MOLI_PROTOCOL_LISTENER_BIND_FAILED".into())
 }
 
-/// Creates one private profile directory per tenant/attempt pair. The pair is
-/// hashed so raw tenant identifiers are not exposed in filesystem paths.
-/// Reusing an active scope fails instead of sharing browser state.
+/// Creates one private profile directory per tenant/attempt pair. `data_root`
+/// must be an existing absolute directory owned by the Runner's effective UID,
+/// with no group/other write bits; its ancestors are assumed to be controlled
+/// by the host administrator. The pair is hashed so raw tenant identifiers
+/// are not exposed in filesystem paths. Reusing an active scope fails instead
+/// of sharing browser state.
 #[derive(Debug)]
 pub struct MoliAttemptProfile {
     path: PathBuf,
@@ -87,6 +90,7 @@ impl MoliAttemptProfile {
             return Err("RUNNER_MOLI_PROFILE_SCOPE_REQUIRED".into());
         }
 
+        let data_root = validate_data_root(data_root)?;
         let base = data_root.join("moli-attempt-profiles");
         create_private_directory(&base)?;
         let base = std::fs::canonicalize(&base)
@@ -151,6 +155,39 @@ fn create_private_directory(path: &Path) -> Result<(), String> {
         return Err("RUNNER_MOLI_PROFILE_PERMISSIONS_INVALID".into());
     }
     Ok(())
+}
+
+#[cfg(unix)]
+fn validate_data_root(path: &Path) -> Result<PathBuf, String> {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    if !path.is_absolute() {
+        return Err("RUNNER_MOLI_PROFILE_ROOT_INVALID".into());
+    }
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|_| "RUNNER_MOLI_PROFILE_ROOT_INVALID".to_string())?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("RUNNER_MOLI_PROFILE_ROOT_INVALID".into());
+    }
+    // SAFETY: `geteuid` has no pointer arguments and only reads process credentials.
+    let effective_uid = unsafe { libc::geteuid() };
+    if metadata.permissions().mode() & 0o022 != 0 || metadata.uid() != effective_uid {
+        return Err("RUNNER_MOLI_PROFILE_ROOT_PERMISSIONS_INVALID".into());
+    }
+    let canonical =
+        std::fs::canonicalize(path).map_err(|_| "RUNNER_MOLI_PROFILE_ROOT_INVALID".to_string())?;
+    let canonical_metadata = std::fs::symlink_metadata(&canonical)
+        .map_err(|_| "RUNNER_MOLI_PROFILE_ROOT_INVALID".to_string())?;
+    if canonical_metadata.file_type().is_symlink()
+        || !canonical_metadata.is_dir()
+        || canonical_metadata.dev() != metadata.dev()
+        || canonical_metadata.ino() != metadata.ino()
+        || canonical_metadata.uid() != effective_uid
+        || canonical_metadata.permissions().mode() & 0o022 != 0
+    {
+        return Err("RUNNER_MOLI_PROFILE_ROOT_INVALID".into());
+    }
+    Ok(canonical)
 }
 
 #[cfg(unix)]
@@ -265,9 +302,15 @@ mod tests {
     use std::net::{Ipv4Addr, Ipv6Addr};
     use std::os::unix::fs::PermissionsExt;
 
+    fn private_tempdir() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        dir
+    }
+
     #[test]
     fn profile_is_private_tenant_and_attempt_scoped_and_cleaned() {
-        let root = tempfile::tempdir().unwrap();
+        let root = private_tempdir();
         let mut first = MoliAttemptProfile::prepare(root.path(), "tenant-a", "attempt-1").unwrap();
         let second = MoliAttemptProfile::prepare(root.path(), "tenant-b", "attempt-1").unwrap();
         assert_ne!(first.path(), second.path());
@@ -293,7 +336,7 @@ mod tests {
 
     #[test]
     fn profile_rejects_empty_scope_and_insecure_or_symlink_root() {
-        let root = tempfile::tempdir().unwrap();
+        let root = private_tempdir();
         assert_eq!(
             MoliAttemptProfile::prepare(root.path(), " ", "attempt").unwrap_err(),
             "RUNNER_MOLI_PROFILE_SCOPE_REQUIRED"
@@ -307,7 +350,7 @@ mod tests {
             "RUNNER_MOLI_PROFILE_PERMISSIONS_INVALID"
         );
 
-        let linked_root = tempfile::tempdir().unwrap();
+        let linked_root = private_tempdir();
         let target = linked_root.path().join("private-target");
         std::fs::create_dir(&target).unwrap();
         std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o700)).unwrap();
@@ -316,6 +359,31 @@ mod tests {
         assert_eq!(
             MoliAttemptProfile::prepare(linked_root.path(), "tenant", "attempt").unwrap_err(),
             "RUNNER_MOLI_PROFILE_PERMISSIONS_INVALID"
+        );
+    }
+
+    #[test]
+    fn profile_rejects_insecure_symlink_and_relative_data_roots() {
+        let insecure_root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(insecure_root.path(), std::fs::Permissions::from_mode(0o777))
+            .unwrap();
+        assert_eq!(
+            MoliAttemptProfile::prepare(insecure_root.path(), "tenant", "attempt").unwrap_err(),
+            "RUNNER_MOLI_PROFILE_ROOT_PERMISSIONS_INVALID"
+        );
+
+        let link_parent = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap();
+        let linked_root = link_parent.path().join("data-root");
+        std::os::unix::fs::symlink(target.path(), &linked_root).unwrap();
+        assert_eq!(
+            MoliAttemptProfile::prepare(&linked_root, "tenant", "attempt").unwrap_err(),
+            "RUNNER_MOLI_PROFILE_ROOT_INVALID"
+        );
+        assert_eq!(
+            MoliAttemptProfile::prepare(Path::new("relative-data-root"), "tenant", "attempt")
+                .unwrap_err(),
+            "RUNNER_MOLI_PROFILE_ROOT_INVALID"
         );
     }
 
