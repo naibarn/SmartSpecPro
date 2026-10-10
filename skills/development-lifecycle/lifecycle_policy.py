@@ -246,6 +246,28 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
         return "RESUME_NEXT_READY" if selected else "WAIT_WITH_PREDICATE"
     if event == "production_acceptance_evidence_missing":
         return "CONTINUE_UNTIL_ACCEPTANCE" if facts.get("acceptance_required") and not facts.get("acceptance_evidence") else "COMPLETE_ELIGIBLE"
+    if event == "missing_optional_runner":
+        if facts.get("compatible_fallback"):
+            return "SUBSTITUTE"
+        return "WAITING_CAPABILITY" if facts.get("verification_optional") else "BLOCKED_CAPABILITY"
+    if event == "unauthorized_action":
+        return "DENY_AND_CONTINUE_SAFE_WORK" if facts.get("independent_work") else "DENY_AND_WAIT_AUTHORITY"
+    if event == "concurrent_writer_collision":
+        return "ISOLATE_WORKTREE" if facts.get("isolated_workspace_available") else "SERIALIZE_OWNED_PATH"
+    if event == "dirty_canonical_checkout":
+        return "PRESERVE_AND_VERIFY_ISOLATED" if facts.get("exact_sha_workspace_available") else "PRESERVE_AND_WAIT"
+    if event == "safe_pr_integration":
+        return "INTEGRATE_NORMAL_PATH" if facts.get("fast_gate_passed") and facts.get("base_reconciled") and facts.get("non_force_path") else "REPAIR_OR_RECONCILE"
+    if event == "exact_sha_build":
+        if facts.get("source_sha") != facts.get("requested_sha") or not facts.get("canonical_ancestor"):
+            return "REJECT_SOURCE"
+        return "BUILD_EXACT_SHA" if not facts.get("canonical_advanced") else "MARK_STALE_AND_REBUILD"
+    if event == "interrupted_worker_resume":
+        return "RESUME_FROM_CAPSULE" if facts.get("durable_capsule") and facts.get("canonical_reconciled") else "RECONCILE_BEFORE_RESUME"
+    if event == "dependency_wake_resume":
+        return "RESUME_IDEMPOTENTLY" if facts.get("predicate_revalidated") and facts.get("outbox_available") else "KEEP_WAITING_WITH_FALLBACK"
+    if event == "local_blocker_with_independent_work":
+        return "ISOLATE_BLOCKER_AND_CONTINUE" if facts.get("independent_work") and facts.get("blocker_scoped") else "CHALLENGE_BLOCKER"
     if event in {"section_checkpoint_missing_evidence", "all_sections_checkpointed_with_requirement_failure"}:
         requirements = facts.get("requirements", [])
         closed = bool(requirements) and not remaining_requirements(requirements)
