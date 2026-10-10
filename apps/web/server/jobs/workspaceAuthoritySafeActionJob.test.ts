@@ -109,6 +109,38 @@ describe("workspace authority safe action executor", () => {
     expect(evidence.requiredChecks[0].state).toBe("success");
   });
 
+  it("uses the latest GitHub check attempt after a failed attempt was repaired", () => {
+    const evidence = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40),
+      requiredChecks: [{ context: "git_lifecycle", integrationId: 15368 }],
+      checkRuns: [
+        { name: "git_lifecycle", status: "completed", conclusion: "failure", integrationId: 15368,
+          startedAt: "2026-10-10T10:00:00Z", completedAt: "2026-10-10T10:01:00Z" },
+        { name: "git_lifecycle", status: "completed", conclusion: "success", integrationId: 15368,
+          startedAt: "2026-10-10T10:02:00Z", completedAt: "2026-10-10T10:03:00Z" },
+      ],
+      commitStatuses: [],
+    });
+    expect(evidence.state).toBe("REQUIRED_CHECKS_PASSED");
+    expect(evidence.requiredChecks[0].state).toBe("success");
+  });
+
+  it("keeps a newer in-progress required check pending despite an older success", () => {
+    const evidence = evaluateRequiredCheckGate({
+      headSha: "c".repeat(40),
+      requiredChecks: [{ context: "git_lifecycle", integrationId: 15368 }],
+      checkRuns: [
+        { name: "git_lifecycle", status: "completed", conclusion: "success", integrationId: 15368,
+          startedAt: "2026-10-10T10:00:00Z", completedAt: "2026-10-10T10:01:00Z" },
+        { name: "git_lifecycle", status: "in_progress", conclusion: null, integrationId: 15368,
+          startedAt: "2026-10-10T10:02:00Z", completedAt: null },
+      ],
+      commitStatuses: [],
+    });
+    expect(evidence.state).toBe("REQUIRED_CHECKS_NOT_PASSED");
+    expect(evidence.requiredChecks[0].state).toBe("pending");
+  });
+
   it("accepts a required legacy commit status only when its exact context is successful", () => {
     const passed = evaluateRequiredCheckGate({
       headSha: "c".repeat(40),
