@@ -58,6 +58,24 @@ else
   npm install
 fi
 
+# The SmartSpecWeb tests import this workspace package's public schema entry
+# point. Its source is intentionally bundled separately from the heavyweight
+# Remotion renderer, so build that single entrypoint after dependencies exist
+# and before Vitest resolves the package export.
+if [ "$PKG" = "apps/web" ]; then
+  REMOTION_SCHEMA_ROOT="$ROOT/packages/remotion-render"
+  REMOTION_SCHEMA_BUILDER="$ROOT/apps/web/node_modules/.bin/esbuild"
+  if [ ! -x "$REMOTION_SCHEMA_BUILDER" ]; then
+    echo "esbuild is required to prepare the SmartSpecWeb Remotion schema" >&2
+    exit 127
+  fi
+  mkdir -p "$REMOTION_SCHEMA_ROOT/dist"
+  "$REMOTION_SCHEMA_BUILDER" \
+    "$REMOTION_SCHEMA_ROOT/src/remotionRenderVideoSchema.ts" \
+    --bundle --platform=neutral --format=esm --target=es2022 --external:zod \
+    --outfile="$REMOTION_SCHEMA_ROOT/dist/remotionRenderVideoSchema.js"
+fi
+
 if npm run | grep -q "test:coverage"; then
   if [ "$PACKAGE_MANAGER" = "npm" ]; then
     npm run test:coverage
