@@ -34,14 +34,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "e0887ced8c5775269a74fcb1850713b09aad2396",
+    "expected_canonical_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
     "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
     "next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
     "reactivation_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing.",
-    "resume_point": "PR #451 integrated the minimum SPEC-302/304 runtime contract at fe6771c1cc93cd5cf3321c417210e082a2e8f86c: invocation-scoped read-only receipt with fresh ACL, server-only trusted App context slot, request Host/X-Forwarded-Host rejected as identity, and Project reads fail-closed without ingress proof. Durable Project-shared writes remain denied. Continue direct T-01–T-23 acceptance; do not mark SPEC-269 complete.",
+    "resume_point": "PR #462 merged at 3cc834f874361c64307631d1371f9109957c8ed3. Prompt memory rejects unknown Projects and cross-Project or inconsistent owner/project retrieval results after fresh canonical ACL validation; the exact merged SHA passed 7 focused files (102 tests, 11 TODO). Continue direct T-01–T-23 acceptance; component fixtures are not direct acceptance.",
     "waiting_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing."
   },
   "continuation_assessment": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 16,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e0887ced8c5775269a74fcb1850713b09aad2396",
+    "canonical_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:06:01Z"
+    "integrated_at": "2026-10-10T07:10:44Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -453,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:09:41.897157Z",
+  "updated_at": "2026-10-10T07:12:50.883956Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -492,11 +492,18 @@
         "scope": "PR #457: unknown/noncanonical Project IDs fail closed at prompt memory boundary; canonical ACL revalidation retained; global/personal memory preserved; 2 Vitest files / 51 tests passed on exact merged SHA. Component/service evidence only; not direct T-01–T-23 or deployed ingress acceptance.",
         "source_sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
         "status": "PASS"
+      },
+      {
+        "kind": "TARGETED_REGRESSION",
+        "path": "orchestra/tasks/smartaihub-marathon-r4-20261010/progress.md",
+        "scope": "PR #462: prompt boundary admits only memory/rules scoped to the freshly authorized canonical Project; rejects cross-Project and inconsistent owner/project bindings while preserving global/personal results. Exact merged SHA focused suite: 7 files, 102 passed, 11 TODO. Component evidence only; not direct T-01–T-23 acceptance.",
+        "source_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "cdeba4818de65e944d868feca82fa459b566f6ad",
+    "sha": "3cc834f874361c64307631d1371f9109957c8ed3",
     "status": "PARTIAL",
     "task_regressions": []
   }
