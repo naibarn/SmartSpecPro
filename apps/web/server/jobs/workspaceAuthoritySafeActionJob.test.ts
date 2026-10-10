@@ -205,11 +205,14 @@ describe("workspace authority safe action executor", () => {
     expect(JSON.stringify(result)).not.toContain("/private/recovery");
   });
 
-  it("only enables retirement in the local authority command after project/workspace re-resolution", async () => {
+  it("requires a successful retirement dry-run before applying local worktree cleanup", async () => {
     const runAuthority = vi.fn(async (_root: string, _env: NodeJS.ProcessEnv, args: string[]) => args[0] === "resolve"
-      ? resolved : { status: "WORKTREE_RETIRED", receipt: { receipt_id: "worktree-retirement:r1", previous_path: "/private/worktree" } });
+      ? resolved : args.includes("--apply")
+        ? { status: "WORKTREE_RETIRED", receipt: { receipt_id: "worktree-retirement:r1", previous_path: "/private/worktree" } }
+        : { status: "RETIREMENT_DRY_RUN" });
     const result = await executeWorkspaceAuthoritySafeAction(request({ action: "RETIRE_SAFE_WORKTREE" }), env, { runAuthority });
-    expect(runAuthority.mock.calls[1][2]).toEqual(["retire", "--workspace-id", "ws-a", "--apply"]);
+    expect(runAuthority.mock.calls[1][2]).toEqual(["retire", "--workspace-id", "ws-a"]);
+    expect(runAuthority.mock.calls[2][2]).toEqual(["retire", "--workspace-id", "ws-a", "--apply"]);
     expect(result.output.receipt.evidence).toEqual({ status: "WORKTREE_RETIRED", receipt: { receipt_id: "worktree-retirement:r1" } });
   });
 

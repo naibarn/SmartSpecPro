@@ -1,0 +1,56 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 canonical worker process restart and useful-work recovery slice",
+  "sourceSha": "55358670f0f8a58bd54ace64e3d3a10965c36b0d",
+  "canonicalRef": "origin/main",
+  "database": {
+    "engine": "PostgreSQL disposable local cluster",
+    "databaseName": "miniapp_factory_stage_worker_test",
+    "host": "127.0.0.1",
+    "port": "ephemeral loopback port allocated by the guarded runner",
+    "schemaBootstrap": "drizzle.mini-app-baseline.config.ts current-schema migration set, applied only to this runner-created cluster",
+    "syntheticDataOnly": true,
+    "cleanupOwner": "test-mini-app-factory-stage-worker-runtime.sh"
+  },
+  "verification": {
+    "command": "pnpm --filter @smartspec/web run test:mini-app-factory-stage-worker-runtime",
+    "result": "PASS_PARTIAL_ACCEPTANCE",
+    "verifiedAt": "2026-10-10T10:01:50Z",
+    "phases": [
+      "producer created canonical development run and SPEC worker_jobs/outbox entry, then exited",
+      "fresh worker process completed SPEC and persisted progress",
+      "fresh worker process injected a retryable TEST failure and persisted retry_scheduled state",
+      "recovery process made the retry eligible and published its canonical outbox intent, then exited",
+      "fresh worker process resumed TEST at attempt 2 and persisted useful artifacts and completion",
+      "final process reloaded the run and job rows, confirmed both stages complete and dispatch consumed"
+    ],
+    "recoveredAttempt": 2,
+    "finalStages": ["SPEC", "TEST"],
+    "outboxDispatchConsumed": true,
+    "provider": "synthetic deterministic executor; no external provider"
+  },
+  "focusedRegression": {
+    "command": "pnpm --filter @smartspec/web exec vitest run server/services/miniAppFactoryStageWorker.test.ts server/services/miniAppFactoryDurableState.test.ts server/jobs/nodeWorkerScheduling.test.ts server/jobs/nodeWorkerRecoveryPolicy.test.ts server/jobs/nodeWorkerShutdown.test.ts",
+    "status": "PASS",
+    "testFiles": 5,
+    "tests": 24
+  },
+  "reviewLenses": [
+    "The exported initializer takes no request or client-supplied identity input.",
+    "Executor loading remains server-owned and retains the production trusted Runner adapter as the default composition.",
+    "Synthetic execution is enabled only in the isolated local acceptance script.",
+    "The initializer reuses the existing idempotent module-load guard and does not create a second worker registry.",
+    "Worker discovery, claim, attempts, settlements, and dispatch continue through canonical worker_jobs/outbox.",
+    "Producer, worker, retry-recovery, resumed worker, and final verifier are separate Node processes.",
+    "Retry recovery preserves one logical job identity and resumes at attempt 2 rather than duplicating the stage result.",
+    "Useful progress and artifacts are reloaded from persisted development-run state after worker processes exit.",
+    "The disposable runner rejects inherited DATABASE_URL and binds PostgreSQL to loopback with synthetic data only.",
+    "SPEC-224 protected dispatch, production migrations, deployments, grants, and production ingress are not invoked."
+  ],
+  "limitations": [
+    "This proves a canonical worker_jobs/outbox process-boundary retry and useful-work recovery slice, not SPEC-271 authoritative receipt acceptance.",
+    "The AutoTeam scheduled recovery path was not executed; its current-schema team_rooms/team_runs tables are absent from this disposable profile.",
+    "No stale-lease fencing race, active-process kill mid-execution, bounded no-progress scan, provider/capacity/dependency wait, or Task Control projection assertion was run.",
+    "Do not report full SPEC-277, SPEC-271, or T-01 through T-23 completion from this evidence."
+  ]
+}
