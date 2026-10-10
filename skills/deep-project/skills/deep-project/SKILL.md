@@ -31,7 +31,7 @@ Decomposes vague, high-level project requirements into well-scoped components to
 - Split structure approval — present and auto-continue
 - Technical decisions (framework, architecture, patterns) — decide based on codebase
 - File/directory creation — proceed automatically
-- Session conflicts — auto-overwrite with `--force`
+- Session conflicts — preserve existing work; isolate or resume the owning session
 - Branch/working tree warnings — log and continue
 
 **For technical decisions:** Analyze the codebase, pick the best option, and log the decision. Do NOT ask the user to choose between technical alternatives they'll just ask you to choose anyway.
@@ -137,7 +137,7 @@ Parse the JSON output.
 
 1. **If `success == true` and `workflow_backend == "task_list"` and `tasks_written > 0`:** Task-list mode is active. If the host exposes a task-list viewer, you may inspect it, but the JSON output and session files remain the source of truth.
 
-2. **If `mode == "conflict"`:** The user explicitly pinned `CLAUDE_CODE_TASK_LIST_ID` and it already has tasks. Ask one concise direct question whether to overwrite those tasks. If yes, re-run with `--force`.
+2. **If `mode == "conflict"`:** Preserve the existing task list and its owner. Continue in a separate isolated session/worktree or resume that task list only when it is the current task. Never use `--force` to overwrite another session's work; use it only after the user explicitly requests that destructive replacement.
 
 3. **If `mode == "file_based"` or `task_list_id` is null:** Continue in file-based mode; the workflow still progresses using session state on disk.
 
@@ -209,6 +209,16 @@ See [interview-protocol.md](references/interview-protocol.md) for detailed guida
 ---
 
 ## Step 2: Split Analysis
+
+Before repository discovery, run the configured canonical-source preflight
+when the repository has `.development-repository.toml`. The fetched canonical
+SHA must be the base for source inspection; preserve existing files when the
+preflight reports stale state and reconcile before continuing.
+
+Choose splits that expose an earliest useful deliverable and permit independent
+implementation/integration where contracts allow it. Record prerequisites as
+real dependency edges, not a whole-project completion chain. Keep overall
+project/SPEC acceptance separate from slice-level merge readiness.
 
 See [split-heuristics.md](references/split-heuristics.md) for evaluation criteria.
 

@@ -61,6 +61,35 @@ worktrees are allowed only as explicitly registered task/session/integration
 workspaces. Continue in-flight work only with its base SHA and reconciliation
 plan recorded; unrelated work starts from the registered canonical workspace.
 
+### Trunk-based session baseline
+
+Before code discovery for each new or resumed development session, fetch the
+repository-policy `remote` and `canonical_ref`. Use a clean isolated task
+worktree whose `HEAD` contains that fetched SHA; never infer freshness from a
+local branch named `main`. Run `python3 scripts/development-lifecycle/canonical_source.py
+preflight --repository <repo>` before implementation. Planning may pass
+`--allow-dirty` for spec/planning artifacts, but still must prove the fetched
+canonical SHA is an ancestor. A stale, dirty implementation workspace or an
+active Git operation is preserved and reconciled before implementation; it is
+not repaired by resetting, cleaning, or overwriting another session's work.
+
+### Independently mergeable WorkUnits
+
+Plan the earliest useful outcome as small slices that can safely integrate on
+their own. Every slice records owned paths, prerequisites, observable
+acceptance, impacted/required checks, integration readiness, feature exposure,
+safe fallback, and rollback. Keep dependency edges only where a real interface
+or data prerequisite exists. A SPEC may remain open while verified WorkUnits
+are integrated; merge readiness is a slice-level decision and never implies
+requirement acceptance or overall completion.
+
+After a slice passes its required impacted checks and security/compatibility
+gates, hand it immediately to the existing Integration Controller. Do not
+wait for unrelated WorkUnits or overall SPEC completion. Record the exact
+canonical SHA, then start the next ready slice from that new baseline. If
+post-merge checks identify a regression, pause only further integration,
+repair or revert through the established recovery path, and then continue.
+
 ## Shared states
 
 Use `DISCOVERING`, `WORKING`, `CHECKPOINT_READY`, `CANONICALIZING`, `PARTIAL_INTEGRATED`, `CONTINUATION_REQUIRED`, `WAITING_DEPENDENCY`, `WAITING_EXTERNAL`, `WAITING_RESOURCE`, `WAITING_CAPABILITY`, `WAITING_APPROVAL`, `WAITING_CANONICAL_ARTIFACT`, `IMPLEMENTATION_COMPLETE`, `VALIDATION_PENDING`, `VALIDATING`, `REPAIR_REQUIRED`, `VERIFIED`, `RELEASE_READY`, `DEPLOYING`, `DEPLOYED`, `BLOCKED_RECOVERABLE`, `FAILED_TERMINAL`, and `CANCELLED` consistently. `PARTIAL_INTEGRATED` and valid `WAITING_*` states are non-terminal.

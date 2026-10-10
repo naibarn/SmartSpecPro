@@ -159,12 +159,14 @@ cat debug_section_NN.log
 - Remove or convert debug test to a proper regression test
 - Delete the log file
 
-#### After 3 Logged Attempts: Auto-Skip
+#### After 3 Logged Attempts: Change Strategy and Preserve the Gap
 
-If the bug persists even after log-driven debugging with 3 attempts:
-- Log the section as skipped with full diagnostic details
-- Auto-continue to next section
-- Include in finalization report for manual review
+If the issue remains after three evidence-backed repair attempts:
+- classify the cause and set the affected WorkUnit to `STALLED_STRATEGY`;
+- preserve the failure evidence, attempted strategies, and prohibited blind retries;
+- continue only WorkUnits whose prerequisites are independently satisfied;
+- keep the unresolved requirement open and route the affected slice back through
+  blocker challenge/replanning. Never mark it skipped or complete.
 
 **This protocol exists because guessing wastes time.** A single log session typically reveals the root cause in minutes, while guessing can waste hours.
 

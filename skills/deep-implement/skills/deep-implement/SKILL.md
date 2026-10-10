@@ -173,13 +173,14 @@ Parse the JSON output.
 - `session_id_source`: Where it came from ("context", "env", or "none")
 - `session_id_matched`: If both context and env were present, whether they matched (useful for debugging)
 
-### F. Handle Branch Check
+### F. Verify the Canonical Baseline
 
-If `is_protected_branch == true` (setup script detects main, master, release/* branches), print a warning and continue by default. Only stop if the user explicitly asked for branch hygiene before implementation.
-
-### G. Handle Working Tree Status
-
-If `working_tree_clean == false`, print a warning and continue by default. Preserve unrelated changes carefully and stop only if the user explicitly asked for a clean-tree workflow.
+When repository policy exists, require `canonical_baseline.ready == true`.
+Setup fetches the configured remote/ref, rejects direct implementation on the
+canonical branch, and checks for a clean task worktree containing the fetched
+SHA. If it is not ready, preserve existing work and prepare/reconcile an
+isolated worktree from the exact reported SHA. Never continue from stale local
+`main`, a dirty shared checkout, or an in-progress Git operation.
 
 ### H. Print Preflight Report
 
@@ -190,7 +191,8 @@ PREFLIGHT REPORT
 Target dir:     {target_dir}
 Repo root:      {git_root}
 Branch:         {current_branch}
-Working tree:   {Clean | Dirty (N files)}
+Canonical base: {canonical_ref} @ {canonical_sha}
+Working tree:   Clean task worktree
 Pre-commit:     {Detected (type) | None}
                 {May modify files: Yes (formatters) | No | Unknown}
 Test command:   {test_command}
@@ -416,6 +418,25 @@ uv run {plugin_root}/scripts/tools/update_section_state.py \
 
 This records a commit checkpoint for resume. It does not close requirements or mark the overall outcome complete.
 
+### Step 11.5: Integrate a verified slice before continuing
+
+After a section closes a planned independently mergeable slice, verify every
+required check in that slice contract (focused compile/type check, impacted
+tests, applicable security/authorization, API/schema compatibility, and safe
+feature-off fallback). A failed required check blocks that slice. When they
+pass, immediately run `$session-finish` and `$integration-controller` through
+the repository's normal PR/merge-queue path. Do this while the SPEC remains
+open; do not wait for the remaining sections or final acceptance. Do not open
+a PR for every commit—group only the sections needed to form the planned safe
+slice.
+
+Record the exact integrated SHA and post-merge check state. Start the next
+ready WorkUnit from a fresh task branch/worktree based on that SHA, after
+reconciling its prerequisites and impacted-check evidence. If the SPEC remains
+open, keep its requirement ledger open. A post-merge regression pauses further
+integration and routes to the established repair/revert path before another
+slice can enter the queue; unrelated implementation may continue safely.
+
 ### Step 12: Record Section Checkpoint
 
 If task tracking is available, update the task to `completed`.
@@ -442,7 +463,8 @@ Repeat from Step 1 for next section. **Do not pause between sections.**
 
 ## Finalization
 
-After all section checkpoints exist:
+After all section checkpoints exist (slice integration should already have
+occurred at each ready boundary):
 
 ### Cross-Section Integration Review (MANDATORY)
 

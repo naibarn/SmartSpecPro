@@ -23,25 +23,15 @@ check_git_repo(target_dir) -> {"available": bool, "root": str}
 
 Run at setup. Git is required - if not available, the setup script will fail with an error.
 
-## Branch Check
+## Canonical Baseline Check
 
-At setup, check current branch:
-
-```bash
-git branch --show-current
-```
-
-If on `main` or `master`, warn clearly and continue by default. Only stop when the user explicitly asked for branch hygiene before implementation.
-
-## Working Tree Check
-
-At setup, check if working tree is clean:
-
-```bash
-git status --porcelain
-```
-
-If dirty, inspect ownership and preserve unrelated files. Continue only with explicit task-owned paths; never stage or overwrite another session's work.
+The setup script runs the repository's configured canonical-source preflight,
+which fetches `remote/canonical_ref` and proves the task branch contains that
+exact SHA. A canonical branch, stale base, dirty implementation workspace, or
+in-progress Git operation blocks implementation. Preserve all existing work;
+create/reconcile an isolated task worktree from the fetched SHA before resume.
+Repositories without `.development-repository.toml` use their documented
+trunk workflow and must still begin from a freshly fetched base.
 
 ## Staging Changes
 

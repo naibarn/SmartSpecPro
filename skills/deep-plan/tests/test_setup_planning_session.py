@@ -4,6 +4,7 @@ import pytest
 import subprocess
 import json
 import os
+import shutil
 from pathlib import Path
 
 
@@ -43,6 +44,7 @@ class TestSetupPlanningSession:
 
             result = subprocess.run(
                 cmd,
+                cwd=tmp_path,
                 env=env,
                 capture_output=True,
                 text=True,
@@ -50,6 +52,44 @@ class TestSetupPlanningSession:
             )
             return result
         return _run
+
+    def test_stale_canonical_baseline_stops_planning(self, run_script, tmp_path):
+        def git(*args, cwd=None):
+            result = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True)
+            assert result.returncode == 0, result.stderr
+            return result.stdout.strip()
+
+        remote, seed, work = tmp_path / "remote.git", tmp_path / "seed", tmp_path / "work"
+        git("init", "--bare", "--initial-branch=main", str(remote))
+        git("clone", str(remote), str(seed))
+        git("-C", str(seed), "config", "user.name", "Test")
+        git("-C", str(seed), "config", "user.email", "test@example.invalid")
+        (seed / "base.txt").write_text("v1\n")
+        git("-C", str(seed), "add", "base.txt")
+        git("-C", str(seed), "commit", "-m", "v1")
+        git("-C", str(seed), "push", "origin", "main")
+        git("clone", "--branch", "main", str(remote), str(work))
+        git("-C", str(work), "checkout", "-b", "codex/stale")
+        (seed / "base.txt").write_text("v2\n")
+        git("-C", str(seed), "commit", "-am", "v2")
+        git("-C", str(seed), "push", "origin", "main")
+
+        spec = work / "spec.md"
+        spec.write_text("# Example SPEC\n")
+        (work / ".development-repository.toml").write_text(
+            "[repository]\nrepository_id='fixture'\nremote='origin'\n"
+            f"canonical_ref='refs/heads/main'\nsource_root='{tmp_path / 'sources'}'\n"
+        )
+        helper = work / "scripts" / "development-lifecycle" / "canonical_source.py"
+        helper.parent.mkdir(parents=True)
+        source_helper = Path(__file__).resolve().parents[3] / "scripts" / "development-lifecycle" / "canonical_source.py"
+        shutil.copy2(source_helper, helper)
+
+        result = run_script(str(spec))
+        assert result.returncode == 1
+        payload = json.loads(result.stdout)
+        assert payload["mode"] == "canonical_baseline_reconciliation_required"
+        assert payload["canonical_baseline"]["next_action"] == "RECONCILE_WITH_FETCHED_CANONICAL_SHA"
 
     # --- Basic input validation tests ---
 
@@ -577,6 +617,7 @@ class TestSectionTasksIntegration:
 
             result = subprocess.run(
                 cmd,
+                cwd=tmp_path,
                 env=env,
                 capture_output=True,
                 text=True,
@@ -893,6 +934,7 @@ class TestConflictDetection:
 
             result = subprocess.run(
                 cmd,
+                cwd=tmp_path,
                 env=env,
                 capture_output=True,
                 text=True,

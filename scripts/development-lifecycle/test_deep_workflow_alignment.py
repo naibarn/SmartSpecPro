@@ -26,6 +26,7 @@ ACTIVE_GUIDANCE = [
     ROOT / "skills/deep-plan-quick/README.md",
     ROOT / "skills/deep-implement/README.md",
     ROOT / "skills/deep-implement/skills/deep-implement/references/finalization.md",
+    ROOT / "skills/deep-implement/skills/deep-implement/references/implementation-loop.md",
     ROOT / "skills/deep-implement/skills/deep-implement/references/implementation-review-loop.md",
     ROOT / "skills/deep-implement/skills/deep-implement/references/git-operations.md",
     ROOT / "skills/deep-implement/skills/deep-implement/references/code-review-protocol.md",

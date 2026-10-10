@@ -79,6 +79,59 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def inspect_workspace_baseline(
+    repo: Path, policy_path: Path | None = None, *, allow_dirty: bool = False
+) -> dict[str, Any]:
+    """Fetch the configured trunk and verify this clean worktree contains it."""
+    repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
+    policy = load_policy(repo, policy_path)
+    git(repo, "fetch", "--no-tags", policy["remote"], policy["canonical_ref"])
+    canonical_sha = git(repo, "rev-parse", "FETCH_HEAD^{commit}")
+    local_sha = git(repo, "rev-parse", "HEAD^{commit}")
+    branch = git(repo, "branch", "--show-current", check=False)
+    canonical_branch = policy["canonical_ref"].removeprefix("refs/heads/")
+    dirty_paths = git(repo, "status", "--porcelain=v1", "--untracked-files=all").splitlines()
+    operation_markers = ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-apply", "rebase-merge")
+    in_progress = any(
+        (Path(path) if Path(path).is_absolute() else repo / path).exists()
+        for marker in operation_markers
+        for path in (git(repo, "rev-parse", "--git-path", marker),)
+    )
+    ancestor = subprocess.run(
+        ["git", "-C", str(repo), "merge-base", "--is-ancestor", canonical_sha, local_sha],
+        capture_output=True,
+    ).returncode == 0
+    on_canonical_branch = branch == canonical_branch
+    ready = (allow_dirty or not dirty_paths) and not in_progress and ancestor and not on_canonical_branch
+    if in_progress:
+        next_action = "RESOLVE_OR_HANDOFF_GIT_OPERATION"
+    elif not ancestor:
+        next_action = "RECONCILE_WITH_FETCHED_CANONICAL_SHA"
+    elif on_canonical_branch:
+        next_action = "CREATE_ISOLATED_WORKTREE_FROM_FETCHED_CANONICAL_SHA"
+    elif dirty_paths and not allow_dirty:
+        next_action = "PRESERVE_DIRTY_WORK_AND_PREPARE_FRESH_WORKTREE"
+    else:
+        next_action = "CONTINUE_ON_CURRENT_BASELINE"
+    return {
+        "status": "BASELINE_READY" if ready else "BASELINE_RECONCILIATION_REQUIRED",
+        "ready": ready,
+        "repository_id": policy["repository_id"],
+        "remote": policy["remote"],
+        "canonical_ref": policy["canonical_ref"],
+        "canonical_sha": canonical_sha,
+        "local_sha": local_sha,
+        "branch": branch or None,
+        "canonical_branch": canonical_branch,
+        "on_canonical_branch": on_canonical_branch,
+        "dirty_paths": dirty_paths,
+        "dirty_paths_allowed_for_planning": allow_dirty,
+        "git_operation_in_progress": in_progress,
+        "contains_fetched_canonical": ancestor,
+        "next_action": next_action,
+    }
+
+
 def _artifact_manifest(root: Path) -> dict[str, Any] | None:
     """Hash a successful build output without following links outside the artifact root."""
     if not root.is_dir():
@@ -473,6 +526,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     policy_command = commands.add_parser("policy")
     policy_command.add_argument("--repository", required=True, type=Path)
     policy_command.add_argument("--policy", type=Path)
+    preflight = commands.add_parser("preflight")
+    preflight.add_argument("--repository", required=True, type=Path)
+    preflight.add_argument("--policy", type=Path)
+    preflight.add_argument("--allow-dirty", action="store_true")
     prepare = commands.add_parser("prepare")
     prepare.add_argument("--repository", required=True, type=Path)
     prepare.add_argument("--policy", type=Path)
@@ -498,6 +555,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             repo = Path(git(args.repository, "rev-parse", "--show-toplevel")).resolve()
             print(json.dumps({"repository_root": str(repo), **load_policy(repo, args.policy)}, sort_keys=True))
             return 0
+        if args.action == "preflight":
+            result = inspect_workspace_baseline(
+                args.repository, args.policy, allow_dirty=args.allow_dirty
+            )
+            print(json.dumps(result, sort_keys=True))
+            return 0 if result["ready"] else 21
         if args.action == "prepare":
             result = prepare_source(
                 args.repository,
