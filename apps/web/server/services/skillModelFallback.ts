@@ -43,6 +43,8 @@ import {
 
 export interface SkillLlmRequest {
   messages: Array<{ role: string; content: string | unknown[] }>;
+  /** Server-owned authority check immediately before each provider request. */
+  beforeProviderRequest?: () => Promise<void>;
   skillSlug: string;
   userId: number;
   executionPolicy: SkillExecutionPolicyResult;
@@ -163,6 +165,7 @@ export async function executeSkillLlmWithFallback(
     const result: ExecuteResult = await executeWithFallback({
       model: modelId,
       messages: messages as Message[],
+      beforeProviderRequest: request.beforeProviderRequest,
       stream,
       userId,
       preferredProvider: i === 0 ? executionPolicy.preferredProviderId : undefined,
