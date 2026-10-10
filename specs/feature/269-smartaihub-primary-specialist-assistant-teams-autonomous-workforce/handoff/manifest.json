@@ -34,7 +34,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
+    "expected_canonical_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
+    "canonical_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:10:44Z"
+    "integrated_at": "2026-10-10T07:14:00Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -453,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:12:50.883956Z",
+  "updated_at": "2026-10-10T07:15:29.385959Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -499,11 +499,18 @@
         "scope": "PR #462: prompt boundary admits only memory/rules scoped to the freshly authorized canonical Project; rejects cross-Project and inconsistent owner/project bindings while preserving global/personal results. Exact merged SHA focused suite: 7 files, 102 passed, 11 TODO. Component evidence only; not direct T-01–T-23 acceptance.",
         "source_sha": "3cc834f874361c64307631d1371f9109957c8ed3",
         "status": "PASS"
+      },
+      {
+        "kind": "TARGETED_REGRESSION",
+        "path": "orchestra/tasks/smartaihub-marathon-r4-20261010/progress.md",
+        "scope": "SPEC-271 acceptance receipt flow / independent oracle / portable receipt / durable-store unit contracts and SPEC-224 DevelopmentRun in-memory integration: 5 files, 37 tests passed on exact canonical SHA. Synthetic adapters only; no process restart durability, protected dispatch, or direct T-01–T-23 acceptance established.",
+        "source_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "3cc834f874361c64307631d1371f9109957c8ed3",
+    "sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
     "status": "PARTIAL",
     "task_regressions": []
   }

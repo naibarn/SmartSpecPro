@@ -26,3 +26,20 @@ Scope: `progressIntelligence.ts`, its 29 focused Vitest cases, and the additive 
 ## Remaining evidence gaps
 
 Vitest could not start because `vitest` is absent from the shared checkout dependencies. Node TS-strip behavioral smoke and syntax checks passed, but TypeScript typecheck, the actual Vitest suite, production event wiring, Task Control UI, persistent evaluation jobs, replay across process restart, and non-production UAT remain pending. This is not a production-readiness claim.
+
+## Ten-Round Review — AutoTeam Task Control Vertical Slice
+
+Scope: `autoTeamProgressProjection.ts`, its ledger read-model consumer, the existing ledger panel badge, and focused tests. Review findings were incorporated before the final focused run.
+
+1. **Canonical work-unit source** — PASS. Progress uses the latest persisted attempt per plan step; call and token volume do not count.
+2. **Final outcome gate** — PASS. COMPLETED requires the existing final acceptance/evidence gate and a final result reference; otherwise the projection remains PARTIAL.
+3. **Retry semantics** — PASS after correction. Older completed attempts cannot mask a newer incomplete attempt for the same work unit.
+4. **Stall threshold** — PASS. Stall requires expired claim lease and the stage-specific timeout window.
+5. **Provider operation guard** — PASS. Active provider jobs suppress false STALLED classification.
+6. **Dependency wait guard** — PASS. Canonical blocked stages remain BLOCKED even when the worker claim has expired.
+7. **Loop behavior** — PASS. The adapter reuses the existing loop guard; it adds no calls or separate loop detector.
+8. **Repair boundary** — PASS. An active repair stage maps to RECOVERING; this projection does not dispatch recovery.
+9. **Tenant and UI exposure** — PASS. Tenant identity is bound from the canonical ledger snapshot; the panel shows localized status/percent with an accessible label, not raw evidence references.
+10. **Unknown stage and design system boundary** — PASS. Unsupported stage types return no projection; UI reuses the existing Badge. Astryx CLI page-kit discovery was unavailable because the package is absent in this worktree; existing component API and layout guidance were inspected.
+
+Focused Vitest suites passed for the projection, ledger service, and panel. This is still not browser UAT, generic AgentRuntime instrumentation, durable async evaluation, automatic recovery dispatch, or production readiness.

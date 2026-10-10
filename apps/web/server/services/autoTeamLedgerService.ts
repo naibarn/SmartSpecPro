@@ -1,6 +1,10 @@
 import type { TeamRoomMessage, WorkItemEvent } from "../../drizzle/schema";
 import { getRequiredEvidenceForRoute } from "../../shared/autoTeamExecution";
 import type { AgentRuntimeStepLink } from "../../shared/agentRuntime/types";
+import {
+  type AgentProgressAssessment,
+} from "./agentRuntime/progressIntelligence";
+import { assessAutoTeamRunProgress } from "./autoTeamProgressProjection";
 import { isAutoTeamDebugVisible, type AutoTeamCallerContext } from "./autoTeamAccessPolicy";
 import {
   getAutoTeamDebugSnapshot,
@@ -201,6 +205,7 @@ export interface AutoTeamLedgerReadModel {
     currentStepKey: string | null;
     currentStepTitle: string | null;
     latestOutcome: string | null;
+    progressAssessment: AgentProgressAssessment | null;
   };
   gates: AutoTeamLedgerGate[];
   plan: {
@@ -1500,6 +1505,47 @@ export function buildAutoTeamLedgerReadModel(input: {
       finalResult?.summary ??
       attempts.at(-1)?.summary ??
       input.snapshot.missingEvidenceSummary,
+    progressAssessment: canonicalSnapshot
+      ? assessAutoTeamRunProgress({
+          tenantId: input.snapshot.tenantId,
+          runId: canonicalSnapshot.runId,
+          runStatus,
+          stages: stages.filter((stage) => Boolean(stage.id)).map((stage) => ({
+            id: stage.id,
+            planStepKey: stage.planStepKey,
+            stageType: stage.stageType,
+            status: stage.status,
+            attempt: stage.attempt,
+            maxAttempts: stage.maxAttempts,
+            startedAt: stage.startedAt,
+            completedAt: stage.completedAt,
+            claimExpiresAt: stage.claimExpiresAt,
+          })),
+          currentStage: canonicalSnapshot.currentStage?.id
+            ? {
+                id: canonicalSnapshot.currentStage.id,
+                planStepKey: canonicalSnapshot.currentStage.planStepKey,
+                stageType: canonicalSnapshot.currentStage.stageType,
+                status: canonicalSnapshot.currentStage.status,
+                attempt: canonicalSnapshot.currentStage.attempt,
+                maxAttempts: canonicalSnapshot.currentStage.maxAttempts,
+                startedAt: canonicalSnapshot.currentStage.startedAt,
+                completedAt: canonicalSnapshot.currentStage.completedAt,
+                claimExpiresAt: canonicalSnapshot.currentStage.claimExpiresAt,
+              }
+            : null,
+          activeProviderStatuses: mediaJobs.map((job) => ({
+            stageId: job.stageId,
+            status: job.providerStatus,
+          })),
+          finalResultId: finalResult?.id ?? null,
+          finalResultAccepted:
+            terminalState === "completed" &&
+            finalResult?.status === "completed" &&
+            input.snapshot.missingEvidenceSummary === "none",
+          loopDetected: input.snapshot.loopGuard?.blocked ?? false,
+        })
+      : null,
   };
 
   const timeline: AutoTeamLedgerTimelineEntry[] = [];
