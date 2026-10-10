@@ -452,7 +452,7 @@
   "command": "SPEC208_RUNNER_ACCEPTANCE=1 bash scripts/spec208/run-moli-isolation-acceptance.sh /tmp/spec208-moli-runner-rootfs-20261010h sha256:f24c5ab2737cc042fa254e1e8d0c5634fd496d9b1f9be93286118d3bde7daaec spec208-runner-owned-acceptance-final-20261010b",
   "exit_code": 0,
   "runner_binary_sha256": "622ecf309711cd749ba2390d721921a179bccd4caebf8169b5f54f7d6f6a46fe",
-  "runner_source_sha": "06cecb8bf",
+  "runner_source_sha": "06cecb8bf4129165ee57462e054a46639e2236b1",
   "runner_source_sha_note": "Commit containing the exact Runner implementation compiled for this acceptance run; subsequent evidence-only handoff changes do not alter Runner sources.",
   "runtime": "rootless-systemd-acceptance-not-cloudflare-certified",
   "runtime_digest": "sha256:f24c5ab2737cc042fa254e1e8d0c5634fd496d9b1f9be93286118d3bde7daaec",
