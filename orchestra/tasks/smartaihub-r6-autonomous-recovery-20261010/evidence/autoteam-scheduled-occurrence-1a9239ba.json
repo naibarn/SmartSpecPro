@@ -31,13 +31,21 @@
     },
     "cleanup": "owned cluster stopped and removed; no spec277-autoteam-pg-* directory remained"
   },
+  "postIntegrationVerification": {
+    "canonicalSha": "ea84aab960830a0c3fd8438621bae19edf9358ea",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
+    "result": "PASS",
+    "testFiles": 7,
+    "tests": 85,
+    "verifiedAt": "2026-10-10T11:43:46Z"
+  },
   "acceptanceMatrix": {
     "A_scheduler_selection": "PARTIAL: persisted schedule and cross-process duplicate coalescing passed; run selection is not tested",
     "B_scan_evaluation_workers": "NOT_TESTED",
     "C_sigkill_restart": "NOT_TESTED",
     "D_lease_reclaim_and_stale_worker_fencing": "NOT_TESTED",
     "E_useful_work_recovery": "NOT_TESTED",
-    "F_provider_resource_dependency_waits": "NOT_TESTED",
+    "F_provider_resource_dependency_waits": "PARTIAL: capacity_wait regression passes and preserves resource wait without dispatch; direct process-level provider/dependency/resource wait acceptance is not tested",
     "G_no_progress_suppression": "NOT_TESTED",
     "H_task_control_continuity": "NOT_TESTED",
     "I_spec271_receipt_persistence_replay": "BLOCKED_OWNER_ASSIGNMENT",
@@ -48,6 +56,17 @@
     "This is schedule persistence/coalescing acceptance only, not full AutoTeam scheduler selection or worker/evaluation execution.",
     "The fixture intentionally omits team_rooms/team_runs because those paths are not read by the scheduler producer.",
     "No runEngine mutation, hard worker kill, lease reclaim race, Final Verify, or Task Control parent-run projection is exercised.",
-    "No production deployment, migration, grant, or SPEC-224 protected dispatch was performed."
-  ]
+    "No production deployment, migration, grant, or SPEC-224 protected dispatch was performed.",
+    "The capacity_wait test is a focused service regression, not a process-boundary evaluation-worker acceptance."
+  ],
+  "candidateVerification": {
+    "sourceSha": "cbef0acda14510b00d27c886896651f0f822d001",
+    "baseCanonicalSha": "df0873f3be10a65748b921d28b6dfa77b93c8997",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
+    "result": "PASS",
+    "testFiles": 7,
+    "tests": 86,
+    "verifiedAt": "2026-10-10T11:52:00Z",
+    "scope": "Includes the persisted concurrent scheduler-process PostgreSQL test and the capacity_wait regression; the latter proves no run mutation and no provider dispatch."
+  }
 }
