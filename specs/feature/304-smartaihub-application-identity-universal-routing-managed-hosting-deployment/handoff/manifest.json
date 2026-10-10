@@ -32,9 +32,8 @@
   "blockers": [
     {
       "class": "IMPLEMENTATION",
-      "id": "SPEC304_DIRECT_ACCEPTANCE",
-      "next_action": "Implement and execute direct acceptance against current canonical source.",
-      "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+      "id": "SPEC304_TRUSTED_INGRESS_ASSERTION",
+      "next_action": "Establish and directly test authenticated App routing provenance in approved non-production infrastructure; do not derive identity from request Host/X-Forwarded-Host."
     },
     {
       "class": "EXTERNAL_DEPENDENCY",
@@ -44,15 +43,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
+    "expected_canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
-    "next_action": "Apply migration 0392 only to an authorized non-production database, then run authenticated App route, persisted CRUD, cross-tenant denial, and browser acceptance on that target; deployment remains a separate gate.",
-    "next_ready_workunit": null,
-    "reactivation_predicate": null,
-    "resume_point": "SPEC304_REFERENCE_MINI_APP_ROUTE_ACCEPTANCE",
-    "waiting_predicate": null
+    "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
+    "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
+    "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
+    "resume_point": "PR #451 integrated fail-closed App context propagation at fe6771c1cc93cd5cf3321c417210e082a2e8f86c. Static Cloudflare Tunnel currently routes platform domains only; direct origin listens on 0.0.0.0:3000 and deployed edge/firewall restrictions are unverified. No production config was changed.",
+    "waiting_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -64,11 +63,11 @@
         "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md"
       }
     ],
-    "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
-    "rationale": "Repository-local authority and dependency edges are clear; executable acceptance and external Spec Library verification remain open.",
+    "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
+    "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
     "residual_requirements": [
-      "Direct acceptance tests for owned contracts",
-      "External Spec Library collision check remains NOT_VERIFIED"
+      "Authenticated non-production ingress provenance and custom-domain routing acceptance",
+      "Full hosting/deployment lifecycle remains separate"
     ]
   },
   "dependencies": {
@@ -130,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -155,9 +154,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
+    "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
     "integrated": true,
-    "integrated_at": "2026-10-10T00:16:25Z"
+    "integrated_at": "2026-10-10T04:29:06Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -201,11 +200,11 @@
           "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md"
         }
       ],
-      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
-      "rationale": "Repository-local authority and dependency edges are clear; executable acceptance and external Spec Library verification remain open.",
+      "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
+      "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
       "residual_requirements": [
-        "Direct acceptance tests for owned contracts",
-        "External Spec Library collision check remains NOT_VERIFIED"
+        "Authenticated non-production ingress provenance and custom-domain routing acceptance",
+        "Full hosting/deployment lifecycle remains separate"
       ]
     },
     "disposition": {
@@ -375,7 +374,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T00:20:35.806763Z",
+  "updated_at": "2026-10-10T04:30:25.427023Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -399,11 +398,18 @@
         "scope": "external library collision evidence unavailable",
         "source_sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
         "status": "NOT_VERIFIED"
+      },
+      {
+        "kind": "INGRESS_FAIL_CLOSED_RUNTIME",
+        "path": "orchestra/tasks/smartaihub-marathon-r3-20261010/phase1-security-review.md",
+        "scope": "PR #451 integrated at fe6771c1cc93cd5cf3321c417210e082a2e8f86c; request headers cannot mint App context and project reads fail closed. 9 Vitest files, 144 passed, 11 TODO; direct authenticated ingress positive case remains TODO.",
+        "source_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+        "status": "PASS"
       }
     ],
-    "freshness": "STALE",
+    "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "55a0786a7359f578e0f68743a6551eaa7f588596",
+    "sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
     "status": "PARTIAL",
     "task_regressions": []
   }

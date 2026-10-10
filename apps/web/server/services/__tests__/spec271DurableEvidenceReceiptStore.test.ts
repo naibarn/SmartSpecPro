@@ -169,7 +169,7 @@ describe("SPEC-271 durable receipt object adapter WP2B", () => {
     expect(deps.storage.objects.size).toBe(0);
   });
 
-  it("replays idempotently across adapter instances after a process restart", async () => {
+  it("replays idempotently across adapter instances using the same object storage", async () => {
     const deps = dependencies();
     const receipt = await makeReceipt();
     const first = await createSpec271DurableEvidenceReceiptStore(deps).persist(receipt);

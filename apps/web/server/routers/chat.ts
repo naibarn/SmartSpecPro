@@ -2688,6 +2688,9 @@ export const chatRouter = router({
 
       // ── LLM-based skills: call LLM with skill system prompt + user form data ──
       if (isLLMSkill) {
+        const skillTenantId =
+          ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+        const trustedAppContext = ctx.trustedAppContext ?? null;
         // ── Unified Orchestrator Path (feature-flagged) ─────────────────
         // When unifiedSkillExecution is enabled, delegate to the unified
         // orchestrator instead of the inline code below. On orchestrator
@@ -2696,9 +2699,7 @@ export const chatRouter = router({
         try {
           const { getTenantFeatureFlags } =
             await import("../services/tenantFeatureFlagService");
-          const tenantId =
-            ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
-          const flags = await getTenantFeatureFlags(tenantId);
+          const flags = await getTenantFeatureFlags(skillTenantId);
 
           const shouldUseUnifiedSkillExecution =
             flags.unifiedSkillExecution &&
@@ -2717,7 +2718,6 @@ export const chatRouter = router({
           if (shouldUseUnifiedSkillExecution) {
             const { executeUnified } =
               await import("../services/unifiedOrchestrator");
-
             // Build attachments from reference images
             const refImages =
               referenceImageUrls.length > 0
@@ -2735,7 +2735,7 @@ export const chatRouter = router({
             const request: UnifiedExecutionRequest = {
               channel: "chat",
               userId: ctx.user.id,
-              tenantId,
+              tenantId: skillTenantId,
               userMessage: skillRequestPrompt,
               attachments: attachments.length > 0 ? attachments : undefined,
               dynamicParams: executionDynamicParams as Record<string, unknown>,
@@ -2744,7 +2744,9 @@ export const chatRouter = router({
                 conversationModel,
                 activePersonaId,
                 publicUrl: ctx.publicUrl ?? undefined,
+                trustedAppContext,
               },
+              traceId: crypto.randomUUID(),
               routeHint: {
                 selectedSkillId: input.skillId,
                 route: "skill",
@@ -3100,6 +3102,7 @@ export const chatRouter = router({
                   conversationModel,
                   activePersonaId,
                   publicUrl: ctx.publicUrl ?? undefined,
+                  trustedAppContext,
                 },
               },
               {
@@ -3218,8 +3221,6 @@ export const chatRouter = router({
         });
 
         // Wire task planner for skill execution tracking
-        const skillTenantId =
-          ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
         const plannerResult = await runPlanner({
           sourceType: "skill",
           userId: ctx.user.id,
@@ -3371,6 +3372,7 @@ export const chatRouter = router({
                         conversationModel,
                         activePersonaId,
                         publicUrl: ctx.publicUrl ?? undefined,
+                        trustedAppContext,
                       },
                     },
                     tenantId: skillTenantId,
