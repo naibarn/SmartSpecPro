@@ -122,7 +122,7 @@ describe("experimental Moli CDP adapter", () => {
     await expect(adapter.openSession({ ...attempt, deadline: "not-a-date" })).rejects.toThrow("MOLI_ATTEMPT_DEADLINE_INVALID");
   });
 
-  it("records cleanup failure and still requests runtime cleanup when CDP context disposal fails", async () => {
+  it("surfaces cleanup and audit failures when session setup fails", async () => {
     server = createServer((_request, response) => {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ webSocketDebuggerUrl: `ws://127.0.0.1:${(server!.address() as { port: number }).port}/devtools/browser/test` }));
@@ -140,23 +140,27 @@ describe("experimental Moli CDP adapter", () => {
           ws.send(JSON.stringify({ id: message.id, error: { message: "dispose failed" } }));
           return;
         }
+        if (message.method === "Target.createTarget") {
+          ws.send(JSON.stringify({ id: message.id, error: { message: "target creation failed" } }));
+          return;
+        }
         const result = message.method === "Target.createBrowserContext" ? { browserContextId: "ctx-test" }
-          : message.method === "Target.createTarget" ? { targetId: "target-test" }
-            : message.method === "Target.attachToTarget" ? { sessionId: "cdp-session-test" }
-              : {};
+          : {};
         ws.send(JSON.stringify({ id: message.id, result }));
       });
     });
     await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", () => resolve()));
     const port = (server.address() as { port: number }).port;
     const runtimePolicy = policy({
-      recordAudit: vi.fn(async () => undefined),
+      recordAudit: vi.fn(async () => { throw new Error("audit write failed"); }),
       cleanupRuntime: vi.fn(async () => { throw new Error("profile deletion failed"); }),
     });
     const adapter = new MoliCdpBrowserAdapter(`http://127.0.0.1:${port}`, runtimePolicy, enabledFlags);
-    const session = await adapter.openSession(attempt);
 
-    await expect(session.close()).rejects.toThrow("MOLI_SESSION_CLEANUP_FAILED");
+    await expect(adapter.openSession(attempt)).rejects.toMatchObject({
+      message: "MOLI_SESSION_OPEN_AND_CLEANUP_FAILED",
+      errors: expect.arrayContaining([expect.objectContaining({ message: "audit write failed" })]),
+    });
     expect(runtimePolicy.cleanupRuntime).toHaveBeenCalledOnce();
     expect(runtimePolicy.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
       event: "moli.runtime.cleanup_failed",

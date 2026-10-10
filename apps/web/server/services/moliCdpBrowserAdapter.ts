@@ -194,17 +194,21 @@ export class MoliCdpBrowserAdapter {
         cleanupErrors.push(cleanupError);
       }
       if (cleanupErrors.length) {
-        await this.policy.recordAudit({
-          event: "moli.runtime.cleanup_failed",
-          jobId: attempt.jobId,
-          attemptId: attempt.attemptId,
-          tenantId: attempt.tenantId,
-          userId: attempt.userId,
-          projectRef: attempt.projectRef,
-          leaseId: attempt.leaseId,
-          fencingToken: attempt.fencingToken,
-          reasonCode: "MOLI_RUNTIME_CLEANUP_FAILED",
-        }).catch(() => undefined);
+        try {
+          await this.policy.recordAudit({
+            event: "moli.runtime.cleanup_failed",
+            jobId: attempt.jobId,
+            attemptId: attempt.attemptId,
+            tenantId: attempt.tenantId,
+            userId: attempt.userId,
+            projectRef: attempt.projectRef,
+            leaseId: attempt.leaseId,
+            fencingToken: attempt.fencingToken,
+            reasonCode: "MOLI_RUNTIME_CLEANUP_FAILED",
+          });
+        } catch (auditError) {
+          cleanupErrors.push(auditError);
+        }
         throw new AggregateError([error, ...cleanupErrors], "MOLI_SESSION_OPEN_AND_CLEANUP_FAILED");
       }
       throw error;
