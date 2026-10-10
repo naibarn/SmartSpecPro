@@ -124,6 +124,21 @@ async function makeReceipt(receiptVerifiedAt = verifiedAt) {
   }, receiptDependencies());
 }
 
+function receiptIdentity() {
+  return {
+    requirementId: scope.requirementId,
+    sourceSha: scope.sourceSha,
+    tenantId: scope.tenantId,
+    projectId: scope.projectId,
+    uatRunId: scope.uatRunId,
+    attemptId: scope.attemptId,
+    scenarioId: scope.scenarioId,
+    scenarioRevision: scope.scenarioRevision,
+    schemaRevision: scope.schemaRevision,
+    environmentFingerprint: scope.environmentFingerprint,
+  };
+}
+
 async function expectCode(promise: Promise<unknown>, code: string) {
   await expect(promise).rejects.toMatchObject({
     code,
@@ -167,6 +182,63 @@ describe("SPEC-271 durable receipt object adapter WP2B", () => {
       resolveRetention: async () => ({ policyRef: "retention:unknown", immutableStorageConfirmed: false }),
     })).persist(receipt), "RETENTION_POLICY_NOT_ENFORCED");
     expect(deps.storage.objects.size).toBe(0);
+  });
+
+  it("fails closed on missing or unavailable run-scope authority before writing", async () => {
+    const storage = memoryStorage();
+    const receipt = await makeReceipt();
+    await expectCode(createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      resolveScope: async () => null,
+    })).persist(receipt), "RUN_SCOPE_NOT_FOUND");
+    await expectCode(createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      resolveScope: async () => { throw new Error("synthetic authority outage"); },
+    })).persist(receipt), "RUN_SCOPE_AUTHORITY_UNAVAILABLE");
+    expect(storage.objects.size).toBe(0);
+  });
+
+  it("fails closed when write or final read authorization is denied or unavailable", async () => {
+    const storage = memoryStorage();
+    const receipt = await makeReceipt();
+    await expectCode(createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      authorizeScope: async () => { throw new Error("synthetic authorization outage"); },
+    })).persist(receipt), "SCOPE_AUTHORIZATION_UNAVAILABLE");
+    expect(storage.objects.size).toBe(0);
+
+    await createSpec271DurableEvidenceReceiptStore(dependencies(storage)).persist(receipt);
+    const readBuffer = vi.spyOn(storage, "readBuffer");
+    const deniedRead = createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      authorizeScope: async (_scope, access) => access !== "READ",
+    }));
+    await expectCode(deniedRead.load(receiptIdentity()), "SCOPE_ACCESS_DENIED");
+    expect(readBuffer).not.toHaveBeenCalled();
+
+    const unavailableRead = createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      authorizeScope: async (_scope, access) => {
+        if (access === "READ") throw new Error("synthetic read authorization outage");
+        return true;
+      },
+    }));
+    await expectCode(unavailableRead.load(receiptIdentity()), "SCOPE_AUTHORIZATION_UNAVAILABLE");
+    expect(readBuffer).not.toHaveBeenCalled();
+  });
+
+  it("rechecks retention authority on read and rejects unavailable or changed policy", async () => {
+    const storage = memoryStorage();
+    const receipt = await makeReceipt();
+    await createSpec271DurableEvidenceReceiptStore(dependencies(storage)).persist(receipt);
+
+    const unavailable = createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      resolveRetention: async () => { throw new Error("synthetic retention outage"); },
+    }));
+    await expectCode(unavailable.load(receiptIdentity()), "RETENTION_POLICY_UNAVAILABLE");
+
+    const changedPolicy = createSpec271DurableEvidenceReceiptStore(dependencies(storage, {
+      resolveRetention: async () => ({
+        policyRef: "retention:changed-v2",
+        immutableStorageConfirmed: true,
+      }),
+    }));
+    await expectCode(changedPolicy.load(receiptIdentity()), "RETENTION_POLICY_CHANGED");
   });
 
   it("replays idempotently across adapter instances using the same object storage", async () => {
