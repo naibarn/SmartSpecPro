@@ -25,10 +25,10 @@
     "expected_spec_digest": "03691cb07171ac5902a0260ffcbb35ced0085cf7674e0b721ed39611d5b39fd4"
   },
   "continuation": {
-    "next_action": null,
+    "next_action": "After PR #438 is safely integrated, inventory the existing decision schemas, job/outbox state, WorkUnit predicates, idempotency/receipt semantics, evidence profiles, and release gates per SPEC-276 §17.5.",
     "next_ready_workunit": null,
     "reactivation_predicate": null,
-    "resume_point": null,
+    "resume_point": "SPEC-276 R1.4 §17.5 Phase 2 compatibility design",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -41,7 +41,7 @@
         "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md"
       }
     ],
-    "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+    "next_action": "Resolve overlap with open PRs #398 and #399 in the generated Spec registry projections, then integrate PR #438 and begin the Phase 2 compatibility inventory against the integrated SHA.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md",
     "digest": "03691cb07171ac5902a0260ffcbb35ced0085cf7674e0b721ed39611d5b39fd4",
@@ -105,6 +105,22 @@
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
     "updated_at": "2026-10-10T00:46:50.826720Z"
+  },
+  "manual_decisions": {
+    "continuation_assessment": {
+      "confidence": "UNRESOLVED",
+      "decision": "RECONCILIATION_REQUIRED",
+      "evidence": [
+        {
+          "digest": "03691cb07171ac5902a0260ffcbb35ced0085cf7674e0b721ed39611d5b39fd4",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md"
+        }
+      ],
+      "next_action": "Resolve overlap with open PRs #398 and #399 in the generated Spec registry projections, then integrate PR #438 and begin the Phase 2 compatibility inventory against the integrated SHA.",
+      "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+      "residual_requirements": []
+    }
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -208,7 +224,7 @@
     "unresolved": 258
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T00:46:50.826720Z",
+  "updated_at": "2026-10-10T00:48:46.205460Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

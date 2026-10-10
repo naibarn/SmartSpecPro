@@ -125428,7 +125428,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-10T00:46:50.826720Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Resolve overlap with open PRs #398 and #399 in the generated Spec registry projections, then integrate PR #438 and begin the Phase 2 compatibility inventory against the integrated SHA.",
       "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3",
       "primary_blocker": null,
       "problem": null,

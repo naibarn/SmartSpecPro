@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 258 unresolved of 258
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 5
+- Next action: Resolve overlap with open PRs #398 and #399 in the generated Spec registry projections, then integrate PR #438 and begin the Phase 2 compatibility inventory against the integrated SHA.
+- Manifest generation: 6
 
 ## Source-declared status and relationship claims
 

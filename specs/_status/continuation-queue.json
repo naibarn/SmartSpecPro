@@ -3525,7 +3525,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 2,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Resolve overlap with open PRs #398 and #399 in the generated Spec registry projections, then integrate PR #438 and begin the Phase 2 compatibility inventory against the integrated SHA.",
       "path": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3",
