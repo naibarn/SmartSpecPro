@@ -526,6 +526,18 @@ mod tests {
     }
 
     #[test]
+    fn job_commands_reject_browser_engines_without_a_runner_security_gate() {
+        let mut command = browser_command("session-1", 1);
+        command.browser_engine_constraint = Some("moli".into());
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_BROWSER_ENGINE_UNSUPPORTED"
+        );
+        command.browser_engine_constraint = Some("chromium".into());
+        assert!(command.validate().is_ok());
+    }
+
+    #[test]
     fn reconnect_invalidates_previous_execution_binding() {
         let mut channel = ControlChannel::default();
         channel.connect();
