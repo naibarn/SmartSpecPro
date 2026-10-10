@@ -61,8 +61,11 @@ type PullRequestFact = {
 };
 
 type RequiredCheck = { context: string; integrationId: number | null };
-type CheckRunFact = { name: string; status: string; conclusion: string | null; integrationId: number | null };
-type CommitStatusFact = { context: string; state: string };
+type CheckRunFact = {
+  name: string; status: string; conclusion: string | null; integrationId: number | null;
+  startedAt?: string | null; completedAt?: string | null;
+};
+type CommitStatusFact = { context: string; state: string; updatedAt?: string | null; createdAt?: string | null };
 type CheckGateEvidence = {
   state: "NO_REQUIRED_CHECKS_CONFIGURED" | "REQUIRED_CHECKS_PASSED" | "REQUIRED_CHECKS_NOT_PASSED" | "ALREADY_MERGED";
   headSha: string;
@@ -155,6 +158,23 @@ function checkConclusionState(status: string, conclusion: string | null): string
   return conclusion || "missing_conclusion";
 }
 
+function latestFacts<T>(facts: T[], keyFor: (fact: T) => string, timeFor: (fact: T) => string | null | undefined): T[] {
+  const groups = new Map<string, T[]>();
+  for (const fact of facts) {
+    const key = keyFor(fact);
+    groups.set(key, [...(groups.get(key) ?? []), fact]);
+  }
+  return [...groups.values()].flatMap(group => {
+    if (group.length < 2) return group;
+    const timed = group.map(fact => ({ fact, time: Date.parse(timeFor(fact) ?? "") }));
+    // Old/synthetic facts without timestamps remain fail-closed. The GitHub
+    // adapters provide these timestamps for real reruns.
+    if (timed.some(item => !Number.isFinite(item.time))) return group;
+    const latest = Math.max(...timed.map(item => item.time));
+    return timed.filter(item => item.time === latest).map(item => item.fact);
+  });
+}
+
 export function evaluateRequiredCheckGate(input: {
   headSha: string;
   requiredChecks: RequiredCheck[];
@@ -184,14 +204,17 @@ export function evaluateRequiredCheckGate(input: {
   }
 
   const requiredChecks = input.requiredChecks.map(required => {
-    const matchingRuns = input.checkRuns.filter(run => run.name === required.context &&
-      (required.integrationId === null || run.integrationId === required.integrationId));
+    const matchingRuns = latestFacts(input.checkRuns.filter(run => run.name === required.context &&
+      (required.integrationId === null || run.integrationId === required.integrationId)),
+    run => `${run.name}\0${run.integrationId ?? "*"}`, run => run.startedAt ?? run.completedAt);
     const matchingStatuses = required.integrationId === null
       ? input.commitStatuses.filter(status => status.context === required.context)
       : [];
+    const latestStatuses = latestFacts(matchingStatuses, status => status.context,
+      status => status.updatedAt ?? status.createdAt);
     const states = [
       ...matchingRuns.map(run => checkConclusionState(run.status, run.conclusion)),
-      ...matchingStatuses.map(status => status.state),
+      ...latestStatuses.map(status => status.state),
     ];
     const state = states.length === 0 ? "missing"
       : states.every(value => value === "success") ? "success"
@@ -236,14 +259,18 @@ async function inspectCheckGate(
       return typeof run.name === "string" && typeof run.status === "string"
         ? [{ name: run.name, status: run.status, conclusion: typeof run.conclusion === "string" ? run.conclusion : null,
             integrationId: run.app && typeof run.app === "object" && Number.isSafeInteger((run.app as Record<string, unknown>).id)
-              ? (run.app as Record<string, unknown>).id as number : null }]
+              ? (run.app as Record<string, unknown>).id as number : null,
+            startedAt: typeof run.started_at === "string" ? run.started_at : null,
+            completedAt: typeof run.completed_at === "string" ? run.completed_at : null }]
         : [];
     });
   const commitStatuses = ((statusesValue as Record<string, unknown>).statuses as unknown[]).flatMap(value => {
       if (!value || typeof value !== "object") return [];
       const status = value as Record<string, unknown>;
       return typeof status.context === "string" && typeof status.state === "string"
-        ? [{ context: status.context, state: status.state }] : [];
+        ? [{ context: status.context, state: status.state,
+            updatedAt: typeof status.updated_at === "string" ? status.updated_at : null,
+            createdAt: typeof status.created_at === "string" ? status.created_at : null }] : [];
     });
   const evidence = evaluateRequiredCheckGate({
     headSha,
