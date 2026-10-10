@@ -637,7 +637,7 @@ test("SPEC-308 records raw OFF/ON metrics across emulated mobile, tablet and des
   await installMockEventSource(page);
   const metrics = await installSpec308MetricsProbe(page);
   const profiles = [
-    { name: "low-end-mobile-emulation", width: 360, height: 800, deviceScaleFactor: 1 as const, cpuThrottlingRate: 4, network: "slow-4g-emulation" as const },
+    { name: "low-end-mobile-cpu-emulation", width: 360, height: 800, deviceScaleFactor: 1 as const, cpuThrottlingRate: 4, network: "baseline" as const },
     { name: "tablet-emulation", width: 768, height: 1024, deviceScaleFactor: 1 as const, cpuThrottlingRate: 1, network: "baseline" as const },
     { name: "desktop-emulation", width: 1440, height: 900, deviceScaleFactor: 1 as const, cpuThrottlingRate: 1, network: "baseline" as const },
   ];

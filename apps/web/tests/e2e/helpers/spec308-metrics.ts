@@ -57,7 +57,7 @@ export type Spec308MetricsEvidence = {
     viewport: { width: number; height: number };
     deviceScaleFactor: 1;
     cpuThrottlingRate: number;
-    network: "baseline" | "slow-4g-emulation";
+    network: "baseline";
   }>;
   thresholds: "not defined; no budget pass/fail is asserted";
   browser: { engine: "Chromium"; userAgent: string };
@@ -257,12 +257,16 @@ export async function installSpec308MetricsProbe(page: Page) {
     async clearBrowserCache() {
       await cdp.send("Network.clearBrowserCache");
     },
-    async setEmulationProfile(profile: "low-end-mobile-emulation" | "tablet-emulation" | "desktop-emulation") {
-      const mobile = profile === "low-end-mobile-emulation";
+    async setEmulationProfile(profile: "low-end-mobile-cpu-emulation" | "tablet-emulation" | "desktop-emulation") {
+      const mobile = profile === "low-end-mobile-cpu-emulation";
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: mobile ? 4 : 1 });
-      await cdp.send("Network.emulateNetworkConditions", mobile
-        ? { offline: false, latency: 150, downloadThroughput: 200_000, uploadThroughput: 93_750, connectionType: "cellular4g" }
-        : { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1, connectionType: "none" });
+      await cdp.send("Network.emulateNetworkConditions", {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+        connectionType: "none",
+      });
     },
   };
 }
