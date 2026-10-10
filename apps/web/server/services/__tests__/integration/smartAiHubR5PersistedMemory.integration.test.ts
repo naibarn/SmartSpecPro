@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import express from "express";
 import { request as httpRequest, type Server } from "node:http";
 
@@ -11,6 +11,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, closeDb } from "../../../db";
 import {
   appIdentities,
+  appRouteAliases,
   canonicalProjectAppBindings,
   canonicalProjectMemberships,
   canonicalProjects,
@@ -25,7 +26,6 @@ import { buildChatContext } from "../../executors/contextBuilder";
 import { SMARTAIHUB_RUNTIME_CONTEXT_POLICY_VERSION } from "../../smartAiHubRuntimeContext";
 import { createContextWithTrustedAppIngress } from "../../../_core/context";
 import { sdk } from "../../../_core/sdk";
-import { appRouteAliases } from "../../../../drizzle/schema";
 import { resolveAppRouteForTenant } from "../../appIdentityRepository";
 
 const enabled = process.env.SMARTAIHUB_R5_PERSISTED_ACCEPTANCE === "1";
@@ -246,7 +246,7 @@ describePersisted("SPEC-269 persisted Project memory acceptance", () => {
   });
 
   it("propagates a signed local ingress assertion through HTTP to persisted Project memory and rejects header-only identity", async () => {
-    const secret = Buffer.from(randomUUID().replaceAll("-", ""), "hex");
+    const secret = randomBytes(32);
     const consumed = new Set<string>();
     const authSpy = vi.spyOn(sdk, "authenticateRequest").mockResolvedValue({
       id: userId,
