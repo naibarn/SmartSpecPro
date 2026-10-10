@@ -1,5 +1,5 @@
 {
-  "generation": 0,
+  "generation": 1,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -3128,26 +3128,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/277-task-control-experience-r1-6/spec.md#L1797"
       ],
       "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L1797",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/autoTeamProgressProjection.ts and autoTeamLedgerService.ts (PR #466; merge SHA 3cca4b4b720c2684f8b2749a5450b2113f81b1b4)"
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Wire generic AgentRuntime event producers and complete the remaining evidence/state mapping before closing this requirement.",
       "requirement_digest": "0d033a9d9c85563a47dd3104ce8d455c564d21eeeaa491dead24e5e3ffda1353",
       "requirement_id": "REQ-35AED36D0B63",
       "requirement_text": "Progress MUST be evidence/state based.",
       "source_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Focused Vitest: 4 suites, 49 tests passed at source SHA 4f5a12d2d9156da694c6cab74f431062394ed4bb; CI preview was SKIPPED."
+      ],
+      "verification_method": "Focused Vitest projection and ledger suites; evidence is derived from persisted canonical AutoTeam stage attempts and final evidence gate."
     },
     {
       "applicability": "UNASSESSED",
@@ -3172,48 +3176,56 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/277-task-control-experience-r1-6/spec.md#L1826"
       ],
       "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L1826",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "AutoTeamLedgerPanel renders progress assessment only when present and otherwise keeps existing stage/status presentation (PR #466; merge SHA 3cca4b4b720c2684f8b2749a5450b2113f81b1b4)."
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Run browser UAT and extend null-progress fallback coverage across all Task Control projections.",
       "requirement_digest": "dec0a36db90711306fc52264ef6cd7a62bc820e8318b2eb94c9c0ce363725b8f",
       "requirement_id": "REQ-471CCE41C4F2",
       "requirement_text": "- the UI MUST support `progress: null` and fall back to stage/status.",
       "source_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "AutoTeamLedgerPanel.test.tsx is included in the 49 passing focused Vitest tests at source SHA 4f5a12d2d9156da694c6cab74f431062394ed4bb; CI preview was SKIPPED."
+      ],
+      "verification_method": "Focused AutoTeamLedgerPanel component test; browser UAT pending."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/277-task-control-experience-r1-6/spec.md#L1859"
       ],
       "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L1859",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "AutoTeam progress adapter suppresses stall for active provider jobs and maps canonical blocked stages to BLOCKED (PR #466; merge SHA 3cca4b4b720c2684f8b2749a5450b2113f81b1b4)."
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Integrate normalized meaningful-progress fingerprints and known-wait coverage for the other Task Control runtimes.",
       "requirement_digest": "65a5e1d6a3ba2a79f358b5a0f64785a5f6759556d4da8c8d4f2bcfd5e4ac1edf",
       "requirement_id": "REQ-1609B0DEE1D0",
       "requirement_text": "A watchdog MUST NOT treat legitimate waiting, a long-running bounded tool call, or a known human/dependency wait as pathological looping. The execution layer SHOULD derive a normalized **meaningful-progress fingerprint** rather than using elapsed time alone.",
       "source_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Focused AutoTeam projection tests passed in the 49-test run at source SHA 4f5a12d2d9156da694c6cab74f431062394ed4bb; CI preview was SKIPPED."
+      ],
+      "verification_method": "Focused adapter unit cases for active provider status, expired claim plus stage timeout, and blocked dependency."
     },
     {
       "applicability": "UNASSESSED",
@@ -8166,26 +8178,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/277-task-control-experience-r1-6/spec.md#L2915"
       ],
       "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L2915",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "RELEVANT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "AutoTeam Task Control ledger exposes STALLED, LOOPING, REGRESSING, BLOCKED, RECOVERING and terminal progress categories when available (PR #466; merge SHA 3cca4b4b720c2684f8b2749a5450b2113f81b1b4)."
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Connect other Task Control task sources and complete browser-level validation of stalled/replanning/escalated presentation.",
       "requirement_digest": "cd008774a77b4b29c62bc6914ccea7de8fc8cef5173cc6c531dec813f1d6539d",
       "requirement_id": "REQ-5350AD04E77F",
       "requirement_text": "- [ ] Progress/delegation watchdog can surface stalled/replanning/escalated states instead of misleading perpetual `Running`.",
       "source_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "Four focused Vitest suites passed, 49 tests at source SHA 4f5a12d2d9156da694c6cab74f431062394ed4bb; CI preview was SKIPPED."
+      ],
+      "verification_method": "Focused projection, ledger, and panel tests; browser UAT pending."
     },
     {
       "applicability": "UNASSESSED",
