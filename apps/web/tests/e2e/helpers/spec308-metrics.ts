@@ -1,14 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { gzipSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import {
-  ASSISTANT_MASCOT_STYLES,
-  AssistantMascot,
-} from "../../../client/src/components/assistant-mascot/AssistantMascot";
 
 type BrowserProbe = {
   layoutShifts: Array<{ value: number; startTime: number }>;
@@ -53,7 +47,7 @@ export type Spec308MetricsEvidence = {
   thresholds: "not defined; no budget pass/fail is asserted";
   browser: { engine: "Chromium"; userAgent: string };
   mascotSvg: {
-    method: "React server-rendered inline SVG, gzipSync";
+    method: "Rendered settings preview SVG outerHTML, gzipSync";
     totalGzipBytes: number;
     variants: Array<{ style: string; rawBytes: number; gzipBytes: number }>;
   };
@@ -250,14 +244,24 @@ export async function installSpec308MetricsProbe(page: Page) {
   };
 }
 
-export function measureMascotSvgGzip(): Spec308MetricsEvidence["mascotSvg"] {
-  const variants = ASSISTANT_MASCOT_STYLES.map(style => {
-    const svg = renderToStaticMarkup(React.createElement(AssistantMascot, { style }));
-    const raw = Buffer.from(svg, "utf8");
+export async function measureMascotSvgGzip(page: Page): Promise<Spec308MetricsEvidence["mascotSvg"]> {
+  await page.goto("/settings?tab=notifications");
+  await page.getByTestId("assistant-appearance-preferences").waitFor({ state: "visible" });
+  const renderedVariants = await page.locator('[data-testid^="assistant-mascot-style-"][data-testid$="-preview"]').evaluateAll(containers =>
+    containers.flatMap(container => {
+      const svg = container.querySelector<SVGSVGElement>("svg[data-mascot-style]");
+      return svg ? [{ style: svg.dataset.mascotStyle ?? "", markup: svg.outerHTML }] : [];
+    }),
+  );
+  if (renderedVariants.length !== 5 || renderedVariants.some(variant => !variant.style || !variant.markup)) {
+    throw new Error(`Expected five rendered mascot SVG previews, found ${renderedVariants.length}`);
+  }
+  const variants = renderedVariants.map(({ style, markup }) => {
+    const raw = Buffer.from(markup, "utf8");
     return { style, rawBytes: raw.byteLength, gzipBytes: gzipSync(raw, { mtime: 0 }).byteLength };
   });
   return {
-    method: "React server-rendered inline SVG, gzipSync",
+    method: "Rendered settings preview SVG outerHTML, gzipSync",
     totalGzipBytes: variants.reduce((total, variant) => total + variant.gzipBytes, 0),
     variants,
   };

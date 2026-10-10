@@ -6,18 +6,18 @@ Loop policy:
   continuation_cycle: browser-ci-repair-20261010-wave15
   current_stage: DEBUG_FIX
   resume_from: VERIFY
-  iteration: 6/12
+  iteration: 7/12
   tool_call_batches: unknown/30
   estimated_cost_usd: unknown (not measured; soft ceiling 0.50)
-  dispatch_waves: 2/6
+  dispatch_waves: 3/6
   active_subagents: 0/4
   parallel_writers: 0/2
   parallel_writers_peak: 3/2 (policy overrun recorded; no further writer fan-out)
   required_subagent_wait: 0/10 minutes
   background_subagent_wait: <10 minutes
-  repair_rounds: 3/5
+  repair_rounds: 4/5
   stop_conditions: lifecycle_converged, tests_passed, no_open_blockers
-  stop_reason: two_exact_head_browser_test_defects_repaired; rerun_pending_after_workunit_order_and_checkpoint
+  stop_reason: metrics_harness_repaired_from_exact_ci_failure; exact_candidate_verification_pending
 
 ## Baseline
 - Latest refresh: `origin/main` `6dcd7934332db7929904f8da642915751a6bb79`; PR #399 head `f0fa060c55779beb6d55c7baeba727d9dd3a517c`; PR #403 `74a482e8fe38a131bdbe41bfee0e53ad90347e4c`; PR #405 `868a5600ff770be91885666b7f584835e03fc690`.
@@ -145,6 +145,12 @@ Loop policy:
 - Run `38012034963` exposed the unchanged canonical MCP fixture/import baseline (76 passed / 44 failed) and missing live smoke authority. Its downstream security and mandatory audit steps were skipped; no gate was bypassed. PR #403's prior exact-head MCP/check/security gates passed, but its production audit remains failed on existing advisories and its live smoke lacks an authorized endpoint/token.
 - PR #405 remains the first integration workunit: compatibility regressions passed at its recorded SHA, while the mandatory audit remains failed on Moderate `sprintf-js@1.1.3`; Security and Media/Runtime owner decision is not recorded. Latest canonical refresh and exact PR states were independently checked; audit agents made no writes and did not touch other worktrees.
 - This repair has not been tested locally. Run one consolidated exact-SHA browser/unit verification after the implementation freeze and required #405 → #403 sequence. Requirement ledger remains 66/66 OPEN; all live acceptance and production flags remain gated.
+
+## Metrics harness repair — 2026-10-10
+- Browser run `38012581430` on exact PR #399 SHA `6907bdf4bc0c8ca4f36e11e2e2fedb5abad0f499` passed 22/23 tests; install, generated schema, focused component regressions, Vite startup, and 22 mocked Chromium cases passed.
+- The only failure was the metrics helper attempting React server rendering of the mascot imported through the Playwright test transform. React DOM received an internal `{__pw_type, type, props, key}` child descriptor. This is a test harness boundary defect, not a production component regression.
+- Read-only reviewer `metrics_fixture_repair_review` confirmed the cause and recommended using rendered SVG markup. Updated the helper to navigate to the existing Settings preview, collect each of five rendered `svg[data-mascot-style]` `outerHTML` values, and gzip those bytes in Node. No product source or dependency changed.
+- Exact logs: `https://github.com/naibarn/SmartSpecPro/actions/runs/38012581430`; next action is checkpoint and consolidated CI on the repaired candidate, then preserve evidence and resume required #405 → #403 order. MCP fixture and live authority failures remain independent and unchanged.
 
 
 ## Implementation checkpoint — 2026-10-10 (wave 3)

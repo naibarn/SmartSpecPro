@@ -626,7 +626,7 @@ test("SPEC-308 records raw OFF/ON network, heap, CLS, timer and mascot asset met
     const flagOnCallCount = procedures.length - offCallCount;
     const flagOn = await metrics.snapshot("feature-flag-on-with-demo-balloon", flagOnCallCount);
 
-    const svg = measureMascotSvgGzip();
+    const svg = await measureMascotSvgGzip(page);
     const evidence: Spec308MetricsEvidence = {
       schemaVersion: 1,
       sourceSha: getSpec308SourceSha(),
