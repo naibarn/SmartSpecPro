@@ -43,14 +43,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
+    "expected_canonical_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
     "expected_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83"
   },
   "continuation": {
     "next_action": "Provide an approved server-authenticated ingress assertion producer and wire it to createContextWithTrustedAppIngress; retain fail-closed production default until deployed provenance, origin exclusion, and fresh Project ACL acceptance are verified.",
     "next_ready_workunit": "SPEC304_TRUSTED_INGRESS_ASSERTION_ACCEPTANCE",
     "reactivation_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence.",
-    "resume_point": "PR #487 merged at 223eb5f07fc69a0d7971c4cdf7b2d32a229fe560. Added server-side assertion consumer composition and synthetic HTTP-to-memory receipt issuance tests. The default production createContext remains null and no production ingress caller is configured; positive authorized Project-memory retrieval and deployed ingress remain pending.",
+    "resume_point": "PR #532 merged at 056922d71912f5bededd06d173a9e57580a9fcb9. R5 persisted positive-path test verifies the server-side test assertion through createContextWithTrustedAppIngress, current DB-backed alias resolution, and authorized persisted Project-memory prompt retrieval; Host/X-Forwarded-Host-only, replay, wrong-App, and cross-tenant cases fail closed. This is synthetic non-production evidence only. Production ingress producer, deployed origin exclusion, and worker-crossing reauthorization remain pending.",
     "waiting_predicate": "A non-production ingress must provide an authenticated route assertion bound to the canonical App and tenant, with direct-origin exclusion and host normalization evidence."
   },
   "continuation_assessment": {
@@ -64,7 +64,7 @@
       }
     ],
     "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
-    "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
+    "rationale": "PR #532 adds a bounded, persisted non-production ingress acceptance slice at 056922d71912f5bededd06d173a9e57580a9fcb9. Project memory remained behind current authorization and the context permission ceiling; production ingress and the full hosting/deployment lifecycle remain unverified, so SPEC-304 stays PARTIAL.",
     "residual_requirements": [
       "Authenticated non-production ingress provenance and custom-domain routing acceptance",
       "Full hosting/deployment lifecycle remains separate"
@@ -129,7 +129,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 21,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md",
     "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -154,15 +154,15 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
+    "canonical_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:04:21Z"
+    "integrated_at": "2026-10-10T09:48:45Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
     "previous_state": null,
     "state_evidence": [],
-    "updated_at": "2026-10-07T04:14:02.843501Z"
+    "updated_at": "2026-10-10T09:49:32Z"
   },
   "manual_decisions": {
     "authority": {
@@ -201,7 +201,7 @@
         }
       ],
       "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
-      "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
+      "rationale": "PR #532 adds a bounded, persisted non-production ingress acceptance slice at 056922d71912f5bededd06d173a9e57580a9fcb9. Project memory remained behind current authorization and the context permission ceiling; production ingress and the full hosting/deployment lifecycle remain unverified, so SPEC-304 stays PARTIAL.",
       "residual_requirements": [
         "Authenticated non-production ingress provenance and custom-domain routing acceptance",
         "Full hosting/deployment lifecycle remains separate"
@@ -233,7 +233,7 @@
       "current_state": "VALIDATION_PENDING",
       "previous_state": null,
       "state_evidence": [],
-      "updated_at": "2026-10-07T04:14:02.843501Z"
+      "updated_at": "2026-10-10T09:49:32Z"
     },
     "reconciliation_confidence": {
       "source_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
@@ -295,6 +295,43 @@
           }
         ],
         "verification_method": "Run the focused MiniAppRoute, ResearchNotesPage, and ProjectWikiPagesPage Vitest suites against the integrated SHA. Apply migration 0392 only to an authorized non-production database before runtime CRUD acceptance."
+      },
+      "REQ-F24EEC954686": {
+        "applicability": "UNASSESSED",
+        "authority_refs": [
+          "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md#L46"
+        ],
+        "authority_source": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment/spec.md#L46",
+        "blocker": null,
+        "current_relevance": "UNASSESSED",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+        "final_state": "OPEN",
+        "implementation_evidence": [
+          {
+            "kind": "TEST_INGRESS_CONTEXT_ROUTE",
+            "path": "apps/web/server/services/__tests__/integration/smartAiHubR5PersistedMemory.integration.test.ts",
+            "source_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+            "summary": "PR #532 exercises a server-signed local test assertion through the existing tRPC context composition and canonical active alias resolver; authenticated synthetic tenant/App context reaches the persisted Project memory runtime."
+          }
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep production App-bound reads fail-closed until an authorized production ingress producer is wired to the context, direct-origin exclusion and host normalization are evidenced, and worker-boundary fresh authorization is verified.",
+        "requirement_digest": "17131fe12454757cd5dfed837fe11effac54e2a60df6493714069ac93ab50532",
+        "requirement_id": "REQ-F24EEC954686",
+        "requirement_text": "The runtime MUST validate issuer, audience, tenant, deployment, expiry, policy epoch, capabilities, and permission ceiling. A hosted app cannot expand the ceiling or impersonate another host app. Project references are resolved/authorized under SPEC-302; memory under SPEC-268; Chat surface/runtime under SPEC-269; command ingress under SPEC-279. Context is minimized and secret-safe; secrets are separately scoped references, not embedded values.",
+        "source_spec_digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "PERSISTED_INGRESS_ACCEPTANCE",
+            "path": "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/trusted-ingress-persisted-a093288.json",
+            "result": "PASS",
+            "source_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+            "summary": "Exact canonical SHA: PostgreSQL persisted ingress acceptance 1 file / 5 tests and 4 focused ingress/memory files / 38 tests passed; test-only issuer, no production ingress claim."
+          }
+        ],
+        "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       }
     }
   },
@@ -374,7 +411,7 @@
     "unresolved": 8
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:15:19.687854Z",
+  "updated_at": "2026-10-10T09:53:43.290604Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -433,11 +470,18 @@
         "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: 21 focused files / 261 tests passed across trusted assertion composition, Host/XFH fail-closed memory context, alias identity, receipt ACL, worker wiring and independent evidence contracts. Synthetic only; no production ingress caller, deployed provenance, or positive authorized persisted Project-memory read.",
         "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
         "status": "PASS"
+      },
+      {
+        "kind": "R5_PERSISTED_TRUSTED_INGRESS_ACCEPTANCE",
+        "path": "orchestra/tasks/smartaihub-r5-nonprod-e2e-20261010/evidence/trusted-ingress-persisted-a093288.json",
+        "scope": "PR #532 merged at 056922d71912f5bededd06d173a9e57580a9fcb9; 1 PostgreSQL persisted test file / 5 tests and 4 focused files / 38 tests pass. Signed local test ingress reaches createContextWithTrustedAppIngress and reads authorized Project memory. Production ingress remains unverified.",
+        "source_sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+    "sha": "056922d71912f5bededd06d173a9e57580a9fcb9",
     "status": "PARTIAL",
     "task_regressions": []
   }
