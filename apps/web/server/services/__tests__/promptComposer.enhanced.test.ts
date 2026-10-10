@@ -610,6 +610,22 @@ describe("composePrompt -- workspace memory parity", () => {
     expect(mockLeftJoinCalls).toBe(1);
   });
 
+  it("keeps entity memory global-only for an unregistered legacy project ID", async () => {
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: "legacy-project-id" } as any,
+    });
+    tableResults.set(canonicalProjects, []);
+
+    await composePrompt({ ...baseInput, initiatedByUserId: 42 });
+
+    expect(mockGetEntityMemoriesForContext).toHaveBeenCalledWith(
+      42,
+      undefined,
+      null,
+      "persona-1",
+    );
+  });
+
   it("omits scoped context when membership is revoked during prompt assembly", async () => {
     mockRetrieveForPrompt.mockResolvedValue([
       {

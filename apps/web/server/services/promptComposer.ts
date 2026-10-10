@@ -372,6 +372,10 @@ export async function composePrompt(
     // authorization are rechecked after prompt assembly.
     projectContextProjectIdForRevalidation = resolvedProjectId;
   }
+  // Legacy room IDs do not establish project authorization for entity memory.
+  // Only a canonical project with an active member may widen retrieval beyond
+  // the user's global memory.
+  const entityMemoryProjectId = projectWasCanonicalAtStart ? authorizedProjectId : null;
   const promptQuery = input.currentMessage?.trim() || input.objective;
 
   // Pre-fetch history count for adaptive budget detection
@@ -603,7 +607,7 @@ export async function composePrompt(
       const entityMems = await getEntityMemoriesForContext(
         input.initiatedByUserId,
         undefined,
-        authorizedProjectId,
+        entityMemoryProjectId,
         profile.personaId ?? null,
       );
       if (entityMems.length > 0) {
