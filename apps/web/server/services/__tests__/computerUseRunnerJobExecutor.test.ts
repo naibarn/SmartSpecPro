@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockDispatch } = vi.hoisted(() => ({
   mockDispatch: vi.fn(),
@@ -127,6 +127,114 @@ function approvalActionId(): string {
 }
 
 describe("Feature 195 Computer Use Runner executor", () => {
+  beforeEach(() => {
+    mockDispatch.mockReset();
+  });
+
+  it("does not dispatch a Runner command after the canonical lease check rejects the attempt", async () => {
+    const waitForExternal = vi.fn();
+    const assertActive = vi.fn().mockRejectedValue(new Error("JOB_LEASE_STALE"));
+    await expect(executeComputerUseBrowserJob({
+      context: {
+        jobId: "job-revoked",
+        attempt: 2,
+        tenantId: "tenant-p213",
+        requestedByUserId: 109,
+        timeoutSeconds: 30,
+        input: {
+          traceId: "trace-revoked",
+          computerUseRunId: "run-revoked",
+          runnerId: "runner-p213",
+          runnerSessionId: "session-p213",
+          capabilitySnapshotId: "snapshot-p213",
+          capabilitySnapshotRevision: "revision-p213",
+          authorizationGrantRef: "runner-auth:sha256:grant",
+          payload: { operation: "observe" },
+        },
+      } as any,
+      lease: {
+        jobId: "job-revoked",
+        attemptId: "attempt-revoked",
+        leaseToken: "lease-token-revoked",
+        fencingVersion: 9,
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      },
+      reporter: { waitForExternal, assertActive },
+      controlPlane: { failExternalWait: vi.fn() },
+    })).rejects.toThrow("JOB_LEASE_STALE");
+
+    expect(assertActive).toHaveBeenCalledTimes(1);
+    expect(waitForExternal).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
+  });
+
+  it("fails the canonical external wait when the existing Runner gateway rejects dispatch", async () => {
+    mockDispatch.mockRejectedValueOnce(new Error("RUNNER_NOT_ELIGIBLE"));
+    const events: string[] = [];
+    const waitForExternal = vi.fn(async () => { events.push("wait"); });
+    const failExternalWait = vi.fn(async () => {
+      events.push("fail");
+      return "failed" as const;
+    });
+    const result = await executeComputerUseBrowserJob({
+      context: {
+        jobId: "job-dispatch-failed",
+        attempt: 3,
+        tenantId: "tenant-p213",
+        requestedByUserId: 109,
+        timeoutSeconds: 30,
+        input: {
+          traceId: "trace-dispatch-failed",
+          computerUseRunId: "run-dispatch-failed",
+          runnerId: "runner-p213",
+          runnerSessionId: "session-p213",
+          capabilitySnapshotId: "snapshot-p213",
+          capabilitySnapshotRevision: "revision-p213",
+          authorizationGrantRef: "runner-auth:sha256:grant",
+          deadline: "2099-01-01T00:00:00.000Z",
+          payload: { operation: "observe" },
+        },
+      } as any,
+      lease: {
+        jobId: "job-dispatch-failed",
+        attemptId: "attempt-dispatch-failed",
+        leaseToken: "lease-token-dispatch-failed",
+        fencingVersion: 11,
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      },
+      reporter: { waitForExternal, assertActive: vi.fn() },
+      controlPlane: { failExternalWait },
+    });
+
+    expect(result).toMatchObject({
+      deferred: true,
+      output: { commandId: expect.any(String), status: "dispatch_failed" },
+    });
+    expect(events).toEqual(["wait", "fail"]);
+    expect(waitForExternal).toHaveBeenCalledWith(expect.objectContaining({
+      attemptId: "attempt-dispatch-failed",
+      fencingVersion: 11,
+    }), expect.objectContaining({
+      operationKey: "computer-use:job-dispatch-failed:3",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+    }));
+    expect(failExternalWait).toHaveBeenCalledWith(
+      "job-dispatch-failed",
+      "RUNNER_NOT_ELIGIBLE",
+      true,
+      expect.any(Date),
+      "computer-use:job-dispatch-failed:3",
+    );
+    expect(mockDispatch.mock.calls[0][0]).toMatchObject({
+      jobId: "job-dispatch-failed",
+      attempt: 3,
+      tenantId: "tenant-p213",
+      fencingToken: 11,
+      browserEngineConstraint: "chromium",
+      executionKind: "computer_use.browser",
+    });
+  });
+
   it("pins semantic verification metadata on the canonical external wait", async () => {
     mockDispatch.mockResolvedValueOnce({
       status: "accepted",
