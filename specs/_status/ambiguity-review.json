@@ -130264,7 +130264,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -130413,10 +130413,10 @@
         "requirement REQ-0236F724EB8B is OPEN",
         "requirement REQ-0D8F949A6142 is OPEN",
         "requirement REQ-036FC4AC9309 is OPEN",
-        "requirement REQ-35AED36D0B63 is OPEN",
+        "requirement REQ-35AED36D0B63 is PARTIAL",
         "requirement REQ-49668FA5CD68 is OPEN",
-        "requirement REQ-471CCE41C4F2 is OPEN",
-        "requirement REQ-1609B0DEE1D0 is OPEN",
+        "requirement REQ-471CCE41C4F2 is PARTIAL",
+        "requirement REQ-1609B0DEE1D0 is PARTIAL",
         "requirement REQ-29A8EB036971 is OPEN",
         "requirement REQ-8A20DD67BEDF is OPEN",
         "requirement REQ-D3A578DAF4CB is OPEN",
@@ -130642,7 +130642,7 @@
         "requirement REQ-208DD118F8FB is OPEN",
         "requirement REQ-313B620E8BF3 is OPEN",
         "requirement REQ-ADCDCF735CAB is OPEN",
-        "requirement REQ-5350AD04E77F is OPEN",
+        "requirement REQ-5350AD04E77F is PARTIAL",
         "requirement REQ-0179C3976B17 is OPEN",
         "requirement REQ-FA26EF679EC6 is OPEN",
         "requirement REQ-C52E38E41721 is OPEN",
@@ -130700,12 +130700,11 @@
         "requirement REQ-52643E4E2A06 is OPEN",
         "requirement REQ-5D5695D8A00A is OPEN",
         "requirement REQ-BDDC1982995F is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
-      "continuation": "RECONCILIATION_REQUIRED",
+      "continuation": "CONTINUE_REQUIRED",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
@@ -130717,37 +130716,24 @@
       "deployment": "UNKNOWN",
       "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:18.792204Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "last_reconciled": "2026-10-10T07:35:15.704466Z",
+      "lifecycle": "CONTINUATION_REQUIRED",
+      "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",
       "record_kind": "CANONICAL_SPEC",
-      "relationship_claims": [
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "224",
-          "referenced_spec_id": "224",
-          "referencing_spec_id": "277",
-          "relation_text": "replace",
-          "requirement_ids": [],
-          "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-          "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
-          "successor_spec_id": "277"
-        }
-      ],
+      "relationship_claims": [],
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []
       },
       "relevance_assessment": {
         "active_references": [],
-        "conflict_duplication_risk": "REVIEW_REQUIRED",
+        "conflict_duplication_risk": "UNASSESSED",
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -130763,7 +130749,7 @@
         "implementation_equivalence": "UNASSESSED",
         "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED",
-        "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+        "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
         "open": 429,
@@ -130782,7 +130768,7 @@
       "successors": [],
       "title": "CURRENT CUMULATIVE REVISION — R1.8",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",

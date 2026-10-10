@@ -10,11 +10,11 @@
     "confidence.MEDIUM": 5,
     "confidence.NOT_APPLICABLE": 131,
     "confidence.UNRESOLVED": 27,
-    "continuation.CONTINUE_REQUIRED": 9,
+    "continuation.CONTINUE_REQUIRED": 10,
     "continuation.DO_NOT_CONTINUE_SUPERSEDED": 1,
     "continuation.MAINTENANCE_ONLY": 4,
     "continuation.NOT_APPLICABLE": 131,
-    "continuation.RECONCILIATION_REQUIRED": 325,
+    "continuation.RECONCILIATION_REQUIRED": 324,
     "continuation.VALIDATION_ONLY": 2,
     "deployment.UNKNOWN": 472,
     "disposition.ACTIVE_CANONICAL": 11,
@@ -23,7 +23,8 @@
     "disposition.DORMANT_VALID": 2,
     "disposition.INVALID_OR_UNKNOWN": 131,
     "disposition.SUPERSEDED_PARTIAL": 1,
-    "lifecycle.DISCOVERING": 269,
+    "lifecycle.CONTINUATION_REQUIRED": 1,
+    "lifecycle.DISCOVERING": 268,
     "lifecycle.DORMANT_VALID": 2,
     "lifecycle.NOT_A_CANONICAL_SPEC": 158,
     "lifecycle.PARTIAL_INTEGRATED": 8,
@@ -38,10 +39,10 @@
     "record_kind.PLANNING_ARTIFACT": 112,
     "record_kind.PROJECT_REQUIREMENTS": 17,
     "verification.NOT_RUN": 1,
-    "verification.PARTIAL": 10,
+    "verification.PARTIAL": 11,
     "verification.PASS": 5,
     "verification.PENDING": 1,
-    "verification.UNKNOWN": 455
+    "verification.UNKNOWN": 454
   },
   "generated_from": "configured roots + per-Spec handoff manifests",
   "record_count": 472,
@@ -120879,7 +120880,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "0379c7d66de00b5c43892358459c7c51357012ca",
+      "canonical_sha": "fc9e18afc5e271e8b898829efdf90eb20929bd3d",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -121702,7 +121703,7 @@
         "requirement REQ-352C46957C49 is OPEN",
         "requirement REQ-9698D5270A36 is OPEN",
         "requirement REQ-D5E64529A049 is OPEN",
-        "requirement REQ-7D96F41A5DB4 is OPEN",
+        "requirement REQ-7D96F41A5DB4 is PARTIAL",
         "requirement REQ-24257ECB59F7 is OPEN",
         "requirement REQ-9B1C9C4CC547 is OPEN",
         "requirement REQ-8EEF6F18F67E is OPEN",
@@ -121838,7 +121839,7 @@
         "requirement REQ-EAA41A0E4208 is OPEN",
         "requirement REQ-DBE4BA90C532 is OPEN",
         "requirement REQ-89E0709E1E63 is OPEN",
-        "requirement REQ-372BF7A1AC2F is OPEN",
+        "requirement REQ-372BF7A1AC2F is PARTIAL",
         "requirement REQ-71231727BB73 is OPEN",
         "requirement REQ-5623D50C6C8C is OPEN",
         "requirement REQ-F7859B05A1DF is OPEN",
@@ -122602,14 +122603,14 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.325224Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "primary_blocker": {
-        "class": "DEPENDENCY_AND_OWNERSHIP",
-        "id": "APP_PROJECT_RUNTIME_CONTEXT_AUTHORITY",
-        "next_action": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+        "class": "ACCEPTANCE_AND_INGRESS_PROVENANCE",
+        "id": "APP_PROJECT_MEMORY_DIRECT_ACCEPTANCE",
+        "next_action": "Run direct T-01–T-23 cases. App-bound Project reads remain denied on unverified ingress; durable Project writes remain denied pending Phase 2.",
         "recoverable": true,
-        "root_cause": "PR #443 binds TeamRoom project authority to AgentRuntime provider attempts, but the current contract does not supply the canonical App-aware MemoryContext and ProjectResolutionReceipt needed for full App/Project runtime acceptance. Candidate paths remain shared/reserved under SPEC-302/SPEC-304. The old dirty SPEC-269 worktree remains preserved; its delta removes PR #426 authorization checks and is not reusable."
+        "root_cause": "PR #451 provides the minimum read-only authority/runtime boundary, but deployed ingress provenance and the direct acceptance matrix remain incomplete."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
@@ -125606,7 +125607,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": null,
+      "canonical_sha": "311bc1e39100a308efcadab61fa278d607a860aa",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -125755,10 +125756,10 @@
         "requirement REQ-0236F724EB8B is OPEN",
         "requirement REQ-0D8F949A6142 is OPEN",
         "requirement REQ-036FC4AC9309 is OPEN",
-        "requirement REQ-35AED36D0B63 is OPEN",
+        "requirement REQ-35AED36D0B63 is PARTIAL",
         "requirement REQ-49668FA5CD68 is OPEN",
-        "requirement REQ-471CCE41C4F2 is OPEN",
-        "requirement REQ-1609B0DEE1D0 is OPEN",
+        "requirement REQ-471CCE41C4F2 is PARTIAL",
+        "requirement REQ-1609B0DEE1D0 is PARTIAL",
         "requirement REQ-29A8EB036971 is OPEN",
         "requirement REQ-8A20DD67BEDF is OPEN",
         "requirement REQ-D3A578DAF4CB is OPEN",
@@ -125984,7 +125985,7 @@
         "requirement REQ-208DD118F8FB is OPEN",
         "requirement REQ-313B620E8BF3 is OPEN",
         "requirement REQ-ADCDCF735CAB is OPEN",
-        "requirement REQ-5350AD04E77F is OPEN",
+        "requirement REQ-5350AD04E77F is PARTIAL",
         "requirement REQ-0179C3976B17 is OPEN",
         "requirement REQ-FA26EF679EC6 is OPEN",
         "requirement REQ-C52E38E41721 is OPEN",
@@ -126042,12 +126043,11 @@
         "requirement REQ-52643E4E2A06 is OPEN",
         "requirement REQ-5D5695D8A00A is OPEN",
         "requirement REQ-BDDC1982995F is OPEN",
-        "required verification evidence is missing",
-        "canonical integration evidence is missing"
+        "required verification evidence is missing"
       ],
       "confidence": "LOW",
       "configured_root": "specs/feature",
-      "continuation": "RECONCILIATION_REQUIRED",
+      "continuation": "CONTINUE_REQUIRED",
       "current_reference_counts": {
         "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
@@ -126059,37 +126059,24 @@
       "deployment": "UNKNOWN",
       "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-06T03:28:18.792204Z",
-      "lifecycle": "DISCOVERING",
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "last_reconciled": "2026-10-10T07:35:15.704466Z",
+      "lifecycle": "CONTINUATION_REQUIRED",
+      "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",
       "record_kind": "CANONICAL_SPEC",
-      "relationship_claims": [
-        {
-          "confidence": "LOW",
-          "direction": "SUCCESSOR_CANDIDATE",
-          "predecessor_spec_id": "224",
-          "referenced_spec_id": "224",
-          "referencing_spec_id": "277",
-          "relation_text": "replace",
-          "requirement_ids": [],
-          "source": "specs/feature/277-task-control-experience-r1-6/spec.md#L298",
-          "source_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
-          "successor_spec_id": "277"
-        }
-      ],
+      "relationship_claims": [],
       "relationships": {
         "duplicate_ids": [],
         "duplicate_revisions": []
       },
       "relevance_assessment": {
         "active_references": [],
-        "conflict_duplication_risk": "REVIEW_REQUIRED",
+        "conflict_duplication_risk": "UNASSESSED",
         "current_architecture_fit": "UNASSESSED",
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -126105,7 +126092,7 @@
         "implementation_equivalence": "UNASSESSED",
         "residual_requirements": [],
         "security_data_compliance_obligations": "REVIEW_REQUIRED",
-        "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+        "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
         "open": 429,
@@ -126123,7 +126110,7 @@
       "successors": [],
       "title": "CURRENT CUMULATIVE REVISION — R1.8",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
@@ -134019,7 +134006,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "c3b72dc5c475ed1010f1dfae245ccd951c0289a1",
+      "canonical_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -134076,13 +134063,12 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.839575Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "next_action": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
       "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
         "id": "SPEC302_DIRECT_ACCEPTANCE",
-        "next_action": "Implement and execute direct acceptance against current canonical source.",
-        "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+        "next_action": "Run direct identity/context acceptance on an authenticated non-production ingress; keep all unverified App-bound Project reads fail-closed."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
@@ -134269,7 +134255,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "64ece42bbdbe1fc4336d72daf2e6be154fea850a",
+      "canonical_sha": "223eb5f07fc69a0d7971c4cdf7b2d32a229fe560",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -134319,17 +134305,16 @@
       "deployment": "UNKNOWN",
       "digest": "fa75a66c8d569ed9ddbd1ac6219fefb0267228943836f4a90036fef040c11f83",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "STALE",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.843501Z",
       "lifecycle": "VALIDATION_PENDING",
-      "next_action": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "next_action": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
       "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "primary_blocker": {
         "class": "IMPLEMENTATION",
-        "id": "SPEC304_DIRECT_ACCEPTANCE",
-        "next_action": "Implement and execute direct acceptance against current canonical source.",
-        "root_cause": "T acceptance scenarios require runtime integration beyond repository-local ID authority and adjacent regression tests."
+        "id": "SPEC304_TRUSTED_INGRESS_ASSERTION",
+        "next_action": "Establish and directly test authenticated App routing provenance in approved non-production infrastructure; do not derive identity from request Host/X-Forwarded-Host."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",

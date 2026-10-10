@@ -4752,7 +4752,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "next_action": "Run actual AutoTeam recovery UAT on a dedicated current-schema non-production database. Verify scan scheduling, provider/resource/dependency waits, dispatch-to-useful-work recovery, restart/resume, idempotent replay, duplicate events, stale lease fencing, failure injection, and no-progress suppression. Keep all 429 unresolved requirements and SPEC-277 PARTIAL/DORMANT_UNRESOLVED until requirement-level evidence supports closure.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",
@@ -4887,7 +4887,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
       "priority": "P1",
-      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "rationale": "Continue independent identity/context direct acceptance. Phase 1 invocation receipts authorize reads only and recheck current ACL. Durable Project-shared writes remain denied until SPEC302_DURABLE_PROJECT_RESOLUTION_RECEIPT_PERSISTENCE passes and its migration is explicitly approved.",
       "record_key": "canonical:specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution",
       "spec_id": "302"
     },
@@ -4905,7 +4905,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "priority": "P1",
-      "rationale": "Continue bounded implementation and direct acceptance for identity/context/asset boundaries; preserve migration and external checks as separate gates.",
+      "rationale": "Provide a verifiable server-authenticated ingress assertion for App route provenance; until then createContext supplies no trusted App context and App-bound Project Memory remains fail-closed. Keep hosting/migration lifecycle work separate.",
       "record_key": "canonical:specs/feature/304-smartaihub-application-identity-universal-routing-managed-hosting-deployment",
       "spec_id": "304"
     },
@@ -4932,7 +4932,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "priority": "P3",
-      "rationale": "Implement the App-aware MemoryContext and ProjectResolutionReceipt binding only after SPEC-302/SPEC-304 owners release the exact shared paths and provide the canonical identity/resolution contract; then run direct T-01 through T-23 acceptance. Keep all unverified scopes fail-closed.",
+      "rationale": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
       "record_key": "canonical:specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce",
       "spec_id": "269"
     },
