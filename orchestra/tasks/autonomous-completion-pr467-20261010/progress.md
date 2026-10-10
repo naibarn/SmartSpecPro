@@ -5,7 +5,7 @@ Loop policy:
   purpose: scoped implementation with durable task evidence
   current_stage: FINAL_VERIFY
   resume_from: FINAL_VERIFY
-  iteration: 7/12
+  iteration: 8/12
   tool_call_batches: unknown/30 (conservative batches recorded in host session)
   estimated_cost_usd: unknown <= 0.50 proxy
   dispatch_waves: 3/6
@@ -33,4 +33,5 @@ Loop policy:
 - Review round 3: read-only review clean, no remaining material findings.
 - Refreshed canonical `origin/main` to `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; task commit rebased cleanly onto that SHA. Exact task commit is recorded in Git history and final handoff.
 - Fast gate: Vitest transpilation/execution passed for changed TS files; `git diff --cached --check` passed on the 8 task-owned paths; staged set contained only those paths; no secret pattern found in changed files.
-- Next: create normal protected PR and record its CI/review/integration status. Do not report `SKIPPED` as passing.
+- PR #471 opened and handoff updated; reconciled base `564ccc092ca4be93dfc12b8d548bd729bfdbe78b`; review decision empty; only `build-preview` completed as `SKIPPED`.
+- Stop reason for this checkpoint: implementation PR is reviewable, but canonical integration requires normal PR review/check evidence. Keep branch/worktree active and do not report `SKIPPED` as passing.
