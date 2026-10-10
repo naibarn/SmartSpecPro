@@ -34,14 +34,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+    "expected_canonical_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
-    "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
+    "next_action": "Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Preserve App-bound Project read fail-closed behavior on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.",
     "next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
     "reactivation_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing.",
-    "resume_point": "PR #462 merged at 3cc834f874361c64307631d1371f9109957c8ed3. Prompt memory rejects unknown Projects and cross-Project or inconsistent owner/project retrieval results after fresh canonical ACL validation; the exact merged SHA passed 7 focused files (102 tests, 11 TODO). Continue direct T-01–T-23 acceptance; component fixtures are not direct acceptance.",
+    "resume_point": "PR #472 merged at dab53cb6edd98c6ec20c3896cbc69683942b7df9; canonical main is 0199c3f04c362c4d3b098d54e7f7b8d34d6a4774. On that exact SHA, the local HTTP-to-runtime Host/X-Forwarded-Host spoof regression passed (3 files / 60), standalone Project receipt authority tests passed (1 / 12), and SPEC-271/SPEC-224 synthetic contracts passed (5 / 37). This proves fail-closed request-to-runtime behavior and unit/synthetic contracts only: deployed ingress, direct T-01–T-23 acceptance, durable process-restart receipt, protected dispatch and production behavior remain unverified. Continue direct acceptance only in an authorized non-production persisted runtime; keep Project-shared writes and SPEC-224 protected dispatch DENY.",
     "waiting_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing."
   },
   "continuation_assessment": {
@@ -62,7 +62,7 @@
         "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
       }
     ],
-    "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
+    "next_action": "Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Preserve App-bound Project read fail-closed behavior on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.",
     "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
     "residual_requirements": [
       "Direct T-01 through T-23 acceptance on canonical runtime",
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 18,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+    "canonical_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:14:00Z"
+    "integrated_at": "2026-10-10T07:43:41Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -230,7 +230,7 @@
           "source_sha": "1a056785eadea0b9a46487c97e51849d7d9a0f86"
         }
       ],
-      "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
+      "next_action": "Probe and execute T-01–T-23 only against an authorized non-production runtime with persisted tenant, App, Project, membership, conversation and memory authorities. Preserve App-bound Project read fail-closed behavior on unverified ingress, durable Project writes DENY pending Phase 2, and SPEC-224 protected dispatch DENY.",
       "rationale": "PR #451 (fe6771c1cc93cd5cf3321c417210e082a2e8f86c) adds a bounded Phase 1 integration slice. Verification is focused and the Spec remains PARTIAL; remaining direct acceptance and external/deployment requirements are not claimed complete.",
       "residual_requirements": [
         "Direct T-01 through T-23 acceptance on canonical runtime",
@@ -453,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:15:29.385959Z",
+  "updated_at": "2026-10-10T07:45:23.727232Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -506,11 +506,43 @@
         "scope": "SPEC-271 acceptance receipt flow / independent oracle / portable receipt / durable-store unit contracts and SPEC-224 DevelopmentRun in-memory integration: 5 files, 37 tests passed on exact canonical SHA. Synthetic adapters only; no process restart durability, protected dispatch, or direct T-01–T-23 acceptance established.",
         "source_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/services/__tests__/contextBuilder.test.ts",
+        "scope": "PR #469: without trusted App context, chat context assembly issues/validates no Project receipt, sends null Project scope to scoped/entity reads, and retains explicitly global entity memory. Exact integrated SHA post-merge focused run: 4 files, 78 passed, 1 TODO. Component-level evidence only; not T-05 direct acceptance, explicit NO_PROJECT resolution, write-denial acceptance, persisted isolation, or deployed ingress.",
+        "source_sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
+        "status": "PASS"
+      },
+      {
+        "canonical_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/services/__tests__/appIngressMemoryRuntime.test.ts",
+        "scope": "PR #472, exact canonical SHA 0199c3f04c362c4d3b098d54e7f7b8d34d6a4774: local HTTP requests with spoofed Host, spoofed X-Forwarded-Host, and conflicting forwarded hosts traverse createContext into buildChatContext; trustedAppContext remains null, no Project receipt is issued/validated, Project read scope is null, and global entity memory remains available. 3 files / 60 tests passed. Does not prove deployed ingress or direct T-09/T-15 acceptance.",
+        "source_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
+        "status": "PASS"
+      },
+      {
+        "canonical_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/services/__tests__/projectResolutionAuthority.test.ts",
+        "scope": "Exact canonical SHA standalone authority suite: 1 file / 12 tests passed, including fresh project ACL, revocation, binding, conversation, unresolved state and durable-write denial contracts. Unit contract evidence only.",
+        "source_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
+        "status": "PASS"
+      },
+      {
+        "canonical_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/services/__tests__/spec271IndependentAcceptance.test.ts",
+        "scope": "Exact canonical SHA SPEC-271 receipt-flow/oracle/portable-receipt/durable-store and SPEC-224 DevelopmentRun synthetic suite: 5 files / 37 tests passed. In-memory/synthetic only; does not prove process-restart durability, protected dispatch, or direct T-01–T-23 acceptance.",
+        "source_sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+    "sha": "0199c3f04c362c4d3b098d54e7f7b8d34d6a4774",
     "status": "PARTIAL",
     "task_regressions": []
   }

@@ -2,8 +2,8 @@
 # 277 — CURRENT CUMULATIVE REVISION — R1.8
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Lifecycle: `CONTINUATION_REQUIRED`
+- Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 5
+- Next action: Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.
+- Manifest generation: 8
