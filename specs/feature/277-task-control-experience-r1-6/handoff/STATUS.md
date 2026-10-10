@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 429 unresolved of 429
-- Next action: Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.
-- Manifest generation: 12
+- Next action: Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.
+- Manifest generation: 17

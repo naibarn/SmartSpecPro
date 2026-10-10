@@ -21,15 +21,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
+    "expected_canonical_sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Run focused contract suites and database-backed worker_jobs/outbox UAT when a provisioned package runner and non-production environment are available; verify external scheduler dispatch; gather actual recovery and post-action state-change evidence.",
-    "next_ready_workunit": "Post-integration focused worker-job contract tests, non-production recovery UAT, and scheduler-source verification",
-    "reactivation_predicate": null,
-    "resume_point": "PR #485 merged at 085cc0420fd5b16b9e9189489f1cb97158aff732. Task Control now receives only terminal AgentRuntime milestones with friendly summaries; streamed deltas remain archived but are not projected into the user timeline. Async evaluation remains PARTIAL until Vitest, stale-lease DB verification, and non-production recovery UAT pass.",
-    "waiting_predicate": null
+    "next_action": "Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+    "next_ready_workunit": "AutoTeam recovery UAT on a dedicated current-schema non-production DB using no retired systems, plus external Cloudflare scheduler invocation verification",
+    "reactivation_predicate": "Resume UAT when the isolated current-schema database and external scheduler invocation evidence are available.",
+    "resume_point": "Canonical main SHA e14b941e3e720343b7bc524d7695a4c77967340a. Focused AutoTeam/AgentRuntime suites pass (26), stale-lease fencing passes (3), and worker_jobs/outbox plus Cron adapter contracts pass (5). Actual DB UAT is blocked because shared local smartspec_test lacks worker_jobs.activeDedupeKey. Full migration preparation is prohibited because migration source includes retired Agency/workflow systems; no migration was run. Fixtures created by the failed UAT were verified removed.",
+    "waiting_predicate": "A dedicated current-schema non-production database or approved scoped schema excluding retired systems is available, and external Cloudflare schedule invocation evidence is accessible."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -48,7 +48,7 @@
         "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
       }
     ],
-    "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+    "next_action": "Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
     "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
     "residual_requirements": [
       "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 17,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -126,7 +126,7 @@
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
+    "canonical_sha": "00877132d21f2a675a143aefd6db679ef51fc66a",
     "integrated": true,
     "integrated_at": "2026-10-10T07:59:39Z"
   },
@@ -165,7 +165,7 @@
           "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
         }
       ],
-      "next_action": "Implement the next ready WorkUnit: Generic AgentRuntime to existing Task Control evidence adapter; preserve the SPEC-277 DORMANT_UNRESOLVED disposition until broader authority/relevance reconciliation is evidenced.",
+      "next_action": "Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
       "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
       "residual_requirements": [
         "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -353,9 +353,11 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:00:24.084532Z",
+  "updated_at": "2026-10-10T08:12:32.746196Z",
   "verification": {
-    "baseline_issues": [],
+    "baseline_issues": [
+      "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
+    ],
     "evidence": [
       {
         "command": "Node TypeScript syntax checks on AgentRuntime, recovery, registry, and contract tests; git diff --check",
@@ -408,6 +410,52 @@
         "profile": "integration",
         "result": "SKIPPED",
         "revision": "085cc0420fd5b16b9e9189489f1cb97158aff732"
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts server/services/__tests__/agentRuntimeTraceService.test.ts server/services/__tests__/skillRuntimeOpenAiAgents.test.ts",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a",
+        "test_files": 4,
+        "tests": 26
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/jobControlPlane.test.ts -t \"fences stale workers|fences a reporter|late completion after cancellation or fencing\"",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a",
+        "skipped": 67,
+        "tests": 3
+      },
+      {
+        "command": "rg -n 'createOccurrence\\(|team\\.run_recovery|startAutoTeamRecoverySweep|CloudflareCronSchedulerAdapter' --glob '!node_modules/**' --glob '!**/node_modules/**' .",
+        "profile": "quick",
+        "reason": "Source audit found timer policy/inventory and adapter implementation/tests, but no production createOccurrence caller or team.run_recovery dispatch source; external Cloudflare schedule remains unverified.",
+        "result": "PASS",
+        "revision": "00877132d21f2a675a143aefd6db679ef51fc66a"
+      },
+      {
+        "command": "JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/cloudflareJobAdapters.test.ts server/services/__tests__/jobControlPlane.test.ts -t \"timezone-validated Cron job intent|rejects a Cron occurrence whose tenant|creates one canonical job and outbox intent|deduplicated retry outbox|callback insert that loses the unique race\"",
+        "profile": "quick",
+        "result": "PASS",
+        "revision": "4707dd37439bdf6ce19442ff4fd68aca5e30687f",
+        "skipped": 76,
+        "test_files": 2,
+        "tests": 5
+      },
+      {
+        "command": "RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=postgresql://smartspec:<redacted>@127.0.0.1:5432/smartspec_test JWT_SECRET=<test-only value> pnpm exec vitest run server/services/__tests__/spec224PostgresIntegration.integration.test.ts",
+        "profile": "integration",
+        "reason": "Local smartspec_test schema is behind the current worker_jobs model: PostgreSQL reports missing column activeDedupeKey. No migration was run. The harness cleanup was verified for the two fixture tenant/user/job scopes created by this run; all counts are zero. This validates neither AutoTeam recovery execution nor production scheduling.",
+        "result": "BLOCKED",
+        "revision": "65865cbe361e5882fd9bc44e19474f2a705dc2e3"
+      },
+      {
+        "command": "rg -n -i 'agency|workpacks|work/request|sandbox_jobs|opensandbox|custom workflow|\\\"workflows\\\"' apps/web/drizzle --glob '*.sql'",
+        "profile": "quick",
+        "reason": "Migration source includes retired Agency and legacy workflow references; full db:migrate on a fresh database is not an approved UAT preparation path and was not run.",
+        "result": "PASS",
+        "revision": "e14b941e3e720343b7bc524d7695a4c77967340a"
       }
     ],
     "freshness": "FRESH",
@@ -415,7 +463,7 @@
       "quick",
       "integration"
     ],
-    "sha": "085cc0420fd5b16b9e9189489f1cb97158aff732",
+    "sha": "e14b941e3e720343b7bc524d7695a4c77967340a",
     "status": "PARTIAL",
     "task_regressions": []
   }
