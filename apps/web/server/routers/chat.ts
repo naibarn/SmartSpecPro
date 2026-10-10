@@ -135,7 +135,6 @@ import {
 } from "../services/smartCharacterPromptOutput";
 import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
 import type { UnifiedExecutionResult } from "../services/executors/types";
-import { resolveTrustedHostAppContext } from "../services/smartAiHubRuntimeContext";
 
 type SmartCharacterPromptValidation = ReturnType<
   typeof validateSmartCharacterPromptOutput
@@ -2691,10 +2690,7 @@ export const chatRouter = router({
       if (isLLMSkill) {
         const skillTenantId =
           ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
-        const trustedAppContext = await resolveTrustedHostAppContext({
-          tenantId: skillTenantId,
-          host: ctx.req?.hostname || ctx.req?.get?.("host")?.split(":")[0] || null,
-        });
+        const trustedAppContext = ctx.trustedAppContext ?? null;
         // ── Unified Orchestrator Path (feature-flagged) ─────────────────
         // When unifiedSkillExecution is enabled, delegate to the unified
         // orchestrator instead of the inline code below. On orchestrator

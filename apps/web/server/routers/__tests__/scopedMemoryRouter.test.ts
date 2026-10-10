@@ -10,7 +10,6 @@ const {
   mockPromoteMemory,
   mockRequireTenantId,
   mockGetDb,
-  mockResolveAppContext,
   mockIssueReceipt,
   mockValidateReceipt,
 } = vi.hoisted(() => ({
@@ -23,7 +22,6 @@ const {
   mockPromoteMemory: vi.fn(),
   mockRequireTenantId: vi.fn(() => "tenant-42"),
   mockGetDb: vi.fn(),
-  mockResolveAppContext: vi.fn(),
   mockIssueReceipt: vi.fn(),
   mockValidateReceipt: vi.fn(),
 }));
@@ -47,7 +45,6 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../services/smartAiHubRuntimeContext", () => ({
-  resolveTrustedHostAppContext: mockResolveAppContext,
   issueProjectResolutionReceipt: mockIssueReceipt,
   validateProjectResolutionReceipt: mockValidateReceipt,
 }));
@@ -128,7 +125,7 @@ function createProjectMemory(projectId: string) {
 
 function searchProjectMemory(projectId: string) {
   return scopedMemoryRouter.search({
-    ctx: makeCtx(),
+    ctx: makeTrustedCtx(),
     input: {
       scopes: [{ type: "project", id: projectId }],
       query: "project note",
@@ -141,7 +138,23 @@ function makeCtx() {
   return {
     tenantId: "tenant-42",
     user: { id: 7, currentTenantId: 42 },
-    req: { hostname: "notes.example.com" },
+    req: { hostname: "notes.example.com", headers: { host: "notes.example.com" } },
+    trustedAppContext: null,
+  } as any;
+}
+
+function makeTrustedCtx() {
+  return {
+    ...makeCtx(),
+    trustedAppContext: {
+      version: "spec304-trusted-host-app-context.v1",
+      tenantId: "tenant-42",
+      hostAppId: "app-42",
+      publicAppId: "public-app-42",
+      routeProvenance: "verified_custom_domain_alias",
+      permissionCeiling: { projectMemoryRead: "authorized_bound_project_only", durableProjectMemoryWrite: false },
+      policyVersion: "spec269-app-project-memory.phase1.v1",
+    },
   } as any;
 }
 
@@ -159,15 +172,6 @@ describe("scopedMemoryRouter", () => {
     mockDeleteMemory.mockResolvedValue(true);
     mockDeleteMemories.mockResolvedValue(2);
     mockPromoteMemory.mockResolvedValue(undefined);
-    mockResolveAppContext.mockResolvedValue({
-      version: "spec304-trusted-host-app-context.v1",
-      tenantId: "tenant-42",
-      hostAppId: "app-42",
-      publicAppId: "public-app-42",
-      routeProvenance: "verified_custom_domain_alias",
-      permissionCeiling: { projectMemoryRead: "authorized_bound_project_only", durableProjectMemoryWrite: false },
-      policyVersion: "spec269-app-project-memory.phase1.v1",
-    });
     mockIssueReceipt.mockResolvedValue({ receiptId: "receipt-1" });
     mockValidateReceipt.mockResolvedValue({ authorized: false, reason: "REVOKED_OR_UNBOUND" });
     mockGetDb.mockResolvedValue({
@@ -336,7 +340,7 @@ describe("scopedMemoryRouter", () => {
     mockValidateReceipt.mockResolvedValueOnce({ authorized: true, canonicalProjectId: "canonical-project-1" });
 
     await expect(scopedMemoryRouter.get({
-      ctx: makeCtx(),
+      ctx: makeTrustedCtx(),
       input: { memoryId: "m1", conversationId: 9 },
     })).resolves.toMatchObject({ id: "m1" });
     expect(mockValidateReceipt).toHaveBeenCalledWith(expect.objectContaining({ operation: "read", appId: "app-42" }));
@@ -348,6 +352,29 @@ describe("scopedMemoryRouter", () => {
       ctx: makeCtx(),
       input: { scopes: [{ type: "project", id: "canonical-project-1" }], query: "project note" },
     })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockSearchMemories).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["spoofed Host", { host: "notes.example.com" }],
+    ["spoofed X-Forwarded-Host", { host: "smartaihub.app", "x-forwarded-host": "notes.example.com" }],
+    ["conflicting forwarded hosts", { host: "smartaihub.app", "x-forwarded-host": "notes.example.com, tasks.example.com" }],
+    ["same-tenant wrong App alias", { host: "tasks.example.com" }],
+    ["cross-tenant App alias", { host: "foreign.example.net" }],
+  ] as Array<[string, Record<string, string>]>)("fails closed at the router boundary for %s", async (_caseName, headers) => {
+    configureProjectScopeDatabase({
+      memories: [{ ownerType: "project", ownerId: "canonical-project-1" }],
+      conversations: [{ id: 9, tenantId: "tenant-42", userId: 7, projectId: "canonical-project-1" }],
+    });
+    await expect(scopedMemoryRouter.search({
+      ctx: { ...makeCtx(), req: { headers, hostname: headers.host } },
+      input: {
+        scopes: [{ type: "project", id: "canonical-project-1" }],
+        query: "private project marker",
+        conversationId: 9,
+      },
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockIssueReceipt).not.toHaveBeenCalled();
     expect(mockSearchMemories).not.toHaveBeenCalled();
   });
 

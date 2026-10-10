@@ -6,6 +6,7 @@ import { debugLog } from "./logger";
 import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import { resolveRequestTenantId } from "../services/tenantContext";
+import type { TrustedAppRuntimeContext } from "../services/smartAiHubRuntimeContext";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -21,6 +22,8 @@ export type TrpcContext = {
   tenantId: string | null;
   /** The public URL for the current tenant (e.g., https://smartaihub.app) for external services */
   publicUrl: string | null;
+  /** App route provenance is unavailable from the current ingress; request host headers never populate this. */
+  trustedAppContext: TrustedAppRuntimeContext | null;
 };
 
 export async function createContext(
@@ -108,5 +111,6 @@ export async function createContext(
     protectedSurfaceToken,
     tenantId,
     publicUrl,
+    trustedAppContext: null,
   };
 }

@@ -9,7 +9,6 @@ import {
 
 const mocks = vi.hoisted(() => ({
   rows: new Map<unknown, unknown[]>(),
-  resolveRoute: vi.fn(),
 }));
 
 vi.mock("../../db", () => ({
@@ -29,13 +28,8 @@ vi.mock("../../db", () => ({
   }),
 }));
 
-vi.mock("../appIdentityRepository", () => ({
-  resolveAppRouteForTenant: mocks.resolveRoute,
-}));
-
 import {
   issueProjectResolutionReceipt,
-  resolveTrustedHostAppContext,
   validateProjectResolutionReceipt,
   type TrustedAppRuntimeContext,
 } from "../smartAiHubRuntimeContext";
@@ -80,27 +74,13 @@ function setRows(overrides: {
 describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
   beforeEach(() => {
     setRows();
-    mocks.resolveRoute.mockReset();
-    mocks.resolveRoute.mockResolvedValue({
-      appId: "app-a",
-      publicAppId: "public-app-a",
-      tenantId: "tenant-a",
-    });
   });
 
   it("issues evidence from a server-owned conversation binding and current project ACL", async () => {
-    const appContext = await resolveTrustedHostAppContext({ tenantId: "tenant-a", host: "notes.example.com" });
-    expect(appContext).toMatchObject({
-      hostAppId: "app-a",
-      publicAppId: "public-app-a",
-      routeProvenance: "verified_custom_domain_alias",
-      permissionCeiling: { durableProjectMemoryWrite: false },
-    });
-
     const receipt = await issueProjectResolutionReceipt({
       tenantId: "tenant-a",
       userId: 7,
-      appContext,
+      appContext: activeAppContext,
       conversationId: 22,
       sessionId: "session-22",
       correlationId: "trace-22",
@@ -246,23 +226,11 @@ describe("SPEC-302 invocation-scoped ProjectResolutionReceipt", () => {
     })).resolves.toEqual({ authorized: false, reason: "DURABLE_WRITE_RECEIPT_REQUIRED" });
   });
 
-  it("fails closed when route alias resolution fails", async () => {
-    mocks.resolveRoute.mockRejectedValueOnce(new Error("db unavailable"));
-    await expect(resolveTrustedHostAppContext({ tenantId: "tenant-a", host: "notes.example.com" }))
-      .resolves.toBeNull();
-  });
-
-  it("uses the App route tenant from the server caller and rejects a mismatched alias result", async () => {
-    mocks.resolveRoute.mockResolvedValueOnce({
-      appId: "app-other", publicAppId: "public-app-other", tenantId: "tenant-b",
-    });
-    await expect(resolveTrustedHostAppContext({ tenantId: "tenant-a", host: "notes.example.com" }))
-      .resolves.toBeNull();
-  });
-
   it("does not mutate the shared canonical App identity records", async () => {
-    const appContext = await resolveTrustedHostAppContext({ tenantId: "tenant-a", host: "notes.example.com" });
-    expect(appContext?.hostAppId).toBe("app-a");
+    const receipt = await issueProjectResolutionReceipt({
+      tenantId: "tenant-a", userId: 7, appContext: activeAppContext, conversationId: 22,
+    });
+    expect(receipt.appId).toBe("app-a");
     expect(mocks.rows.get(appIdentities)).toBeUndefined();
     expect(mocks.rows.get(canonicalProjectMemberships)).toBeUndefined();
     expect(mocks.rows.get(canonicalProjectAppBindings)).toBeUndefined();

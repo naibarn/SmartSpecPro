@@ -19,8 +19,8 @@ import {
 import * as memoryService from "../services/scopedMemoryService";
 import {
   issueProjectResolutionReceipt,
-  resolveTrustedHostAppContext,
   validateProjectResolutionReceipt,
+  type TrustedAppRuntimeContext,
 } from "../services/smartAiHubRuntimeContext";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
@@ -141,7 +141,7 @@ async function assertScopeAccess(params: {
   ownerType: "user" | "agent" | "team" | "room" | "project" | "run";
   ownerId: string;
   access: "read" | "write";
-  host?: string | null;
+  appContext?: TrustedAppRuntimeContext | null;
   conversationId?: number;
 }): Promise<void> {
   switch (params.ownerType) {
@@ -223,10 +223,10 @@ async function assertScopeAccess(params: {
         });
       }
       {
-        const appContext = await resolveTrustedHostAppContext({
-          tenantId: params.tenantId,
-          host: params.host,
-        });
+        const appContext = params.appContext ?? null;
+        if (!appContext) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Trusted App ingress context is unavailable" });
+        }
         const receipt = await issueProjectResolutionReceipt({
           tenantId: params.tenantId,
           userId: params.userId,
@@ -260,7 +260,7 @@ async function assertMemoryAccess(
   userId: number,
   memoryId: string,
   access: "read" | "write",
-  host?: string | null,
+  appContext?: TrustedAppRuntimeContext | null,
   conversationId?: number,
 ) {
   const db = await getDb();
@@ -280,17 +280,13 @@ async function assertMemoryAccess(
     ownerType: metadata.ownerType,
     ownerId: metadata.ownerId,
     access,
-    host,
+    appContext,
     conversationId,
   });
 
   const memory = await memoryService.getMemory(memoryId, tenantId);
   if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
   return memory;
-}
-
-function trustedRequestHost(ctx: { req?: { hostname?: string; get?: (name: string) => string | undefined } }): string | null {
-  return ctx.req?.hostname || ctx.req?.get?.("host")?.split(":")[0] || null;
 }
 
 export const scopedMemoryRouter = router({
@@ -325,7 +321,7 @@ export const scopedMemoryRouter = router({
         ownerType: input.ownerType,
         ownerId: input.ownerId,
         access: "write",
-        host: trustedRequestHost(ctx),
+        appContext: ctx.trustedAppContext ?? null,
       });
       return memoryService.createMemory({
         tenantId,
@@ -354,7 +350,7 @@ export const scopedMemoryRouter = router({
           ownerType: scope.type,
           ownerId: scope.id,
           access: "read",
-          host: trustedRequestHost(ctx),
+          appContext: ctx.trustedAppContext ?? null,
           conversationId: input.conversationId,
         });
       }
@@ -375,7 +371,7 @@ export const scopedMemoryRouter = router({
         ctx.user!.id,
         input.memoryId,
         "read",
-        trustedRequestHost(ctx),
+        ctx.trustedAppContext ?? null,
         input.conversationId,
       );
       return memory;
@@ -392,7 +388,7 @@ export const scopedMemoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
       const { memoryId, ...updates } = input;
-      await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write", trustedRequestHost(ctx));
+      await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write", ctx.trustedAppContext ?? null);
       const memory = await memoryService.updateMemory(memoryId, tenantId, updates);
       if (!memory) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return memory;
@@ -402,7 +398,7 @@ export const scopedMemoryRouter = router({
     .input(z.object({ memoryId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
-      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write", trustedRequestHost(ctx));
+      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write", ctx.trustedAppContext ?? null);
       const deleted = await memoryService.deleteMemory(input.memoryId, tenantId);
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Memory not found" });
       return { success: true };
@@ -415,7 +411,7 @@ export const scopedMemoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
       for (const memoryId of input.memoryIds) {
-        await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write", trustedRequestHost(ctx));
+        await assertMemoryAccess(tenantId, ctx.user!.id, memoryId, "write", ctx.trustedAppContext ?? null);
       }
       const deletedCount = await memoryService.deleteMemories(input.memoryIds, tenantId);
       return { success: true, deletedCount };
@@ -430,14 +426,14 @@ export const scopedMemoryRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
-      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write", trustedRequestHost(ctx));
+      await assertMemoryAccess(tenantId, ctx.user!.id, input.memoryId, "write", ctx.trustedAppContext ?? null);
       await assertScopeAccess({
         tenantId,
         userId: ctx.user!.id,
         ownerType: input.toOwnerType,
         ownerId: input.toOwnerId,
         access: "write",
-        host: trustedRequestHost(ctx),
+        appContext: ctx.trustedAppContext ?? null,
       });
       await memoryService.promoteMemory(
         input.memoryId,

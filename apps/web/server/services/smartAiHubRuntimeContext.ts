@@ -10,7 +10,6 @@ import {
   users,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { resolveAppRouteForTenant } from "./appIdentityRepository";
 import {
   CANONICAL_PROJECT_CONTEXT_POLICY_VERSION,
   resolveCanonicalProjectContext,
@@ -76,38 +75,6 @@ function hasPhaseOneReadCeiling(
     context.permissionCeiling.projectMemoryRead === "authorized_bound_project_only" &&
     context.permissionCeiling.durableProjectMemoryWrite === false
   );
-}
-
-/** Resolve only a verified App route alias under the server-established tenant. */
-export async function resolveTrustedHostAppContext(input: {
-  tenantId: string | null | undefined;
-  host: string | null | undefined;
-}): Promise<TrustedAppRuntimeContext | null> {
-  if (!input.tenantId || !input.host) return null;
-  const host = input.host.trim().toLowerCase().replace(/:\d+$/, "");
-  if (!host) return null;
-  try {
-    const app = await resolveAppRouteForTenant({
-      tenantId: input.tenantId,
-      kind: "custom-domain",
-      value: host,
-    });
-    if (!app || app.tenantId !== input.tenantId) return null;
-    return Object.freeze({
-      version: "spec304-trusted-host-app-context.v1",
-      tenantId: app.tenantId,
-      hostAppId: app.appId,
-      publicAppId: app.publicAppId,
-      routeProvenance: "verified_custom_domain_alias",
-      permissionCeiling: Object.freeze({
-        projectMemoryRead: "authorized_bound_project_only",
-        durableProjectMemoryWrite: false,
-      }),
-      policyVersion: SMARTAIHUB_RUNTIME_CONTEXT_POLICY_VERSION,
-    });
-  } catch {
-    return null;
-  }
 }
 
 export interface IssueProjectResolutionReceiptInput {

@@ -784,11 +784,9 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
       selectedSkillId: null,
       confidence: 0,
       source: "fallback",
-      agencyEscalation: false,
       routingStrategy: null,
       taskProfile: null,
       candidateSkills: null,
-      hybridPlan: null,
       skillMeta: null,
     });
   });
