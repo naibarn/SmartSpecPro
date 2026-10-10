@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 358 unresolved of 358
-- Next action: Continue Issue #435 with W2: implement and verify Runner-owned Moli process/profile and CDP-only protocol/network isolation using the existing Feature 195 worker_jobs and Feature 197 Runner boundaries. Keep Moli undispatched until those gates pass.
-- Manifest generation: 37
+- Next action: Continue W2 now: wire the app Runner-owned Moli process to the merged non-production isolation boundary and test cancellation/cleanup. W3 waits for an explicitly approved disposable worker_jobs database and Runner authorization target. W4 fixed dependency candidates are identified; reproducible rebuild, publisher provenance, deployed-target inventory, and notices review remain open.
+- Manifest generation: 40
 
 ## Source-declared status and relationship claims
 
