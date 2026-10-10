@@ -4,8 +4,8 @@ import { promisify } from "node:util";
 import postgres from "postgres";
 import { closeDb } from "../../db";
 import {
-  installSpec277AutoTeamScheduleSchema,
-} from "../../services/__tests__/support/spec277AutoTeamScheduleSchema";
+  installSpec277AutoTeamRuntimeSchema,
+} from "../../services/__tests__/support/spec277AutoTeamRuntimeSchema";
 import {
   createSpec277DisposablePostgres,
 } from "../../services/__tests__/support/spec277DisposablePostgres";
@@ -25,7 +25,7 @@ describe("AutoTeam recovery scheduler persistence", () => {
     const client = postgres(fixture.databaseUrl, { max: 2, connect_timeout: 3 });
     try {
       await fixture.assertOwned();
-      await installSpec277AutoTeamScheduleSchema(client);
+      await installSpec277AutoTeamRuntimeSchema(client);
       const childEnv = {
         ...process.env,
         DATABASE_URL: fixture.databaseUrl,

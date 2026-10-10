@@ -18,7 +18,7 @@ const dialect = new PgDialect();
  * scheduled job producer. Cross-domain foreign keys are intentionally omitted;
  * this fixture proves scheduler/job/outbox persistence, not full migrations.
  */
-export async function installSpec277AutoTeamScheduleSchema(client: postgres.Sql) {
+export async function installSpec277AutoTeamRuntimeSchema(client: postgres.Sql) {
   const configs = ([
     workers,
     workerJobs,
