@@ -33,7 +33,38 @@ export interface TeamTraceProjectionRecord {
   traceId: string | null;
   sequence: number;
   eventName: string;
+  severity: "info" | "warn" | "error";
+  summary: string;
   redactedPayload: Record<string, unknown>;
+}
+
+function toTaskControlMilestone(eventName: string): {
+  eventName: string;
+  severity: TeamTraceProjectionRecord["severity"];
+  summary: string;
+} | null {
+  switch (eventName) {
+    case "response.completed":
+      return {
+        eventName: "task.step_completed",
+        severity: "info",
+        summary: "Task step completed.",
+      };
+    case "response.failed":
+      return {
+        eventName: "task.step_failed",
+        severity: "error",
+        summary: "Task step needs recovery.",
+      };
+    case "runtime.cancelled":
+      return {
+        eventName: "task.step_cancelled",
+        severity: "warn",
+        summary: "Task step was cancelled.",
+      };
+    default:
+      return null;
+  }
 }
 
 export interface AgentRuntimeTraceRepository {
@@ -104,7 +135,8 @@ export async function persistAgentRuntimeTraceEvents(
       redactedPayload: redactTracePayload(event.redactedPayload),
     });
 
-    if (input.surface === "team" && input.runId && input.roomId) {
+    const milestone = toTaskControlMilestone(event.eventName);
+    if (input.surface === "team" && input.runId && input.roomId && milestone) {
       await input.repository.upsertTeamTraceEvent?.({
         tenantId: input.tenantId,
         runId: input.runId,
@@ -114,7 +146,9 @@ export async function persistAgentRuntimeTraceEvents(
         attemptId: event.attemptId ?? null,
         traceId: event.traceId ?? null,
         sequence: event.sequence,
-        eventName: event.eventName,
+        eventName: milestone.eventName,
+        severity: milestone.severity,
+        summary: milestone.summary,
         redactedPayload: redactTracePayload(event.redactedPayload),
       });
     }
