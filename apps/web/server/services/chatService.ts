@@ -311,6 +311,13 @@ export async function updateConversation(
     });
   }
 
+  if (nextProjectId !== undefined && nextProjectId !== currentConversation.projectId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Conversation project binding is immutable; create a new conversation to change projects",
+    });
+  }
+
   await db
     .update(conversations)
     .set({ ...updateData, updatedAt: new Date() })

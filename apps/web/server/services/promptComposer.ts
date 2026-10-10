@@ -23,8 +23,7 @@ import {
   type MemorySearchResult,
 } from "./scopedMemoryService";
 import { buildPersonaPromptSegments, type PersonaPromptSegments } from "./personaService";
-import { getEntityMemories } from "./chatService";
-import { getProjectSummaries } from "./memoryService";
+import { getEntityMemoriesForContext, getProjectSummaries } from "./memoryService";
 import {
   estimateTokens,
   truncateToTokenBudget,
@@ -601,9 +600,10 @@ export async function composePrompt(
     budget.entityMemory >= ENTITY_MEMORY_FLOOR
   ) {
     try {
-      const entityMems = await getEntityMemories(
+      const entityMems = await getEntityMemoriesForContext(
         input.initiatedByUserId,
         undefined,
+        authorizedProjectId,
         profile.personaId ?? null,
       );
       if (entityMems.length > 0) {
@@ -611,8 +611,10 @@ export async function composePrompt(
           .map((em) => `- [${em.entityType}] ${em.entityName}: ${em.facts.join("; ")}`)
           .join("\n");
         const truncatedEntity = truncateToTokenBudget(entityContent, budget.entityMemory);
-        messages.push({ role: "system", content: `Known facts about the user:\n${truncatedEntity}` });
-        usedTokens += estimateTokens(truncatedEntity);
+        addScopedContextMessage(
+          { role: "system", content: `Known facts about the user:\n${truncatedEntity}` },
+          estimateTokens(truncatedEntity),
+        );
       }
     } catch (err) {
       console.warn("Entity memory retrieval failed:", err);
