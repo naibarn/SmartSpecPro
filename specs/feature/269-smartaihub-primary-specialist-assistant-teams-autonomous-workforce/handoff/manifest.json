@@ -34,14 +34,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+    "expected_canonical_sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
     "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
   },
   "continuation": {
     "next_action": "Run remaining direct T-01–T-23 acceptance against current main. Keep App-bound Project reads fail-closed until trusted ingress provenance is proven; preserve Global/Personal paths, PR #443 provider authorization, and team-room persistent-memory isolation.",
     "next_ready_workunit": "T01_T23_DIRECT_MEMORY_ACCEPTANCE",
     "reactivation_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing.",
-    "resume_point": "PR #462 merged at 3cc834f874361c64307631d1371f9109957c8ed3. Prompt memory rejects unknown Projects and cross-Project or inconsistent owner/project retrieval results after fresh canonical ACL validation; the exact merged SHA passed 7 focused files (102 tests, 11 TODO). Continue direct T-01–T-23 acceptance; component fixtures are not direct acceptance.",
+    "resume_point": "PR #469 merged at 26df7b3a341370063fff65b0d0ee21057ac6d232. Added and post-merge verified a component-level check that absent trusted App context issues/validates no Project receipt, passes null Project scope to reads, and retains explicitly global entity memory (4 files, 78 passed, 1 TODO). This is not direct T-05 acceptance, explicit NO_PROJECT resolution, write-denial acceptance, persisted isolation, or deployed ingress. Continue direct T-01–T-23 acceptance; keep App-bound Project reads fail-closed until trusted ingress provenance is proven and durable Project writes denied pending Phase 2.",
     "waiting_predicate": "A server-authenticated App route assertion is available in a non-production ingress, or the relevant direct tests can prove fail-closed behavior without relying on production routing."
   },
   "continuation_assessment": {
@@ -126,7 +126,7 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 18,
+  "generation": 19,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
     "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
@@ -173,9 +173,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+    "canonical_sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:14:00Z"
+    "integrated_at": "2026-10-10T07:25:51Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -453,7 +453,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:15:29.385959Z",
+  "updated_at": "2026-10-10T07:28:21.543601Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -506,11 +506,19 @@
         "scope": "SPEC-271 acceptance receipt flow / independent oracle / portable receipt / durable-store unit contracts and SPEC-224 DevelopmentRun in-memory integration: 5 files, 37 tests passed on exact canonical SHA. Synthetic adapters only; no process restart durability, protected dispatch, or direct T-01–T-23 acceptance established.",
         "source_sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
+        "kind": "TARGETED_REGRESSION",
+        "path": "apps/web/server/services/__tests__/contextBuilder.test.ts",
+        "scope": "PR #469: without trusted App context, chat context assembly issues/validates no Project receipt, sends null Project scope to scoped/entity reads, and retains explicitly global entity memory. Exact integrated SHA post-merge focused run: 4 files, 78 passed, 1 TODO. Component-level evidence only; not T-05 direct acceptance, explicit NO_PROJECT resolution, write-denial acceptance, persisted isolation, or deployed ingress.",
+        "source_sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "45fd0a0fc708fc92a6e86477f6e7521255dd3dbf",
+    "sha": "26df7b3a341370063fff65b0d0ee21057ac6d232",
     "status": "PARTIAL",
     "task_regressions": []
   }
