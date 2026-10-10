@@ -69,6 +69,8 @@ export interface AgentProgressInput {
   previousProgress?: number;
   previousPeakProgress: number;
   activeExternalOperation?: boolean;
+  /** An existing tenant-scoped detector may contribute a loop signal. */
+  externalLoopDetected?: boolean;
   waitingOn?: { kind: string; dependencyRef: string } | null;
   requiredCriteria: AgentProgressCriterion[];
   evidence: AgentProgressEvidence[];
@@ -101,6 +103,7 @@ function validRef(value: string): boolean {
 }
 
 function hasNoEffectLoop(input: AgentProgressInput): boolean {
+  if (input.externalLoopDetected) return true;
   if (!Number.isSafeInteger(input.loopDetectionMinRepeats) || input.loopDetectionMinRepeats < 2) {
     return false;
   }
@@ -237,15 +240,19 @@ export function assessAgentProgress(input: AgentProgressInput): AgentProgressAss
     reasonCodes.push(
       evidence.length === 0 ? "outcome_evidence_missing" : "required_outcomes_unverified",
     );
-  } else if (progressDelta > 0) {
-    status = "PROGRESSING";
-    reasonCodes.push("verified_progress_delta");
   } else if (hasNoEffectLoop(input)) {
     status = "LOOPING";
-    reasonCodes.push("repeated_tool_call_without_verified_effect");
+    reasonCodes.push(
+      input.externalLoopDetected
+        ? "existing_loop_guard_triggered"
+        : "repeated_tool_call_without_verified_effect",
+    );
   } else if (isStalled(input)) {
     status = "STALLED";
     reasonCodes.push("stale_heartbeat_and_no_evidence_progress");
+  } else if (progressDelta > 0) {
+    status = "PROGRESSING";
+    reasonCodes.push("verified_progress_delta");
   } else {
     status = "WORKING";
     reasonCodes.push(
