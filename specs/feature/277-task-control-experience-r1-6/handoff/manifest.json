@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+    "expected_canonical_sha": "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Implement the Generic AgentRuntime-to-Task-Control evidence adapter; then add durable asynchronous evaluation using worker_jobs/outbox and continue independent recovery/test work.",
-    "next_ready_workunit": "Generic AgentRuntime-to-Task-Control evidence adapter and focused contract tests",
+    "next_action": "Complete focused verification for PR #473, then wire asynchronous evaluation and bounded authorized recovery through the existing worker_jobs/outbox control plane; preserve all unresolved requirements and verify in non-production UAT.",
+    "next_ready_workunit": "Existing worker_jobs/outbox-backed asynchronous Task Control evaluation, with replay/restart/idempotency/stale-lease/failure-injection contract tests",
     "reactivation_predicate": null,
-    "resume_point": "Canonical HEAD 564ccc092ca4be93dfc12b8d548bd729bfdbe78b includes PR #466, SPEC-277 handoff PR #468, and post-#468 changes #469/#470. Continue from this exact current main without changing the dirty primary checkout.",
+    "resume_point": "PR #473 merged at 89d3ea653542a1774b96e1b2f3abfb5dd3fc6326. Generic AgentRuntime traces now persist to agent_runtime_traces and Team traces project bounded metadata to the existing Task Control trace timeline. Focused Vitest did not run because vitest is not installed in the worktree.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -102,22 +102,25 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "3cca4b4b720c2684f8b2749a5450b2113f81b1b4"
+      "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+      "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326"
     ],
     "mapping": [],
     "source_paths": [
       "apps/web/server/services/autoTeamProgressProjection.ts",
       "apps/web/server/services/autoTeamLedgerService.ts",
-      "apps/web/client/src/components/orchestrator/AutoTeamLedgerPanel.tsx"
+      "apps/web/client/src/components/orchestrator/AutoTeamLedgerPanel.tsx",
+      "apps/web/server/services/agentRuntime/traceRepository.ts",
+      "apps/web/server/services/agentRuntime/skillRuntimeOrchestrator.ts"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "origin/main",
-    "canonical_sha": "3cca4b4b720c2684f8b2749a5450b2113f81b1b4",
+    "canonical_sha": "89d3ea653542a1774b96e1b2f3abfb5dd3fc6326",
     "integrated": true,
-    "integrated_at": "2026-10-10T07:21:15Z"
+    "integrated_at": "2026-10-10T07:41:50Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -342,7 +345,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T07:35:40.924609Z",
+  "updated_at": "2026-10-10T07:42:26.809150Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
