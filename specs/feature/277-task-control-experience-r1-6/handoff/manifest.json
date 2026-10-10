@@ -25,11 +25,11 @@
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
-    "next_action": "Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
-    "next_ready_workunit": "AutoTeam recovery UAT on a dedicated current-schema non-production DB using no retired systems, plus external Cloudflare scheduler invocation verification",
-    "reactivation_predicate": "Resume UAT when the isolated current-schema database and external scheduler invocation evidence are available.",
-    "resume_point": "Canonical main SHA e14b941e3e720343b7bc524d7695a4c77967340a. Focused AutoTeam/AgentRuntime suites pass (26), stale-lease fencing passes (3), and worker_jobs/outbox plus Cron adapter contracts pass (5). Actual DB UAT is blocked because shared local smartspec_test lacks worker_jobs.activeDedupeKey. Full migration preparation is prohibited because migration source includes retired Agency/workflow systems; no migration was run. Fixtures created by the failed UAT were verified removed.",
-    "waiting_predicate": "A dedicated current-schema non-production database or approved scoped schema excluding retired systems is available, and external Cloudflare schedule invocation evidence is accessible."
+    "next_action": "Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+    "next_ready_workunit": "Recovery scan trigger integration through existing worker_jobs/outbox, followed by actual AutoTeam recovery UAT on a dedicated current-schema non-production DB",
+    "reactivation_predicate": "Resume implementation after the trigger design is approved; run UAT when a dedicated current-schema non-production DB is available.",
+    "resume_point": "Canonical main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f. Focused AutoTeam/AgentRuntime (26), stale-lease (3), and worker/outbox plus Cron adapter (5) contract tests pass. Under hard cutover, current timer policy returns false for startAutoTeamRecoverySweep; source audit finds no production Cloudflare Cron caller. Need an approved trigger design using existing job control plane. UAT DB remains blocked: smartspec_test lacks worker_jobs.activeDedupeKey. Full migration path includes retired systems and was not run.",
+    "waiting_predicate": "An approved recovery scan trigger design using existing worker_jobs/outbox scheduling is selected, and a dedicated current-schema non-production DB is available."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -48,7 +48,7 @@
         "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
       }
     ],
-    "next_action": "Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+    "next_action": "Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
     "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
     "residual_requirements": [
       "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 17,
+  "generation": 18,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -165,7 +165,7 @@
           "source_sha": "4f5a12d2d9156da694c6cab74f431062394ed4bb"
         }
       ],
-      "next_action": "Obtain a dedicated already-migrated non-production database with current worker_jobs and AutoTeam tables, or use an approved scoped schema path that excludes retired Agency/workflow systems. Then run actual AutoTeam worker_jobs/outbox recovery UAT, capture a real run state change, and verify external Cloudflare scheduler invocation. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
+      "next_action": "Choose and implement an authorized recovery-scan trigger using existing worker_jobs/outbox scheduling; current hard-cutover policy disables the in-process scan and no Cloudflare Cron caller exists in repository source. Then run AutoTeam recovery UAT on a dedicated current-schema non-production DB. Keep SPEC-277 PARTIAL and DORMANT_UNRESOLVED.",
       "rationale": "The explicit user request on 2026-10-10 directs continued AutoTeam/SPEC-277 implementation, and PR #466 provides integrated but partial evidence for four SPEC-277 requirements. This decision authorizes continuation only; repository evidence still does not prove broad Spec authority/relevance, so disposition remains DORMANT_UNRESOLVED and completion is false.",
       "residual_requirements": [
         "Generic AgentRuntime-to-Task-Control evidence adapter and contract tests.",
@@ -353,7 +353,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:12:32.746196Z",
+  "updated_at": "2026-10-10T08:16:02.790954Z",
   "verification": {
     "baseline_issues": [
       "Local smartspec_test schema is stale for current worker_jobs code (activeDedupeKey missing); database-backed control-plane UAT blocked pending an isolated migrated test database."
@@ -456,6 +456,13 @@
         "reason": "Migration source includes retired Agency and legacy workflow references; full db:migrate on a fresh database is not an approved UAT preparation path and was not run.",
         "result": "PASS",
         "revision": "e14b941e3e720343b7bc524d7695a4c77967340a"
+      },
+      {
+        "command": "FEATURE_186_HARD_CUTOVER=true node --import tsx --input-type=module -e <read-only recovery timer policy assertion>",
+        "profile": "quick",
+        "reason": "For startAutoTeamRecoverySweep, the canonical source classifies the timer as external-cloudflare-scheduler and shouldRunFeature192InProcessTimer returns false under hard cutover. Repository source audit has no production Cloudflare Cron caller, so no active recovery trigger is evidenced in the current code/config path.",
+        "result": "PASS",
+        "revision": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f"
       }
     ],
     "freshness": "FRESH",
@@ -463,7 +470,7 @@
       "quick",
       "integration"
     ],
-    "sha": "e14b941e3e720343b7bc524d7695a4c77967340a",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }
