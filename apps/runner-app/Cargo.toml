@@ -5,6 +5,10 @@ description = "Headless SmartAIHub Runner for local devices and shared container
 authors = ["SmartAIHub"]
 edition = "2021"
 
+[features]
+default = []
+spec208-moli-acceptance = []
+
 [[bin]]
 name = "smartaihub-runner"
 path = "src/main.rs"

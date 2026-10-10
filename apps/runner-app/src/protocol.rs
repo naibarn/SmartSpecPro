@@ -120,9 +120,19 @@ impl RunnerJobCommand {
         }
         let browser_command =
             self.execution_kind == "computer_use.browser" && self.adapter_id == "browser.v1";
+        #[cfg(feature = "spec208-moli-acceptance")]
+        let moli_acceptance_command = self.execution_kind == "computer_use.moli.acceptance"
+            && self.adapter_id == "moli.acceptance.v1"
+            && self
+                .payload
+                .get("nonProductionTestAuthority")
+                .and_then(Value::as_str)
+                == Some("spec208-rootless-acceptance-v1");
+        #[cfg(not(feature = "spec208-moli-acceptance"))]
+        let moli_acceptance_command = false;
         let external_agent_command = self.execution_kind == "external_agent_task"
             && matches!(self.adapter_id.as_str(), "codex.v1" | "claude.v1");
-        if !browser_command && !external_agent_command {
+        if !browser_command && !external_agent_command && !moli_acceptance_command {
             return Err("RUNNER_COMMAND_ADAPTER_UNSUPPORTED".into());
         }
         if browser_command
@@ -473,6 +483,53 @@ fn contains_secret_key(value: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn moli_acceptance_command() -> RunnerJobCommand {
+        RunnerJobCommand {
+            command_id: "moli-acceptance-1".into(),
+            command_type: "execute".into(),
+            contract_version: RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "synthetic-job".into(),
+            attempt: 1,
+            lease_id: "synthetic-lease".into(),
+            fencing_token: 1,
+            tenant_id: "synthetic-tenant".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: None,
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "snapshot-1".into(),
+            capability_snapshot_revision: "1".into(),
+            control_plane_origin: "https://example.test".into(),
+            execution_kind: "computer_use.moli.acceptance".into(),
+            adapter_id: "moli.acceptance.v1".into(),
+            adapter_version_constraint: Some("1.1.15".into()),
+            browser_engine_constraint: None,
+            idempotency_key: "moli-acceptance-1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "runner-auth:sha256:test".into(),
+            input_ref: "synthetic-input".into(),
+            payload: serde_json::json!({"nonProductionTestAuthority":"spec208-rootless-acceptance-v1","runtimeDigest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}),
+        }
+    }
+
+    #[test]
+    fn moli_execution_requires_explicit_nonproduction_feature_and_authority() {
+        let mut command = moli_acceptance_command();
+        #[cfg(feature = "spec208-moli-acceptance")]
+        assert!(command.validate().is_ok());
+        #[cfg(not(feature = "spec208-moli-acceptance"))]
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_COMMAND_ADAPTER_UNSUPPORTED"
+        );
+        command.payload["nonProductionTestAuthority"] = serde_json::json!("missing");
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_COMMAND_ADAPTER_UNSUPPORTED"
+        );
+    }
 
     #[test]
     fn rejects_profile_mismatch_and_secret_payload() {

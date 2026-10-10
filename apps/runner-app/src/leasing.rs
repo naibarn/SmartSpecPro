@@ -1,4 +1,5 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Lease {
     pub job_id: String,
     pub attempt_id: String,
@@ -13,6 +14,7 @@ impl Lease {
             || self.attempt_id != expected.attempt_id
             || self.lease_id != expected.lease_id
             || self.fencing_version != expected.fencing_version
+            || self.expires_at_ms != expected.expires_at_ms
         {
             return Err("RUNNER_LEASE_FENCE_MISMATCH".into());
         }
@@ -43,5 +45,8 @@ mod tests {
         let mut stale = current.clone();
         stale.fencing_version = 1;
         assert!(stale.validate(1, &current).is_err());
+        let mut altered_expiry = current.clone();
+        altered_expiry.expires_at_ms += 1;
+        assert!(altered_expiry.validate(1, &current).is_err());
     }
 }

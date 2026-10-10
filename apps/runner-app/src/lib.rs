@@ -13,6 +13,8 @@ pub mod external_agent;
 pub mod identity;
 pub mod journal;
 pub mod leasing;
+#[cfg(feature = "spec208-moli-acceptance")]
+pub mod moli_acceptance;
 pub mod moli_isolation;
 pub mod process;
 pub mod protocol;

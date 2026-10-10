@@ -13,6 +13,14 @@ if [[ ! -d "$rootfs" || ! -x "$rootfs/usr/bin/node" || ! -x "$rootfs/usr/bin/mol
   echo "ROOTFS_INCOMPLETE" >&2
   exit 1
 fi
+runner_environment=()
+if [[ "${SPEC208_RUNNER_ACCEPTANCE:-0}" == "1" ]]; then
+  if [[ ! -x "$rootfs/usr/bin/smartaihub-runner" ]]; then
+    echo "RUNNER_ACCEPTANCE_BINARY_REQUIRED" >&2
+    exit 1
+  fi
+  runner_environment+=("SPEC208_RUNNER_ACCEPTANCE=1" "SPEC208_MOLI_SHA256=$(sha256sum "$rootfs/usr/bin/moli" | awk '{print $1}')")
+fi
 if [[ ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
   echo "RUNTIME_DIGEST_INVALID" >&2
   exit 1
@@ -54,4 +62,5 @@ systemd-run --user --wait --pipe --unit="$unit_name" --setenv="SPEC208_RUNTIME_I
   '--property=TemporaryFileSystem=/tmp:rw,nosuid,nodev,noexec,size=64m' \
   --property=UMask=0077 \
   -- /usr/bin/env -i PATH=/usr/bin HOME=/profile TMPDIR=/tmp "SPEC208_RUNTIME_IMAGE_DIGEST=$digest" \
+  "${runner_environment[@]}" \
   /usr/bin/node /opt/spec208/acceptance.mjs
