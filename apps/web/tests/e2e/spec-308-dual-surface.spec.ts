@@ -458,7 +458,7 @@ test("SPEC-308 unverified SSE does not replace demo hint and mascot still opens 
   await expect(launcher).toBeVisible();
   await expect(launcher.locator("[data-mascot-style]")).toBeVisible();
   await waitForNotificationBaseline(page);
-  await page.clock.pauseAt(new Date());
+  await page.clock.pauseAt(new Date("2030-01-01T00:00:00Z"));
   await page.evaluate(() => window.dispatchEvent(new Event("smartspec:show-assistant-mascot-demo")));
   await expect(balloon).toBeVisible();
   await page.evaluate(() => (window as any).__spec308EmitNotification({ id: 30805 }));

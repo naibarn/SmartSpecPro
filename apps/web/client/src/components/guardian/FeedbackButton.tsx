@@ -1046,11 +1046,25 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
   useLayoutEffect(() => {
     if (!canShowDecorativeBalloon || (!hasVisibleNotificationBalloon && !hasVisibleDemoBalloon && !hasVisibleOnboardingHint)) return;
     const updateHintPosition = () => {
-      const anchor = feedbackButtonRef.current?.getBoundingClientRect();
-      if (!anchor) {
+      const launcher = feedbackButtonRef.current;
+      const measuredAnchor = launcher?.getBoundingClientRect();
+      if (!measuredAnchor) {
         setAssistantHintStyle(null);
         return;
       }
+      // During pointerup, the launcher's DOM rect can briefly reflect an
+      // intermediate drag frame even after React has committed its final
+      // custom placement. Use that committed placement as the anchor so the
+      // reminder cannot settle beside a stale position.
+      const anchor = feedbackPlacement.mode === "custom"
+        ? {
+          left: feedbackPlacement.x,
+          top: feedbackPlacement.y,
+          right: feedbackPlacement.x + measuredAnchor.width,
+          bottom: feedbackPlacement.y + measuredAnchor.height,
+          width: measuredAnchor.width,
+        }
+        : measuredAnchor;
       const hint = document.querySelector<HTMLElement>(".assistant-reminder-balloon, .assistant-chat-onboarding-hint");
       const bounds = hint?.getBoundingClientRect();
       const viewport = window.visualViewport;
@@ -1065,9 +1079,9 @@ function FeedbackButtonContent({ mascotEnabled }: { mascotEnabled: boolean }) {
     // during movement and its first measurement can still reflect the old spot.
     const positionFrames: number[] = [window.requestAnimationFrame(updateHintPosition)];
     if (dragCompletionVersion > completedDragPositionVersionRef.current) {
-      // The launcher placement and the remounted balloon can settle in separate
+      // The launcher placement and remounted balloon can settle in separate
       // commits after pointerup. Measure after two paint opportunities so the
-      // final launcher rect, rather than its pre-drag position, anchors the hint.
+      // balloon's final dimensions are used with the committed launcher anchor.
       const firstSettleFrame = window.requestAnimationFrame(() => {
         const finalSettleFrame = window.requestAnimationFrame(() => {
           updateHintPosition();
