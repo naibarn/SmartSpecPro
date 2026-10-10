@@ -484,6 +484,7 @@ def _resolve_project_authority_bounded(repo: Path, policy_path: Path | None = No
         discovered = []
         discovery["failed"].append({"kind": "worktree_listing", "reason": type(error).__name__})
         discovery["complete"] = False
+    discovered = discovered[: discovery["limit"]]
     if len(discovered) >= discovery["limit"]:
         discovery["complete"] = False
         discovery["reason"] = "worktree_limit_reached"
