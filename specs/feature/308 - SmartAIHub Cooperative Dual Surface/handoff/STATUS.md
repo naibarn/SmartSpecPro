@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATING`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 66 unresolved of 66
-- Next action: Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.
-- Manifest generation: 62
+- Next action: Obtain Security/Media-Runtime disposition for #405 mandatory sprintf-js audit; update existing PR #399 ref with merge commit 6e95c9ad66993d10266f5cc07cef76e77d083cb9 and collect fresh CI; then reconcile #403's existing fixture repair and live authority gate. Keep requirements open until current-head and canonical integration evidence exist.
+- Manifest generation: 63
 
 ## Source-declared status and relationship claims
 

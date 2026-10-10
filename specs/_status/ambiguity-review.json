@@ -116385,11 +116385,11 @@
       "deployment": "UNKNOWN",
       "digest": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "EXACT_HISTORICAL_PR_HEAD_PENDING_CANONICAL_REBASE",
+      "evidence_freshness": "PENDING_EXACT_HEAD_REVERIFICATION_AFTER_CANONICAL_RECONCILIATION",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-09T16:53:41.854515Z",
       "lifecycle": "VALIDATING",
-      "next_action": "Obtain authorized Security/Media-Runtime disposition for sprintf-js@1.1.3; then refresh and run the mandatory audit on #405 against current origin/main. Continue with current-main PR #403 fixture/security/live-gate reconciliation, then refresh #399 and run exact-head browser plus approved non-production acceptance.",
+      "next_action": "Obtain Security/Media-Runtime disposition for #405 mandatory sprintf-js audit; update existing PR #399 ref with merge commit 6e95c9ad66993d10266f5cc07cef76e77d083cb9 and collect fresh CI; then reconcile #403's existing fixture repair and live authority gate. Keep requirements open until current-head and canonical integration evidence exist.",
       "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "primary_blocker": {
         "class": "AUTHENTICATED_RUNTIME",
