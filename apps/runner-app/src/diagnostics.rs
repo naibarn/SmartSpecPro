@@ -1949,6 +1949,7 @@ fn cancellation_target_matches(cancel: &RunnerJobCommand, target: &RunnerJobComm
     cancel.command_type == "cancel"
         && target.command_type == "execute"
         && cancel.command_id != target.command_id
+        && cancel.contract_version == target.contract_version
         && cancel
             .payload
             .get("targetCommandId")
@@ -1959,6 +1960,9 @@ fn cancellation_target_matches(cancel: &RunnerJobCommand, target: &RunnerJobComm
         && cancel.lease_id == target.lease_id
         && cancel.fencing_token == target.fencing_token
         && cancel.tenant_id == target.tenant_id
+        && cancel.user_id == target.user_id
+        && cancel.project_ref == target.project_ref
+        && cancel.workspace_ref == target.workspace_ref
         && cancel.runner_id == target.runner_id
         && cancel.runner_session_id == target.runner_session_id
         && cancel.capability_snapshot_id == target.capability_snapshot_id
@@ -1966,6 +1970,9 @@ fn cancellation_target_matches(cancel: &RunnerJobCommand, target: &RunnerJobComm
         && cancel.control_plane_origin == target.control_plane_origin
         && cancel.execution_kind == target.execution_kind
         && cancel.adapter_id == target.adapter_id
+        && cancel.adapter_version_constraint == target.adapter_version_constraint
+        && cancel.browser_engine_constraint == target.browser_engine_constraint
+        && cancel.authorization_grant_ref == target.authorization_grant_ref
 }
 
 fn poll_external_agents<T: ControlTransport>(
@@ -3818,9 +3825,9 @@ mod lifecycle_tests {
             lease_id: "lease-browser-1".into(),
             fencing_token: 9,
             tenant_id: "tenant-browser-1".into(),
-            user_id: None,
-            project_ref: None,
-            workspace_ref: None,
+            user_id: Some(42),
+            project_ref: Some("project-browser-1".into()),
+            workspace_ref: Some("workspace-browser-1".into()),
             runner_id: "runner-browser-1".into(),
             runner_session_id: "session-browser-1".into(),
             capability_snapshot_id: "capability-browser-1".into(),
@@ -3828,7 +3835,7 @@ mod lifecycle_tests {
             control_plane_origin: "http://localhost:3000".into(),
             execution_kind: "computer_use.browser".into(),
             adapter_id: "browser.v1".into(),
-            adapter_version_constraint: None,
+            adapter_version_constraint: Some("=1.2.3".into()),
             browser_engine_constraint: Some("chromium".into()),
             idempotency_key: "cancel:job-browser-1:2".into(),
             deadline: "2099-01-01T00:00:00.000Z".into(),
@@ -3844,15 +3851,38 @@ mod lifecycle_tests {
         };
         assert!(cancellation_target_matches(&cancel, &target));
 
+        target.contract_version = "runner-job-v0".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.contract_version = cancel.contract_version.clone();
+        target.user_id = Some(43);
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.user_id = cancel.user_id;
         target.capability_snapshot_revision = "stale-revision".into();
         assert!(!cancellation_target_matches(&cancel, &target));
         target.capability_snapshot_revision = cancel.capability_snapshot_revision.clone();
+        target.browser_engine_constraint = None;
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.browser_engine_constraint = cancel.browser_engine_constraint.clone();
+        target.adapter_version_constraint = Some("=1.2.4".into());
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.adapter_version_constraint = cancel.adapter_version_constraint.clone();
+        target.authorization_grant_ref = "other-grant".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.authorization_grant_ref = cancel.authorization_grant_ref.clone();
+        target.project_ref = Some("other-project".into());
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.project_ref = cancel.project_ref.clone();
+        target.workspace_ref = Some("other-workspace".into());
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.workspace_ref = cancel.workspace_ref.clone();
         target.control_plane_origin = "http://other-control-plane:3000".into();
         assert!(!cancellation_target_matches(&cancel, &target));
         target.control_plane_origin = cancel.control_plane_origin.clone();
         target.attempt += 1;
         assert!(!cancellation_target_matches(&cancel, &target));
         target.attempt = cancel.attempt;
+        target.input_ref = "runner-cancel:operation".into();
+        assert!(cancellation_target_matches(&cancel, &target));
         cancel.payload["targetCommandId"] = json!("execute-other");
         assert!(!cancellation_target_matches(&cancel, &target));
     }
