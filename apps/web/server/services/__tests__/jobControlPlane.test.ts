@@ -780,6 +780,104 @@ describe("job control plane", () => {
     ).toMatchObject({ jobId: child.jobId });
   });
 
+  it("fails a multi-job dependency cycle once so the claim loop cannot stall forever", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const first = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const second = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const independent = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    state.jobs.get(first.jobId).inputJson = {
+      orchestration: { dependsOnJobIds: [second.jobId] },
+    };
+    state.jobs.get(second.jobId).inputJson = {
+      orchestration: { dependsOnJobIds: [first.jobId] },
+    };
+
+    await expect(controlPlane.claim({
+      jobId: first.jobId,
+      runnerId: "runner-first",
+      adapter: "test",
+    })).resolves.toBeNull();
+    expect(state.jobs.get(first.jobId)).toMatchObject({
+      status: "failed",
+      statusReason: "dependency_cycle",
+      errorCode: "JOB_DEPENDENCY_BLOCKED",
+      operatorReviewRequired: true,
+    });
+    expect(state.events.filter(event =>
+      event.workerJobId === first.jobId && event.eventType === "FAILED"
+    )).toHaveLength(1);
+
+    await expect(controlPlane.claim({
+      jobId: independent.jobId,
+      runnerId: "runner-independent",
+      adapter: "test",
+    })).resolves.toMatchObject({ jobId: independent.jobId });
+
+    await controlPlane.claim({
+      jobId: first.jobId,
+      runnerId: "runner-first",
+      adapter: "test",
+    });
+    expect(state.events.filter(event =>
+      event.workerJobId === first.jobId && event.eventType === "FAILED"
+    )).toHaveLength(1);
+  });
+
+  it("detects a dependency cycle through a queued chain, not only a direct self-reference", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const first = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const second = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const third = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    state.jobs.get(first.jobId).inputJson = {
+      orchestration: { dependsOnJobIds: [second.jobId] },
+    };
+    state.jobs.get(second.jobId).inputJson = {
+      orchestration: { dependsOnJobIds: [third.jobId] },
+    };
+    state.jobs.get(third.jobId).inputJson = {
+      orchestration: { dependsOnJobIds: [first.jobId] },
+    };
+
+    await controlPlane.claim({
+      jobId: first.jobId,
+      runnerId: "runner-first",
+      adapter: "test",
+    });
+    expect(state.jobs.get(first.jobId)).toMatchObject({
+      status: "failed",
+      statusReason: "dependency_cycle",
+      operatorReviewRequired: true,
+    });
+  });
+
+  it("keeps oversized dependency scans queued when a cycle cannot be proven within budget", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const chain = await Promise.all(Array.from({ length: 129 }, () =>
+      controlPlane.create({ ...definition, idempotencyKey: undefined })
+    ));
+    for (let index = 0; index < chain.length - 1; index += 1) {
+      state.jobs.get(chain[index].jobId).inputJson = {
+        orchestration: { dependsOnJobIds: [chain[index + 1].jobId] },
+      };
+    }
+
+    await controlPlane.claim({
+      jobId: chain[0].jobId,
+      runnerId: "runner-first",
+      adapter: "test",
+    });
+    expect(state.jobs.get(chain[0].jobId)).toMatchObject({
+      status: "queued",
+      operatorReviewRequired: false,
+    });
+    expect(state.events.filter(event =>
+      event.workerJobId === chain[0].jobId && event.eventType === "FAILED"
+    )).toHaveLength(0);
+  });
+
   it("fails a dependent Job closed when its prerequisite permanently fails", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { decodeJobMonitorCursor, encodeJobMonitorCursor, getLatestWorkerHeartbeats } from "../jobControlPlaneMonitor";
+import {
+  decodeJobMonitorCursor,
+  deriveBacklogWithFreeWorkerCapacityAlert,
+  encodeJobMonitorCursor,
+  getLatestWorkerHeartbeats,
+} from "../jobControlPlaneMonitor";
 
 describe("canonical job monitor cursor", () => {
   it("round-trips a deterministic createdAt/id cursor", () => {
@@ -14,6 +19,30 @@ describe("canonical job monitor cursor", () => {
     const [payload, signature] = encoded.split(".");
     expect(() => decodeJobMonitorCursor(`${Buffer.from(JSON.stringify({ createdAt: "2026-09-14T00:00:00.000Z", jobId: "job-1" })).toString("base64url")}.${signature}`)).toThrow("JOB_MONITOR_CURSOR_INVALID");
     expect(() => decodeJobMonitorCursor(`${payload}.bad`)).toThrow("JOB_MONITOR_CURSOR_INVALID");
+  });
+});
+
+describe("durable backlog with free worker capacity", () => {
+  it("signals when backlog coexists with fresh workers and known free aggregate capacity", () => {
+    expect(deriveBacklogWithFreeWorkerCapacityAlert({
+      pending: 1,
+      queued: 2,
+      workersOnline: 1,
+      totalSlots: 4,
+      usedSlots: 1,
+      capacityKnown: true,
+    })).toBe(true);
+  });
+
+  const noSignalCases: Array<[string, Parameters<typeof deriveBacklogWithFreeWorkerCapacityAlert>[0]]> = [
+    ["no backlog", { pending: 0, queued: 0, workersOnline: 1, totalSlots: 4, usedSlots: 0, capacityKnown: true }],
+    ["no fresh online workers", { pending: 1, queued: 0, workersOnline: 0, totalSlots: 0, usedSlots: 0, capacityKnown: true }],
+    ["unknown worker capacity", { pending: 0, queued: 1, workersOnline: 1, totalSlots: 0, usedSlots: 0, capacityKnown: false }],
+    ["all known slots occupied", { pending: 0, queued: 1, workersOnline: 1, totalSlots: 2, usedSlots: 2, capacityKnown: true }],
+  ];
+
+  it.each(noSignalCases)("does not signal with %s", (_case, input) => {
+    expect(deriveBacklogWithFreeWorkerCapacityAlert(input)).toBe(false);
   });
 });
 

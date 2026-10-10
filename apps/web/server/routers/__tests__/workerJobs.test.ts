@@ -112,6 +112,21 @@ describe("workerJobsRouter.dashboardSummary", () => {
   });
 });
 
+describe("workerJobsRouter.adminDashboardSummary", () => {
+  it("returns the control-plane backlog/free-capacity alert", async () => {
+    mockGetWorkerJobDashboardSummary.mockResolvedValueOnce({
+      scope: "global",
+      alerts: { backlogWithFreeWorkerCapacity: true },
+    });
+
+    const fn = workerJobsRouter.adminDashboardSummary as unknown as Function;
+    const result = await fn({ ctx: CTX, input: {} });
+
+    expect(mockGetWorkerJobDashboardSummary).toHaveBeenCalledWith({ tenantId: undefined });
+    expect(result.alerts.backlogWithFreeWorkerCapacity).toBe(true);
+  });
+});
+
 describe("workerJobsRouter.taskGroups", () => {
   it("passes protected tenant/user scope and bounded pagination to the task view", async () => {
     mockListUserWorkerTaskGroups.mockResolvedValueOnce({

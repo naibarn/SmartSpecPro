@@ -133,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 20,
+  "generation": 23,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -422,7 +422,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T04:30:25.377249Z",
+  "updated_at": "2026-10-10T08:15:20.107044Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -460,11 +460,32 @@
         "scope": "PR #451 integrated at fe6771c1cc93cd5cf3321c417210e082a2e8f86c; invocation-scoped read-only receipt, fresh ACL revalidation, durable writes denied. 9 Vitest files, 144 passed, 11 TODO; direct authenticated ingress positive case remains TODO.",
         "source_sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
         "status": "PASS"
+      },
+      {
+        "kind": "NO_PROJECT_RECEIPT_CONTRACT",
+        "path": "apps/web/server/services/__tests__/projectResolutionAuthority.test.ts",
+        "scope": "Exact origin/main SHA b632010eb7c01c68ab1f864f07fd4abad474aba9: Phase 1 invocation receipt preserves NO_PROJECT despite a client Project candidate and denies Project read validation; no schema or migration changed. 2 focused files / 18 tests passed. Durable receipt persistence remains Phase 2 and unimplemented.",
+        "source_sha": "b632010eb7c01c68ab1f864f07fd4abad474aba9",
+        "status": "PASS"
+      },
+      {
+        "kind": "PHASE2_PROJECT_WRITE_DENIAL_REGRESSION",
+        "path": "apps/web/server/routers/__tests__/scopedMemoryRouter.test.ts",
+        "scope": "Exact origin/main SHA 72439f958ba0aad9620f6647b1931169dc0dd51c: 5 focused suites, 86 tests passed across replay contract, invocation receipt ACL/revocation, scoped memory repository/router, and team-room persistent-memory policy. Durable Project-shared write paths remain denied; no persistence, migration, or direct database concurrency claim.",
+        "source_sha": "72439f958ba0aad9620f6647b1931169dc0dd51c",
+        "status": "PASS"
+      },
+      {
+        "kind": "R4_RECEIPT_AND_WRITE_DENIAL_REGRESSION",
+        "path": "apps/web/server/services/__tests__/projectResolutionAuthority.test.ts",
+        "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: 21 focused files / 261 tests passed across invocation receipt binding/revocation/replay contracts, NO_PROJECT denial, scoped memory router/service authorization, durable Project write denial, and team-room policy. No durable receipt persistence, migration, concurrency transaction, or database restart claim.",
+        "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "fe6771c1cc93cd5cf3321c417210e082a2e8f86c",
+    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
     "status": "PARTIAL",
     "task_regressions": []
   }

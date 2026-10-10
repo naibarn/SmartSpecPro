@@ -244,6 +244,23 @@ function readWorkerSlotCapacity(value: unknown, path = "worker"): WorkerSlotCapa
   return null;
 }
 
+export function deriveBacklogWithFreeWorkerCapacityAlert(input: {
+  pending: number;
+  queued: number;
+  workersOnline: number;
+  totalSlots: number;
+  usedSlots: number;
+  capacityKnown: boolean;
+}): boolean {
+  const hasBacklog = input.pending > 0 || input.queued > 0;
+  // This aggregate signal is not proof that every queued job is compatible
+  // with every worker. Capability-aware placement remains scheduler authority.
+  const hasFreshWorkerCapacity = input.workersOnline > 0
+    && input.capacityKnown
+    && input.totalSlots > input.usedSlots;
+  return hasBacklog && hasFreshWorkerCapacity;
+}
+
 /**
  * Dashboard-safe projection of the canonical worker_jobs control plane.
  * This deliberately avoids Redis/Celery counters so the dashboard reports the
@@ -483,6 +500,14 @@ export async function getWorkerJobDashboardSummary(input: {
       hasIncident: stale > 0 || (counts.get("waiting_external") ?? 0) > 0 || Number(failedOutbox[0]?.total ?? 0) > 0 || Number(quarantinedOutbox[0]?.total ?? 0) > 0 || workersUnhealthy > 0,
       capacityExhausted: totalSlots > 0 && usedSlots >= totalSlots && (queued > 0 || (counts.get("pending") ?? 0) > 0),
       capacityUnknown: unknownCapacityWorkers > 0,
+      backlogWithFreeWorkerCapacity: deriveBacklogWithFreeWorkerCapacityAlert({
+        pending: counts.get("pending") ?? 0,
+        queued,
+        workersOnline,
+        totalSlots,
+        usedSlots,
+        capacityKnown,
+      }),
     },
     openJobs: openJobRows.map(job => ({
       id: job.jobId,
