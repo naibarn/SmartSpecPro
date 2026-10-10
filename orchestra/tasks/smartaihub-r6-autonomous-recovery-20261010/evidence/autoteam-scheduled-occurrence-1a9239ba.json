@@ -47,15 +47,25 @@
     ]
   },
   "postIntegrationVerification": {
-    "canonicalSha": "00e15e57f5054785f32789b34147f802272e7502",
-    "pullRequest": "https://github.com/naibarn/SmartSpecPro/pull/551",
-    "mergeCommit": "00e15e57f5054785f32789b34147f802272e7502",
+    "canonicalSha": "b422fc7d10ea289b5caba01e9c69fcd9e31aee65",
+    "pullRequests": [
+      {
+        "number": 552,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/552",
+        "mergeCommit": "b66c0fdaab2f76dd45b1c385e479e04269e54c1e"
+      },
+      {
+        "number": 553,
+        "url": "https://github.com/naibarn/SmartSpecPro/pull/553",
+        "mergeCommit": "b422fc7d10ea289b5caba01e9c69fcd9e31aee65"
+      }
+    ],
     "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/jobs/__tests__/autoTeamRecoverySchedulePersistence.integration.test.ts server/services/__tests__/workerRegistryService.test.ts server/jobs/autoTeamRecoveryScanJob.test.ts server/jobs/feature186SystemScheduler.test.ts server/services/__tests__/autoTeamRecoveryScanExecutor.test.ts server/services/__tests__/autoTeamRecoveryEvaluationJob.test.ts server/services/__tests__/autoTeamRecoveryService.test.ts",
     "result": "PASS_PARTIAL_ACCEPTANCE",
     "testFiles": 7,
     "tests": 86,
-    "verifiedAt": "2026-10-10T12:00:45Z",
-    "previewCheck": "SKIPPED (not counted as pass)"
+    "verifiedAt": "2026-10-10T12:14:30Z",
+    "previewChecks": "SKIPPED (not counted as pass)"
   },
   "acceptanceMatrix": {
     "A_scheduler_selection": "PARTIAL: duplicate occurrence coalesced; direct scan selected one capacity-wait run and skipped future approval and terminal run; broader authorization/stall selection not covered",
@@ -67,7 +77,7 @@
     "G_no_progress_suppression": "NOT_TESTED",
     "H_task_control_continuity": "NOT_TESTED",
     "I_spec271_receipt_persistence_replay": "BLOCKED_OWNER_ASSIGNMENT",
-    "J_spec302_durable_receipt_readiness": "BLOCKED_SCHEMA_OWNER_AND_MIGRATION_APPROVAL",
+    "J_spec302_durable_receipt_readiness": "PARTIAL: pure replay contract checks passed at source SHA 3971a6ceaed0070d12f486f72aba88fccf2b8bec; no durable store/schema exists, and persistence/revocation/concurrency acceptance remains blocked on schema owner and explicit migration approval.",
     "K_spec224_first_authorized_e2e": "BLOCKED_AUTHORITY; protected dispatch remains DENY"
   },
   "limitations": [
@@ -77,7 +87,8 @@
     "No production deployment, migration, grant, or SPEC-224 protected dispatch was performed.",
     "The capacity_wait test is a focused service regression, not a process-boundary evaluation-worker acceptance.",
     "It does not prove run-scoped fencing at runEngine mutation boundaries, useful-work recovery, Final Verify, or Task Control continuity.",
-    "The scan worker process was SIGKILLed after persisting progress and a replacement process recovered the lease and completed attempt 2. The stale-worker post-reclaim TeamRun mutation race, atomic run-scoped fence, useful work, Final Verify, and Task Control continuity remain untested."
+    "The scan worker process was SIGKILLed after persisting progress and a replacement process recovered the lease and completed attempt 2. The stale-worker post-reclaim TeamRun mutation race, atomic run-scoped fence, useful work, Final Verify, and Task Control continuity remain untested.",
+    "SPEC-302 Phase 2 work in this checkpoint is limited to pure replay contract tests; no durable receipt persistence or migration was implemented."
   ],
   "candidateVerification": {
     "sourceSha": "238741241a68f079ee0916b2d5fe64c05a39dd0d",
@@ -99,5 +110,22 @@
     "schema": "Current Drizzle projections for worker control plane, team_rooms, team_runs, run_snapshots and agent_activity_events; foreign keys omitted explicitly; no migration chain.",
     "scope": "Proves scheduled scan and resource-wait evaluation over persisted Team state across independent OS processes. Does not prove hard worker restart, stale run-side-effect fencing, useful work or Task Control continuity.",
     "sigkillProcessBoundary": "A scan process persisted scan_checkpoint, was SIGKILLed, then a replacement process recovered the expired lease, observed attempt 1 retryable/lease_expired, advanced leaseGeneration on attempt 2, completed scan and evaluation."
+  },
+  "laneCReplayContractVerification": {
+    "sourceSha": "3971a6ceaed0070d12f486f72aba88fccf2b8bec",
+    "baseCanonicalSha": "b422fc7d10ea289b5caba01e9c69fcd9e31aee65",
+    "command": "pnpm exec vitest run --maxWorkers=1 --no-file-parallelism server/services/__tests__/spec302ProjectResolutionReplayContract.test.ts",
+    "result": "PASS_CONTRACT_ONLY",
+    "testFiles": 1,
+    "tests": 47,
+    "verifiedAt": "2026-10-10T12:17:29Z",
+    "scope": [
+      "field-by-field normalized digest binding",
+      "malformed idempotency keys",
+      "empty nullable canonical identity rejection",
+      "unsupported operation ceiling and invalid session flag rejection",
+      "exact replay returns only comparison metadata"
+    ],
+    "limitations": "Pure replay contract tests only. No receipt persistence, transaction race, revocation propagation, restart replay or migration was run."
   }
 }

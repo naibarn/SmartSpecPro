@@ -39,3 +39,6 @@
 - PR #551 merged by normal merge at `00e15e57f5054785f32789b34147f802272e7502`; focused 7-file / 86-test suite rerun on that exact canonical SHA passed. Build preview and cleanup were SKIPPED.
 
 - SIGKILL acceptance on candidate `238741241`: disposable PostgreSQL worker process persisted `scan_checkpoint`, was SIGKILLed, lease expired, replacement process recovered it and completed attempt 2; the attempt ledger records retryable / lease_expired and advanced leaseGeneration. Focused 7-file / 86-test suite passed. This proves process restart/retry recovery only; stale-worker post-reclaim TeamRun mutation fencing remains untested.
+
+- PR #552 merged at `b66c0fdaab2f76dd45b1c385e479e04269e54c1e`; PR #553 test-hardening follow-up merged at `b422fc7d10ea289b5caba01e9c69fcd9e31aee65`. Exact post-merge focused AutoTeam suite passed 7 files / 86 tests on `b422fc7d10ea289b5caba01e9c69fcd9e31aee65`; preview checks were SKIPPED.
+- Lane C independent contract slice candidate `3971a6ceaed0070d12f486f72aba88fccf2b8bec`: SPEC-302 replay test passed 47 cases, including each accepted field's digest sensitivity, malformed keys/canonical identity, unsupported ceiling, and metadata-only exact replay. This does not create durable receipt authority; Phase 2 persistence remains gated on schema owner and migration approval.
