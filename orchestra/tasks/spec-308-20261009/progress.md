@@ -218,3 +218,10 @@ Loop policy:
 - PR #405 remains blocked by mandatory audit Moderate `sprintf-js@1.1.3`; Security and Media/Runtime owner approval is needed for isolated ONNX/WSL2 compatibility validation or scoped expiring risk acceptance. No suppression or policy change.
 - Ledger remains 66/66 OPEN (63 PARTIAL, 3 UNVERIFIED), integration SHA unset, production flags OFF. Live authenticated acceptance still requires approved non-production runtime/test identity and Feature-049 owner authority.
 - Next: resolve #405 owner disposition and mandatory gates, then reconcile #403, then run consolidated exact-SHA SPEC-308 verification and authorized live acceptance.
+
+## Exact latest PR #399 verification — 2026-10-10 (wave 18)
+- Docs/evidence checkpoint `724d52d0a3242265866494576cf368682158a6ed` is based on current canonical `2b497268f5a5c76c45d277cb162f59d10137f97d`.
+- Exact browser run `38013533419` passed 23/23 mocked Chromium tests; artifact ID `11654682578`. This is simulated UI-only evidence.
+- Exact MCP run `38013533460` failed 44/120 on the same canonical-main fixture/import baseline. PR #403 already contains the PostgreSQL fixture repair, and its focused suite/check/security passed on `74a482e8fe38a131bdbe41bfee0e53ad90347e4c`; no duplicate patch is needed. Live endpoint/token remain unavailable.
+- Read-only authority inventory showed only the repository `production` environment and no MCP smoke secret names; `staging` returned 404. No secret values were read.
+- Handoff now records verification SHA `724d52d`, remains PARTIAL, completion-ineligible, and keeps all 66 requirements OPEN. Security owner disposition on `sprintf-js` remains the first required action, then reconcile #403, then perform live authenticated SPEC-308 acceptance.
