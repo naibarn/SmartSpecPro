@@ -1,0 +1,41 @@
+{
+  "evidenceVersion": 1,
+  "workUnit": "SmartAIHub R5 non-production persisted acceptance",
+  "runtimeSourceSha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+  "canonicalRef": "origin/main",
+  "integratedHarnessPR": 515,
+  "integrationMergeSha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
+  "persistedCommand": "SMARTAIHUB_R5_DATABASE_URL=<protected-local-dsn> SMARTAIHUB_R5_DISPOSABLE_DB_CONFIRMED=1 pnpm --filter @smartspec/web run test:smartaihub-r5-persisted",
+  "persistedResult": {
+    "status": "PASS",
+    "testFiles": 1,
+    "tests": 1,
+    "scenarios": ["authorized Project A + global memory; Project B excluded", "membership revocation -> global only", "App-Project binding revocation -> global only", "conversation retarget to unbound Project B -> global only", "NO_PROJECT -> global only"],
+    "providerCalls": 0,
+    "embeddingProvider": "mocked null embedding; DB-backed receipt, memory retrieval, and prompt construction remained real"
+  },
+  "focusedRegression": {
+    "status": "PASS",
+    "testFiles": 7,
+    "tests": 115,
+    "scope": ["contextBuilder", "projectResolutionAuthority", "scopedMemoryService", "canonicalProjectContextResolver", "memoryScopeIsolation", "appIngressMemoryRuntime", "trustedAppRouteAssertion"]
+  },
+  "nonProductionDatabase": {
+    "database": "miniapp_r5_test",
+    "engine": "PostgreSQL 17.11",
+    "container": "smartaihub-r5-pg17-20261010",
+    "volume": "smartaihub-r5-pg17-data-20261010",
+    "loopbackPort": 32784,
+    "imageDigest": "sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d",
+    "bootstrap": "mini-app fresh-baseline migration journal plus PR #515 R5-only memory projection; no historical full migration chain",
+    "syntheticDataOnly": true
+  },
+  "reviewedSecurityLenses": ["target/credential guard", "loopback-only DB", "synthetic-only fixtures", "current tenant/user binding", "project lifecycle", "fresh membership check", "App lifecycle and tenant binding", "fresh App-Project binding", "conversation retarget validation", "NO_PROJECT global-only behavior", "scoped/entity memory prompt isolation", "fixture-only cleanup", "no external provider or dispatch"],
+  "limitations": [
+    "This proves the tested in-process prompt path with synthetic server-side TrustedAppRuntimeContext, not a production ingress assertion producer or deployed ingress provenance.",
+    "App-private memory isolation remains unproven because the current memory schema has no authoritative appId dimension; T-01 remains open.",
+    "These direct cases are partial evidence for T-02/T-03/T-04/T-05/T-18, not completion of the full SPEC-269 T-01–T-23 matrix.",
+    "SPEC-271 WP2B receipt ownership, worker execution/recovery, scheduler useful-work completion, lease fencing, and protected Runner binding remain untested.",
+    "No production migration/deployment, durable Project-memory write, or SPEC-224 protected dispatch was performed."
+  ]
+}

@@ -120880,7 +120880,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "fc9e18afc5e271e8b898829efdf90eb20929bd3d",
+      "canonical_sha": "eec45036091f1f43a215a46c643007f9f2c4ff44",
       "completion_eligible": false,
       "completion_reasons": [
         "lifecycle has not reached implementation completion",
@@ -122560,7 +122560,7 @@
         "requirement R2.5 is OPEN",
         "requirement REQ-2D64F20630E0 is OPEN",
         "requirement R3.17-18178 is OPEN",
-        "requirement REQ-BD45C492BD57 is OPEN",
+        "requirement REQ-BD45C492BD57 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "HIGH",
