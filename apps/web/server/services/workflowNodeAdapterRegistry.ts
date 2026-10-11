@@ -106,7 +106,7 @@ export function createWorkflowNodeTaskDispatcher(
       node: pinned.node,
       executionPrincipal: {
         tenantId: input.context.tenantId,
-        ...(input.context.requestedByUserId !== undefined
+        ...(input.context.requestedByUserId != null
           ? { actorUserId: input.context.requestedByUserId }
           : {}),
       },

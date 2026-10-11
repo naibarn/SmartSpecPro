@@ -94,4 +94,44 @@ describe("manifest-bound workflow adapter registry", () => {
     }));
     expect(execute).toHaveBeenCalledOnce();
   });
+
+  it("omits an absent actor instead of passing a nullable identity to adapters", async () => {
+    const registry = new WorkflowNodeAdapterRegistry();
+    const preflight = vi.fn(async () => ({ status: "ready" as const }));
+    registry.register({
+      typeId: "data.transform",
+      typeVersion: "1.0.0",
+      manifestDigest: "a".repeat(64),
+      preflight,
+      execute: vi.fn(async () => ({
+        resultRef: "artifact:result",
+        output: { outputDigest: "d".repeat(64) },
+      })),
+    });
+    const dispatch = createWorkflowNodeTaskDispatcher(registry, async () => ({
+      node: {
+        nodeId: "transform",
+        typeId: "data.transform",
+        typeVersion: "1.0.0",
+        manifestDigest: "a".repeat(64),
+      } as any,
+      inputArtifactRefs: [],
+    }));
+
+    await dispatch({
+      payload: {
+        nodeId: "transform",
+        typeId: "data.transform",
+        typeVersion: "1.0.0",
+        manifestDigest: "a".repeat(64),
+      },
+      context: { tenantId: "trusted-tenant", requestedByUserId: null } as any,
+      lease: { jobId: "job-1" } as any,
+      reporter: { assertActive: vi.fn(async () => undefined) } as any,
+    });
+
+    expect(preflight).toHaveBeenCalledWith(expect.objectContaining({
+      executionPrincipal: { tenantId: "trusted-tenant" },
+    }));
+  });
 });
