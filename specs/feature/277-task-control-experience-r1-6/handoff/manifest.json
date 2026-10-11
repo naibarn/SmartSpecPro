@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+    "expected_canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
     "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
   },
   "continuation": {
@@ -99,7 +99,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
@@ -123,7 +123,8 @@
       "12000eaa372e79f7aaf172f46741d7e3aa6c6d4e",
       "085cc0420fd5b16b9e9189489f1cb97158aff732",
       "311bc1e39100a308efcadab61fa278d607a860aa",
-      "06068ae9db6c433b9a10353f71f2becdba18218e"
+      "06068ae9db6c433b9a10353f71f2becdba18218e",
+      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b"
     ],
     "mapping": [
       {
@@ -132,6 +133,16 @@
         "scope": "Cross-spec impact review for PR #578: the screenshot intake reused SPEC-224 DevelopmentRun authorization and the existing governed worker_jobs/outbox dispatch path; no Task Control schema, queue, recovery, or control-plane component was added. No SPEC-277 acceptance evidence is claimed.",
         "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
         "status": "UNVERIFIED"
+      },
+      {
+        "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+        "coverage": "PARTIAL IMPACT REVIEW; PR #585 reuses SPEC-224 DevelopmentRun and existing worker_jobs/outbox; no new queue/schema/control plane. No live task receipt for generated Mini App UAT.",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/585",
+        "source_paths": [
+          "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json"
+        ],
+        "source_sha": "fc8f265ddd2d3ea5ed1e4bc214cb29174e7fbb64",
+        "status": "PARTIAL"
       }
     ],
     "source_paths": [
@@ -144,16 +155,17 @@
       "apps/web/server/services/autoTeamRecoveryService.ts",
       "apps/web/server/services/autoTeamRecoveryEvaluationJob.ts",
       "apps/web/server/services/autoTeamRecoveryEvaluationExecutor.ts",
-      "apps/web/server/services/jobExecutorRegistry.ts"
+      "apps/web/server/services/jobExecutorRegistry.ts",
+      "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6c42e73d2b8f360812f86ebf7338b1b2d9d44242",
+    "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
     "integrated": true,
-    "integrated_at": "2026-10-10T15:43:50Z"
+    "integrated_at": "2026-10-11T00:54:00Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -422,7 +434,7 @@
     "unresolved": 429
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T00:25:42.580744Z",
+  "updated_at": "2026-10-11T00:56:43.483069Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."

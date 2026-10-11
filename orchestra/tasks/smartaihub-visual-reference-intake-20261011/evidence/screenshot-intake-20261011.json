@@ -55,7 +55,15 @@
     "Rendered viewport comparison, bounded autonomous repair, functional regression, or end-to-end Mini App acceptance"
   ],
   "acceptance": "UNVERIFIED",
-  "next_workunit": "SPEC-224_VISUAL_REFERENCE_FACTORY_ASSET_AND_BLUEPRINT_BINDING",
+  "next_workunit": "SPEC-224_VISUAL_REFERENCE_LIVE_RUNNER_GENERATION_AND_UAT",
+  "followup_evidence": "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
+  "factory_create_stage_bridge": {
+    "status": "PARTIAL_INTEGRATED",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/585",
+    "integrated_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+    "focused_tests": "6 files; 36 passed on integrated SHA",
+    "actual_end_to_end": "BLOCKED: no authorized non-production account and fresh trusted Runner capability/session was available; no screenshot-backed generated app/browser UAT receipt exists."
+  },
   "ui_rights_repair": {
     "status": "PASSED",
     "source_sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
@@ -77,6 +85,6 @@
   "security_and_runtime_dependencies": {
     "design_runtime": "BLOCKED_BY_EXISTING_G0: no durable design-artifact owner/retention/delete/recovery/asset-reference closure is approved; no production provider adapter/credential binding/terms/egress certification exists; provider gates remain default-off. Do not add DDL or enable providers before the existing G0 obligations close.",
     "arbitrary_url_capture": "BLOCKED_SECURITY: the existing browser capture worker is restricted to a fixed internal route and is not a DNS-pinned, redirect-safe, network-isolated arbitrary-site capture boundary.",
-    "end_to_end_acceptance": "UNVERIFIED: no authorized non-production Mini App Factory generation/render/compare/repair run has been recorded."
+    "end_to_end_acceptance": "BLOCKED: no authorized non-production identity and fresh trusted Runner capability/session was available to execute a Mini App Factory generation/render/compare/repair run. No such receipt is recorded."
   }
 }
