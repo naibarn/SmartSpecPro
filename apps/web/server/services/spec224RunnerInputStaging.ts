@@ -59,6 +59,7 @@ export type Spec224RunnerInputSource = {
   inputSourceRef: string;
   tenantId: string;
   startRef: string;
+  workerJobId?: string | null;
   inputDigest: string;
   totalBytes: number;
   files: Spec224StagedRunnerInputFile[];
@@ -327,6 +328,25 @@ export function createSpec224RunnerInputStagingService(
       if (!(await store.bindSourceToWorkerJob({ tenantId, startRef, inputSourceRef, workerJobId }))) {
         fail("SPEC224_RUNNER_INPUT_SOURCE_JOB_CONFLICT");
       }
+    },
+
+    async getBoundSource(input: {
+      tenantId: string;
+      startRef: string;
+      workerJobId: string;
+      inputSourceRef: string;
+      inputDigest: string;
+    }): Promise<Spec224RunnerInputSource> {
+      const source = await store.findSourceByRef(requireId(input.inputSourceRef, "SPEC224_RUNNER_INPUT_SOURCE_REF_INVALID"));
+      if (!source || source.tenantId !== input.tenantId || source.startRef !== input.startRef ||
+        source.workerJobId !== input.workerJobId || source.inputDigest !== input.inputDigest) {
+        fail("SPEC224_RUNNER_INPUT_SOURCE_JOB_CONFLICT");
+      }
+      const normalized = normalizeFiles(source.files.map(({ path, contentBase64 }) => ({ path, contentBase64 })));
+      if (normalized.inputDigest !== source.inputDigest || normalized.totalBytes !== source.totalBytes) {
+        fail("SPEC224_RUNNER_INPUT_SOURCE_INTEGRITY_FAILED");
+      }
+      return source;
     },
 
     async bindPreStagedRunnerInput(input: Omit<StageRunnerInputRequest, "files"> & {
@@ -787,6 +807,7 @@ function rowToSource(
     inputSourceRef: row.id,
     tenantId: row.tenantId,
     startRef: row.startRef,
+    workerJobId: row.workerJobId,
     inputDigest: row.inputDigest,
     totalBytes: row.totalBytes,
     files: row.filesJson.map(file => ({

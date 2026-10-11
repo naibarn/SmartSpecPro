@@ -33,7 +33,9 @@ export async function settleMiniAppFactoryRunnerStage(input: {
   if (typeof child.run.workerJobId !== "string" || !child.run.workerJobId) {
     throw new Error("FACTORY_RUNNER_STAGE_JOB_BINDING_MISSING");
   }
-  const parent = await input.developmentRuns.get(parentScope);
+  const parent = link.parentRunId === child.run.runId
+    ? child
+    : await input.developmentRuns.get(parentScope);
   const unit = parent.run.workUnit;
   if (!unit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
   const state = parseMiniAppFactoryDurableState(parent.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
