@@ -149,6 +149,7 @@ export function buildProductDefinition(input: {
     tenantId,
     slug,
     brandRef,
+    brandTenantId: tenantId,
     releaseChannel: input.releaseChannel ?? "draft",
   };
 }

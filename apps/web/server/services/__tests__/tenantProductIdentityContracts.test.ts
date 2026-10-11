@@ -30,7 +30,7 @@ describe("Spec 217 Tenant/Product identity contracts", () => {
   it("requires Product and Brand references to stay inside the tenant", () => {
     const brand = buildBrandVersion({ brandId: "brand-a", tenantId: tenant.tenantId, version: "v1", tokens: { primary: "#123456" } });
     const product = buildProductDefinition({ productId: "product-a", tenantId: tenant.tenantId, slug: "interior", brandRef: brand.brandId, brandTenantId: tenant.tenantId });
-    expect(product).toMatchObject({ tenantId: "tenant-a", brandRef: "brand-a" });
+    expect(product).toMatchObject({ tenantId: "tenant-a", brandRef: "brand-a", brandTenantId: "tenant-a" });
     expect(() => buildProductDefinition({ productId: "product-b", tenantId: "tenant-b", slug: "other", brandRef: brand.brandId, brandTenantId: tenant.tenantId }))
       .toThrowError(expect.objectContaining({ code: "PRODUCT_TENANT_MISMATCH" }));
   });
