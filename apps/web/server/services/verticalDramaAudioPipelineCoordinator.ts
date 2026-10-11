@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../db";
@@ -143,9 +143,15 @@ export async function reconcileApprovedVerticalDramaAudioPipeline(input: {
   // ASR job because the analysis payload does not contain a planId.
   const jobs = await findAudioJobs({ tenantId: input.tenantId, userId: input.userId, seriesId: Number(episode.seriesId), episodeId: Number(episode.id) });
 
-  const analysisJob = jobs.find(job => job.jobType === "episode_audio_analyze"
-    && job.inputJson?.sourceSnapshotHash === loaded.row.sourceHash
-    && job.inputJson?.cutMedia?.checksum === checksum);
+  const analysisJob = jobs.find(job => {
+    const cutMedia = job.inputJson?.cutMedia;
+    return job.jobType === "episode_audio_analyze"
+      && job.inputJson?.sourceSnapshotHash === loaded.row.sourceHash
+      && cutMedia !== null
+      && typeof cutMedia === "object"
+      && !Array.isArray(cutMedia)
+      && (cutMedia as Record<string, unknown>).checksum === checksum;
+  });
   let createdJob = null;
   if (!analysisJob && !currentJob(jobs, "episode_audio_analyze")) {
     const payload: EpisodeAudioAnalyzeJobPayload = episodeAudioAnalyzeJobPayloadSchema.parse({
@@ -266,10 +272,11 @@ export async function queueVerticalDramaScoreMix(input: {
   const takeRows = await database.select({ id: workerArtifacts.id, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
     .from(workerArtifacts).innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId)).where(and(
       eq(workerArtifacts.artifactType, "music_take"),
+      isNotNull(workerArtifacts.publishedItemId),
       inArray(workerArtifacts.id, uniqueTakeIds),
       eq(workerJobs.tenantId, input.tenantId),
       eq(workerJobs.requestedByUserId, input.userId),
-      inArray(workerJobs.status, ["completed", "published"]),
+      eq(workerJobs.status, "completed"),
     ));
   if (
     takeRows.length !== uniqueTakeIds.length
