@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 431 unresolved of 431
-- Next action: Reconcile the two active dirty R7 fencing worktrees that touch runEngine, recovery, and media callback paths; identify exact file owners and finish stale callback/outbox/cancellation acceptance. Keep TeamRun-to-Task-Control identity binding open until its runtime path is explicitly owned; schema and migration work remain approval-gated.
-- Manifest generation: 37
+- Next action: Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.
+- Manifest generation: 39

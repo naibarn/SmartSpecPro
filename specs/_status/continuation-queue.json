@@ -4782,7 +4782,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 0,
-      "next_action": "Reconcile the two active dirty R7 fencing worktrees that touch runEngine, recovery, and media callback paths; identify exact file owners and finish stale callback/outbox/cancellation acceptance. Keep TeamRun-to-Task-Control identity binding open until its runtime path is explicitly owned; schema and migration work remain approval-gated.",
+      "next_action": "Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "priority": "R5_NO_DIRECT_EVIDENCE",
       "record_key": "canonical:specs/feature/277-task-control-experience-r1-6",

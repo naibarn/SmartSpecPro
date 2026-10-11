@@ -177,6 +177,7 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
         if (staleExit !== 0)
           throw new Error(`SPEC277_STALE_WORKER_FAILED:${stale.stderr}`);
         expect(stale.stdout).toContain("SPEC277_FENCE_MUTATION_REJECTED");
+        expect(stale.stdout).toContain("SPEC277_FENCE_CANCELLATION_REJECTED");
         expect(stale.stdout).toContain("SPEC277_FENCE_MESSAGE_REJECTED");
         expect(stale.stdout).toContain("SPEC277_FENCE_ACTIVITY_EVENT_REJECTED");
         expect(stale.stdout).toContain("SPEC277_FENCE_SNAPSHOT_REJECTED");
