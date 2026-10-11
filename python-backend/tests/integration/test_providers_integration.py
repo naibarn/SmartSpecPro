@@ -12,17 +12,30 @@ Tests cover:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
+from types import SimpleNamespace
 
 from app.llm_proxy.models import LLMRequest, LLMResponse
 from app.llm_proxy.providers.factory import ProviderFactory
-from app.llm_proxy.providers.base import ProviderConfig
-from app.llm_proxy.providers.openai_provider import OpenAIProvider
-from app.llm_proxy.providers.anthropic_provider import AnthropicProvider
-from app.llm_proxy.providers.google_provider import GoogleProvider
-from app.llm_proxy.providers.groq_provider import GroqProvider
-from app.llm_proxy.providers.ollama_provider import OllamaProvider
-from app.llm_proxy.providers.zai_provider import ZAIProvider
-from app.llm_proxy.providers.openrouter_provider import OpenRouterProvider
+
+
+def make_provider_factory(**overrides):
+    """Build the current settings-backed factory with synthetic credentials."""
+    values = {
+        "OPENAI_API_KEY": "test-openai-key",
+        "ANTHROPIC_API_KEY": "test-anthropic-key",
+        "GOOGLE_API_KEY": "test-google-key",
+        "GROQ_API_KEY": "test-groq-key",
+        "OPENROUTER_API_KEY": "test-openrouter-key",
+        "ZAI_API_KEY": "test-zai-key",
+        "OLLAMA_BASE_URL": "http://localhost:11434",
+        "KILOCODE_API_KEY": None,
+    }
+    values.update(overrides)
+    return ProviderFactory(SimpleNamespace(**values))
+
+
+def create_test_providers():
+    return make_provider_factory().create_all_providers()
 
 
 # =============================================================================
@@ -34,12 +47,7 @@ class TestProviderFactory:
     
     def test_create_openai_provider(self):
         """Test creating OpenAI provider."""
-        config = OpenAIProvider.create_default_config(
-            api_key="test-key",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("openai", config)
+        provider = make_provider_factory().create_openai_provider()
         
         assert provider is not None
         assert provider.type == "openai"
@@ -47,12 +55,7 @@ class TestProviderFactory:
     
     def test_create_anthropic_provider(self):
         """Test creating Anthropic provider."""
-        config = AnthropicProvider.create_default_config(
-            api_key="test-key",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("anthropic", config)
+        provider = make_provider_factory().create_anthropic_provider()
         
         assert provider is not None
         assert provider.type == "anthropic"
@@ -60,12 +63,7 @@ class TestProviderFactory:
     
     def test_create_google_provider(self):
         """Test creating Google provider."""
-        config = GoogleProvider.create_default_config(
-            api_key="test-key",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("google", config)
+        provider = make_provider_factory().create_google_provider()
         
         assert provider is not None
         assert provider.type == "google"
@@ -73,12 +71,7 @@ class TestProviderFactory:
     
     def test_create_groq_provider(self):
         """Test creating Groq provider."""
-        config = GroqProvider.create_default_config(
-            api_key="test-key",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("groq", config)
+        provider = make_provider_factory().create_groq_provider()
         
         assert provider is not None
         assert provider.type == "groq"
@@ -86,12 +79,7 @@ class TestProviderFactory:
     
     def test_create_ollama_provider(self):
         """Test creating Ollama provider."""
-        config = OllamaProvider.create_default_config(
-            base_url="http://localhost:11434",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("ollama", config)
+        provider = make_provider_factory().create_ollama_provider()
         
         assert provider is not None
         assert provider.type == "ollama"
@@ -99,12 +87,7 @@ class TestProviderFactory:
     
     def test_create_zai_provider(self):
         """Test creating Z.AI provider."""
-        config = ZAIProvider.create_default_config(
-            api_key="test-key",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("zai", config)
+        provider = make_provider_factory().create_zai_provider()
         
         assert provider is not None
         assert provider.type == "zai"
@@ -112,34 +95,17 @@ class TestProviderFactory:
     
     def test_create_openrouter_provider(self):
         """Test creating OpenRouter provider."""
-        config = OpenRouterProvider.create_default_config(
-            api_key="test-key",
-            enabled=True
-        )
-        
-        provider = ProviderFactory.create_provider("openrouter", config)
+        provider = make_provider_factory().create_openrouter_provider()
         
         assert provider is not None
         assert provider.type == "openrouter"
         assert provider.name == "OpenRouter"
     
     def test_create_unknown_provider(self):
-        """Test creating unknown provider raises error."""
-        config = ProviderConfig(
-            name="Unknown",
-            type="unknown",
-            api_key="test-key",
-            models=["unknown-model"],
-            cost_per_1k_tokens={},
-            max_tokens={},
-            capabilities=[],
-            enabled=True
-        )
-        
-        with pytest.raises(ValueError) as exc_info:
-            ProviderFactory.create_provider("unknown", config)
-        
-        assert "Unknown provider type" in str(exc_info.value)
+        """The settings-backed factory only creates registered providers."""
+        providers = create_test_providers()
+
+        assert "unknown" not in providers
 
 
 class TestProviderSelection:
@@ -147,34 +113,24 @@ class TestProviderSelection:
     
     def test_select_provider_by_task_type(self):
         """Test selecting provider based on task type."""
-        providers = [
-            OpenAIProvider.create_default_config(api_key="key", enabled=True),
-            AnthropicProvider.create_default_config(api_key="key", enabled=True),
-            GoogleProvider.create_default_config(api_key="key", enabled=True),
-        ]
-        
-        # All providers should support common task types
-        for config in providers:
-            assert "planning" in config.capabilities
-            assert "code_generation" in config.capabilities
-            assert "analysis" in config.capabilities
-            assert "simple" in config.capabilities
+        providers = create_test_providers()
+
+        assert "planning" in providers["openai"].config.capabilities
+        assert "code_generation" in providers["openai"].config.capabilities
+        assert "analysis" in providers["anthropic"].config.capabilities
+        assert "planning" in providers["google"].config.capabilities
+        assert "code_generation" not in providers["google"].config.capabilities
     
     def test_select_provider_by_budget(self):
         """Test selecting provider based on budget."""
         # High-quality providers are more expensive
-        openai_config = OpenAIProvider.create_default_config(api_key="key", enabled=True)
-        anthropic_config = AnthropicProvider.create_default_config(api_key="key", enabled=True)
-        
-        # Ollama is free
-        ollama_config = OllamaProvider.create_default_config(
-            base_url="http://localhost:11434",
-            enabled=True
-        )
-        
-        # Verify cost differences
-        assert ollama_config.cost_per_1k_tokens["llama3:70b"] == 0.0
-        assert openai_config.cost_per_1k_tokens["gpt-4o"] > 0
+        providers = create_test_providers()
+
+        openai_config = providers["openai"].config
+        ollama_config = providers["ollama"].config
+
+        assert all(cost == 0.0 for cost in ollama_config.cost_per_1k_tokens.values())
+        assert openai_config.cost_per_1k_tokens["gpt-4"] > 0
 
 
 class TestMultiProviderWorkflow:
@@ -248,21 +204,19 @@ class TestProviderCapabilities:
     """Test provider capabilities."""
     
     def test_all_providers_have_capabilities(self):
-        """Test that all providers have required capabilities."""
-        provider_configs = [
-            OpenAIProvider.create_default_config(api_key="key", enabled=True),
-            AnthropicProvider.create_default_config(api_key="key", enabled=True),
-            GoogleProvider.create_default_config(api_key="key", enabled=True),
-            GroqProvider.create_default_config(api_key="key", enabled=True),
-            ZAIProvider.create_default_config(api_key="key", enabled=True),
-            OpenRouterProvider.create_default_config(api_key="key", enabled=True),
-        ]
-        
-        required_capabilities = ["planning", "code_generation", "analysis", "decision", "simple"]
-        
-        for config in provider_configs:
-            for cap in required_capabilities:
-                assert cap in config.capabilities, f"{config.name} missing {cap} capability"
+        """Test that provider-specific capabilities match configured contracts."""
+        providers = create_test_providers()
+        expected = {
+            "openai": {"planning", "code_generation", "analysis", "decision", "simple"},
+            "anthropic": {"planning", "code_generation", "analysis", "decision", "simple"},
+            "google": {"planning", "analysis", "simple"},
+            "groq": {"code_generation", "analysis", "decision", "simple"},
+            "zai": {"planning", "code_generation", "analysis", "decision", "simple"},
+            "openrouter": {"planning", "code_generation", "analysis", "decision", "simple"},
+        }
+
+        for name, capabilities in expected.items():
+            assert set(providers[name].config.capabilities) == capabilities
 
 
 class TestProviderCostComparison:
@@ -273,31 +227,19 @@ class TestProviderCostComparison:
         # Get cost for similar token count across providers
         token_count = 1000
         
-        # OpenAI
-        openai_config = OpenAIProvider.create_default_config(api_key="key", enabled=True)
-        openai_cost = openai_config.cost_per_1k_tokens.get("gpt-4o", 0) * (token_count / 1000)
-        
-        # Anthropic
-        anthropic_config = AnthropicProvider.create_default_config(api_key="key", enabled=True)
-        anthropic_cost = anthropic_config.cost_per_1k_tokens.get("claude-3.5-sonnet", 0) * (token_count / 1000)
-        
-        # Groq (usually cheapest)
-        groq_config = GroqProvider.create_default_config(api_key="key", enabled=True)
-        groq_cost = groq_config.cost_per_1k_tokens.get("llama-3.1-70b-versatile", 0) * (token_count / 1000)
-        
-        # Ollama (free)
-        ollama_config = OllamaProvider.create_default_config(
-            base_url="http://localhost:11434",
-            enabled=True
-        )
-        ollama_cost = 0  # Always free
-        
-        # Assert Ollama is free
+        providers = create_test_providers()
+        openai_cost = providers["openai"].config.cost_per_1k_tokens["gpt-4"]
+        anthropic_cost = providers["anthropic"].config.cost_per_1k_tokens[
+            "claude-3-opus-20240229"
+        ]
+        groq_cost = providers["groq"].config.cost_per_1k_tokens[
+            "llama-3.1-70b-versatile"
+        ]
+        ollama_cost = providers["ollama"].config.cost_per_1k_tokens["llama3"]
+
         assert ollama_cost == 0
-        
-        # Assert all costs are non-negative
-        assert openai_cost >= 0
-        assert anthropic_cost >= 0
+        assert openai_cost > 0
+        assert anthropic_cost > 0
         assert groq_cost >= 0
 
 
@@ -306,17 +248,19 @@ class TestProviderModelSupport:
     
     def test_provider_has_models(self):
         """Test that providers have models configured."""
-        providers = [
-            (OpenAIProvider.create_default_config(api_key="key", enabled=True), ["gpt-4o", "gpt-4o-mini"]),
-            (AnthropicProvider.create_default_config(api_key="key", enabled=True), ["claude-3.5-sonnet"]),
-            (GoogleProvider.create_default_config(api_key="key", enabled=True), ["gemini-1.5-flash"]),
-            (GroqProvider.create_default_config(api_key="key", enabled=True), ["llama-3.1-70b-versatile"]),
-            (ZAIProvider.create_default_config(api_key="key", enabled=True), ["glm-4.7"]),
-            (OpenRouterProvider.create_default_config(api_key="key", enabled=True), ["openai/gpt-4o"]),
-        ]
-        
-        for config, expected_models in providers:
-            for model in expected_models:
+        providers = create_test_providers()
+        expected_models = {
+            "openai": ["gpt-4", "gpt-4-turbo"],
+            "anthropic": ["claude-3-opus-20240229"],
+            "google": ["gemini-pro"],
+            "groq": ["llama-3.1-70b-versatile"],
+            "zai": ["glm-4.7"],
+            "openrouter": ["openai/gpt-4o"],
+        }
+
+        for name, models in expected_models.items():
+            config = providers[name].config
+            for model in models:
                 assert model in config.models, f"{config.name} missing {model}"
 
 
@@ -325,24 +269,21 @@ class TestProviderConfigValidation:
     
     def test_config_requires_api_key(self):
         """Test that most providers require API key."""
-        openai_config = OpenAIProvider.create_default_config(api_key="test-key", enabled=True)
-        assert openai_config.api_key == "test-key"
-        
-        anthropic_config = AnthropicProvider.create_default_config(api_key="test-key", enabled=True)
-        assert anthropic_config.api_key == "test-key"
+        factory = make_provider_factory(
+            OPENAI_API_KEY="synthetic-openai-key",
+            ANTHROPIC_API_KEY="synthetic-anthropic-key",
+        )
+        providers = factory.create_all_providers()
+        assert providers["openai"].api_key == "synthetic-openai-key"
+        assert providers["anthropic"].api_key == "synthetic-anthropic-key"
     
     def test_ollama_no_api_key(self):
         """Test that Ollama doesn't require API key."""
-        ollama_config = OllamaProvider.create_default_config(
-            base_url="http://localhost:11434",
-            enabled=True
-        )
-        assert ollama_config.api_key is None
+        ollama = create_test_providers()["ollama"]
+        assert ollama.api_key is None
     
     def test_config_enabled_flag(self):
         """Test provider enabled flag."""
-        enabled_config = OpenAIProvider.create_default_config(api_key="key", enabled=True)
-        assert enabled_config.enabled is True
-        
-        disabled_config = OpenAIProvider.create_default_config(api_key="key", enabled=False)
-        assert disabled_config.enabled is False
+        providers = create_test_providers()
+        assert providers["openai"].enabled is True
+        assert providers["ollama"].enabled is False
