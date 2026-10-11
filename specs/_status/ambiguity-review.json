@@ -130395,7 +130395,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "595a8f45d8d5d9a9b2bb15407dde703c53d84024",
+      "canonical_sha": "15b890f9bb334cc01cc83d7c80e68cc48d04e2d7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -130853,7 +130853,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-11T01:58:46.354041Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.",
+      "next_action": "Continue Lane A direct PostgreSQL acceptance for provider poll result persistence and cancellation-versus-completion/reclaim races; inspect for a reproducible durable-mutation defect before changing production code.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
