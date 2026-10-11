@@ -10281,7 +10281,9 @@ export default function AdminSkills() {
                 </p>
               </div>
 
-              {false && isSandboxExecutionMode(editingSkill.executionMode) && (
+              {editingSkill !== null &&
+                false &&
+                isSandboxExecutionMode(editingSkill.executionMode) && (
                 <div className="space-y-4 rounded-xl border p-4">
                   <div>
                     <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
