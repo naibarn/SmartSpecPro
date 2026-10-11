@@ -39,7 +39,8 @@ describe("AutoTeam recovery no-progress suppression persistence", () => {
         INSERT INTO team_rooms (id, "tenantId", "teamId", "orchestratorUserId", "roomType", title)
         VALUES
           ('room-r7-stalled', $1, 'team-r7-no-progress', 1, 'auto_team', 'Stalled run'),
-          ('room-r7-ready', $1, 'team-r7-no-progress', 1, 'auto_team', 'Independent ready run')
+          ('room-r7-ready', $1, 'team-r7-no-progress', 1, 'auto_team', 'Independent ready run'),
+          ('room-r7-wildcard', $1, 'team-r7-no-progress', 1, 'auto_team', 'Wildcard isolation run')
       `,
         [tenantId]
       );
@@ -48,7 +49,8 @@ describe("AutoTeam recovery no-progress suppression persistence", () => {
         INSERT INTO team_runs (id, "roomId", "teamId", "initiatedByUserId", "executionMode", status, "runtimeStateJson", "startedAt")
         VALUES
           ('run-r7-stalled', 'room-r7-stalled', 'team-r7-no-progress', 1, 'auto_team', 'running', '{}'::jsonb, now() - interval '2 hours'),
-          ('run-r7-ready', 'room-r7-ready', 'team-r7-no-progress', 1, 'auto_team', 'running', '{}'::jsonb, now() - interval '1 hour')
+          ('run-r7-ready', 'room-r7-ready', 'team-r7-no-progress', 1, 'auto_team', 'running', '{}'::jsonb, now() - interval '1 hour'),
+          ('run_r7_stalled', 'room-r7-wildcard', 'team-r7-no-progress', 1, 'auto_team', 'running', '{}'::jsonb, now() - interval '30 minutes')
       `
       );
       await client.unsafe(
@@ -56,7 +58,8 @@ describe("AutoTeam recovery no-progress suppression persistence", () => {
         INSERT INTO run_snapshots ("runId", "artifactCountJson", "capturedAt")
         VALUES
           ('run-r7-stalled', '{"planArtifact":{"runId":"run-r7-stalled","roomId":"room-r7-stalled","teamId":"team-r7-no-progress","objective":"synthetic recovery acceptance","status":"executing","generatedAt":"2026-10-11T00:00:00.000Z","lastUpdatedAt":"2026-10-11T00:00:00.000Z","review":{"status":"passed","iteration":1,"reviewedAt":"2026-10-11T00:00:00.000Z","reviewerPersona":"test-reviewer","issues":[],"score":1,"recommendation":"ready"}}}'::jsonb, now()),
-          ('run-r7-ready', '{"planArtifact":{"runId":"run-r7-ready","roomId":"room-r7-ready","teamId":"team-r7-no-progress","objective":"synthetic independent acceptance","status":"executing","generatedAt":"2026-10-11T00:00:00.000Z","lastUpdatedAt":"2026-10-11T00:00:00.000Z","review":{"status":"passed","iteration":1,"reviewedAt":"2026-10-11T00:00:00.000Z","reviewerPersona":"test-reviewer","issues":[],"score":1,"recommendation":"ready"}}}'::jsonb, now())
+          ('run-r7-ready', '{"planArtifact":{"runId":"run-r7-ready","roomId":"room-r7-ready","teamId":"team-r7-no-progress","objective":"synthetic independent acceptance","status":"executing","generatedAt":"2026-10-11T00:00:00.000Z","lastUpdatedAt":"2026-10-11T00:00:00.000Z","review":{"status":"passed","iteration":1,"reviewedAt":"2026-10-11T00:00:00.000Z","reviewerPersona":"test-reviewer","issues":[],"score":1,"recommendation":"ready"}}}'::jsonb, now()),
+          ('run_r7_stalled', '{"planArtifact":{"runId":"run_r7_stalled","roomId":"room-r7-wildcard","teamId":"team-r7-no-progress","objective":"synthetic wildcard isolation acceptance","status":"executing","generatedAt":"2026-10-11T00:00:00.000Z","lastUpdatedAt":"2026-10-11T00:00:00.000Z","review":{"status":"passed","iteration":1,"reviewedAt":"2026-10-11T00:00:00.000Z","reviewerPersona":"test-reviewer","issues":[],"score":1,"recommendation":"ready"}}}'::jsonb, now())
       `
       );
 
@@ -147,6 +150,9 @@ describe("AutoTeam recovery no-progress suppression persistence", () => {
       ).toHaveLength(3);
       expect(evaluations.filter(row => row.run_id === "run-r7-ready")).toEqual([
         expect.objectContaining({ run_id: "run-r7-ready", status: "queued" }),
+      ]);
+      expect(evaluations.filter(row => row.run_id === "run_r7_stalled")).toEqual([
+        expect.objectContaining({ run_id: "run_r7_stalled", status: "queued" }),
       ]);
     } finally {
       await closeDb();
