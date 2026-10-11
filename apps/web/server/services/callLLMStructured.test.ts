@@ -195,6 +195,20 @@ describe("callLLMStructured planner wiring", () => {
     expect(mockRecordStepAttempt).not.toHaveBeenCalled();
   });
 
+  it("rejects asynchronous worker jobs in structured output mode", async () => {
+    mockRunPlanner.mockResolvedValue(null);
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "worker_job",
+      jobId: "job-1",
+      providerName: "worker_app",
+    } as any);
+
+    await expect(callLLMStructured(baseParams)).rejects.toThrow(
+      "Structured output is not supported for asynchronous worker jobs",
+    );
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
   it("passes skillSlug from billingMetadata", async () => {
     mockRunPlanner.mockResolvedValue(null);
     setupSuccessfulLLMResponse();
