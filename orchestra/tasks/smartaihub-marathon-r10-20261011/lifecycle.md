@@ -11,10 +11,10 @@ Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FI
 Stage ledger:
 - PLANNING — COMPLETE. R10 brief is the accepted design; current handoffs and clean canonical base inspected.
 - TDD_DESIGN — COMPLETE. Disposable test-only adapter keeps production runtime fail-closed; exact acceptance and negative gates are written in `plan.md`.
-- IMPLEMENT — COMPLETE for the synthetic acceptance slice. PRs #676, #677, and #678 integrated normally at `86d744878dcd67e1f8187a125f713b9364353573`, `8c56966cbac0f00b2ee51120a4084d93dd6c829e`, and `1a817425cc14833d15d27f5048e496d8570dabbf`; the worker-crash recovery test is in the final slice.
+- IMPLEMENT — COMPLETE for the synthetic acceptance slice. PRs #676, #677, and #678 integrated normally at `86d744878dcd67e1f8187a125f713b9364353573`, `8c56966cbac0f00b2ee51120a4084d93dd6c829e`, and `1a817425cc14833d15d27f5048e496d8570dabbf`; PR #680 records the resource block. Exact focused recheck passed at `ad527e21f6174f7ed05782825a13d5ad3de2291c`.
 - VERIFY — PARTIAL. Focused integration profile passed 4 files/24 tests on `1a817425`; central build is `RESOURCE_BLOCKED` before target start due to <512 MiB swap headroom; full typecheck not completed because the manual scoped invocation expanded to about 3.3 GiB RSS. CI baseline failures are recorded.
 - DEBUG_FIX — COMPLETE. Fixed the missing DEBUG_REPAIR→TEST successor and stale admission-snapshot comparison exposed by the full phase-chain PostgreSQL run; reran focused suite successfully.
-- REVIEW — COMPLETE. Conductor reviewed the phase ordering, tenant/run/job binding, lease fencing and bounded artifacts; normal progressive integration gates passed for PRs #676–#678.
+- REVIEW — COMPLETE. Conductor reviewed the phase ordering, tenant/run/job binding, lease fencing and bounded artifacts; normal progressive integration gates passed for PRs #676–#678 and #680.
 - FINAL_VERIFY — BLOCKED_TRUE_EXTERNAL for run completion. Final Verify is reached through canonical reconciliation but correctly waits for genuine workspace convergence/retirement receipts. No canonical completion event exists.
 
 Gap ledger:
