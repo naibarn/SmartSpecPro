@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
+    "expected_canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "Continue SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE: add the smallest independent synthetic WorkUnit execution and result persistence path, then bounded repair/retry, independent evidence-gated Final Verify, Task Control visibility, and fresh-process reconstruction. Do not require TeamRun, keep protected dispatch DENY, and retain live Runner authorization as waiting.",
+    "next_action": "Continue SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE with a synthetic failed-check → bounded repair → independent verification slice using existing contracts. Persist results and retry evidence in disposable PostgreSQL. Do not claim WorkUnit implementation completion or run completion unless the canonical evidence gate passes; keep live Runner and protected dispatch unauthorized.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "PR #670 integrated at 2ab08d51f9a34d6d216545f4b3ede3040e05a8b7. Evidence: handoff/evidence/r9-task-control-projection-20261011.json. On tested source 128dbc11b6c4f5b632fddc35d69e255e35727375, one native disposable PostgreSQL test and 20 Task Control regression tests passed; a fresh child process read the persisted PLANNING stage and Task Control projected it without inventing a percentage. This is a persistence/read-model sub-slice, not WorkUnit execution, repair, independent Final Verify, settlement, live Runner acceptance, or task completion. Earlier provider/outbox proofs remain recorded in handoff/evidence/r9-synthetic-provider-poll-and-scope-20261011.json. Main build health for integrated SHA 2ab08d51f9a34d6d216545f4b3ede3040e05a8b7 is pending.",
+    "resume_point": "PR #673 integrated at 07a30fb838ba82ac3f3c8f435170692dfe27dcc2. Exact evidence: handoff/evidence/r9-developmentrun-phase-restart-20261011.json. On source candidate 12d86c473f7ea75df9afd959a8bed0d42e509697, 24 focused PostgreSQL/phase/persistence tests passed. The synthetic canonical job settled once, a conflicting result was denied, a separate process reconciled after restart and admitted the next phase, safe retry created no duplicate phase job, and Task Control showed the durable PLANNING stage. This exposes a synthetic persistence/recovery slice; actual implementation adapter, bounded repair, independent Final Verify, completion receipts and final completion remain open. Previous stage projection evidence is handoff/evidence/r9-task-control-projection-20261011.json. Main build health for 07a30fb838ba82ac3f3c8f435170692dfe27dcc2 is pending.",
     "waiting_predicate": "Live Windows Runner readiness remains waiting for authorized owner reconnection and fresh capability/Codex/source binding evidence. Protected dispatch remains DENY. Independent synthetic native-PostgreSQL DevelopmentRun slice is READY and must continue without TeamRun coupling."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 47,
+  "generation": 48,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1210,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
+    "canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
     "integrated": true,
-    "integrated_at": "2026-10-11T06:41:09Z"
+    "integrated_at": "2026-10-11T06:57:53Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2344,7 +2344,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:42:12.154202Z",
+  "updated_at": "2026-10-11T06:58:34.247949Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

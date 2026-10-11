@@ -1,0 +1,39 @@
+{
+  "workunit_id": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
+  "canonical_ref": "refs/heads/main",
+  "integrated_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
+  "source_sha": "12d86c473f7ea75df9afd959a8bed0d42e509697",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/673",
+  "merged_at": "2026-10-11T06:57:53Z",
+  "classification": "SYNTHETIC_DEVELOPMENTRUN_PHASE_RESTART",
+  "environment": "Owner-marked disposable PostgreSQL fixture; synthetic control-plane test lease; a separate Node process reconciles after result settlement; no live Runner, production database or protected dispatch",
+  "command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 npx vitest run server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts server/services/__tests__/spec224PhaseController.test.ts server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
+  "result": {
+    "files": 3,
+    "tests": 24,
+    "passed": 24,
+    "source_sha": "12d86c473f7ea75df9afd959a8bed0d42e509697",
+    "progressive_integration_gate": "PASS"
+  },
+  "assertions": [
+    "Duplicate DevelopmentRun creation resolves to one canonical initial worker job",
+    "The test control-plane lease is claimed and started, and one result with evidence is settled through the canonical job control plane",
+    "A conflicting duplicate completion is rejected; the original result remains persisted with exactly one SETTLEMENT_RECORDED and one COMPLETED event",
+    "A fresh process reconciles the persisted terminal result and admits the next canonical phase job",
+    "A safe retry while that phase remains queued does not admit a duplicate job; exactly two phase jobs exist",
+    "The run event history remains readable from its deterministic canonical root row, and the next job receives a scope-validated SPEC-224 plus WorkUnit projection",
+    "Task Control shows the next phase as PLANNING with no invented percentage"
+  ],
+  "implementation_change": "Resolve DevelopmentRun persistence to its deterministic run-root worker job, retain oldest-row compatibility for trusted legacy runs with random job IDs, and mirror a tenant/actor/run/job-validated projection onto each newly admitted phase job.",
+  "limitations": [
+    "The test lease simulates executor work; it does not run an actual implementation adapter or create a repository patch",
+    "Bounded repair after a failing test, independent Final Verify, final completion evidence, and completion settlement remain unproven and open",
+    "Live Runner/Codex capability, workspace authority, protected dispatch, production migration, deployment, and release were not exercised",
+    "No SPEC-277 requirement was promoted to PASS"
+  ],
+  "post_integration": {
+    "main_build_health": "PENDING",
+    "owner": "R9 conductor",
+    "next_action": "Track configured build health against 07a30fb838ba82ac3f3c8f435170692dfe27dcc2"
+  }
+}
