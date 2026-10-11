@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-import { db } from "../db";
+import { getDb } from "../db";
 import {
   verticalDramaEmotionPlans,
   verticalDramaEpisodes,
@@ -40,7 +40,8 @@ function compiledVideoState(value: unknown): Record<string, unknown> | null {
 }
 
 async function loadPlan(planId: string, tenantId: string, userId: number) {
-  const [row] = await db.select().from(verticalDramaEmotionPlans).where(and(
+  const database = getDb();
+  const [row] = await database.select().from(verticalDramaEmotionPlans).where(and(
     eq(verticalDramaEmotionPlans.id, planId),
     eq(verticalDramaEmotionPlans.tenantId, tenantId),
     eq(verticalDramaEmotionPlans.userId, userId),
@@ -57,7 +58,8 @@ async function loadPlan(planId: string, tenantId: string, userId: number) {
 }
 
 async function findAudioJobs(input: { tenantId: string; userId: number; seriesId: number; episodeId: number; planId?: string }) {
-  const rows = await db.select().from(workerJobs).where(and(
+  const database = getDb();
+  const rows = await database.select().from(workerJobs).where(and(
     eq(workerJobs.tenantId, input.tenantId),
     eq(workerJobs.requestedByUserId, input.userId),
     inArray(workerJobs.jobType, ["episode_audio_analyze", "minimax_music3_generate", "episode_score_mix"]),
@@ -75,7 +77,8 @@ function currentJob(jobs: Array<{ jobType: string; status: string }>, jobType: s
 }
 
 async function activeBinding(tenantId: string, seriesId: number) {
-  const [binding] = await db.select({ id: workerSeriesBindings.id, bindingRevision: workerSeriesBindings.bindingRevision })
+  const database = getDb();
+  const [binding] = await database.select({ id: workerSeriesBindings.id, bindingRevision: workerSeriesBindings.bindingRevision })
     .from(workerSeriesBindings)
     .where(and(
       eq(workerSeriesBindings.tenantId, tenantId),
@@ -109,11 +112,12 @@ export async function reconcileApprovedVerticalDramaAudioPipeline(input: {
   planId: string;
   requestedStage?: "analysis" | "generation";
 }) {
+  const database = getDb();
   const loaded = await loadPlan(input.planId, input.tenantId, input.userId);
   const plan = loaded.plan;
   if (!plan) return { queued: false, blockedReason: loaded.blockedReason };
 
-  const [episode] = await db.select({ id: verticalDramaEpisodes.id, seriesId: verticalDramaEpisodes.seriesId, targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds, assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+  const [episode] = await database.select({ id: verticalDramaEpisodes.id, seriesId: verticalDramaEpisodes.seriesId, targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds, assemblyManifest: verticalDramaEpisodes.assemblyManifest })
     .from(verticalDramaEpisodes)
     .where(and(
       eq(verticalDramaEpisodes.id, loaded.row.episodeId),
@@ -165,7 +169,7 @@ export async function reconcileApprovedVerticalDramaAudioPipeline(input: {
   }
 
   const analysisArtifacts = analysisJob?.status === "completed"
-    ? await db.select({ artifactType: workerArtifacts.artifactType, id: workerArtifacts.id, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
+    ? await database.select({ artifactType: workerArtifacts.artifactType, id: workerArtifacts.id, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
       .from(workerArtifacts)
       .where(and(
         eq(workerArtifacts.workerJobId, analysisJob.id),
@@ -221,9 +225,10 @@ export async function reconcileApprovedVerticalDramaAudioPipeline(input: {
 }
 
 export async function getVerticalDramaAudioPipelineStatus(input: { tenantId: string; userId: number; seriesId: number; episodeId: number; planId?: string }) {
+  const database = getDb();
   const jobs = await findAudioJobs(input);
   const jobIds = jobs.map(job => job.id);
-  const artifacts = jobIds.length ? await db.select({ id: workerArtifacts.id, workerJobId: workerArtifacts.workerJobId, artifactType: workerArtifacts.artifactType, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson, createdAt: workerArtifacts.createdAt }).from(workerArtifacts).where(inArray(workerArtifacts.workerJobId, jobIds)) : [];
+  const artifacts = jobIds.length ? await database.select({ id: workerArtifacts.id, workerJobId: workerArtifacts.workerJobId, artifactType: workerArtifacts.artifactType, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson, createdAt: workerArtifacts.createdAt }).from(workerArtifacts).where(inArray(workerArtifacts.workerJobId, jobIds)) : [];
   return {
     contractVersion: "176.177.v1",
     jobs: jobs.map(job => ({ id: job.id, jobType: job.jobType, status: job.status, statusReason: job.statusReason, failureReason: job.failureReason, output: job.outputJson, createdAt: job.createdAt, finishedAt: job.finishedAt })),
@@ -239,12 +244,13 @@ export async function queueVerticalDramaScoreMix(input: {
   planId: string;
   selectedTakeIds: string[];
 }) {
+  const database = getDb();
   const loaded = await loadPlan(input.planId, input.tenantId, input.userId);
   if (!loaded.plan) return { queued: false, blockedReason: loaded.blockedReason };
   if (loaded.row.rightsStatus !== "approved_for_project") {
     return { queued: false, blockedReason: "plan_or_rights_not_approved" as const };
   }
-  const [episode] = await db.select({ id: verticalDramaEpisodes.id, seriesId: verticalDramaEpisodes.seriesId, targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds, assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+  const [episode] = await database.select({ id: verticalDramaEpisodes.id, seriesId: verticalDramaEpisodes.seriesId, targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds, assemblyManifest: verticalDramaEpisodes.assemblyManifest })
     .from(verticalDramaEpisodes)
     .where(and(eq(verticalDramaEpisodes.id, loaded.row.episodeId), eq(verticalDramaEpisodes.tenantId, input.tenantId), eq(verticalDramaEpisodes.userId, input.userId))).limit(1);
   const compiled = compiledVideoState(episode?.assemblyManifest);
@@ -257,7 +263,7 @@ export async function queueVerticalDramaScoreMix(input: {
   if (!binding) return { queued: false, blockedReason: "active_worker_binding_required" as const };
   const uniqueTakeIds = [...new Set(input.selectedTakeIds)].slice(0, 6);
   if (!uniqueTakeIds.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Select at least one published Music 3 take" });
-  const takeRows = await db.select({ id: workerArtifacts.id, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
+  const takeRows = await database.select({ id: workerArtifacts.id, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
     .from(workerArtifacts).innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId)).where(and(
       eq(workerArtifacts.artifactType, "music_take"),
       inArray(workerArtifacts.id, uniqueTakeIds),
