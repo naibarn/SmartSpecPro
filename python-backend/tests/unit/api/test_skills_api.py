@@ -15,8 +15,20 @@ from app.services.kilo_skill_manager import Skill, SkillScope, SkillMode
 def app():
     """Create a test app"""
     from fastapi import FastAPI
+    from app.core.auth import get_current_user
+    from app.models.user import Role, User
+
     _app = FastAPI()
     _app.include_router(router, prefix="/api/v1")
+    test_user = User(
+        id=123,
+        email="skills-test@example.com",
+        name="Skills Test User",
+        role=Role.user,
+        credits=0,
+        isDisabled=False,
+    )
+    _app.dependency_overrides[get_current_user] = lambda: test_user
     return _app
 
 @pytest.fixture
@@ -47,7 +59,8 @@ class TestSkillsAPI:
     def mock_skill_manager(self, sample_skill):
         """Create a mock skill manager."""
         manager = MagicMock()
-        manager.list_skills = AsyncMock(return_value=[sample_skill])
+        # list_skills is synchronous in the active manager implementation.
+        manager.list_skills = MagicMock(return_value=[sample_skill])
         manager.get_skill = AsyncMock(return_value=sample_skill)
         manager.create_skill = AsyncMock(return_value="/workspace/.kilocode/skills/test-skill/SKILL.md")
         manager.update_skill = AsyncMock(return_value="/workspace/.kilocode/skills/test-skill/SKILL.md")
@@ -354,14 +367,15 @@ class TestSetupProject(TestSkillsAPI):
     def test_convert_skill_success(self, client, mock_skill_manager):
         """Test converting a skill."""
         # Using mock_skill_manager for convert endpoint
-        with patch("app.services.kilo_skill_manager_v2.KiloSkillManager", return_value=mock_skill_manager):
+        sync_manager = MagicMock()
+        with patch("app.services.kilo_skill_manager_v2.KiloSkillManager", return_value=sync_manager):
             # Mock get_skill to return a mock skill
             mock_skill = MagicMock()
             mock_skill.name = "test-skill"
-            mock_skill_manager.get_skill.return_value = mock_skill
+            sync_manager.get_skill.return_value = mock_skill
             # Mock create_skill to return success for target format
             from app.services.kilo_skill_manager_v2 import SkillFormat
-            mock_skill_manager.create_skill.return_value = {SkillFormat.CLAUDE: "/path/to/claude/skill"}
+            sync_manager.create_skill.return_value = {SkillFormat.CLAUDE: "/path/to/claude/skill"}
             
             response = client.post(
                 "/api/v1/skills/convert",
