@@ -54,6 +54,7 @@ import { auditLogger } from "../services/auditLogger";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
+import { buildProjectWikiHostedRoutePreflight } from "../services/projectWikiHostedRoutePreflight";
 import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
@@ -429,6 +430,38 @@ export const infrastructureRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
     return getInternalRuntimeEvidence({ db });
   }),
+
+  getProjectWikiHostedRoutePreflight: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().trim().min(1).max(100) }).strict())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const targets = await listProviderDeploymentTargets(db, { ...input, environment: "staging" });
+      const enabledTargets = targets.filter(target => target.enabled);
+      const hasWorkerTarget = enabledTargets.some(target => Boolean(target.workerRef));
+      const hasContainerTarget = enabledTargets.some(target => Boolean(target.containerApplicationRef));
+      const targetCompatibility = hasWorkerTarget ? "INCOMPATIBLE" as const : "UNKNOWN" as const;
+      return {
+        ...buildProjectWikiHostedRoutePreflight({
+          sourceRevision: process.env.RELEASE ?? process.env.COMMIT_SHA ?? null,
+          localHostCompatibilityVerified: false,
+          targetInventoryObserved: true,
+          targetCompatibility,
+          targetAuthorized: enabledTargets.length > 0,
+          dedicatedDatabaseAuthorized: false,
+          stagingRecoveryPolicyAuthorized: false,
+          trustedEvidenceVerifierAvailable: false,
+        }),
+        targetInventory: {
+          source: "provider_deployment_targets" as const,
+          environment: "staging" as const,
+          matchingRows: targets.length,
+          enabledRows: enabledTargets.length,
+          shapes: [...new Set(enabledTargets.map(target => target.workerRef ? "worker" : target.containerApplicationRef ? "container" : "unresolved"))],
+          containerHostCompatibility: hasContainerTarget ? "UNKNOWN" as const : "NOT_OBSERVED" as const,
+        },
+      };
+    }),
 
   updateCloudflareAccountId: rateLimitedAdminProcedure
     .input(z.object({ accountId: z.string().trim().regex(/^[a-f0-9]{32}$/i) }))

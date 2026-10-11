@@ -32,4 +32,43 @@ describe("infrastructure deployment target project selector", () => {
     await expect(admin.listDeploymentTargetProjects({ tenantId: "tenant-demo" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(getDbMock).not.toHaveBeenCalled();
   });
+
+  it("returns scoped Project Wiki preflight facts and keeps Cloudflare Worker targets incompatible", async () => {
+    const targets = [{ enabled: true, workerRef: "worker:wiki", containerApplicationRef: null }];
+    const where = vi.fn().mockResolvedValue(targets);
+    const from = vi.fn(() => ({ where }));
+    getDbMock.mockResolvedValue({ select: vi.fn(() => ({ from })) });
+    const admin = infrastructureRouter.createCaller({ user: { id: 1, role: "admin" } } as any);
+
+    const result = await admin.getProjectWikiHostedRoutePreflight({ tenantId, projectId: "wiki-project" });
+
+    expect(result).toMatchObject({
+      appId: "app_project_wiki_pages",
+      hostRequirement: "smartspec-web",
+      stagingTarget: "INCOMPATIBLE",
+      dedicatedDatabase: "REQUIRED",
+      trustedEvidenceVerifier: "REQUIRED",
+      targetInventory: { source: "provider_deployment_targets", matchingRows: 1, enabledRows: 1, shapes: ["worker"] },
+      outcomes: expect.arrayContaining(["TARGET_INCOMPATIBLE", "DATABASE_AUTHORITY_REQUIRED", "TRUSTED_EVIDENCE_REQUIRED"]),
+    });
+    expect(where).toHaveBeenCalled();
+
+    const systemAgent = infrastructureRouter.createCaller({ user: { id: 2, role: "system_agent" } } as any);
+    await expect(systemAgent.getProjectWikiHostedRoutePreflight({ tenantId, projectId: "wiki-project" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("leaves an existing Container target unresolved until host compatibility is verified", async () => {
+    const targets = [{ enabled: true, workerRef: null, containerApplicationRef: "container:wiki" }];
+    const where = vi.fn().mockResolvedValue(targets);
+    const from = vi.fn(() => ({ where }));
+    getDbMock.mockResolvedValue({ select: vi.fn(() => ({ from })) });
+    const admin = infrastructureRouter.createCaller({ user: { id: 1, role: "admin" } } as any);
+
+    const result = await admin.getProjectWikiHostedRoutePreflight({ tenantId, projectId: "wiki-project" });
+
+    expect(result.stagingTarget).toBe("REQUIRED");
+    expect(result.targetInventory).toMatchObject({ shapes: ["container"], containerHostCompatibility: "UNKNOWN" });
+    expect(result.outcomes).toContain("TARGET_AUTHORITY_REQUIRED");
+    expect(result.outcomes).not.toContain("READY_FOR_AUTHORIZED_STAGING");
+  });
 });
