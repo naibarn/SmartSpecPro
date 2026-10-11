@@ -46,17 +46,28 @@ Negative tests cover security failure, unverified/queued merge, stale dependency
 evidence, cross-worktree lock contention and failed-worker receipt recovery.
 
 Cross-skill alignment passes 7 tests and Orchestra policy/hygiene passes 18.
-The skill structural audit passes; installed mirror drift is explicitly
-pending publication from integrated canonical history. Required GitHub PR
-checks and exact-SHA mainline CI remain separate evidence.
+The full skill audit passes: 140 deep-implement, 166 deep-project and 331
+deep-plan tests pass, in addition to 18 Orchestra tests and structural checks.
+Installed mirror verification passes after publication from canonical history.
+Required GitHub PR checks and exact-SHA mainline CI remain separate evidence.
 
 ## Review and continuation
 
 Planning/TDD design/implementation/scoped verification/debug are complete.
 Review found and repaired receipt-path collision, atomic receipt durability,
 freshness before worker dispatch, unsupported-host lock handling, and remaining
-contradictory approval/retry instructions. Final verification, protected
-GitHub promotion, installed publication and post-integration checks are next.
+contradictory approval/retry instructions. PR #603 passed its live GitHub gate
+and merged normally as `dc3e352fddcd8ecfe39bf53d4d27a2515f7c43ef`.
+In the same executor invocation, the next WorkUnit automatically started in
+`/home/dev/worktrees/orchestra-progressive-runtime-20261011` on that exact SHA,
+passed its scoped tests and published the eight related installed skill
+runtimes. Its process returned exit 0 / `WORKER_SUCCEEDED`; installed mirror
+verification passed. Fifteen replaced runtime files were backed up under
+`/home/dev/.codex/skill-backups/progressive-dc3e352fddcd`.
+See `progressive-execution-evidence-20261011.json` for the exact receipt,
+worker results, metrics and pending mainline CI. This report's follow-up also
+clarifies that required gates block every risk level and that long-running
+workers retain the existing worker-job/outbox runtime boundary.
 The registered primary workspace may remain convergence-pending without
 blocking scoped implementation or triggering redundant implementation loops.
 
