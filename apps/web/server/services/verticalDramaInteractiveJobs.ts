@@ -10,6 +10,7 @@ import { createJobControlPlane } from "./jobControlPlane";
 import { createFeature186VerticalDramaJob } from "./feature186VerticalDramaJobAdapter";
 import {
   deleteEphemeralValue,
+  deleteEphemeralValueIfOwned,
   putEphemeralValue,
   putEphemeralValueIfAbsent,
   putEphemeralValueIfOwned,
