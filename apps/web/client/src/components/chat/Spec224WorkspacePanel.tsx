@@ -247,6 +247,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       const result = await startMutation.mutateAsync({
         conversationId,
         mode,
+        factoryMode: requestKind === "mini_app",
         ...(mode === "prompt" ? { prompt: effectivePrompt } : {
           // Start the immutable revision shown in this preparation. Another
           // Chat section may append a newer SpecSet while this preview is open.
@@ -283,7 +284,9 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
         delete next[key];
         return next;
       });
-      toast.success(`สร้าง DevelopmentRun แล้ว · ${result.dispatchStatus}`);
+      toast.success(requestKind === "mini_app"
+        ? `ส่ง Mini App Factory stage แรกแล้ว · ${result.dispatchStatus}`
+        : `สร้าง DevelopmentRun แล้ว · ${result.dispatchStatus}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "สั่งพัฒนาไม่สำเร็จ");
     }

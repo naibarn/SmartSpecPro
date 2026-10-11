@@ -156,6 +156,58 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.workspaceSpecSets.prepareWorkspaceRun).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-acme", actorId: 42, conversationId: 8, mode: "spec_set" }));
   });
 
+  it("starts Mini App Factory requirements_intake on the same run and carries the authorized screenshot input", async () => {
+    mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
+      runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64) },
+      goal: "Create a settings Mini App",
+      planId: "plan:ready",
+      planRevision: 1,
+      contextPackHash: "b".repeat(64),
+      repositoryRef: "runner:runner-a/workspace-a",
+      baseRevision: `git:${"a".repeat(40)}`,
+      specSetRevision: null,
+      workPackageId: null,
+      allowedWriteSet: ["**"],
+      inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from("Create a settings Mini App").toString("base64") }],
+    });
+    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    mocks.runnerInputStaging.preStageRunnerInput.mockResolvedValueOnce({ inputSourceRef: "spec224-source:factory", inputDigest: "c".repeat(64), totalBytes: png.length, files: [] });
+    mocks.createRun.mockImplementationOnce(async (value: any) => ({ run: value.run, jobRef: { jobId: "canonical-factory-job", created: true } }));
+    mocks.runnerInputStaging.bindSourceToWorkerJob.mockResolvedValueOnce(undefined);
+
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "prompt",
+        factoryMode: true,
+        prompt: "Create a settings Mini App",
+        idempotencyKey: "spec224-factory-screenshot-key-0001",
+        visualReferences: [{ id: "ref-screen", type: "image", sourceRef: "ref-screen", pageHint: "Settings home", stateHint: "default", rights: "user_owned", assetReuseAllowed: false }],
+        visualFiles: [{ referenceId: "ref-screen", fileName: "settings.png", mimeType: "image/png", contentBase64: png.toString("base64") }],
+        designPreferences: { similarityMode: "close", devices: ["desktop"] },
+      },
+    });
+
+    expect(result).toMatchObject({ jobId: "canonical-factory-job", factoryStageRunId: result.runId, factoryStageId: "requirements_intake", dispatchStatus: "PENDING_AUTHORIZATION" });
+    expect(mocks.runnerInputStaging.preStageRunnerInput).toHaveBeenCalledWith(expect.objectContaining({
+      files: expect.arrayContaining([
+        expect.objectContaining({ path: "visual-reference-manifest.json" }),
+        expect.objectContaining({ path: "design-references/ref-1.png" }),
+        expect.objectContaining({ path: "mini-app-factory-stage.json" }),
+      ]),
+    }));
+    expect(mocks.createRun).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({
+      workUnit: expect.objectContaining({ progress: expect.objectContaining({ remainingScope: expect.arrayContaining(["requirements_intake", "ui_implementation"]) }) }),
+      metadata: expect.objectContaining({
+        miniAppFactoryProgramState: expect.objectContaining({ miniAppId: expect.stringMatching(/^app_/) }),
+        miniAppFactoryStage: expect.objectContaining({ parentRunId: result.runId, stageId: "requirements_intake" }),
+        spec224Input: expect.objectContaining({ inputSourceRef: "spec224-source:factory" }),
+      }),
+    }) }));
+  });
+
   it("starts a prompt run from server-derived workspace facts and stages bytes before canonical admission", async () => {
     mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
       workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },

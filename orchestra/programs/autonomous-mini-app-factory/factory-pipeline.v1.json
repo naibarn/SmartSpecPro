@@ -20,8 +20,8 @@
     "Deployment, runtime health, acceptance, and production readiness remain separate states."
   ],
   "stages": [
-    { "id": "requirements_intake", "dependsOn": [], "inputs": ["requirements"], "outputs": ["requirementSet", "acceptanceCriteria"], "gate": "requirements have an authoritative source and a bounded app scope" },
-    { "id": "spec_compile", "dependsOn": ["requirements_intake"], "inputs": ["requirementSet", "acceptanceCriteria"], "outputs": ["appSpec", "traceabilityMap"], "gate": "the app slice is traceable to its source requirements and explicit non-goals" },
+    { "id": "requirements_intake", "dependsOn": [], "inputs": ["requirements"], "outputs": ["requirementSet", "acceptanceCriteria", "visualBlueprint"], "gate": "requirements have an authoritative source and a bounded app scope" },
+    { "id": "spec_compile", "dependsOn": ["requirements_intake"], "inputs": ["requirementSet", "acceptanceCriteria", "visualBlueprint"], "outputs": ["appSpec", "traceabilityMap"], "gate": "the app slice is traceable to its source requirements and explicit non-goals" },
     { "id": "plan", "dependsOn": ["spec_compile"], "inputs": ["appSpec", "target", "capabilities"], "outputs": ["workPlan", "dependencyGraph"], "gate": "work scopes, dependencies, validation, and non-production constraints are explicit" },
     { "id": "manifest_validate", "dependsOn": ["plan"], "inputs": ["manifest"], "outputs": ["validatedManifest", "contractReport"], "gate": "all required fields and capability declarations are valid" },
     { "id": "scaffold", "dependsOn": ["manifest_validate"], "inputs": ["validatedManifest"], "outputs": ["appSource", "ownershipMap"], "gate": "generated paths are app-scoped and do not overwrite unrelated work" },

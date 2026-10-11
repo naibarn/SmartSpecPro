@@ -255,6 +255,7 @@ describe("UniversalControlPlanePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
     await waitFor(() => expect(mocks.startWorkspaceMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       mode: "prompt",
+      factoryMode: true,
       prompt: expect.stringContaining("Create a functional Mini App"),
       visualReferences: [expect.objectContaining({ type: "image", pageHint: "/dashboard", rights: "user_owned" })],
       visualFiles: [expect.objectContaining({ fileName: "dashboard.png", mimeType: "image/png", contentBase64: "iVBORw0KGgo=" })],
@@ -391,7 +392,7 @@ describe("UniversalControlPlanePanel", () => {
       screen.getByRole("button", { name: "Expand runner เครื่องของฉัน" })
     );
     expect(screen.getByText("พร้อมใช้งาน")).toBeTruthy();
-    expect(screen.getByText("ติดตั้งแล้ว — ต้องเข้าสู่ระบบ")).toBeTruthy();
+    expect(screen.getByText("ตรวจเวอร์ชันแล้ว — ต้องเข้าสู่ระบบ")).toBeTruthy();
     expect(
       screen.getByText("ยังไม่เชื่อมกับปุ่มเริ่มงานในหน้านี้")
     ).toBeTruthy();
