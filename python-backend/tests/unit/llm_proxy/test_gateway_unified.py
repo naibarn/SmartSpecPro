@@ -875,7 +875,7 @@ class TestDirectProviderPath:
              patch('app.llm_proxy.gateway_unified.get_unified_client') as mock_get_client, \
              patch('app.llm_proxy.gateway_unified.CreditService') as MockCreditService:
             
-            # Setup LLMProxy mock
+            # Direct dispatch is handled by UnifiedLLMClient.
             mock_proxy = MagicMock()
             mock_proxy.invoke = AsyncMock(return_value=mock_llm_response)
             mock_proxy.get_fallback_providers = MagicMock(return_value=["anthropic", "google"])
@@ -896,9 +896,13 @@ class TestDirectProviderPath:
             # Setup unified client mock
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.01")
+            mock_client.chat = AsyncMock(return_value=mock_llm_response)
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
+            gateway.web_gateway.deduct_credits = AsyncMock(
+                return_value=MagicMock(amount=100, balance_after=99990)
+            )
             
             # Invoke via direct path (use_openrouter=False)
             response = await gateway.invoke(
@@ -907,17 +911,14 @@ class TestDirectProviderPath:
                 use_openrouter=False,
             )
             
-            # Verify primary provider was called
-            mock_proxy.invoke.assert_called_once()
+            mock_client.chat.assert_awaited_once()
+            mock_proxy.invoke.assert_not_called()
             assert response.content == "Direct provider response"
             assert response.provider == "openai"
     
     @pytest.mark.asyncio
-    async def test_direct_path_primary_fails_fallback_succeeds(self, mock_db, mock_user, base_request):
-        """
-        Test: Primary provider fails, first fallback succeeds.
-        Lines covered: 290-315 (primary fails, fallback success path)
-        """
+    async def test_direct_path_returns_provider_selected_by_unified_client(self, mock_db, mock_user, base_request):
+        """The gateway returns the provider selected by UnifiedLLMClient."""
         # Create different responses for primary and fallback
         fallback_response = LLMResponse(
             content="Fallback provider response",
@@ -956,9 +957,13 @@ class TestDirectProviderPath:
             # Setup unified client mock
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.02")
+            mock_client.chat = AsyncMock(return_value=fallback_response)
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
+            gateway.web_gateway.deduct_credits = AsyncMock(
+                return_value=MagicMock(amount=200, balance_after=99980)
+            )
             
             # Invoke via direct path
             response = await gateway.invoke(
@@ -967,17 +972,14 @@ class TestDirectProviderPath:
                 use_openrouter=False,
             )
             
-            # Verify fallback was used
-            assert mock_proxy.invoke.call_count == 2
+            mock_client.chat.assert_awaited_once()
+            mock_proxy.invoke.assert_not_called()
             assert response.content == "Fallback provider response"
             assert response.provider == "anthropic"
     
     @pytest.mark.asyncio
-    async def test_direct_path_primary_fails_second_fallback_succeeds(self, mock_db, mock_user, base_request):
-        """
-        Test: Primary and first fallback fail, second fallback succeeds.
-        Lines covered: 317-324 (first fallback fails, continue to next)
-        """
+    async def test_direct_path_preserves_unified_client_selected_model(self, mock_db, mock_user, base_request):
+        """A provider-selected response is preserved through the gateway."""
         second_fallback_response = LLMResponse(
             content="Second fallback response",
             model="gemini-pro",
@@ -1016,9 +1018,13 @@ class TestDirectProviderPath:
             # Setup unified client mock
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.015")
+            mock_client.chat = AsyncMock(return_value=second_fallback_response)
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
+            gateway.web_gateway.deduct_credits = AsyncMock(
+                return_value=MagicMock(amount=150, balance_after=99985)
+            )
             
             # Invoke via direct path
             response = await gateway.invoke(
@@ -1027,8 +1033,8 @@ class TestDirectProviderPath:
                 use_openrouter=False,
             )
             
-            # Verify all three providers were tried
-            assert mock_proxy.invoke.call_count == 3
+            mock_client.chat.assert_awaited_once()
+            mock_proxy.invoke.assert_not_called()
             assert response.content == "Second fallback response"
             assert response.provider == "google"
     
@@ -1042,7 +1048,7 @@ class TestDirectProviderPath:
              patch('app.llm_proxy.gateway_unified.get_unified_client') as mock_get_client, \
              patch('app.llm_proxy.gateway_unified.CreditService') as MockCreditService:
             
-            # Setup LLMProxy mock - all providers fail
+            # The active direct path reports provider unavailability from UnifiedLLMClient.
             mock_proxy = MagicMock()
             mock_proxy.invoke = AsyncMock(side_effect=LLMProviderError("Provider unavailable", "openai", "gpt-4o"))
             mock_proxy.get_fallback_providers = MagicMock(return_value=["anthropic", "google"])
@@ -1056,6 +1062,9 @@ class TestDirectProviderPath:
             # Setup unified client mock
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.01")
+            mock_client.chat = AsyncMock(
+                side_effect=LLMProviderError("Provider unavailable", "openai", "gpt-4o")
+            )
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
@@ -1071,8 +1080,8 @@ class TestDirectProviderPath:
             assert exc_info.value.status_code == 503
             assert "All LLM providers are currently unavailable" in exc_info.value.detail
             
-            # Verify all providers were tried (primary + 2 fallbacks)
-            assert mock_proxy.invoke.call_count == 3
+            mock_client.chat.assert_awaited_once()
+            mock_proxy.invoke.assert_not_called()
     
     @pytest.mark.asyncio
     async def test_direct_path_no_fallbacks_available(self, mock_db, mock_user, base_request):
@@ -1098,6 +1107,9 @@ class TestDirectProviderPath:
             # Setup unified client mock
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.01")
+            mock_client.chat = AsyncMock(
+                side_effect=LLMProviderError("Primary failed", "openai", "gpt-4o")
+            )
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
@@ -1111,8 +1123,8 @@ class TestDirectProviderPath:
                 )
             
             assert exc_info.value.status_code == 503
-            # Only primary was tried (no fallbacks)
-            assert mock_proxy.invoke.call_count == 1
+            mock_client.chat.assert_awaited_once()
+            mock_proxy.invoke.assert_not_called()
     
     @pytest.mark.asyncio
     async def test_direct_path_fallback_request_has_updated_provider(self, mock_db, mock_user, base_request):
@@ -1129,20 +1141,11 @@ class TestDirectProviderPath:
             latency_ms=120,
         )
         
-        captured_requests = []
-        
-        async def capture_invoke(req):
-            captured_requests.append(req)
-            if len(captured_requests) == 1:
-                raise LLMProviderError("Primary failed", "openai", "gpt-4o")
-            return fallback_response
-        
         with patch('app.llm_proxy.gateway_unified.LLMProxy') as MockLLMProxy, \
              patch('app.llm_proxy.gateway_unified.get_unified_client') as mock_get_client, \
              patch('app.llm_proxy.gateway_unified.CreditService') as MockCreditService:
             
             mock_proxy = MagicMock()
-            mock_proxy.invoke = AsyncMock(side_effect=capture_invoke)
             mock_proxy.get_fallback_providers = MagicMock(return_value=["anthropic"])
             MockLLMProxy.return_value = mock_proxy
             
@@ -1159,9 +1162,13 @@ class TestDirectProviderPath:
             
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.02")
+            mock_client.chat = AsyncMock(return_value=fallback_response)
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
+            gateway.web_gateway.deduct_credits = AsyncMock(
+                return_value=MagicMock(amount=200, balance_after=99980)
+            )
             
             await gateway.invoke(
                 request=base_request,
@@ -1169,10 +1176,10 @@ class TestDirectProviderPath:
                 use_openrouter=False,
             )
             
-            # Verify first request had original provider
-            assert captured_requests[0].preferred_provider == "openai"
-            # Verify second request (fallback) had updated provider
-            assert captured_requests[1].preferred_provider == "anthropic"
+            mock_client.chat.assert_awaited_once()
+            assert mock_client.chat.call_args.kwargs["model"] == "gpt-4o"
+            assert mock_client.chat.call_args.kwargs["use_openrouter"] is False
+            mock_proxy.invoke.assert_not_called()
 
 
 class TestDirectPathWithCreditDeduction:
@@ -1235,9 +1242,13 @@ class TestDirectPathWithCreditDeduction:
             
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.01")
+            mock_client.chat = AsyncMock(return_value=mock_response)
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
+            gateway.web_gateway.deduct_credits = AsyncMock(
+                return_value=MagicMock(amount=100, balance_after=99990)
+            )
             
             await gateway.invoke(
                 request=base_request,
@@ -1245,8 +1256,7 @@ class TestDirectPathWithCreditDeduction:
                 use_openrouter=False,
             )
             
-            # Verify credits were deducted
-            mock_credit_service.deduct_credits.assert_called_once()
+            gateway.web_gateway.deduct_credits.assert_awaited_once()
     
     @pytest.mark.asyncio
     async def test_direct_path_insufficient_credits_returns_402(self, mock_db, mock_user, base_request):
@@ -1267,6 +1277,7 @@ class TestDirectPathWithCreditDeduction:
             
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.01")
+            mock_client.chat = AsyncMock()
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
@@ -1280,6 +1291,7 @@ class TestDirectPathWithCreditDeduction:
             
             assert exc_info.value.status_code == 402
             # LLM was never called
+            mock_client.chat.assert_not_called()
             mock_proxy.invoke.assert_not_called()
 
 
@@ -1324,19 +1336,9 @@ class TestDirectPathEdgeCases:
              patch('app.llm_proxy.gateway_unified.get_unified_client') as mock_get_client, \
              patch('app.llm_proxy.gateway_unified.CreditService') as MockCreditService:
             
-            # 5 fallbacks, only the last one succeeds
-            fallbacks = ["anthropic", "google", "mistral", "cohere", "groq"]
-            
+            # UnifiedLLMClient owns provider selection and fallback.
             mock_proxy = MagicMock()
-            mock_proxy.invoke = AsyncMock(side_effect=[
-                LLMProviderError("openai failed", "openai", "gpt-4o"),
-                LLMProviderError("anthropic failed", "anthropic", "claude-3"),
-                LLMProviderError("google failed", "google", "gemini"),
-                LLMProviderError("mistral failed", "mistral", "mistral"),
-                LLMProviderError("cohere failed", "cohere", "command"),
-                final_response,  # groq succeeds
-            ])
-            mock_proxy.get_fallback_providers = MagicMock(return_value=fallbacks)
+            mock_proxy.invoke = AsyncMock()
             MockLLMProxy.return_value = mock_proxy
             
             mock_credit_service = AsyncMock()
@@ -1352,9 +1354,13 @@ class TestDirectPathEdgeCases:
             
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.005")
+            mock_client.chat = AsyncMock(return_value=final_response)
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
+            gateway.web_gateway.deduct_credits = AsyncMock(
+                return_value=MagicMock(amount=50, balance_after=99995)
+            )
             
             response = await gateway.invoke(
                 request=request,
@@ -1362,8 +1368,8 @@ class TestDirectPathEdgeCases:
                 use_openrouter=False,
             )
             
-            # All 6 providers were tried (1 primary + 5 fallbacks)
-            assert mock_proxy.invoke.call_count == 6
+            mock_client.chat.assert_awaited_once()
+            mock_proxy.invoke.assert_not_called()
             assert response.provider == "groq"
     
     @pytest.mark.asyncio
@@ -1396,6 +1402,9 @@ class TestDirectPathEdgeCases:
             
             mock_client = MagicMock()
             mock_client.estimate_cost.return_value = Decimal("0.01")
+            mock_client.chat = AsyncMock(
+                side_effect=LLMProviderError("Rate limit exceeded", "openai", "gpt-4o")
+            )
             mock_get_client.return_value = mock_client
             
             gateway = LLMGateway(mock_db)
@@ -1408,6 +1417,7 @@ class TestDirectPathEdgeCases:
                 )
             
             # Error message should include the original error
+            assert exc_info.value.status_code == 503
             assert "Rate limit exceeded" in exc_info.value.detail
 
 

@@ -3499,6 +3499,16 @@ class LLMGateway:
             
             return response
             
+        except LLMProviderError as e:
+            logger.error(
+                "llm_direct_provider_unavailable",
+                user_id=user.id,
+                error=str(e),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"All LLM providers are currently unavailable: {str(e)}",
+            )
         except Exception as e:
             logger.error(
                 "llm_direct_failed",
