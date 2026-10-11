@@ -494,7 +494,7 @@ export async function dispatchPendingAutoTeamEvaluations(
             .where(and(
               eq(workerJobs.tenantId, candidate.tenantId),
               eq(workerJobs.jobType, "auto-team.recovery.evaluate"),
-              eq(workerJobs.status, "completed"),
+            inArray(workerJobs.status, ["completed", "succeeded"]),
               like(workerJobs.idempotencyKey, `auto-team-recovery:${candidate.id}:${stateFingerprint}:%`),
             ))
             .orderBy(desc(workerJobs.createdAt))
