@@ -1,5 +1,6 @@
 import type { JobExecutor } from "./jobExecutor";
 import * as runEngine from "./runEngine";
+import { withAutoTeamRunMutationFenceContext } from "./autoTeamRunMutationFence";
 import { sweepPendingAutoTeamRuns } from "./autoTeamRecoveryService";
 import {
   fingerprintAutoTeamRecoveryState,
@@ -48,10 +49,13 @@ export const executeAutoTeamRecoveryEvaluation: JobExecutor = async ({
   heartbeat.unref?.();
   let sweepResult: Awaited<ReturnType<typeof sweepPendingAutoTeamRuns>>;
   try {
-    sweepResult = await sweepPendingAutoTeamRuns({
-      onlyRunId: input.runId,
-      expectedStateFingerprint: input.stateFingerprint,
-    });
+    sweepResult = await withAutoTeamRunMutationFenceContext(
+      { lease, tenantId: context.tenantId, runId: input.runId },
+      () => sweepPendingAutoTeamRuns({
+        onlyRunId: input.runId,
+        expectedStateFingerprint: input.stateFingerprint,
+      }),
+    );
   } finally {
     active = false;
     clearInterval(heartbeat);

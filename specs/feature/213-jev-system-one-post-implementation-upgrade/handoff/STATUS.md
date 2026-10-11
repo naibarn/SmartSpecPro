@@ -2,11 +2,11 @@
 # 213 — Spec 213 — SmartAIHub Jev / System-One Post-Implementation Upgrade & Hardening
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 997 unresolved of 997
+- Requirements: 0 pass / 999 unresolved of 999
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 10
 
 ## Source-declared status and relationship claims
 

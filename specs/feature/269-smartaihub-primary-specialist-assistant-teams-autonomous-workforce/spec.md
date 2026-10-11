@@ -18180,3 +18180,11 @@ The R3.17 source contains historical clauses describing reusable Workflow/Automa
 ## D. Acceptance scenarios
 
 At minimum cover: one user across two apps/projects; two users in one authorized shared project; same conversation changing Project A→B; no project and ambiguous project; near-equal semantic candidates; picker confirmation; pending memory promotion after confirmation; Chat embedded in two apps with distinct host IDs; App clone, transfer, and lease; ACL revocation during a conversation; and legacy memory cutover with replay/idempotency. Tests must prove no cross-app/project/tenant private-memory leakage and bind evidence to the exact implementation SHA.
+
+# Assistant Decision Model alignment (2026-10-11)
+
+**Current-state assessment:** Spec 269 is the active canonical assistant/workforce architecture and already relies on shared capability, inference, policy, and durable-work owners. No Clef Decision Model runtime was identified in the inspected provider paths; this is a routing target only. The provider/API contract is owned by [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11).
+
+Assistant intent/routine classification and eligible Skill/tool/agent recommendation SHOULD use the Clef-first Decision Model selection policy when inference is needed, after deterministic conditions, tenant policy, and capability eligibility are resolved. Decision output is advisory; the existing orchestrator, capability registry, permissions, execution evidence, and `worker_jobs` control plane retain authority. Reasoning and coding work remain on independently selected capable models. A model score/confidence cannot change access, delegation scope, approval, or task completion status. On provider failure use the existing deterministic or authorized Reasoning LLM route; do not create a second orchestrator/queue, mandatory low-risk approval gate, or incompatible task state.
+
+Acceptance: the actual route/model and fallback are traceable under existing inference/audit records; tenant and BYO-provider policy applies; and assistant task completion continues to require its existing execution and evidence predicates. Existing in-flight assistant work remains on its pinned route.

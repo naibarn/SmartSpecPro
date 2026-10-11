@@ -2,7 +2,7 @@
 
 **Status:** Architecture Freeze Candidate / Ready for Implementation  
 **Spec ID:** 208  
-**Revision:** 8 — Records Phase 1 CDP isolation hardening and verification; Moli remains unintegrated with Runner and production remains Chromium-only
+**Revision:** 9 — Adds Clef-first Decision Model policy while preserving the existing guarded execution architecture; Moli remains unintegrated with Runner and production remains Chromium-only
 **Date:** 2026-10-08
 **Suggested repository path:** `specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md`  
 **Primary systems:** SmartAIHub Web, Universal AI Assistant, Feature 196 Goal Orchestrator, Feature 195 Unified Async Job Control Plane, Feature 197 Runner Adaptive Execution Fabric, Capability Registry/Resolver, Approval Service, Spec 207 Economic Control Plane, Spec 209 AI Workflow Studio, Spec 210 Orca Runtime Adapter under Spec 200/206, SmartAIHub Runner, SmartAIHub Worker App, Library/Asset Gateway  
@@ -120,7 +120,7 @@ DOM + ARIA + Accessibility + CDP / Playwright
    ↓
 Typed candidate action set
    ↓
-System-One Decision Provider (Jev initially, replaceable)
+System-One Decision Provider (Clef-flash by default; Clef/Clef-omni when policy requires; Jev only for legacy integrations)
    ↓
 Deterministic Executor
    ↓
@@ -1824,11 +1824,11 @@ class DecisionProvider:
 
 Providers MAY combine operation + target into one request.
 
-## 11.1 Jev Provider
+## 11.1 Clef-First Decision Provider
 
-Initial adapter SHOULD support TypeSafe Jev because it is designed for typed probabilistic decisions and calibrated confidence rather than free-form text generation.
+The default Decision Model family SHALL follow the typed Cloudflare Clef policy in Spec 231. Integrate through the replaceable provider interface; do not treat a structured answer or confidence value as execution authority or calibrated task-success probability.
 
-Jev SHOULD be used for:
+Clef-flash SHOULD be used for eligible structured routine decisions, including:
 
 - operation selection;
 - element selection;
@@ -1837,7 +1837,11 @@ Jev SHOULD be used for:
 - continue/wait/done decisions;
 - low-latency route choice among bounded alternatives.
 
-Jev SHOULD NOT be the primary component for:
+Use Clef-omni for required audio/video decisions and Clef when measured quality or hosted context limits justify it. Use deterministic rules before inference and an authorized Reasoning LLM for complex interpretation.
+
+Jev MAY remain only for an inventoried existing integration that requires it; it is not the preferred/default provider or a required external dependency. Provider-specific limits and calibration do not transfer to Clef.
+
+A Decision Model SHOULD NOT be the primary component for:
 
 - long text generation;
 - complex planning;
@@ -3956,7 +3960,7 @@ Enable Cloud Browser for tasks that do not require local session state. Validate
 
 ## Step 8 — Decision Provider
 
-Enable Jev provider behind feature flag with Rules/LLM fallback only after response validation, offline calibration, trace replay and canary gates pass.
+Enable the Clef Decision Model route behind existing policy controls only after typed request/response validation, SmartAIHub shadow evaluation, trace replay and bounded canary gates pass. Keep deterministic and eligible Reasoning LLM fallback; retain Jev only where a live legacy integration is confirmed.
 
 ## Step 8.1 — Native CUA Model/Agent Adapter
 
@@ -4962,3 +4966,13 @@ turn/action/continuation contracts, shared policy/approval/executor/verification
 ordered batch handling, independent reconciliation and the repository-level evidence
 required by §54.1. Any direct provider-to-Runner input path is experimental and is not
 compliant with Spec 208.
+
+# Decision-provider alignment (2026-10-11)
+
+**Current-state assessment:** this Spec is the architecture owner for guarded Computer Use and already describes a replaceable DecisionProvider, but its normal-path examples and rollout criteria still identify Jev as the initial/preferred decision provider. The Spec 208 handoff reports partial integration and open implementation/security work; this amendment does not upgrade that status. The Clef provider policy and typed Workers AI contract are owned by [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11), with System-One adapter semantics in [Spec 213](../213-jev-system-one-post-implementation-upgrade/spec.md#cloudflare-clef-decision-provider-amendment-2026-10-11).
+
+For the Decision Model role, normal routing SHALL prefer `@cf/cloudflare/clef-flash` for suitable structured decisions and use Clef-omni/Clef, deterministic rules, or a capable Reasoning LLM as specified by Spec 231. Jev remains only a legacy/qualified adapter where an existing integration genuinely requires it; it is not a required external runtime dependency. Replace Jev as the default provider without changing the Computer Use action space, deterministic execution, authorization, independent verification, or recovery boundaries. No decision provider—including Clef or Jev—can authorize or execute browser effects. Keep model proposal, policy decision, approved action, deterministic Runner execution, and independent evidence separate.
+
+Legacy Jev references in historical examples, compatibility schemas, or fixtures remain valid only when explicitly identified as legacy data/integration. This policy concerns Jev Decision Model usage and does not conflate it with any unrelated deterministic automation technology. Existing running jobs and state-bound decisions retain their pinned provider/model and policy snapshot; new routing follows the updated policy. Provider failure must take the current safe deterministic/Reasoning LLM/abstention fallback and must not introduce a new approval gate or strand an otherwise autonomous run.
+
+Acceptance: update the active provider selection and migration plan to Clef-first; preserve existing execution and safety gates; verify legacy compatibility only where a real caller is inventoried; and require SmartAIHub shadow/canary evidence before enabling a production default. No production Clef integration is claimed here.

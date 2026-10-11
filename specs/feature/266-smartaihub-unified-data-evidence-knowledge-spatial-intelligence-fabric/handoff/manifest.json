@@ -5,153 +5,12 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "260",
-        "referenced_spec_id": "260",
-        "referencing_spec_id": "266",
-        "relation_text": "absorbed",
-        "requirement_ids": [],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2106",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "262",
-        "referenced_spec_id": "262",
-        "referencing_spec_id": "266",
-        "relation_text": "absorbed",
-        "requirement_ids": [],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2106",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "264",
-        "referenced_spec_id": "264",
-        "referencing_spec_id": "266",
-        "relation_text": "superseded",
-        "requirement_ids": [],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2717",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "264",
-        "referenced_spec_id": "264",
-        "referencing_spec_id": "266",
-        "relation_text": "superseded_by_266",
-        "requirement_ids": [],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L3132",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "264",
-        "referenced_spec_id": "264",
-        "referencing_spec_id": "266",
-        "relation_text": "supersedes",
-        "requirement_ids": [
-          "R1.1"
-        ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L8",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "265",
-        "referenced_spec_id": "265",
-        "referencing_spec_id": "266",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R1.1"
-        ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L2686",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "265",
-        "referenced_spec_id": "265",
-        "referencing_spec_id": "266",
-        "relation_text": "superseded_by_266",
-        "requirement_ids": [
-          "R1.1"
-        ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L3133",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "265",
-        "referenced_spec_id": "265",
-        "referencing_spec_id": "266",
-        "relation_text": "supersedes",
-        "requirement_ids": [
-          "R1.1"
-        ],
-        "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md#L8",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
-        "successor_spec_id": "266"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "266",
-        "referenced_spec_id": "266",
-        "referencing_spec_id": "281",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1709",
-        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
-        "successor_spec_id": "281"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "266",
-        "referenced_spec_id": "266",
-        "referencing_spec_id": "282",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
-        "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
-        "successor_spec_id": "282"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "266",
-        "referenced_spec_id": "266",
-        "referencing_spec_id": "284",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/284-project-evidence-retrieval-artifact-continuity-source-preservation-r1-0/spec.md#L112",
-        "source_digest": "785d9632b21124befc6ec06aae42aac5aa67dcf36ce9d147a3498b64bca5e762",
-        "successor_spec_id": "284"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md"
       },
@@ -243,7 +102,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "3d6d1a3a6e3f9ee8dcce1a55fb3965c06fe61dc5",
-    "expected_spec_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9"
+    "expected_spec_digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720"
   },
   "continuation": {
     "next_action": null,
@@ -257,7 +116,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md"
       },
@@ -340,104 +199,6 @@
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
-      },
-      {
-        "excerpt": "/** Spec 266 shared source identity. Runtime fetch authority remains in server policy, never this row. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 31557,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** True only after the shared Spec 266 admission/authorization check. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 15,
-        "path": "apps/web/server/services/decisionIntelligence/analysis.ts"
-      },
-      {
-        "excerpt": "// admission envelope aligned with the registered Spec 266 executor.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 88,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
-      },
-      {
-        "excerpt": "* Provider-neutral Spec 266 DataRequirement/DataOffer resolution.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 evidence admission\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 97,
-        "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 canonical geometry contract\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 16,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 pending-review registry persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 91,
-        "path": "apps/web/server/services/intelligenceFabric/registryPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research persistence admission\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 9,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research promotion policy\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 immutable ResearchRun persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 89,
-        "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 semantic and spatial contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 independent source health\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 19,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 bounded spatial operations\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -462,7 +223,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md"
       },
@@ -550,13 +311,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 15,
+  "generation": 16,
   "identity": {
     "canonical_path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
-    "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+    "digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-07T04:14:02.287419Z",
+      "last_evidence_at": "2026-10-11T01:58:46.663889Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-05T07:48:30+07:00"
@@ -583,7 +344,7 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-07T04:14:02.287419Z"
+    "updated_at": "2026-10-11T01:58:46.663889Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -593,10 +354,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-07T04:14:02.287419Z",
+    "reconciled_at": "2026-10-11T01:58:46.663889Z",
     "sources": [
       {
-        "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md"
       },
@@ -679,104 +440,6 @@
         "digest": "6f1ab302730c373837927e221585b89481d35b6e681364c924380975840d5a37",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/sections/section-08-migration-acceptance-and-production-gates.md"
-      },
-      {
-        "excerpt": "/** Spec 266 shared source identity. Runtime fetch authority remains in server policy, never this row. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 31557,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** True only after the shared Spec 266 admission/authorization check. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 15,
-        "path": "apps/web/server/services/decisionIntelligence/analysis.ts"
-      },
-      {
-        "excerpt": "// admission envelope aligned with the registered Spec 266 executor.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 88,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
-      },
-      {
-        "excerpt": "* Provider-neutral Spec 266 DataRequirement/DataOffer resolution.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 evidence admission\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 97,
-        "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 canonical geometry contract\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 16,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 pending-review registry persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 91,
-        "path": "apps/web/server/services/intelligenceFabric/registryPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research persistence admission\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 9,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research promotion policy\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 immutable ResearchRun persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 89,
-        "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 semantic and spatial contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 independent source health\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 19,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 bounded spatial operations\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -898,7 +561,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "source_digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "value": "Proposed — Canonical Shared Foundation / Implementation-Ready Design"
       }
     ],
@@ -916,110 +579,11 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "/** Spec 266 shared source identity. Runtime fetch authority remains in server policy, never this row. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 31557,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** True only after the shared Spec 266 admission/authorization check. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 15,
-        "path": "apps/web/server/services/decisionIntelligence/analysis.ts"
-      },
-      {
-        "excerpt": "// admission envelope aligned with the registered Spec 266 executor.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 88,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.ts"
-      },
-      {
-        "excerpt": "* Provider-neutral Spec 266 DataRequirement/DataOffer resolution.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 5,
-        "path": "apps/web/server/services/intelligenceFabric/resolver.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 evidence admission\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 97,
-        "path": "apps/web/server/services/intelligenceFabric/evidenceAdmission.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 canonical geometry contract\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 16,
-        "path": "apps/web/server/services/intelligenceFabric/geometry.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 pending-review registry persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 91,
-        "path": "apps/web/server/services/intelligenceFabric/registryPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "apps/web/server/services/intelligenceFabric/researchContracts.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research persistence admission\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 9,
-        "path": "apps/web/server/services/intelligenceFabric/researchPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 research promotion policy\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/intelligenceFabric/researchPromotion.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 immutable ResearchRun persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 89,
-        "path": "apps/web/server/services/intelligenceFabric/researchRunPersistence.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 semantic and spatial contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 4,
-        "path": "apps/web/server/services/intelligenceFabric/semantic.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 independent source health\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 19,
-        "path": "apps/web/server/services/intelligenceFabric/sourceHealth.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 266 bounded spatial operations\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/services/intelligenceFabric/spatialOps.test.ts"
-      }
-    ],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
     "declared_claims": [
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -1132,14 +696,14 @@
         "excerpt": "**Status:** Proposed — Canonical Shared Foundation / Implementation-Ready Design",
         "line": 6,
         "source": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
-        "source_digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "source_digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "value": "Proposed — Canonical Shared Foundation / Implementation-Ready Design"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9",
+        "digest": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md"
       },
@@ -1227,7 +791,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -1239,7 +803,7 @@
     "unresolved": 207
   },
   "schema_version": 1,
-  "updated_at": "2026-10-07T04:22:34.204711Z",
+  "updated_at": "2026-10-11T01:58:46.663889Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

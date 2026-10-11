@@ -3139,3 +3139,11 @@ Spec 260/262 = implemented upstream consumers/authorities
 ## R1.3 Additive Portable Mini App Knowledge authority erratum — 2026-10-07
 
 The current normative owner of Portable Mini App Knowledge Runtime/Wiki RAG is **SPEC-281**, at `specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md`. `SPEC-278` is SmartAIHub Durable Runner Execution Sessions & Recovery Fabric and MUST NOT be cited as the Portable Mini App Knowledge authority. This erratum supersedes current ownership mappings in this Spec (including §2.4 and Appendix C) while preserving the original R1.2 wording, historical quotations, implementation notes, and receipts. Current normative consumers MUST use SPEC-281 for portable knowledge runtime/provider mechanics, SPEC-266 for canonical knowledge/evidence semantics, and SPEC-229 for managed retrieval. No implementation parity is asserted by this authority correction.
+
+# Decision Model data/evidence boundary (2026-10-11)
+
+**Current-state assessment:** Spec 266 owns canonical data/evidence permissions, provenance, retention, and retrieval boundaries. Its handoff remains validation-pending; this amendment does not assert implementation of a Clef adapter. Provider behavior is governed by [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11).
+
+Clef may classify or route only evidence that the existing tenant/access policy permits for the selected provider and purpose. Send only the minimum decision state and media needed; preserve source/tenant provenance, rights, retention, and data-egress restrictions. A Clef answer cannot establish that evidence is trustworthy, authorized, complete, or functionally verified, and cannot override provenance or access policy. Reuse cached decisions only under the exact tenant/access scope, evidence/input fingerprint, policy and schema/model version, and freshness constraints in Spec 231. If Cloudflare routing is disallowed by tenant data policy, use an existing eligible deterministic or approved provider path.
+
+Acceptance: evidence rights and provenance remain authoritative; provider/account and usage attribution is captured through existing records; and cross-tenant evidence or stale decision reuse is rejected.

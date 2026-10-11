@@ -69,6 +69,7 @@ import type {
   RuntimeDispatchPolicy,
   WorkOrchestratorSurface,
 } from "../../shared/workOrchestrator";
+import { persistAutoTeamRunSideEffect } from "./autoTeamRunMutationFence";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -923,25 +924,31 @@ export async function recordEvent(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [event] = await db
-    .insert(agentActivityEvents)
-    .values({
-      id: input.eventId ?? crypto.randomUUID(),
-      tenantId: input.tenantId,
-      teamId: input.teamId,
-      roomId: input.roomId,
-      runId: input.runId,
-      assistantId: input.assistantId ?? null,
-      eventType: input.eventType,
-      eventCategory: input.eventCategory,
-      visibility: (input.visibility as any) ?? "transparent",
-      summary: input.summary ?? null,
-      detailJson: input.detailJson ?? null,
-      tokenUsageSnapshot: input.tokenUsageSnapshot ?? null,
-      costSnapshot: input.costSnapshot ? String(input.costSnapshot) : null,
-      durationMs: input.durationMs ?? null,
-    })
-    .returning();
+  const [event] = await persistAutoTeamRunSideEffect({
+    executor: db,
+    tenantId: input.tenantId,
+    runId: input.runId,
+    mutate: async executor =>
+      executor
+        .insert(agentActivityEvents)
+        .values({
+          id: input.eventId ?? crypto.randomUUID(),
+          tenantId: input.tenantId,
+          teamId: input.teamId,
+          roomId: input.roomId,
+          runId: input.runId,
+          assistantId: input.assistantId ?? null,
+          eventType: input.eventType,
+          eventCategory: input.eventCategory,
+          visibility: (input.visibility as any) ?? "transparent",
+          summary: input.summary ?? null,
+          detailJson: input.detailJson ?? null,
+          tokenUsageSnapshot: input.tokenUsageSnapshot ?? null,
+          costSnapshot: input.costSnapshot ? String(input.costSnapshot) : null,
+          durationMs: input.durationMs ?? null,
+        })
+        .returning(),
+  });
 
   return event;
 }
@@ -997,32 +1004,38 @@ export async function captureSnapshot(
       agentId === run.activeAssistantId ? "active" : "idle";
   }
 
-  const [snapshot] = await db
-    .insert(runSnapshots)
-    .values({
-      runId,
-      activeAssistantId: run.activeAssistantId,
-      agentStatusesJson: agentStatuses,
-      tokenUsageJson: Object.fromEntries(
-        Object.entries(perAgent).map(([id, d]) => [
-          id,
-          { inputTokens: d.inputTokens, outputTokens: d.outputTokens },
-        ])
-      ),
-      costJson: Object.fromEntries(
-        Object.entries(perAgent).map(([id, d]) => [id, d.creditsUsed])
-      ),
-      artifactCountJson: buildRunSnapshotArtifactPayload(
-        run,
-        tenantId,
-        mergedArtifactCountJson,
-        {
-          ...(policyGateReason ? { policyGateReason } : {}),
-          ...(options?.runtimeState ?? {}),
-        }
-      ),
-    })
-    .returning();
+  const [snapshot] = await persistAutoTeamRunSideEffect({
+    executor: db,
+    tenantId,
+    runId,
+    mutate: async executor =>
+      executor
+        .insert(runSnapshots)
+        .values({
+          runId,
+          activeAssistantId: run.activeAssistantId,
+          agentStatusesJson: agentStatuses,
+          tokenUsageJson: Object.fromEntries(
+            Object.entries(perAgent).map(([id, d]) => [
+              id,
+              { inputTokens: d.inputTokens, outputTokens: d.outputTokens },
+            ])
+          ),
+          costJson: Object.fromEntries(
+            Object.entries(perAgent).map(([id, d]) => [id, d.creditsUsed])
+          ),
+          artifactCountJson: buildRunSnapshotArtifactPayload(
+            run,
+            tenantId,
+            mergedArtifactCountJson,
+            {
+              ...(policyGateReason ? { policyGateReason } : {}),
+              ...(options?.runtimeState ?? {}),
+            }
+          ),
+        })
+        .returning(),
+  });
 
   return snapshot;
 }

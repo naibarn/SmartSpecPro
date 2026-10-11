@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
-    "expected_spec_digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
+    "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
     "next_action": "Obtain an explicit owner for team_runs mutation fencing and its schema/runtime contract, then implement and test stale-worker denial after lease reclaim at every protected run mutation boundary. Current SIGKILL proof kills the prior process before reclaim and does not test stale side effects.",
@@ -91,7 +91,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -99,13 +99,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
-    "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+    "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-10T07:35:15.704466Z",
+      "last_evidence_at": "2026-10-11T01:58:46.354041Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -388,15 +388,20 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-10T07:35:15.704466Z",
+    "reconciled_at": "2026-10-11T01:58:46.354041Z",
     "sources": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -414,7 +419,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4",
+        "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -425,16 +430,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 4,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 429,
-    "unresolved": 429
+    "total": 431,
+    "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T00:56:43.483069Z",
+  "updated_at": "2026-10-11T01:58:46.354041Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
