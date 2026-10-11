@@ -962,15 +962,16 @@ export async function publishWorkerRuntimeRelease(
     );
   }
   const speakerAwareRunner = current.manifestJson?.speakerAwareRunner;
+  const speakerAwareRunnerVersion =
+    speakerAwareRunner && typeof speakerAwareRunner === "object"
+      ? (speakerAwareRunner as Record<string, unknown>).version
+      : undefined;
   if (
     speakerAwareRunner &&
     typeof speakerAwareRunner === "object" &&
     !Array.isArray(speakerAwareRunner) &&
-    !isSupportedSpeakerAwareRunnerVersion(
-      typeof (speakerAwareRunner as Record<string, unknown>).version === "string"
-        ? (speakerAwareRunner as Record<string, unknown>).version
-        : ""
-    )
+    (typeof speakerAwareRunnerVersion !== "string" ||
+      !isSupportedSpeakerAwareRunnerVersion(speakerAwareRunnerVersion))
   ) {
     throw new WorkerRuntimeReleaseError(
       "worker_runtime_release_runner_outdated",
