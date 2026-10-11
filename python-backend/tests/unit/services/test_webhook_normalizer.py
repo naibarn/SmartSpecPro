@@ -24,10 +24,8 @@ async def test_normalize_messaging_event_creates_conversation_and_message() -> N
         _result(None),
     ])
     db.commit = AsyncMock()
-    redis = AsyncMock()
-    redis.incr = AsyncMock()
 
-    normalizer = WebhookNormalizer(db, redis=redis)
+    normalizer = WebhookNormalizer(db)
     result = await normalizer.normalize_messaging_event(
         {
             "id": "page-123",
@@ -48,7 +46,8 @@ async def test_normalize_messaging_event_creates_conversation_and_message() -> N
     assert result["messages"][0]["message_id"] == 201
     assert result["messages"][0]["provider_message_id"] == "m_1"
     db.commit.assert_awaited_once()
-    redis.incr.assert_awaited_once_with("social:unread:tenant-1:101")
+    update_call = db.execute.await_args_list[2]
+    assert "UPDATE social_conversations" in str(update_call.args[0])
 
 
 @pytest.mark.asyncio
