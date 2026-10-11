@@ -5,8 +5,10 @@ import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 export const publicHomeTheme = defineTheme({
   name: "smartaihub-public-home",
   extends: neutralTheme,
-  tokens: {
+  localTokens: {
     "--public-layout-wide": "88rem",
+  },
+  tokens: {
     "--color-accent": "#006874",
     "--color-accent-muted": "#e5f5f6",
     "--color-on-accent": "#ffffff",
