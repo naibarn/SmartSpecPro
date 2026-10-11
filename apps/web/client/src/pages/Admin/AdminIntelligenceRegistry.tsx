@@ -482,7 +482,7 @@ export default function AdminIntelligenceRegistry() {
               void pendingQuery.refetch();
               void loadOperationalSources();
             }}
-            disabled={
+            isDisabled={
               catalogQuery.isFetching ||
               pendingQuery.isFetching ||
               operationalLoading
@@ -745,12 +745,12 @@ export default function AdminIntelligenceRegistry() {
               label={text.cancel}
               variant="secondary"
               onClick={() => setReviewSource(null)}
-              disabled={reviewBusy}
+              isDisabled={reviewBusy}
             />
             <Button
               label={text.confirmApprove}
               onClick={() => void submitApproval()}
-              disabled={
+              isDisabled={
                 reviewBusy ||
                 !reviewItems.every(item => checklist[item]) ||
                 reviewReason.trim().length < 8
@@ -849,12 +849,12 @@ export default function AdminIntelligenceRegistry() {
               label={text.cancel}
               variant="secondary"
               onClick={() => setRegisterSource(null)}
-              disabled={registerBusy}
+              isDisabled={registerBusy}
             />
             <Button
               label={text.register}
               onClick={() => void submitCandidate()}
-              disabled={registerBusy || !registerSource}
+              isDisabled={registerBusy || !registerSource}
             />
           </HStack>
         </VStack>
