@@ -46,14 +46,30 @@ export async function issueVoiceSessionToken(
 
 /** Atomically consume a token so it cannot authorize two WebSocket upgrades. */
 export async function consumeVoiceSessionToken(token: string): Promise<VoiceSessionToken | null> {
-  const result = await getDb().execute(sql<Array<{ value: VoiceSessionToken }>>`
+  const result = await getDb().execute(sql<Array<{ value: unknown }>>`
     DELETE FROM runtime_ephemeral_values
     WHERE namespace = ${TOKEN_NAMESPACE}
       AND key_hash = ${hashKey(token)}
       AND expires_at > now()
     RETURNING value
   `);
-  return result[0]?.value ?? null;
+  const value = result[0]?.value;
+  if (typeof value !== "object" || value === null) return null;
+
+  const payload = value as Record<string, unknown>;
+  const userId = payload.userId;
+  const tenantId = payload.tenantId;
+  if (
+    typeof userId !== "number" ||
+    !Number.isSafeInteger(userId) ||
+    userId < 1 ||
+    typeof tenantId !== "string" ||
+    !tenantId
+  ) {
+    return null;
+  }
+
+  return { userId, tenantId };
 }
 
 /** Claim the one-session-per-user slot, with an owner value for safe release. */
