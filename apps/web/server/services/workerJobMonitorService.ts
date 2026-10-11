@@ -124,7 +124,17 @@ function isRetryableContentProtectionFailure(
  * Remotion runtime regression fixed in the current release.
  */
 export function getUserWorkerJobRetryPolicy(
-  row: Pick<WorkerJobRow, "status" | "jobType" | "errorCode" | "failureReason" | "operatorReviewRequired" | "operatorReviewReason">,
+  row: Pick<
+    WorkerJobRow,
+    | "status"
+    | "jobType"
+    | "statusReason"
+    | "errorCode"
+    | "errorMessage"
+    | "failureReason"
+    | "operatorReviewRequired"
+    | "operatorReviewReason"
+  >,
   evidence: { hasVerifiedOutput?: boolean; hasUnpublishedRemotionArtifact?: boolean } = {},
 ): UserWorkerJobRetryPolicy | null {
   if (row.statusReason?.startsWith("remotion_replaced:")) {
@@ -792,8 +802,8 @@ function projectOrchestration(row: WorkerJobRow): SafeWorkerJobOrchestration {
     : "degraded";
 
   return {
-    planId: metadataState === "valid" ? planId : null,
-    stepId: metadataState === "valid" ? stepId : null,
+    planId: metadataState === "valid" ? planId ?? null : null,
+    stepId: metadataState === "valid" ? stepId ?? null : null,
     stepIndex: metadataState === "valid" ? parsedStepIndex ?? null : null,
     totalSteps: metadataState === "valid" ? totalSteps ?? null : null,
     dependsOnJobIds: metadataState === "valid"
