@@ -119,4 +119,100 @@ describe("Mini App Factory trusted Runner stage adapter", () => {
     })).rejects.toThrow("FACTORY_RUNNER_PARENT_AUTHORITY_REQUIRED");
     expect(createRun).not.toHaveBeenCalled();
   });
+
+  it("analyzes integrity-bound screenshots and stages the vision blueprint only for requirements intake", async () => {
+    const parent = makeParent();
+    parent.metadata = { ...parent.metadata, spec224Input: { inputSourceRef: "source-ref", inputDigest: "d".repeat(64) } };
+    const imageBytes = Buffer.from("screenshot fixture");
+    const imageBase64 = imageBytes.toString("base64");
+    const imageDigest = createHash("sha256").update(imageBytes).digest("hex");
+    const videoBytes = Buffer.from("video fixture");
+    const videoBase64 = videoBytes.toString("base64");
+    const videoDigest = createHash("sha256").update(videoBytes).digest("hex");
+    const manifest = {
+      schemaVersion: "spec224-visual-reference-manifest.v1",
+      trust: "untrusted-visual-evidence",
+      designPreferences: { similarityMode: "close" },
+      references: [
+        { id: "shot-1", filePath: "design-references/screen.png", fileName: "screen.png", mimeType: "image/png", sha256: imageDigest, pageHint: "Dashboard", stateHint: "empty", viewportHint: "desktop" },
+        { id: "video-1", filePath: "design-references/flow.mp4", fileName: "flow.mp4", mimeType: "video/mp4", sha256: videoDigest, pageHint: "Dashboard", stateHint: "menu open", viewportHint: "mobile" },
+      ],
+    };
+    const analyzeVisualReferences = vi.fn(async (input: any) => ({
+      blueprint: {
+        schemaVersion: "mini-app-visual-blueprint.v1",
+        summary: "Dashboard layout",
+        pages: [{ page: "Dashboard", referenceIds: ["shot-1"], layout: "Sidebar and main content", hierarchy: ["Title", "Table"], components: [] }],
+        designTokens: [], responsiveTargets: [], confidence: 0.8,
+      },
+      modelId: "enabled-vision-model",
+      creditsUsed: 2,
+      inputDigest: "e".repeat(64),
+    }));
+    const stagedFiles: Array<{ path: string; contentBase64: string }> = [];
+    const createRun = vi.fn(async (value: any) => ({ run: { ...value.run, workerJobId: "child-job-id" }, jobRef: { jobId: "child-job-id", created: true } }));
+
+    await createMiniAppFactoryRunnerStage({
+      pipeline,
+      stage: { id: "requirements_intake", dependsOn: [], inputs: ["requirements", "visualReferences"], outputs: ["requirements", "visualBlueprint"] },
+      run: { runId: parent.runId, tenantId: parent.tenantId, actorId: parent.actorId },
+      service: { get: async () => ({ run: parent, revision: 4, events: [] }) } as any,
+      controlPlane: { getContext: async () => ({ jobType: "external_agent_task", input: { manifest: parentManifest() } }) } as any,
+      getBoundSource: vi.fn(async (input: any) => {
+        expect(input).toMatchObject({ tenantId: parent.tenantId, startRef: parent.runId, workerJobId: "parent-job-id", inputSourceRef: "source-ref", inputDigest: "d".repeat(64) });
+        return { files: [
+          { path: "visual-reference-manifest.json", contentBase64: Buffer.from(JSON.stringify(manifest)).toString("base64") },
+          { path: "design-references/screen.png", contentBase64: imageBase64 },
+          { path: "design-references/flow.mp4", contentBase64: videoBase64 },
+        ] };
+      }) as any,
+      analyzeVisualReferences: analyzeVisualReferences as any,
+      stageInput: async (files) => {
+        stagedFiles.push(...files);
+        return { inputSourceRef: "child-source", inputDigest: "f".repeat(64), totalBytes: 100 };
+      },
+      createRun: createRun as any,
+      bindInput: vi.fn(async () => true) as any,
+    });
+
+    expect(analyzeVisualReferences).toHaveBeenCalledWith(expect.objectContaining({ userId: 42, tenantId: parent.tenantId, runId: parent.runId, designPreferences: manifest.designPreferences }));
+    expect(analyzeVisualReferences.mock.calls[0]![0].references[0]).toMatchObject({ id: "shot-1", contentBase64: imageBase64, pageHint: "Dashboard", stateHint: "empty", viewportHint: "desktop" });
+    expect(stagedFiles.map(file => file.path)).toEqual(expect.arrayContaining(["mini-app-factory-stage.json", "visual-reference-manifest.json", "design-references/screen.png", "design-references/flow.mp4", "visual-blueprint.json"]));
+    expect(JSON.parse(Buffer.from(stagedFiles.find(file => file.path === "mini-app-factory-stage.json")!.contentBase64, "base64").toString("utf8"))).toMatchObject({ visualBlueprintRequired: true, visualBlueprintDigest: "e".repeat(64), visualBlueprintModelId: "enabled-vision-model", visualBlueprintOutputPath: "visual-blueprint.json" });
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("schema-validated visual-blueprint.json");
+  });
+
+  it("adds bounded visual comparison and repair to the existing UAT stage when references exist", async () => {
+    const parent = makeParent();
+    parent.metadata = { ...parent.metadata, spec224Input: { inputSourceRef: "source-ref", inputDigest: "d".repeat(64) } };
+    const bytes = Buffer.from("reference image");
+    const base64 = bytes.toString("base64");
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    const manifest = { schemaVersion: "spec224-visual-reference-manifest.v1", trust: "untrusted-visual-evidence", references: [{ id: "shot", filePath: "design-references/page.png", fileName: "page.png", mimeType: "image/png", sha256: digest, viewportHint: "desktop" }] };
+    let stageDocument: any;
+    const createRun = vi.fn(async (value: any) => ({ run: { ...value.run, workerJobId: "child-job-id" }, jobRef: { jobId: "child-job-id", created: true } }));
+    await createMiniAppFactoryRunnerStage({
+      pipeline,
+      stage: { id: "uat", dependsOn: [], inputs: ["fixture", "references"], outputs: ["journeyEvidence", "visualComparison"] },
+      run: { runId: parent.runId, tenantId: parent.tenantId, actorId: parent.actorId },
+      service: { get: async () => ({ run: parent, revision: 4, events: [] }) } as any,
+      controlPlane: { getContext: async () => ({ jobType: "external_agent_task", input: { manifest: parentManifest() } }) } as any,
+      getBoundSource: vi.fn(async () => ({ files: [
+        { path: "visual-reference-manifest.json", contentBase64: Buffer.from(JSON.stringify(manifest)).toString("base64") },
+        { path: "design-references/page.png", contentBase64: base64 },
+      ] })) as any,
+      analyzeVisualReferences: vi.fn() as any,
+      stageInput: async files => {
+        stageDocument = JSON.parse(Buffer.from(files[0]!.contentBase64, "base64").toString("utf8"));
+        return { inputSourceRef: "child-source", inputDigest: "f".repeat(64), totalBytes: 100 };
+      },
+      createRun: createRun as any,
+      bindInput: vi.fn(async () => true) as any,
+    });
+
+    expect(stageDocument.visualUat).toMatchObject({ maxRepairRounds: 2, referenceManifestPath: "visual-reference-manifest.json", browser: "existing-authorized-runner-browser-capability" });
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("per-viewport visual comparison report");
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("at most two focused repair rounds");
+    expect(createRun.mock.calls[0]![0].run.goal).toContain("report UNVERIFIED");
+  });
 });
