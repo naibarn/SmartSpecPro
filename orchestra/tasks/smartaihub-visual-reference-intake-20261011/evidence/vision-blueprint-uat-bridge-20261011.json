@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "workunit": "SPEC-224_VISUAL_REFERENCE_LIVE_RUNNER_GENERATION_AND_UAT",
+  "status": "PARTIAL_INTEGRATED",
+  "source_sha": "4403bd305ec370b394e1ef305018a5c8bef99658",
+  "integrated_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+  "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/592",
+  "merged_at": "2026-10-11T01:12:53Z",
+  "ci": {
+    "progressive_integration_gate": "PASSED",
+    "build_preview": "SKIPPED"
+  },
+  "focused_verification": {
+    "profile": "integration",
+    "revision": "4403bd305ec370b394e1ef305018a5c8bef99658",
+    "command": "pnpm --dir apps/web exec vitest run server/services/__tests__/miniAppVisualBlueprint.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts",
+    "outcome": "PASSED",
+    "test_files": 2,
+    "tests_passed": 8,
+    "duration_seconds": 2.63
+  },
+  "integrated_scope": [
+    "The existing Factory requirements_intake stage now analyzes the exact integrity-checked staged screenshot bytes using only a currently enabled, healthy model catalog entry that declares vision and structured-output support.",
+    "The analyzer emits a bounded schema-validated page/layout/component/token/responsive blueprint, binds tenant/run/reference digests, and uses existing LLM routing and idempotent credit settlement without enabling providers or adding DDL.",
+    "Staged videos and other non-image references remain available to Runner stages but do not block screenshot analysis.",
+    "The existing UAT stage now receives a two-round visual comparison/repair contract, functional-regression priority, and an UNVERIFIED outcome when the authorized browser capability is unavailable. This is a stage instruction contract, not evidence that a visual compare or repair has run."
+  ],
+  "runner_readiness": {
+    "runner_id": "local-runner",
+    "profile": "local_device",
+    "runner_version": "0.2.23",
+    "contract_version": "sah-runner-v1",
+    "connect_schema_revision": "sah-runner-connect-v2",
+    "minimum_version": "0.1.0",
+    "version": "PASS_PROTOCOL_COMPATIBLE",
+    "release": {
+      "tag": "runner-v0.2.23",
+      "target_commit": "a6cf3d5efc8f8ae93b67946fdf93941af0ec25f4",
+      "assets": ["Linux x86_64 signed binary and tarball"],
+      "windows_asset": "NOT_PUBLISHED"
+    },
+    "source_sha_compatibility": "Protocol/schema compatible; installed release source commit differs from the current application SHA and is not an exact-source build.",
+    "registration": "UNVERIFIED; local profile identifies local-runner but no fresh control-plane registration acknowledgement was observed.",
+    "session": "BLOCKED_NO_AUTHORIZED_SESSION_EVIDENCE",
+    "codex": {
+      "cli_version": "codex-cli 0.160.0",
+      "local_login": "PASS_LOGGED_IN_USING_CHATGPT",
+      "runner_auth": "UNKNOWN",
+      "availability": "UNKNOWN",
+      "trust": "DISCOVERED",
+      "reason": "probe_required",
+      "authorization_evidence_ref": null,
+      "probe_evidence_ref": null
+    },
+    "browser": {
+      "install_state": "ready",
+      "availability": "UNKNOWN",
+      "health": "UNKNOWN",
+      "trust": "DISCOVERED",
+      "reason": "probe_required",
+      "authorization_evidence_ref": null,
+      "probe_evidence_ref": null
+    },
+    "ready_tool_count": 0,
+    "observation_command": "smartaihub-runner doctor --json and capabilities --json",
+    "observation_policy": "Read-only discovery; no rescan, authentication probe, job dispatch, or trust mutation was attempted."
+  },
+  "live_acceptance": {
+    "status": "BLOCKED",
+    "classification": {
+      "VERSION": "PASS_PROTOCOL_COMPATIBLE",
+      "AUTH": "BLOCKED_RUNNER_AUTH_UNKNOWN; local Codex login is not Runner auth evidence",
+      "TRUST": "BLOCKED_PROBE_REQUIRED",
+      "CAPABILITY": "BLOCKED_ZERO_READY_TOOLS",
+      "SESSION": "BLOCKED_NO_AUTHORIZED_REGISTERED_SESSION_EVIDENCE",
+      "BROWSER": "BLOCKED_PROBE_REQUIRED"
+    },
+    "not_run": [
+      "No screenshot was sent through a new live Create Mini App request during this workunit.",
+      "No real Vision response, generated Mini App runtime, browser render, visual comparison artifact, repair receipt, functional UAT receipt, or worker receipt/settlement was produced.",
+      "No authenticated non-production identity and trusted Runner session bound to the target run/source/workspace were available."
+    ],
+    "next_action": "Obtain owner-authorized non-production identity and complete the existing Runner connect/probe/trust flow in that non-production control plane; then execute screenshot intake through receipt and settlement. Do not use the production-default rescan path or fabricate trust evidence."
+  },
+  "outstanding": [
+    "Actual image-derived blueprint quality and provider response are unverified.",
+    "Generated code, real browser render, comparison, bounded repair, and functional regression remain unverified.",
+    "SPEC-270 G0 remains independently unresolved; no new provider authority or durable DDL was added.",
+    "URL capture security, video frame extraction, and live external-reference acquisition remain outside this screenshot-focused slice."
+  ]
+}
