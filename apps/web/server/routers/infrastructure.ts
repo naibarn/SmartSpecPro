@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { fetchWithResilience } from "../_core/fetchWithResilience";
@@ -20,7 +21,7 @@ import {
   getFailedTaskEvents,
 } from "../services/cloudTasksMetrics";
 import { encrypt, decrypt } from "../services/crypto";
-import { refreshAppRuntimeConfigCache } from "../services/appRuntimeConfig";
+import { getAppRuntimeConfig, refreshAppRuntimeConfigCache } from "../services/appRuntimeConfig";
 import {
   getMcpRuntimeConfigForAdmin,
   MCP_RUNTIME_CATEGORY,
@@ -56,6 +57,16 @@ import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/g
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
 import { composeProjectWikiHostedRoutePreflight } from "../services/projectWikiHostedRoutePreflight";
 import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
+import {
+  PROJECT_WIKI_CANDIDATE,
+  createDrizzleProjectWikiCandidateRepository,
+  projectWikiCandidateStorage,
+  projectWikiStagingEnvelopeSchema,
+  readProjectWikiReleaseCandidate,
+  registerProjectWikiReleaseCandidate,
+  type ProjectWikiApprovalEvidence,
+} from "../services/projectWikiReleaseCandidate";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -63,6 +74,64 @@ const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+async function fetchProjectWikiApprovalRequest(requestId: string, userToken: string): Promise<ProjectWikiApprovalEvidence | null> {
+  const runtime = await getAppRuntimeConfig();
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/v1/approvals/requests/${requestId}`, {
+    headers: { Authorization: `Bearer ${userToken}` },
+    timeoutMs: 15000,
+    retryPolicy: "transient",
+    label: "projectWikiStagingApproval.read",
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : "BAD_GATEWAY", message: "Unable to verify staging approval" });
+  const row = await response.json() as Record<string, unknown>;
+  return {
+    id: String(row.id ?? ""),
+    requestType: String(row.request_type ?? ""),
+    status: String(row.status ?? ""),
+    tenantId: typeof row.tenant_id === "string" ? row.tenant_id : null,
+    projectId: typeof row.project_id === "string" ? row.project_id : null,
+    payload: row.payload,
+    currentApprovals: Number(row.current_approvals),
+    requiredApprovers: Number(row.required_approvers),
+    expiresAt: typeof row.expires_at === "string" ? row.expires_at : null,
+    revokedAt: typeof row.revoked_at === "string" ? row.revoked_at : null,
+  };
+}
+
+async function createProjectWikiApprovalRequest(input: {
+  envelope: z.infer<typeof projectWikiStagingEnvelopeSchema>;
+  userToken: string;
+}): Promise<{ id: string; expiresAt: string | null }> {
+  const runtime = await getAppRuntimeConfig();
+  const remainingMs = Date.parse(input.envelope.execution.expiresAt) - Date.now();
+  const timeoutMinutes = Math.ceil(remainingMs / 60_000);
+  if (timeoutMinutes < 5 || timeoutMinutes > 10080) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Approval expiry must be 5 minutes to 7 days from now" });
+  }
+  const response = await fetchWithResilience(`${runtime.pythonBackendUrl}/api/v1/approvals/requests`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.userToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      request_type: "deployment",
+      title: "Project Wiki staging release candidate",
+      description: "Review the exact Project Wiki package, host target, database, recovery and verifier envelope before any staging mutation.",
+      project_id: input.envelope.identity.projectId,
+      payload: input.envelope,
+      risk_level: "critical",
+      required_approvers: 2,
+      timeout_minutes: timeoutMinutes,
+    }),
+    timeoutMs: 15000,
+    retryPolicy: "connect-only",
+    label: "projectWikiStagingApproval.create",
+  });
+  if (!response.ok) throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : "BAD_GATEWAY", message: "Unable to create staging approval request" });
+  const row = await response.json() as Record<string, unknown>;
+  if (typeof row.id !== "string") throw new TRPCError({ code: "BAD_GATEWAY", message: "Approval service returned an invalid request" });
+  return { id: row.id, expiresAt: typeof row.expires_at === "string" ? row.expires_at : null };
+}
 
 // ============================================================
 // Constants
@@ -437,6 +506,72 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       return composeProjectWikiHostedRoutePreflight({ db, ...input });
+    }),
+
+  requestProjectWikiStagingApproval: exactAdminProcedure
+    .input(projectWikiStagingEnvelopeSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.identity.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Approval request must match the authenticated tenant" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "Authenticated user token required" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const repository = createDrizzleProjectWikiCandidateRepository(db);
+      if (!await repository.isActiveBinding(input.identity)) throw new TRPCError({ code: "FORBIDDEN", message: "Project Wiki app is not actively bound to this project" });
+      const approval = await createProjectWikiApprovalRequest({ envelope: input, userToken: ctx.userToken });
+      auditLogger.log({ eventType: "project_wiki_staging_approval_requested", userId: ctx.user?.id ?? null,
+        requestType: "project_wiki_staging_approval", requestPayload: { approvalRef: approval.id, tenantId, projectId: input.identity.projectId,
+          packageDigest: input.candidate.packageDigest, archiveSha256: input.candidate.archiveSha256, targetId: input.target.targetId }, statusCode: 201 });
+      return { approvalRef: approval.id, expiresAt: approval.expiresAt, status: "pending" as const };
+    }),
+
+  registerProjectWikiReleaseCandidate: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().uuid(), approvalRef: z.string().uuid(), archiveBase64: z.string().min(1).max(32_768) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Candidate registration must match the authenticated tenant" });
+      if (!ctx.userToken || !ctx.user?.id) throw new TRPCError({ code: "UNAUTHORIZED", message: "Authenticated user token required" });
+      const archiveBytes = Buffer.from(input.archiveBase64, "base64");
+      if (archiveBytes.toString("base64") !== input.archiveBase64) throw new TRPCError({ code: "BAD_REQUEST", message: "Archive must use canonical base64 encoding" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const identity = { tenantId, projectId: input.projectId, appId: PROJECT_WIKI_CANDIDATE.appId } as const;
+      try {
+        const result = await registerProjectWikiReleaseCandidate({ identity, approvalRef: input.approvalRef,
+          archiveBytes, actorUserId: ctx.user.id }, {
+          repository: createDrizzleProjectWikiCandidateRepository(db), storage: projectWikiCandidateStorage,
+          resolveApproval: ref => fetchProjectWikiApprovalRequest(ref, ctx.userToken!), createId: randomUUID,
+        });
+        auditLogger.log({ eventType: "project_wiki_release_candidate_registered", userId: ctx.user.id,
+          requestType: "project_wiki_candidate_register", responsePayload: { candidateId: result.candidate.id, tenantId, projectId: input.projectId,
+            packageDigest: result.candidate.packageDigest, archiveSha256: result.candidate.archiveSha256, created: result.created }, statusCode: result.created ? 201 : 200 });
+        return result;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        if (error instanceof Error && "code" in error) {
+          const code = String((error as Error & { code: unknown }).code);
+          if (code.includes("SCOPE") || code.includes("BINDING") || code.includes("APPROVAL")) throw new TRPCError({ code: "FORBIDDEN", message: code });
+          if (code.includes("STORAGE") || code.includes("PERSISTENCE") || code.includes("CONCURRENT")) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: code });
+          throw new TRPCError({ code: "BAD_REQUEST", message: code });
+        }
+        throw error;
+      }
+    }),
+
+  getProjectWikiReleaseCandidate: exactAdminProcedure
+    .input(z.object({ tenantId: z.string().uuid(), projectId: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Candidate lookup must match the authenticated tenant" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      try {
+        return await readProjectWikiReleaseCandidate({ tenantId, projectId: input.projectId, appId: PROJECT_WIKI_CANDIDATE.appId },
+          createDrizzleProjectWikiCandidateRepository(db), projectWikiCandidateStorage);
+      } catch (error) {
+        if (error instanceof Error && "code" in error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: String((error as Error & { code: unknown }).code) });
+        throw error;
+      }
     }),
 
   updateCloudflareAccountId: rateLimitedAdminProcedure
