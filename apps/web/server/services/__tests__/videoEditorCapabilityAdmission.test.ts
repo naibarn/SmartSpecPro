@@ -59,4 +59,24 @@ describe("video editor capability admission", () => {
       }).label
     ).toBe("waiting-agent");
   });
+
+  it("requires the requested resource profile when one is specified", () => {
+    const requirement = { ...required, resourceProfile: "gpu-medium" };
+    const executor = {
+      claim: required.claim,
+      contractVersions: ["1.0"],
+      localities: ["node"],
+      resourceProfiles: ["gpu-medium"],
+      available: true,
+    };
+
+    expect(evaluateVideoEditorCapability(requirement, [executor])).toMatchObject({
+      state: "eligible",
+    });
+    expect(
+      evaluateVideoEditorCapability(requirement, [
+        { ...executor, resourceProfiles: ["cpu-small"] },
+      ])
+    ).toMatchObject({ state: "capability_blocked", reason: "resource_mismatch" });
+  });
 });
