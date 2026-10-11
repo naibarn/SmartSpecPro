@@ -69,7 +69,7 @@ export function makeSaveDraftInput(state: ComposerState) {
   return {
     id: state.activeDraftId ?? null,
     topic: state.topic || null,
-    executionSource: "skill",
+    executionSource: "skill" as const,
     skillId: state.skillId,
     requiresWebSearch: state.requiresWebSearch,
     requiresThinking: state.requiresThinking,
