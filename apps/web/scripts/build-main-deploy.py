@@ -218,6 +218,20 @@ def publish_public_tree(
     return copied, index_hash
 
 
+def verify_published_revision(
+    repo: Path, remote: str, canonical_ref: str, source_revision: str,
+    published_index: Path, expected_index_sha256: str,
+) -> None:
+    """Confirm that the visible index matches the published canonical revision.
+
+    The caller uses this after the swap, not only before it, to catch a
+    concurrent main advance between the last pre-swap guard and publication.
+    """
+    if sha256(published_index) != expected_index_sha256:
+        raise DeployError("Published index no longer matches the verified build")
+    ensure_canonical_tip(repo, remote, canonical_ref, source_revision)
+
+
 def main() -> int:
     repo = Path(__file__).resolve().parents[3]
     arguments = sys.argv[1:]
@@ -332,6 +346,25 @@ def main() -> int:
                 if attempt < MAX_CANONICAL_BUILD_ATTEMPTS:
                     continue
                 raise
+
+            try:
+                verify_published_revision(
+                    repo, remote, canonical_ref, source_revision,
+                    destination / "index.html", index_hash,
+                )
+            except CanonicalAdvanced as exc:
+                if attempt < MAX_CANONICAL_BUILD_ATTEMPTS:
+                    print(
+                        "[build:deploy] main advanced after publish; building "
+                        "and publishing the new tip.",
+                        file=sys.stderr,
+                    )
+                    continue
+                raise CanonicalAdvanced(
+                    "main advanced after publication; artifact was published "
+                    "but is not claimed as latest. No further automatic "
+                    f"retries remain: {exc}"
+                ) from exc
 
             print(f"SOURCE_REVISION={source_revision}")
             print(f"PUBLISH_TARGET={destination}")
