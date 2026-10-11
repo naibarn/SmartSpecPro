@@ -66,9 +66,8 @@ def _clip_qc_control_plane_payload(task_id: str, snapshot: dict) -> dict:
 
 @router.post("/clip-qc-frames", dependencies=[Depends(_verify_proxy_token)])
 async def enqueue_clip_qc_frames(request: ClipQcFramesRequest) -> dict:
-    from app.tasks.media_tasks import extract_clip_qc_frames
-
     from app.services.job_control_plane import dispatch_python_task
+    from app.tasks.media_tasks import extract_clip_qc_frames
 
     task = dispatch_python_task(
         extract_clip_qc_frames.name,
@@ -93,30 +92,12 @@ async def enqueue_clip_qc_frames(request: ClipQcFramesRequest) -> dict:
     while snapshot.get("status") in {"queued", "running", "leased", "waiting_external"} and asyncio.get_running_loop().time() < deadline:
         await asyncio.sleep(0.5)
         snapshot = await _read_clip_qc_status(task.id)
-    if _feature_186_python_worker_enabled():
-        if snapshot.get("status") in {"queued", "running", "leased", "waiting_external"}:
-            return {"status": "sampling", "task_id": task.id}
-        return _clip_qc_control_plane_payload(task.id, snapshot)
-
     if snapshot.get("status") in {"queued", "running", "leased", "waiting_external"}:
         return {"status": "sampling", "task_id": task.id}
-    if snapshot.get("status") == "failed":
-        return {
-            "status": "samples_unavailable",
-            "task_id": task.id,
-            "samples": [],
-            "warning": str(snapshot.get("error") or "clip QC task failed")[:500],
-        }
-    return {"task_id": task.id, **(snapshot.get("output") or {})}
+    return _clip_qc_control_plane_payload(task.id, snapshot)
 
 
 @router.get("/clip-qc-frames/{task_id}", dependencies=[Depends(_verify_proxy_token)])
 async def get_clip_qc_frames(task_id: str) -> dict:
     snapshot = await _read_clip_qc_status(task_id)
-    if _feature_186_python_worker_enabled():
-        return _clip_qc_control_plane_payload(task_id, snapshot)
-    if snapshot.get("status") in {"queued", "running"}:
-        return {"status": snapshot["status"], "task_id": task_id}
-    if snapshot.get("status") == "failed":
-        return {"status": "samples_unavailable", "task_id": task_id, "samples": [], "warning": snapshot.get("error")}
-    return {"task_id": task_id, **(snapshot.get("output") or {})}
+    return _clip_qc_control_plane_payload(task_id, snapshot)
