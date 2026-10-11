@@ -47,6 +47,20 @@ const { mockExecuteWithFallback } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
 }));
 
+const { mockLoadVerticalDramaGenerationSettings } = vi.hoisted(() => ({
+  mockLoadVerticalDramaGenerationSettings: vi.fn(),
+}));
+
+vi.mock("../verticalDramaLlmPolicy", async () => {
+  const actual = await vi.importActual<typeof import("../verticalDramaLlmPolicy")>(
+    "../verticalDramaLlmPolicy"
+  );
+  return {
+    ...actual,
+    loadVerticalDramaGenerationSettings: mockLoadVerticalDramaGenerationSettings,
+  };
+});
+
 vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
@@ -155,6 +169,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockHasEnoughCredits.mockResolvedValue(true);
   mockCalculateCreditsForLLM.mockReturnValue(2);
+  mockLoadVerticalDramaGenerationSettings.mockResolvedValue({});
 });
 
 describe("synthesizeSeasonCarryOver", () => {
@@ -205,6 +220,11 @@ describe("synthesizeSeasonCarryOver", () => {
       ctx.currentState.relationships
     );
     expect(result.draft.carriedThreads).toEqual(ctx.currentState.openThreads);
+    expect(mockLoadVerticalDramaGenerationSettings).toHaveBeenCalledWith({
+      seriesId: ctx.parentSeriesId,
+      taskClass: "story_architecture",
+      userId: 1,
+    });
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 

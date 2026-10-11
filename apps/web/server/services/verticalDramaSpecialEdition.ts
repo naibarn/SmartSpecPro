@@ -278,7 +278,7 @@ export async function synthesizeSpecialEditionBrief(
     schema: specialEditionLlmDraftSchema,
     label: "Special edition planning",
     verticalDramaContext: {
-      seriesId: params.seriesId,
+      seriesId: params.lineageContext.parentSeriesId,
       taskClass: "story_architecture",
     },
   });
