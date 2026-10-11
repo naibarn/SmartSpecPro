@@ -27,8 +27,8 @@ class TestAPIKeyService:
         assert key is not None
         assert len(key) > 20
         assert key_hash is not None
-        assert key_prefix.startswith(key[:8])
-        assert key_prefix.endswith(key[-8:])
+        assert key_prefix == f"{key[:13]}...{key[-4:]}"
+        assert len(key_prefix) == 20
 
     @pytest.mark.asyncio
     async def test_create_api_key(self, mock_db, mock_user):
