@@ -88,6 +88,7 @@ export type AuditEventType =
   | "channel_webhook_dedup_failed"
   | "channel_webhook_no_active_channel"
   | "channel_webhook_ingest_error"
+  | "channel_webhook_job_admission_failed"
   | "channel_adapter_registered"
   | "social_inbox_reply_sent"
   | "social_inbox_reply_failed"
