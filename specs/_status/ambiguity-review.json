@@ -130395,7 +130395,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "b8610ac021e55981ab67b1edb0f87389cdd98c1c",
+      "canonical_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -130853,7 +130853,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-11T01:58:46.354041Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Promote the direct PostgreSQL outbox publisher lease-reclaim fix after its integration gate passes, then continue callback stale-attempt and pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+      "next_action": "Promote PR #646 after its refreshed integration gate passes, then integrate PR #648 stale-attempt callback correlation and continue pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
