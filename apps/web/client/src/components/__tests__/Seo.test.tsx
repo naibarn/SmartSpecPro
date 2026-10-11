@@ -197,4 +197,26 @@ describe("Seo", () => {
     expect(document.querySelector('meta[property="og:image"]')).toBeNull();
     expect(document.querySelector('meta[name="twitter:image"]')).toBeNull();
   });
+
+  it("keeps required title and canonical metadata strings when optional SEO defaults are absent", async () => {
+    render(
+      <HelmetProvider>
+        <Seo
+          title=""
+          description=""
+          canonicalPath="/seo-fallback"
+          fetchTenantSeo={false}
+          useTenantDefaults={false}
+        />
+      </HelmetProvider>
+    );
+
+    await waitFor(() => {
+      expect(document.title).toBe("SmartAIHub");
+      expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href"))
+        .toBe(new URL("/seo-fallback", window.location.origin).href);
+      expect(document.querySelector('meta[property="og:url"]')?.getAttribute("content"))
+        .toBe(new URL("/seo-fallback", window.location.origin).href);
+    });
+  });
 });

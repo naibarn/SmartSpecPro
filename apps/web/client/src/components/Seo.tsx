@@ -214,7 +214,7 @@ export function Seo({
 
     // The active page is the most specific source. Tenant/API metadata is a
     // fallback so stale CMS SEO cannot override the page currently rendered.
-    const finalTitle = title || metadata.title || apiSeo.defaultTitle || tenantSeo.defaultTitle;
+    const finalTitle = title || metadata.title || apiSeo.defaultTitle || tenantSeo.defaultTitle || "SmartAIHub";
     const finalDescription =
       description ||
       metadata.description ||
@@ -233,7 +233,7 @@ export function Seo({
     const finalImage = image === null
       ? null
       : image || metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || null;
-    const finalCanonical = canonicalUrl || buildAbsoluteUrl(resolvedPath) || metadata.canonicalUrl;
+    const finalCanonical = canonicalUrl || buildAbsoluteUrl(resolvedPath);
     const explicitJsonLd = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
     const inferredJsonLd = explicitJsonLd.length > 0
       ? []
