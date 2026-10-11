@@ -78,7 +78,7 @@ function headersFrom(response: GeoSourceRawResponse): { readonly contentType?: s
   const get = (name: string): string | undefined => {
     const entry = Object.entries(response.headers).find(([key]) => key.toLowerCase() === name);
     const value = entry?.[1];
-    return Array.isArray(value) ? value[0] : value;
+    return typeof value === "string" ? value : value?.[0];
   };
   const rawLength = get("content-length");
   const parsedLength = rawLength === undefined ? undefined : /^\d+$/.test(rawLength) ? Number(rawLength) : Number.NaN;
