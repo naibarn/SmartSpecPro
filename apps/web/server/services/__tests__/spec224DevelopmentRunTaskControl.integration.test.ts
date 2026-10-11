@@ -296,13 +296,14 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       let repairedTest: CandidateTestResult | null = null;
       let acceptance: Spec224DisposableGitAcceptance | null = null;
       let activeLease: Awaited<ReturnType<typeof controlPlane.claim>> = null;
+      let leaseRecovery: { oldFencingVersion: number; newFencingVersion: number; staleSettlementRejected: boolean } | null = null;
       let firstTestFailure = true;
       const exercisedPhases = ["DISCOVERY"];
 
       while (currentPhase && currentPhase !== "FINAL_VERIFY") {
         const jobId = current.run.workerJobId;
         if (!jobId) throw new Error("SPEC224_PHASE_JOB_UNBOUND");
-        const currentLease = await controlPlane.claim({
+        let currentLease = await controlPlane.claim({
           jobId,
           runnerId: `r10-synthetic-${currentPhase}-${runId}`,
           adapter: "test",
@@ -310,6 +311,47 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
         if (!currentLease) throw new Error(`SPEC224_PHASE_NOT_CLAIMED:${currentPhase}`);
         activeLease = currentLease;
         await controlPlane.start(currentLease);
+        if (currentPhase === "PLANNING" && !leaseRecovery) {
+          const staleLease = currentLease;
+          const expiredAt = new Date(Date.now() + 1_000);
+          await client.unsafe(
+            `UPDATE worker_jobs SET "leaseExpiresAt" = now() - interval '1 second' WHERE id = $1`,
+            [jobId],
+          );
+          expect(await controlPlane.recoverExpiredLease(jobId, expiredAt)).toBe("recovered");
+          await expect(controlPlane.complete(staleLease, {
+            resultRef: `evidence:stale-worker-${runId}`,
+            output: { mustNotPersist: true },
+          })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+          const [afterStaleAttempt] = await client.unsafe(
+            `SELECT status, "resultRef", "outputJson" FROM worker_jobs WHERE id = $1`,
+            [jobId],
+          );
+          expect(afterStaleAttempt?.status).toBe("retry_scheduled");
+          expect(afterStaleAttempt?.resultRef).toBeNull();
+          expect(afterStaleAttempt?.outputJson).not.toMatchObject({ mustNotPersist: true });
+          expect(await controlPlane.makeRetryDue(jobId, undefined, undefined, "r10_expired_lease_retry", {
+            tenantId,
+            requestedByUserId: actorId,
+          })).toBe(true);
+          const replacementLease = await controlPlane.claim({
+            jobId,
+            runnerId: `r10-reclaimed-${runId}`,
+            adapter: "test",
+          });
+          if (!replacementLease) throw new Error("SPEC224_EXPIRED_LEASE_NOT_RECLAIMED");
+          currentLease = replacementLease;
+          await controlPlane.start(currentLease);
+          activeLease = currentLease;
+          if (currentLease.fencingVersion <= staleLease.fencingVersion) {
+            throw new Error("SPEC224_RECLAIM_FENCE_DID_NOT_ADVANCE");
+          }
+          leaseRecovery = {
+            oldFencingVersion: staleLease.fencingVersion,
+            newFencingVersion: currentLease.fencingVersion,
+            staleSettlementRejected: true,
+          };
+        }
         exercisedPhases.push(currentPhase);
         const expectedTestFailure = currentPhase === "TEST" && firstTestFailure;
 
@@ -470,6 +512,7 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
           verifierSourceSha: acceptance.verifierSourceSha,
           finalGate: { action: finalGate.action, reason: finalGate.reason, state: finalGate.run.state },
           stateAfterFreshProcess: "WAITING_HUMAN_DECISION",
+          leaseRecovery,
         }) + "\n");
       }
       expect(acceptance.verifierSourceSha).toBe(acceptance.candidateSha);

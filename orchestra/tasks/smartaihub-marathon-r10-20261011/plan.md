@@ -16,7 +16,8 @@
 3. Run a separate-process verifier against the exact candidate, real diff, artifacts and acceptance tests. Reject stale SHA, foreign tenant and conflicting digest.
 4. Persist verifier result and artifact bytes in the existing worker job output; reread them and Task Control state from a fresh process.
 5. Exercise the real Final Verify gate and leave the run incomplete when genuine workspace convergence/retirement receipts are absent.
-6. Preserve fail-closed production verification and protected dispatch. No production migration, live Runner, release or deployment.
+6. Expire and reclaim a worker lease within the same persisted DevelopmentRun; prove stale settlement is rejected without writes and the new fence advances.
+7. Preserve fail-closed production verification and protected dispatch. No production migration, live Runner, release or deployment.
 
 ## Changed Paths
 
@@ -29,6 +30,6 @@
 
 - Clean isolated worktree: `/home/dev/worktrees/r10-developmentrun-acceptance-20261011`
 - Canonical base: `b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc`
-- Implementation checkpoints: `c9785207bf18d8433f52aaf167f07d760b80c2f6`, `501e2381864f0db7d39d719a7f8a4ab41d3f957e`, `e4628527ad4013c4bc699f1f2f8a7df2d2bf3780`
+- Integrated checkpoint: PR #676 merge `86d744878dcd67e1f8187a125f713b9364353573`. Follow-up checkpoint: `f42e3d9f241b457b02b5c41248046055afa50023`
 - Focused PostgreSQL/persistence evidence: `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`
-- Next action: complete scoped review, update the canonical Spec handoff with the exact evidence, push/open a normal PR, and obey the guarded promotion result. If CI is blocked by the known baseline failures, preserve the PR and continue the next ready independent WorkUnit without bypass.
+- Next action: open a follow-up PR for the same-run stale-lease proof, run exact gates, and obey the guarded promotion result. If CI is blocked by the known baseline failures, preserve the PR and continue the next ready independent WorkUnit without bypass.

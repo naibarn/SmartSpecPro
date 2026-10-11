@@ -1,14 +1,14 @@
 {
   "schema_version": "spec224.r10.synthetic-developmentrun-evidence.v1",
-  "observed_at": "2026-10-11T07:52:34Z",
-  "source_sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
-  "canonical_base_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
+  "observed_at": "2026-10-11T07:57:59Z",
+  "source_sha": "f42e3d9f241b457b02b5c41248046055afa50023",
+  "canonical_base_sha": "86d744878dcd67e1f8187a125f713b9364353573",
   "workunit_id": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
   "run": {
-    "run_id": "1db4a788-fbde-4488-b48a-7243f98e440a",
-    "tenant_id": "527118a5-fdba-441e-8f64-cac0344fb6f9",
+    "run_id": "e9561d7d-2d12-4476-aa1b-ec82cbe6a77c",
+    "tenant_id": "8817bb1f-2338-4c58-9334-fd0c8cb08f26",
     "actor_id": 22401,
-    "workunit_identity": "work-1db4a788-fbde-4488-b48a-7243f98e440a",
+    "workunit_identity": "work-e9561d7d-2d12-4476-aa1b-ec82cbe6a77c",
     "environment": "owner-marked disposable PostgreSQL and owner-marked temporary Git repository",
     "execution_mode": "SYNTHETIC",
     "provider_generated": false
@@ -20,9 +20,9 @@
       "rejects blank label",
       "rejects non-string label"
     ],
-    "base_sha": "d0a025877f2e28be998830cfeec82d5471aad609",
-    "failed_candidate_sha": "bba048c542f6c5dba5cbe589cddc583231e4cc83",
-    "repaired_candidate_sha": "4feb3d8de2c0faa6d0c4f60644c93fc960d2cd65",
+    "base_sha": "7eea108b61b3973c428fb880910e38a49d8dec1a",
+    "failed_candidate_sha": "52967a746315a60658a5d72a31de36a452475846",
+    "repaired_candidate_sha": "a784e86fd32cd382781ca2a92350037b73a50f4d",
     "diff_sha256": "3cc1fdcbe1802e2b2c679a238627666535b794fb27d838d51345efa810bceaff"
   },
   "phases": [
@@ -43,13 +43,13 @@
     "initial_test_command": "python3 -m unittest -v",
     "initial_exit_code": 1,
     "initial_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "initial_stderr_sha256": "ed9d5fd3535eef5a314ebd6104f841a6266168939a8f48313853d14b3e9e1168",
+    "initial_stderr_sha256": "edae10ccb372f7a8439fdedf19b69d9114621ed71f84212e8bf33617b034827c",
     "failure_classification": "FUNCTIONAL_TEST_FAILURE",
     "policy_result": "canonical reconciliation admitted DEBUG_REPAIR",
     "attempts": 2,
     "maximum_attempts": 2,
     "third_attempt": "rejected with REPAIR_ATTEMPT_LIMIT_REACHED",
-    "retry_candidate_sha": "4feb3d8de2c0faa6d0c4f60644c93fc960d2cd65",
+    "retry_candidate_sha": "a784e86fd32cd382781ca2a92350037b73a50f4d",
     "repair_retry_created_duplicate_commit": false,
     "repaired_test_command": "python3 -m unittest -v",
     "repaired_exit_code": 0,
@@ -64,9 +64,9 @@
   },
   "independent_verification": {
     "result": "PASS",
-    "process_id": 870514,
+    "process_id": 926343,
     "profile": "synthetic-disposable-python-unittest-v1",
-    "source_sha": "4feb3d8de2c0faa6d0c4f60644c93fc960d2cd65",
+    "source_sha": "a784e86fd32cd382781ca2a92350037b73a50f4d",
     "checks": [
       "candidate HEAD equals expected repaired Git SHA",
       "base commit is an ancestor of candidate",
@@ -77,22 +77,22 @@
       "foreign tenant binding is rejected",
       "conflicting evidence digest is rejected"
     ],
-    "evidence_bundle_sha256": "450df7a698a1fea8ab3728217ee055456dc9c29d40c78c2b9082e82c1455c581",
+    "evidence_bundle_sha256": "cb44dc0a07047578b57b40f58c55c987e1ffdb7bf49a4083c93773fb7a405ea4",
     "artifact_digests": [
       {
-        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:acceptance.json",
-        "sha256": "c8172ea52f83e557188470e68949b39fad8db4f87c6d5414cfd7af725e20717b"
+        "ref": "evidence:spec224-disposable:e9561d7d-2d12-4476-aa1b-ec82cbe6a77c:acceptance.json",
+        "sha256": "ff1bd6b8054864cbb9990192f97fdeeab8387231c8f9ab8eede439a0203c8b30"
       },
       {
-        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:candidate.diff",
+        "ref": "evidence:spec224-disposable:e9561d7d-2d12-4476-aa1b-ec82cbe6a77c:candidate.diff",
         "sha256": "3cc1fdcbe1802e2b2c679a238627666535b794fb27d838d51345efa810bceaff"
       },
       {
-        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:failed-test.json",
-        "sha256": "53550cdddce49b774fd35bd60e8b154710fdbee8af7814f929001e969d1279f7"
+        "ref": "evidence:spec224-disposable:e9561d7d-2d12-4476-aa1b-ec82cbe6a77c:failed-test.json",
+        "sha256": "a66c1135144eb1f803b3191b6eeeb5fc1c4250d61f020f70c34ced398611c9fb"
       },
       {
-        "ref": "evidence:spec224-disposable:1db4a788-fbde-4488-b48a-7243f98e440a:repair-test.json",
+        "ref": "evidence:spec224-disposable:e9561d7d-2d12-4476-aa1b-ec82cbe6a77c:repair-test.json",
         "sha256": "b99284cc905e096a01fa47c019aff7e18fc9a02b8addb985aba7d8366806d49d"
       }
     ]
@@ -121,12 +121,12 @@
   "focused_verification": {
     "profile": "integration",
     "command": "SPEC224_EMIT_EVIDENCE=1 node_modules/.bin/vitest run --config apps/web/vitest.config.ts apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts apps/web/server/services/__tests__/spec224DisposableGitAcceptance.test.ts",
-    "source_sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+    "source_sha": "f42e3d9f241b457b02b5c41248046055afa50023",
     "result": "PASS",
     "files_passed": 4,
     "tests_passed": 24,
     "tests_failed": 0,
-    "observed_at": "2026-10-11T07:52:34Z",
+    "observed_at": "2026-10-11T07:57:59Z",
     "phase_ordering": "verified in order: IMPLEMENT candidate write; TEST failure; DEBUG_REPAIR bounded source repair; TEST pass; VERIFY separate-process verifier"
   },
   "typecheck": {
@@ -162,5 +162,28 @@
     ]
   },
   "production_migration_applied": false,
-  "production_readiness": "NOT_ESTABLISHED"
+  "production_readiness": "NOT_ESTABLISHED",
+  "implementation_commit": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+  "integration": {
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/676",
+    "merge_sha": "86d744878dcd67e1f8187a125f713b9364353573",
+    "merged_at": "2026-10-11T07:56:01Z",
+    "normal_guarded_path": true,
+    "required_gate": "progressive_integration_gate:PASS",
+    "build_preview": "SKIPPED",
+    "post_integration_build": "PENDING",
+    "next_checkpoint": "f42e3d9f241b457b02b5c41248046055afa50023 is a post-merge follow-up for same-run worker lease expiry/reclaim and stale-worker fencing; PR pending."
+  },
+  "lease_recovery": {
+    "same_development_run": true,
+    "phase": "PLANNING",
+    "recovery_result": "recovered",
+    "retry_attempt_claimed": true,
+    "old_fencing_version": 1,
+    "new_fencing_version": 2,
+    "stale_worker_settlement": "JOB_LEASE_STALE",
+    "stale_result_ref_persisted": false,
+    "stale_output_persisted": false,
+    "fresh_run_reached_final_verify_wait": true
+  }
 }
