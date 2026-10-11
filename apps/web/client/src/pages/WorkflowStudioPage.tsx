@@ -1120,11 +1120,13 @@ function RunSurface({ onBack }: { onBack: () => void }) {
                               ? runQuery.data.events
                               : tab === "logs"
                                 ? runQuery.data.jobs.flatMap(job =>
+                                    "recentEvents" in job &&
                                     Array.isArray(job.recentEvents)
                                       ? job.recentEvents
                                       : []
                                   )
                                 : runQuery.data.jobs.flatMap(job =>
+                                    "artifacts" in job &&
                                     Array.isArray(job.artifacts)
                                       ? job.artifacts
                                       : []
