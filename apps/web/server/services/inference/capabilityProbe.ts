@@ -435,7 +435,7 @@ export async function runInferenceCapabilityProbe(
       contextLimitVerified && maximumOutputLimitVerified;
   }
 
-  const strict = abortFurtherProviderCalls
+  const strict: PinnedProbeExecutionResult = abortFurtherProviderCalls
     ? { ok: false, reason: "PROBE_ABORTED_AFTER_BASELINE_FAILURE" }
     : await executePinned({
         prompt: `Return a JSON object with marker set to ${JSON.stringify(JSON_MARKER)}.`,
@@ -629,7 +629,7 @@ export async function runInferenceCapabilityProbe(
       })
     );
 
-    if (validToolCalls) {
+    if (validToolCalls && toolCallResult.ok) {
       const assistantToolMessage: Message = {
         role: "assistant",
         content: assistantText(toolCallResult.response),
