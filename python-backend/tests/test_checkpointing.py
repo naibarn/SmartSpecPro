@@ -9,9 +9,19 @@ import pytest
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
+from app.core.config import settings
 from app.core.checkpointer import CheckpointerFactory, get_postgres_checkpointer
 
+requires_postgres = pytest.mark.skipif(
+    not settings.DATABASE_URL.startswith(
+        ("postgresql://", "postgresql+asyncpg://", "postgres://")
+    ),
+    reason="PostgreSQL checkpoint integration requires a PostgreSQL DATABASE_URL",
+)
 
+
+@requires_postgres
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_checkpointer_factory_postgres_mode():
     """Test CheckpointerFactory returns PostgreSQL saver when enabled"""
@@ -31,6 +41,8 @@ async def test_checkpointer_factory_memory_mode():
     assert isinstance(checkpointer, MemorySaver)
 
 
+@requires_postgres
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_postgres_checkpointer_singleton():
     """Test that get_postgres_checkpointer returns same instance"""
@@ -41,12 +53,12 @@ async def test_postgres_checkpointer_singleton():
     assert checkpointer1 is checkpointer2
 
 
+@requires_postgres
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_postgres_tables_created():
     """Test that checkpoint tables are created"""
     import psycopg
-    from app.core.config import settings
-
     # Create checkpointer (which runs setup())
     await get_postgres_checkpointer()
 
