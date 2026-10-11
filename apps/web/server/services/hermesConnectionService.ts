@@ -54,7 +54,6 @@ import {
   HERMES_MEDIA_IMAGE_JOB_TYPE,
   HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY,
   HERMES_MEDIA_VIDEO_JOB_TYPE,
-  type WorkerRuntimeType,
 } from "../../shared/workerRuntime";
 import { defaultHermesAdmissionCounters } from "./hermesMediaAdmission";
 import {
@@ -462,7 +461,7 @@ interface BuildJobInsertParams {
   tenantId: string;
   connectionId: string;
   workerId: string;
-  runtimeType: WorkerRuntimeType;
+  runtimeType: InsertWorkerJob["runtimeType"];
   requestedByUserId: number | null;
   profileReference: string;
 }
