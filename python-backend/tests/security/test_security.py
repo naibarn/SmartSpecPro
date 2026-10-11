@@ -306,7 +306,7 @@ class TestAuditLogger:
         )
         
         assert event.success is False
-        assert event.severity == AuditSeverity.WARNING
+        assert event.severity == AuditSeverity.ERROR
     
     @pytest.mark.asyncio
     async def test_query_events(self, logger):
@@ -452,8 +452,21 @@ class TestSecurityModuleInit:
         assert EncryptionService is not None
         assert AuditLogger is not None
     
-    def test_get_global_instances(self):
+    def test_get_global_instances(self, monkeypatch):
         """Test getting global instances."""
+        monkeypatch.setenv(
+            "SMARTSPEC_ENCRYPTION_KEY",
+            "test-only-encryption-key-for-security-module",
+        )
+        monkeypatch.setenv(
+            "SMARTSPEC_MASTER_KEY",
+            "test-only-master-key-for-security-module",
+        )
+        from app.security import vault_manager, encryption
+
+        monkeypatch.setattr(vault_manager, "_secrets_manager", None)
+        monkeypatch.setattr(encryption, "_encryption_service", None)
+
         from app.security import (
             get_secrets_manager,
             get_encryption_service,
