@@ -1328,7 +1328,7 @@ export async function reconcileCommercialObjectReference(
     .values({
       tenantId: actor.tenantId,
       userId: actor.userId,
-      seriesId: object.seriesId,
+      seriesId: episode.seriesId,
       episodeId: episode.id,
       objectReferenceId: object.id,
       role: "commercial_object",
