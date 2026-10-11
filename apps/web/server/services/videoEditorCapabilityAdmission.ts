@@ -52,9 +52,10 @@ export function evaluateVideoEditorCapability(
   );
   if (localityMatches.length === 0)
     return { state: "capability_blocked", reason: "locality_mismatch" };
-  const resourceMatches = requirement.resourceProfile
+  const resourceProfile = requirement.resourceProfile;
+  const resourceMatches = resourceProfile
     ? localityMatches.filter(executor =>
-        executor.resourceProfiles?.includes(requirement.resourceProfile)
+        executor.resourceProfiles?.includes(resourceProfile)
       )
     : localityMatches;
   if (resourceMatches.length === 0)
