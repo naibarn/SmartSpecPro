@@ -12,11 +12,11 @@ export const VECTORIZE_METRIC = "cosine" as const;
 export const VECTORIZE_CHUNKING_VERSION = "text-2000-overlap-200-v1" as const;
 export const VECTORIZE_MAX_ID_BYTES = 64 as const;
 export const VECTORIZE_MAX_NAMESPACE_BYTES = 64 as const;
-export const VECTORIZE_MAX_METADATA_BYTES = (10 * 1024) as const;
+export const VECTORIZE_MAX_METADATA_BYTES = 10240;
 export const VECTORIZE_MAX_FILTER_BYTES = 2048 as const;
 export const VECTORIZE_MAX_INDEX_NAME_BYTES = 64 as const;
 export const VECTORIZE_MAX_UPSERT_BATCH = 5000 as const;
-export const VECTORIZE_MAX_UPLOAD_BYTES = (100 * 1024 * 1024) as const;
+export const VECTORIZE_MAX_UPLOAD_BYTES = 104857600;
 export const VECTORIZE_MAX_TOP_K_WITH_METADATA = 50 as const;
 
 export type VectorizeWorkload = "knowledge" | "media" | "agent-memory";

@@ -55,6 +55,10 @@ describe("authenticated provider callback persistence", () => {
       };
       const first = await recordAuthenticatedJobCallback(callback);
       const duplicate = await recordAuthenticatedJobCallback(callback);
+      const conflictingDuplicate = await recordAuthenticatedJobCallback({
+        ...callback,
+        payload: { kind: "status_update", status: "failed" },
+      });
       const legacyCallback = await recordAuthenticatedJobCallback({
         adapterNamespace: callback.adapterNamespace,
         providerEventId: "event-r7-legacy-no-attempt",
@@ -77,7 +81,11 @@ describe("authenticated provider callback persistence", () => {
 
       expect(first.disposition).toBe("accepted");
       expect(duplicate.disposition).toBe("duplicate");
-      expect(legacyCallback.disposition).toBe("accepted");
+      expect(conflictingDuplicate).toMatchObject({
+        disposition: "duplicate",
+        originalDisposition: "accepted",
+      });
+      expect(legacyCallback.disposition).toBe("rejected");
       expect(staleAttempt.disposition).toBe("rejected");
       expect(crossTenant.disposition).toBe("rejected");
       const [afterJob] = await client.unsafe(
@@ -107,6 +115,7 @@ describe("authenticated provider callback persistence", () => {
           c."payloadJson"->>'callbackBusinessAttempt' AS callback_business_attempt,
           (SELECT e."payloadJson" FROM worker_job_events e
            WHERE e."workerJobId" = c."workerJobId" AND e."eventType" = 'CALLBACK_REJECTED'
+             AND e."payloadJson"->>'callbackBusinessAttempt' = '1'
            LIMIT 1) AS rejected_event
          FROM worker_job_callbacks c WHERE c."providerEventId" = 'event-r7-stale-attempt'`,
       );
@@ -115,9 +124,14 @@ describe("authenticated provider callback persistence", () => {
       expect(callbackRows).toEqual({
         callback_count: 4,
         rejected_unbound_count: 1,
-        rejected_stale_attempt_count: 1,
+        rejected_stale_attempt_count: 2,
       });
-      expect(callbackEventCounts).toEqual({ accepted_count: 2, rejected_count: 1 });
+      const [originalReceipt] = await client.unsafe(
+        `SELECT disposition, "payloadJson"->>'status' AS status
+         FROM worker_job_callbacks WHERE "providerEventId" = 'event-r7-1'`,
+      );
+      expect(originalReceipt).toEqual({ disposition: "accepted", status: "succeeded" });
+      expect(callbackEventCounts).toEqual({ accepted_count: 1, rejected_count: 2 });
       expect(staleCallbackEvidence).toEqual({
         worker_job_id: jobId,
         callback_business_attempt: "1",
@@ -127,6 +141,48 @@ describe("authenticated provider callback persistence", () => {
           callbackBusinessAttempt: 1,
           currentBusinessAttempt: 2,
         },
+      });
+      const [ambiguousLegacyEvidence] = await client.unsafe(
+        `SELECT c."workerJobId" AS worker_job_id,
+          c.disposition,
+          (SELECT e."payloadJson" FROM worker_job_events e
+           WHERE e."workerJobId" = c."workerJobId" AND e."eventType" = 'CALLBACK_REJECTED'
+             AND e."eventIdempotencyKey" = 'callback:r7-synthetic-provider:event-r7-legacy-no-attempt'
+           ORDER BY e."eventSequence" DESC LIMIT 1) AS rejected_event
+         FROM worker_job_callbacks c WHERE c."providerEventId" = 'event-r7-legacy-no-attempt'`,
+      );
+      expect(ambiguousLegacyEvidence).toMatchObject({
+        worker_job_id: jobId,
+        disposition: "rejected",
+        rejected_event: {
+          adapterNamespace: "r7-synthetic-provider",
+          disposition: "rejected",
+          currentBusinessAttempt: 2,
+          callbackCorrelationReason: "business_attempt_missing_after_retry",
+        },
+      });
+
+      await client.unsafe(
+        `UPDATE worker_jobs SET status = 'cancelled', "finishedAt" = now(),
+          "leaseOwnerToken" = NULL, "leaseExpiresAt" = NULL WHERE id = $1`,
+        [jobId]
+      );
+      const terminalCallback = await recordAuthenticatedJobCallback({
+        ...callback,
+        providerEventId: "event-r7-after-terminalization",
+      });
+      expect(terminalCallback.disposition).toBe("rejected");
+      const [terminalState] = await client.unsafe(
+        `SELECT j.status, c.disposition,
+          c."payloadJson"->>'callbackCorrelationReason' AS correlation_reason
+         FROM worker_jobs j JOIN worker_job_callbacks c ON c."workerJobId" = j.id
+         WHERE j.id = $1 AND c."providerEventId" = 'event-r7-after-terminalization'`,
+        [jobId]
+      );
+      expect(terminalState).toEqual({
+        status: "cancelled",
+        disposition: "rejected",
+        correlation_reason: "job_already_terminal",
       });
 
       const concurrentJobId = randomUUID();
