@@ -10,7 +10,8 @@ import { useScopedTranslation } from "../../i18n/useScopedTranslation";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button as ActionButton } from "@astryxdesign/core/Button";
 import { List, ListItem } from "@astryxdesign/core/List";
-import { DEFAULT_INFERENCE_ROUTER_POLICY } from "../../../../shared/inferenceRouterPolicy";
+import { DEFAULT_INFERENCE_ROUTER_POLICY, inferenceRouterPolicySchema } from "../../../../shared/inferenceRouterPolicy";
+import { inferenceProfilePairSchema } from "../../../../shared/inferenceProfileSchemas";
 
 type ScopeType = "platform" | "tenant" | "principal";
 
@@ -280,14 +281,18 @@ export function AdminInferencePolicyPanel() {
     setProviderIds(joinList(policy?.allowedProviderIds));
     setRegions(joinList(policy?.allowedRegions));
     setCredentialOwners(joinList(policy?.allowedCredentialOwnerRefs));
-    const routingPolicy = policy?.routingPolicy;
+    const routingPolicyResult = inferenceRouterPolicySchema.safeParse(
+      policy?.routingPolicy
+    );
     setScoreCalibrationRevision(
-      typeof routingPolicy?.scoreCalibrationRevision === "string"
-        ? routingPolicy.scoreCalibrationRevision
+      routingPolicyResult.success
+        ? routingPolicyResult.data.scoreCalibrationRevision
         : DEFAULT_INFERENCE_ROUTER_POLICY.scoreCalibrationRevision
     );
     setRoutingWeights(
-      routingPolicy?.weights ?? DEFAULT_INFERENCE_ROUTER_POLICY.weights
+      routingPolicyResult.success
+        ? routingPolicyResult.data.weights
+        : DEFAULT_INFERENCE_ROUTER_POLICY.weights
     );
   }, [current]);
 
@@ -375,8 +380,18 @@ export function AdminInferencePolicyPanel() {
       setProfileStatus(t("admin.llmProviders.profile.invalidJson"));
       return;
     }
+    const parsedProfile = inferenceProfilePairSchema.safeParse(profileInput);
+    if (!parsedProfile.success) {
+      const fields = [
+        ...new Set(parsedProfile.error.issues.map(issue => issue.path.join(".") || "profile")),
+      ].sort();
+      setProfileStatus(
+        `${t("admin.llmProviders.profile.invalid")}${fields.length ? ` (${fields.join(", ")})` : ""}`
+      );
+      return;
+    }
     setProfileStatus(null);
-    publishProfileMutation.mutate({ profileInput });
+    publishProfileMutation.mutate(parsedProfile.data);
   };
 
   const canPublish =
