@@ -44,6 +44,6 @@ describe("desktop handoff pages", () => {
   it("redirects /desktop/view links back into web routes", () => {
     render(<DesktopView />);
 
-    expect(navigateMock).toHaveBeenCalledWith("/agencies/proposal-orchestrator");
+    expect(navigateMock).toHaveBeenCalledWith("/dashboard");
   });
 });

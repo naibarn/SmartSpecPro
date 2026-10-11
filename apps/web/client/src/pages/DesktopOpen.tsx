@@ -18,7 +18,6 @@ export default function DesktopOpen() {
     runId: getSearchParam(search, "runId"),
     projectId: getSearchParam(search, "projectId"),
     skillId: getSearchParam(search, "skillId"),
-    agencyId: getSearchParam(search, "agencyId"),
   }), [search]);
 
   useEffect(() => {
