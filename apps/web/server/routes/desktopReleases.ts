@@ -447,7 +447,9 @@ function serializeWorkerAppRelease(
     : "windows";
   const architecture = "architecture" in release
     ? release.architecture
-    : inferWorkerAppArchitecture(platform, release.fileName);
+    : platform === "linux"
+      ? null
+      : inferWorkerAppArchitecture(platform, release.fileName);
   return {
     version: release.version,
     fileName: release.fileName,
