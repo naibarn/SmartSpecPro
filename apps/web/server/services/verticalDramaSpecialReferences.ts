@@ -32,6 +32,12 @@ export type SpecialSceneLocationCandidate = {
   score: number;
 };
 
+type SpecialSceneLocationRow = {
+  id: number;
+  locationKey: string;
+  name: string;
+};
+
 export async function findSpecialStorySceneMatches(input: {
   actor: SpecialReferenceActor;
   seriesId: number;
@@ -460,7 +466,7 @@ export async function materializeMarketplaceImageReference(input: {
       marketplaceProductId: input.productId,
       marketplaceImageId: input.imageId,
       imageType: image.type,
-      accessType: bundle.product.accessType,
+      accessType: bundle.accessType,
     },
   };
 }
@@ -585,6 +591,11 @@ export async function resolveSpecialReferenceBindings(
     const authorizedUrl = row.storageKey
       ? `/api/storage/files/${encodeURI(row.storageKey.replace(/^\/+/, ""))}`
       : row.originalUrl;
+    if (!authorizedUrl)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Reference ${binding.skillReferenceId} is unavailable`,
+      });
     return { ...binding, authorizedUrl };
   });
 }
