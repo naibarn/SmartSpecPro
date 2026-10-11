@@ -226,6 +226,40 @@ describe("UniversalControlPlanePanel", () => {
     expect(mocks.startWorkspaceMutateAsync.mock.calls[0][0].idempotencyKey.length).toBeGreaterThanOrEqual(16);
   });
 
+  it("stages an attached screenshot with page and rights hints on the existing prompt run", async () => {
+    mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
+      planId: "plan-visual", planRevision: 1, requirementCount: 0,
+      runnableWorkPackageIds: ["prompt"], blockers: [],
+      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [] }],
+    });
+    mocks.conversationWorkspaceQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        workspace: { conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", snapshotRevision: "r1", revision: 1 },
+        specSet: null,
+        availability: { status: "available", available: true },
+      },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("สร้าง Mini App"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Mini App requirements" }), { target: { value: "A dashboard with a project summary" } });
+    const screenshotBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const screenshot = new File([screenshotBytes], "dashboard.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("แนบภาพอ้างอิงหลายภาพ"), { target: { files: [screenshot] } });
+    fireEvent.change(screen.getByLabelText("Page hint 1"), { target: { value: "/dashboard" } });
+    fireEvent.change(screen.getByLabelText("Reference rights 1"), { target: { value: "user_owned" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await waitFor(() => expect(mocks.prepareWorkspaceMutateAsync).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+    await waitFor(() => expect(mocks.startWorkspaceMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      mode: "prompt",
+      prompt: expect.stringContaining("Create a functional Mini App"),
+      visualReferences: [expect.objectContaining({ type: "image", pageHint: "/dashboard", rights: "user_owned" })],
+      visualFiles: [expect.objectContaining({ fileName: "dashboard.png", mimeType: "image/png", contentBase64: "iVBORw0KGgo=" })],
+      designPreferences: expect.objectContaining({ similarityMode: "close", devices: ["mobile", "desktop"] }),
+    })));
+  });
+
   it("starts one ready Spec package while leaving a blocked package unstartable", async () => {
     mocks.conversationWorkspaceQuery.mockReturnValue({
       ...emptyQuery,
