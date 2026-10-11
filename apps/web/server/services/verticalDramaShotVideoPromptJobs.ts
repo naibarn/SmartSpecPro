@@ -682,15 +682,6 @@ export async function getVerticalDramaShotVideoPromptJobStatus(
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
   const record = await readCanonicalVideoRecord({ jobId, owner });
   return record ? toCanonicalSummary(record) : null;
-  const deps = resolveDependencies(dependencies);
-  const legacyRecord = await readRecord(jobId, deps);
-  if (!legacyRecord || !ownerMatches(legacyRecord, owner)) return null;
-  // A worker/process can disappear without emitting BullMQ's failed event.
-  // Reconcile that orphan on the read path so the browser cannot poll an
-  // active status forever and later shots cannot remain blocked behind it.
-  const canonicalReconciled = await reconcileCanonicalActiveJob(legacyRecord, deps);
-  const reconciled = await reconcileStaleActiveJob(canonicalReconciled, deps);
-  return toSummary(reconciled, deps);
 }
 
 export async function getActiveVerticalDramaShotVideoPromptJobs(
@@ -709,62 +700,6 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
       .map(canonicalRecord)
       .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
   return Promise.all(records.map(toCanonicalSummary));
-  const deps = resolveDependencies(dependencies);
-  const next = Number((await deps.redis.get(nextSequenceKey(owner))) ?? 1);
-  const last = Number((await deps.redis.get(sequenceKey(owner))) ?? 0);
-  const activeRecords: VerticalDramaShotVideoPromptJobRecord[] = [];
-  for (
-    let sequence = next;
-    sequence <= last && sequence < next + 100;
-    sequence += 1
-  ) {
-    const jobId = await deps.redis.get(sequenceJobKey(owner, sequence));
-    if (!jobId) continue;
-    const record = await readRecord(jobId, deps);
-    if (
-      record &&
-      ownerMatches(record, {
-        ...owner,
-        shotNumber: record.shotNumber,
-        variantId: recordVariantId(record),
-      }) &&
-      isActive(record.status)
-    ) {
-      activeRecords.push(record);
-    }
-  }
-
-  let canonicalStatuses: ReadonlyMap<string, CanonicalPromptJobStatus> =
-    new Map();
-  if (deps.canonicalStatusReader && activeRecords.length > 0) {
-    try {
-      canonicalStatuses = await deps.canonicalStatusReader(
-        activeRecords.map(record => record.jobId)
-      );
-    } catch (error) {
-      debugError(
-        "verticalDramaShotVideoPromptJobs",
-        `Unable to batch-reconcile canonical worker statuses for episode ${owner.episodeId}`,
-        error
-      );
-    }
-  }
-
-  const jobs: VerticalDramaShotVideoPromptJobSummary[] = [];
-  for (const record of activeRecords) {
-    // The active-jobs query is also a recovery boundary: a page refresh can
-    // otherwise keep rendering a stale Redis pointer indefinitely.
-    const canonicalReconciled = await applyCanonicalStatusToActiveJob(
-      record,
-      canonicalStatuses.get(record.jobId),
-      deps
-    );
-    const reconciled = await reconcileStaleActiveJob(canonicalReconciled, deps);
-    if (isActive(reconciled.status)) {
-      jobs.push(await toSummary(reconciled, deps));
-    }
-  }
-  return jobs;
 }
 
 export async function getActiveVerticalDramaShotVideoPromptJob(
@@ -781,32 +716,6 @@ export async function getActiveVerticalDramaShotVideoPromptJob(
       .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
   const record = records.find(item => ownerMatches(item, owner));
   return record ? toCanonicalSummary(record) : null;
-  const deps = resolveDependencies(dependencies);
-  const jobId =
-    (await deps.redis.get(activePointerKey(owner))) ??
-    (await deps.redis.get(variantScopedActivePointerKey({ ...owner, variantId: "legacy" }))) ??
-    (await deps.redis.get(variantScopedActivePointerKey({ ...owner, variantId: "enhanced" })));
-  if (!jobId) return null;
-  const legacyRecord = await readRecord(jobId, deps);
-  const sameShot = legacyRecord
-    ? ownerMatches(legacyRecord, { ...owner, variantId: recordVariantId(legacyRecord) })
-    : false;
-  if (!legacyRecord || !sameShot || !isActive(legacyRecord.status)) {
-    await Promise.all([
-      deps.redis.compareDelete(activePointerKey(owner), jobId).catch(() => false),
-      deps.redis
-        .compareDelete(
-          variantScopedActivePointerKey({
-            ...owner,
-            variantId: legacyRecord ? recordVariantId(legacyRecord) : "legacy",
-          }),
-          jobId,
-        )
-        .catch(() => false),
-    ]);
-    return null;
-  }
-  return toSummary(legacyRecord, deps);
 }
 
 export async function enqueueVerticalDramaShotVideoPromptJob(
@@ -814,123 +723,6 @@ export async function enqueueVerticalDramaShotVideoPromptJob(
   dependencies?: VerticalDramaShotVideoPromptJobEnqueueDependencies
 ): Promise<VerticalDramaShotVideoPromptJobSummary & { deduplicated: boolean }> {
   return enqueueCanonicalVideoPromptJob(payload);
-  const deps = resolveDependencies(dependencies);
-  const fingerprint = requestFingerprint(payload.input);
-  const idempotencyPointer = payload.input.idempotencyKey
-    ? idempotencyPointerKey(payload, payload.input.idempotencyKey)
-    : null;
-
-  if (idempotencyPointer) {
-    const priorJobId = await deps.redis.get(idempotencyPointer);
-    if (priorJobId) {
-      const prior = await readRecord(priorJobId, deps);
-      if (prior && ownerMatches(prior, payload)) {
-        return { ...(await toSummary(prior, deps)), deduplicated: true };
-      }
-      await deps.redis
-        .compareDelete(idempotencyPointer, priorJobId)
-        .catch(() => false);
-    }
-  }
-
-  const activePointer = activePointerKey(payload);
-  const activeCandidates = [
-    activePointer,
-    variantScopedActivePointerKey(payload),
-    variantScopedActivePointerKey({
-      ...payload,
-      variantId: payload.variantId === "enhanced" ? "legacy" : "enhanced",
-    }),
-  ];
-  for (const candidatePointer of [...new Set(activeCandidates)]) {
-    const existingJobId = await deps.redis.get(candidatePointer);
-    if (!existingJobId) continue;
-    const existing = await readRecord(existingJobId, deps);
-    if (existing && isActive(existing.status)) {
-      if (!ownerMatches(existing, payload) || existing.requestFingerprint !== fingerprint) {
-        throw new VerticalDramaShotVideoPromptConflictError();
-      }
-      return { ...(await toSummary(existing, deps)), deduplicated: true };
-    }
-    await deps.redis.compareDelete(candidatePointer, existingJobId).catch(() => false);
-  }
-
-  const jobId = randomUUID();
-  const sequence = await deps.redis.incr(sequenceKey(payload));
-  await deps.redis.setNx(nextSequenceKey(payload), "1", SEQUENCE_TTL_SECONDS);
-  const nowIso = new Date(deps.now()).toISOString();
-  const record: VerticalDramaShotVideoPromptJobRecord = {
-    ...payload,
-    jobId,
-    sequence,
-    requestFingerprint: fingerprint,
-    status: "queued",
-    result: null,
-    error: null,
-    createdAt: nowIso,
-    updatedAt: nowIso,
-  };
-  await writeRecord(record, deps);
-
-  const claimed = await deps.redis.setNx(
-    activePointer,
-    jobId,
-    POINTER_TTL_SECONDS
-  );
-  if (!claimed) {
-    const winnerId = await deps.redis.get(activePointer);
-    const winner = winnerId ? await readRecord(winnerId, deps) : null;
-    await deps.redis.del(recordKey(jobId));
-    if (winner && isActive(winner.status)) {
-      if (!ownerMatches(winner, payload) || winner.requestFingerprint !== fingerprint) {
-        throw new VerticalDramaShotVideoPromptConflictError();
-      }
-      return { ...(await toSummary(winner, deps)), deduplicated: true };
-    }
-    throw new Error("Unable to reserve the video prompt job slot — retry");
-  }
-
-  await deps.redis.set(
-    sequenceJobKey(payload, sequence),
-    jobId,
-    "EX",
-    SEQUENCE_TTL_SECONDS
-  );
-  if (idempotencyPointer) {
-    await deps.redis.set(idempotencyPointer, jobId, "EX", RECORD_TTL_SECONDS);
-  }
-
-  try {
-    if (isFeature186HardCutoverEnabled()) {
-      await createFeature186VerticalDramaJob({
-        jobId,
-        tenantId: payload.tenantId,
-        userId: payload.userId,
-        jobType: "vertical_drama.shot_video_prompt",
-        executionClass: "long",
-        payload: record as unknown as Record<string, unknown>,
-      });
-    } else {
-      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
-    }
-  } catch (error) {
-    const failed: VerticalDramaShotVideoPromptJobRecord = {
-      ...record,
-      status: "failed",
-      error: boundedError(error),
-      updatedAt: new Date(deps.now()).toISOString(),
-    };
-    await writeRecord(failed, deps);
-    await clearPointers(failed, deps);
-    debugError(
-      "verticalDramaShotVideoPromptJobs",
-      `Failed to enqueue video prompt job ${jobId}`,
-      error
-    );
-    return { ...(await toSummary(failed, deps)), deduplicated: false };
-  }
-
-  return { ...(await toSummary(record, deps)), deduplicated: false };
 }
 
 async function markTerminalAndAdvance(
