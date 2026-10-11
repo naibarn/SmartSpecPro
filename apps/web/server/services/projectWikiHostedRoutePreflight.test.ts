@@ -11,6 +11,13 @@ import {
   type ProjectWikiHostedRouteAuthorities,
   type ProjectWikiHostedRoutePreflightProviders,
 } from "./projectWikiHostedRoutePreflight";
+import {
+  PROJECT_WIKI_CANDIDATE,
+  type ProjectWikiCandidateRecord,
+  type ProjectWikiCandidateRepository,
+  type ProjectWikiCandidateStore,
+} from "./projectWikiReleaseCandidate";
+import { observeProjectWikiPersistedPackageCandidate } from "./projectWikiHostedRoutePreflight";
 
 const identity: HostedRouteIdentity = {
   tenantId: "8de1a509-6177-49b7-b57d-5d3b5228d75f",
@@ -26,6 +33,57 @@ const packageDigest = `spaas-package-v1:sha256:${"2".repeat(64)}`;
 const archiveSha256 = "3".repeat(64);
 const observedAt = "2026-10-11T12:00:00.000Z";
 const testNow = new Date("2026-10-11T13:00:00.000Z");
+const packageArchive = readFileSync(
+  new URL("./__fixtures__/project-wiki-pages-candidate.tar.gz", import.meta.url)
+);
+
+function packageCandidate(
+  overrides: Partial<ProjectWikiCandidateRecord> = {}
+): ProjectWikiCandidateRecord {
+  return {
+    id: "4c42372a-4511-4a58-8d9f-8f519a5d728f",
+    ...identity,
+    sourceRevision: PROJECT_WIKI_CANDIDATE.sourceRevision,
+    packageDigest: PROJECT_WIKI_CANDIDATE.packageDigest,
+    archiveSha256: PROJECT_WIKI_CANDIDATE.archiveSha256,
+    objectKey: `mini-app-candidates/${identity.tenantId}/${identity.projectId}/candidate.tar.gz`,
+    approvalRef: "approval-17",
+    approvalPayloadSha256: "a".repeat(64),
+    qualificationStatus: "CANDIDATE_NOT_RELEASED",
+    validationStatus: "needs_context",
+    provenance: {
+      sourceRevision: PROJECT_WIKI_CANDIDATE.sourceRevision,
+      verificationProfile: "offline-package",
+      verifiedArchiveSha256: PROJECT_WIKI_CANDIDATE.archiveSha256,
+      inventory: ["README.md", "actions.json", "app.manifest.yaml", "ui.json"],
+    },
+    createdBy: 17,
+    ...overrides,
+  };
+}
+
+function packageCandidateFakes(
+  options: {
+    candidate?: ProjectWikiCandidateRecord | null;
+    bytes?: Uint8Array | null;
+  } = {}
+): {
+  repository: ProjectWikiCandidateRepository;
+  storage: ProjectWikiCandidateStore;
+} {
+  return {
+    repository: {
+      isActiveBinding: async () => true,
+      getByIdentity: async () => options.candidate ?? null,
+      insert: async record => record,
+    },
+    storage: {
+      putIfAbsent: async key => ({ key, created: true }),
+      readBuffer: async () =>
+        options.bytes === undefined ? packageArchive : options.bytes,
+    },
+  };
+}
 
 function scoped<T>(
   value: T | null,
@@ -274,6 +332,91 @@ function testProviders(
 }
 
 describe("Project Wiki hosted-route staging preflight", () => {
+  it("keeps an absent persisted package candidate UNKNOWN", async () => {
+    const { repository, storage } = packageCandidateFakes();
+    const result = await observeProjectWikiPersistedPackageCandidate({
+      identity,
+      repository,
+      storage,
+      now: testNow,
+    });
+    expect(result.state).toBe("UNKNOWN");
+    expect(result.value).toBeNull();
+    expect(result.reason).toBe("package_candidate_not_registered");
+  });
+
+  it("observes exact persisted candidate bytes without qualifying or releasing them", async () => {
+    const candidate = packageCandidate();
+    const { repository, storage } = packageCandidateFakes({ candidate });
+    const result = await observeProjectWikiPersistedPackageCandidate({
+      identity,
+      repository,
+      storage,
+      now: testNow,
+    });
+    expect(result).toMatchObject({
+      state: "OBSERVED",
+      source: "project_wiki_package_candidate+content_storage",
+      observedAt: testNow.toISOString(),
+      scope: identity,
+      evidenceRef: candidate.id,
+      value: {
+        sourceRevision: PROJECT_WIKI_CANDIDATE.sourceRevision,
+        packageDigest: PROJECT_WIKI_CANDIDATE.packageDigest,
+        archiveSha256: PROJECT_WIKI_CANDIDATE.archiveSha256,
+        contentVerified: true,
+        appId: identity.appId,
+      },
+    });
+    expect(candidate.qualificationStatus).toBe("CANDIDATE_NOT_RELEASED");
+    expect(candidate.validationStatus).toBe("needs_context");
+  });
+
+  it("keeps mismatched candidate scope and corrupt stored content UNKNOWN", async () => {
+    const mismatched = packageCandidate({
+      tenantId: "9de1a509-6177-49b7-b57d-5d3b5228d75f",
+    });
+    const wrongScope = packageCandidateFakes({ candidate: mismatched });
+    const scopeResult = await observeProjectWikiPersistedPackageCandidate({
+      identity,
+      ...wrongScope,
+      now: testNow,
+    });
+    expect(scopeResult.state).toBe("UNKNOWN");
+    expect(scopeResult.reason).toBe("package_candidate_scope_mismatch");
+
+    const corrupt = packageCandidateFakes({
+      candidate: packageCandidate(),
+      bytes: Buffer.from("not the registered package"),
+    });
+    const corruptResult = await observeProjectWikiPersistedPackageCandidate({
+      identity,
+      ...corrupt,
+      now: testNow,
+    });
+    expect(corruptResult.state).toBe("UNKNOWN");
+    expect(corruptResult.reason).toBe(
+      "package_candidate_package_archive_digest_mismatch"
+    );
+  });
+
+  it("preserves UNKNOWN for missing package evidence in the composed preflight", async () => {
+    const authorities = validAuthorities();
+    authorities.package = scoped(null, {
+      state: "UNKNOWN",
+      reason: "package_candidate_not_registered",
+    });
+    const result = buildProjectWikiHostedRoutePreflight({
+      identity,
+      authorities,
+      now: testNow,
+    });
+    expect(result.stages.PACKAGE_CONTENT_VERIFIED).toBe("UNKNOWN");
+    expect(result.packageDigest).toBeNull();
+    expect(result.outcomes).toContain("PACKAGE_EVIDENCE_REQUIRED");
+    expect(result.stages.STAGING_PREFLIGHT_READY).toBe("PENDING");
+  });
+
   it("binds migration 0394 and its two prerequisite checks to current SQL hashes", () => {
     const migrationSql = readFileSync(
       new URL(
