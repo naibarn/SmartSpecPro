@@ -873,17 +873,26 @@
     "status": "UNRESOLVED",
     "successors": []
   },
-  "blockers": [],
+  "blockers": [
+    {
+      "class": "AUTHORITY",
+      "classification": "TRUE_EXTERNAL",
+      "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
+      "next_action": "Provide an owner-authorized disposable Runner registration with fresh capability/source/workspace binding and a disposable PostgreSQL database using the supported app schema; then run real guarded integration, independent verification, receipt readback and restart acceptance. Keep protected dispatch DENY until those exact grants are verified.",
+      "owner": "SPEC-224/workspace-authority maintainer",
+      "root_cause": "Read-only inventory of the local shared test database found zero trusted, non-revoked Runner registrations with fresh snapshots and no DevelopmentRun table; there is no authorized disposable Runner/database fixture that can issue genuine lifecycle receipts."
+    }
+  ],
   "concurrency": {
-    "expected_canonical_sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
+    "expected_canonical_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "The synthetic acceptance and worker recovery work are integrated; the latest exact-main focused PostgreSQL slice passed 4 files/24 tests. Wait for fresh resource admission before retrying the canonical build (the previous attempt was RESOURCE_BLOCKED before the web target started). Keep terminal completion/live dispatch denied pending genuine workspace and Runner authority. Read-only next-workunit scan found current high-ranked candidates blocked by ownership or authority; rerun that scan after owners reconcile.",
+    "next_action": "PR #691 merged at 0683e8eec2324672355e3329f9d05a987462f6b7. Six focused Vitest files/40 tests passed and progressive_integration_gate passed. R11 remains PARTIAL: no trusted Runner with a fresh snapshot and no DevelopmentRun table were found in the read-only shared test DB, so genuine authority-issued lifecycle completion, disposable Git/Postgres end-to-end acceptance and post-restart terminal readback remain open. Keep RUN_COMPLETED blocked without persisted authority receipts and protected dispatch DENY. Next: obtain an owner-authorized disposable Runner plus supported disposable database, then rerun the positive and negative acceptance; server-managed target policy also requires SPEC-224 owner/security approval before it can omit user-workspace convergence. Rescan for independent ready WorkUnits after owners reconcile.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
-    "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "R10 source checkpoint 86d744878dcd67e1f8187a125f713b9364353573, based on canonical main b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc. Evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json. Four focused files/24 tests pass; all phases, real failing candidate, bounded repair, separate-process verifier, cancellation guard and fresh-process durable blocked state are proven. Final Verify reason is workspace_convergence_or_retirement_evidence_missing; no RUN_COMPLETED. R10 typecheck was stopped at about 3.3 GiB RSS; pre-existing CI baseline failures are classified in the evidence. Resume with lease expiry/reclaim and stale worker fencing, then normal PR gates.",
-    "waiting_predicate": "Live Windows Runner readiness still requires owner-authorized review build installation and fresh session, capability/Codex, source/workspace binding, grant, approval, budget and verifier-access evidence. Protected dispatch remains DENY. This wait does not block independent synthetic WorkUnits."
+    "reactivation_predicate": "An owner-authorized disposable Runner is registered with a fresh trusted snapshot and exact source/workspace binding, and a supported disposable PostgreSQL app-schema target is available; if testing server-managed delivery without local convergence, SPEC-224 owner and security approval plus immutable server-side target binding are durably recorded.",
+    "resume_point": "R11 PR #691 is integrated at 0683e8eec2324672355e3329f9d05a987462f6b7 on refs/heads/main. Focused suite passed 6 files/40 tests; progressive_integration_gate passed. Evidence and blocker: orchestra/tasks/smartaihub-marathon-r11-20261011/{progress.md,lifecycle.md,policy-proposal.md}. Synthetic implementation only. Resume with owner-authorized disposable Runner/PostgreSQL positive acceptance and exact source SHA; do not repeat workspace_authority resolve on the stale dirty primary checkout. Preserve R10 run 69d8af56-b919-435b-ac03-7f877a4c92c7 as PARTIAL.",
+    "waiting_predicate": "No live execution until an owner-authorized disposable Runner and supported disposable PostgreSQL target are available. Recheck runner trust, snapshot expiry, capability/Codex, exact source/workspace binding, job authorization, budget, evidence storage and independent verifier scope at reactivation. This wait does not authorize shared/production DB mutation or protected dispatch."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1035,7 +1044,7 @@
         "path": "apps/web/server/routes/jobControlPlane.ts"
       }
     ],
-    "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
+    "next_action": "PR #691 merged at 0683e8eec2324672355e3329f9d05a987462f6b7. The authority-receipt trust boundary is implemented and focused synthetic verification passed 6 files/40 tests. R11 remains PARTIAL because local read-only Runner inventory found no trusted fresh Runner and the shared test database lacks DevelopmentRun schema; genuine disposable Git/PostgreSQL acceptance and post-restart terminal readback remain open. Next action: obtain the owner-authorized disposable Runner and supported disposable database described in blocker R11_DISPOSABLE_AUTHORITY_ACCEPTANCE; retain user-workspace convergence as default, and require SPEC-224 owner/security approval before any server-managed target can omit it.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -1065,7 +1074,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 60,
+  "generation": 62,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1090,7 +1099,8 @@
       "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
       "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
       "e61dc75cc86b0108f12b49b7c94fb8b53c4d3018",
-      "9bfe80208293b47153b4736e5c8a29ac98609e8b"
+      "9bfe80208293b47153b4736e5c8a29ac98609e8b",
+      "0683e8eec2324672355e3329f9d05a987462f6b7"
     ],
     "mapping": [
       {
@@ -1185,6 +1195,19 @@
         ],
         "source_sha": "9c4a89bea0bf2abacd1d0236ce35a96bc4319968",
         "status": "PARTIAL"
+      },
+      {
+        "coverage": "PARTIAL; blocks worker-supplied lifecycle receipt forgery, does not establish live Runner acceptance or terminal completion",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/691",
+        "scope": "PR #691: require scoped persisted workspace-authority action job snapshots for Final Verify and DevelopmentRun reconciliation; retain user-workspace convergence and worktree retirement policy",
+        "source_paths": [
+          "apps/web/server/services/spec224WorkspaceLifecycleReceiptReader.ts",
+          "apps/web/server/services/spec224DevelopmentRunContracts.ts",
+          "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
+          "apps/web/server/services/spec224FinalVerify.ts",
+          "apps/web/server/services/spec224RunnerContinuationReconciler.ts"
+        ],
+        "source_sha": "0683e8eec2324672355e3329f9d05a987462f6b7"
       }
     ],
     "source_paths": [
@@ -1203,16 +1226,21 @@
       "apps/web/server/services/spec224VisualReferenceIntake.ts",
       "apps/web/server/services/spec224RunnerInputStaging.ts",
       "apps/runner-app/src/run_input.rs",
-      "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json"
+      "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
+      "apps/web/server/services/spec224WorkspaceLifecycleReceiptReader.ts",
+      "apps/web/server/services/__tests__/spec224WorkspaceLifecycleReceiptReader.test.ts",
+      "orchestra/tasks/smartaihub-marathon-r11-20261011/policy-proposal.md"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
+    "canonical_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
     "integrated": true,
-    "integrated_at": "2026-10-11T08:13:33Z"
+    "integrated_at": "2026-10-11T09:15:20Z",
+    "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/691",
+    "source_sha": "6eaff66eb1c59245198ded3c3fdd7f7b2fa2395b"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2247,7 +2275,7 @@
           "path": "apps/web/server/routes/jobControlPlane.ts"
         }
       ],
-      "next_action": "Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.",
+      "next_action": "PR #691 merged at 0683e8eec2324672355e3329f9d05a987462f6b7. The authority-receipt trust boundary is implemented and focused synthetic verification passed 6 files/40 tests. R11 remains PARTIAL because local read-only Runner inventory found no trusted fresh Runner and the shared test database lacks DevelopmentRun schema; genuine disposable Git/PostgreSQL acceptance and post-restart terminal readback remain open. Next action: obtain the owner-authorized disposable Runner and supported disposable database described in blocker R11_DISPOSABLE_AUTHORITY_ACCEPTANCE; retain user-workspace convergence as default, and require SPEC-224 owner/security approval before any server-managed target can omit it.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -2346,7 +2374,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T08:14:20.789386Z",
+  "updated_at": "2026-10-11T09:17:01.629775Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -2429,13 +2457,25 @@
         "scope": "Exact post-integration SHA ad527e21f6174f7ed05782825a13d5ad3de2291c focused PostgreSQL slice passed 4 files/24 tests. PRs #676–#678 integrated the synthetic DevelopmentRun acceptance, lease reclaim and implementation worker-crash recovery; PR #680 integrated the central build resource evidence. The central web build was not started at code SHA 1a817425cc14833d15d27f5048e496d8570dabbf because preflight found <512 MiB swap headroom; do not retry without fresh capacity. Final Verify remains blocked on genuine workspace receipts.",
         "source_sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
+        "command": "node_modules/.bin/vitest run --config apps/web/vitest.config.ts apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts apps/web/server/services/__tests__/spec224DisposableGitAcceptance.test.ts apps/web/server/services/__tests__/spec224FinalVerify.test.ts apps/web/server/services/__tests__/spec224WorkspaceLifecycleReceiptReader.test.ts",
+        "failed": 0,
+        "kind": "SPEC224_R11_RECEIPT_AUTHORITY_SYNTHETIC_ACCEPTANCE",
+        "passed": 40,
+        "path": "orchestra/tasks/smartaihub-marathon-r11-20261011/progress.md",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/691",
+        "scope": "Six focused Vitest files passed. Synthetic reader injection and worker-object denial only; live Runner, real disposable Git integration, PostgreSQL receipt persistence and restart readback remain unverified.",
+        "source_sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "ad527e21f6174f7ed05782825a13d5ad3de2291c",
+    "sha": "0683e8eec2324672355e3329f9d05a987462f6b7",
     "status": "PARTIAL",
     "task_regressions": []
   }
