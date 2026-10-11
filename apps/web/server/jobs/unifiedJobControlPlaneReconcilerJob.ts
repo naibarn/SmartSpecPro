@@ -37,6 +37,32 @@ export async function runUnifiedJobControlPlaneReconcilerOnce(now = new Date()) 
       return undefined;
     },
   });
+  let approvalDecisionReconciliation = {
+    claimed: 0,
+    resumed: 0,
+    failed: 0,
+    duplicate: 0,
+    operatorReview: 0,
+    ignored: 0,
+    errors: 0,
+  };
+  try {
+    const reconcileApprovalDecisions = createSpec224ApprovalDecisionReconciler({
+      authority: createSpec224ExternalApprovalAuthority(),
+      controlPlane: createJobControlPlane(),
+    }, {
+      workerId: `spec224-approval-reconciler:${hostname()}:${process.pid}`.slice(0, 160),
+      limit: 25,
+    });
+    approvalDecisionReconciliation = await reconcileApprovalDecisions();
+  } catch {
+    // Approval authority outages must not block the canonical job reconciler.
+    // Persisted decisions remain recoverable and the next existing pass retries.
+    approvalDecisionReconciliation.errors += 1;
+  }
+  if (approvalDecisionReconciliation.claimed > 0 || approvalDecisionReconciliation.errors > 0) {
+    console.info("[Feature186] Spec 224 approval decision reconciliation", approvalDecisionReconciliation);
+  }
   try {
     const { reconcileStalePortraitCandidates } = await import(
       "../services/verticalDramaPortraitCandidateSettlement"
