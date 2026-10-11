@@ -130395,7 +130395,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+      "canonical_sha": "595a8f45d8d5d9a9b2bb15407dde703c53d84024",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -130853,7 +130853,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-11T01:58:46.354041Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue with owner assignment and acceptance design for run-scoped stale-worker fencing; meanwhile select an independently executable Task Control continuity test that needs no schema migration.",
+      "next_action": "Reconcile the two active dirty R7 fencing worktrees that touch runEngine, recovery, and media callback paths; identify exact file owners and finish stale callback/outbox/cancellation acceptance. Keep TeamRun-to-Task-Control identity binding open until its runtime path is explicitly owned; schema and migration work remain approval-gated.",
       "path": "specs/feature/277-task-control-experience-r1-6",
       "primary_blocker": null,
       "problem": null,
