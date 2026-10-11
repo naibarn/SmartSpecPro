@@ -8,21 +8,26 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
+from sqlalchemy.pool import StaticPool
 from app.models.user import Role, User
-from app.models.marketplace_template import MarketplaceTemplate, TemplatePurchase, TemplateReview, TemplateStatus, TemplateCategory
+from app.models.marketplace_template import MarketplaceTemplate, TemplatePurchase, TemplateStatus, TemplateCategory
 from app.services.marketplace_service import MarketplaceService
-from app.services.credit_service import CreditService
 from app.core.database import Base
 
 
 # Test configuration
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_marketplace.db"
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture
 async def db_engine():
     """Create test database engine"""
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -108,18 +113,14 @@ class TestMarketplacePurchaseFlow:
     @pytest.mark.asyncio
     async def test_successful_purchase(self, db_session, test_users, test_template):
         """Test successful template purchase with 85/15 revenue split"""
-        service = MarketplaceService(db_session)
-        credit_service = CreditService(db_session)
-
         buyer = test_users["buyer"]
         creator = test_users["creator"]
         initial_buyer_balance = buyer.credits
         initial_creator_balance = creator.credits
 
         # Purchase template
-        purchase = await service.purchase_template(
-            template_id=test_template.id,
-            buyer=buyer
+        purchase, distribution = await MarketplaceService.purchase_template(
+            db_session, buyer, test_template.id
         )
 
         # Verify purchase record
@@ -136,6 +137,7 @@ class TestMarketplacePurchaseFlow:
 
         assert buyer.credits == initial_buyer_balance - 1000
         assert creator.credits == initial_creator_balance + 850
+        assert distribution == {"creator_revenue": 850, "platform_commission": 150}
 
         # Verify template stats updated
         await db_session.refresh(test_template)
@@ -146,28 +148,21 @@ class TestMarketplacePurchaseFlow:
     @pytest.mark.asyncio
     async def test_duplicate_purchase_prevention(self, db_session, test_users, test_template):
         """Test that unique constraint prevents duplicate purchases"""
-        service = MarketplaceService(db_session)
         buyer = test_users["buyer"]
 
         # First purchase should succeed
-        purchase1 = await service.purchase_template(
-            template_id=test_template.id,
-            buyer=buyer
+        purchase1, _ = await MarketplaceService.purchase_template(
+            db_session, buyer, test_template.id
         )
         assert purchase1 is not None
 
         # Second purchase should fail
         with pytest.raises(ValueError, match="already purchased"):
-            await service.purchase_template(
-                template_id=test_template.id,
-                buyer=buyer
-            )
+            await MarketplaceService.purchase_template(db_session, buyer, test_template.id)
 
     @pytest.mark.asyncio
     async def test_insufficient_credits(self, db_session, test_users, test_template):
         """Test purchase fails with insufficient credits"""
-        service = MarketplaceService(db_session)
-
         # Create user with insufficient credits
         poor_user = User(
             email="poor@test.com",
@@ -180,15 +175,11 @@ class TestMarketplacePurchaseFlow:
 
         # Purchase should fail
         with pytest.raises(ValueError, match="Insufficient credits"):
-            await service.purchase_template(
-                template_id=test_template.id,
-                buyer=poor_user
-            )
+            await MarketplaceService.purchase_template(db_session, poor_user, test_template.id)
 
     @pytest.mark.asyncio
     async def test_concurrent_purchases_race_condition(self, db_session, test_users, test_template):
         """Test that row locking prevents race conditions in concurrent purchases"""
-        service = MarketplaceService(db_session)
 
         # Create multiple buyers
         buyers = []
@@ -205,15 +196,19 @@ class TestMarketplacePurchaseFlow:
         await db_session.commit()
 
         # Simulate concurrent purchases
-        tasks = [
-            service.purchase_template(test_template.id, buyer)
-            for buyer in buyers
-        ]
+        session_factory = sessionmaker(db_session.bind, class_=AsyncSession, expire_on_commit=False)
+
+        async def purchase_with_independent_session(buyer_id):
+            async with session_factory() as session:
+                buyer = await session.get(User, buyer_id)
+                return await MarketplaceService.purchase_template(session, buyer, test_template.id)
+
+        tasks = [purchase_with_independent_session(buyer.id) for buyer in buyers]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # All purchases should succeed (different buyers)
-        successful_purchases = [r for r in results if isinstance(r, TemplatePurchase)]
+        successful_purchases = [r[0] for r in results if isinstance(r, tuple) and isinstance(r[0], TemplatePurchase)]
         assert len(successful_purchases) == 3
 
         # Verify template stats
@@ -227,53 +222,29 @@ class TestMarketplaceReviewSystem:
     """Test review and rating system"""
 
     @pytest.mark.asyncio
-    async def test_add_review(self, db_session, test_users, test_template):
-        """Test adding a review after purchase"""
-        service = MarketplaceService(db_session)
-        buyer = test_users["buyer"]
-
-        # Purchase first
-        await service.purchase_template(test_template.id, buyer)
-
-        # Add review
-        review = await service.add_review(
-            template_id=test_template.id,
-            user=buyer,
-            rating=5,
-            comment="Excellent template! Very useful."
-        )
-
-        assert review is not None
-        assert review.rating == 5
-        assert review.comment == "Excellent template! Very useful."
-
-        # Verify template rating updated
-        await db_session.refresh(test_template)
-        assert test_template.rating_average == 5.0
-        assert test_template.rating_count == 1
-
-    @pytest.mark.asyncio
-    async def test_review_without_purchase(self, db_session, test_users, test_template):
-        """Test that users cannot review without purchasing"""
-        service = MarketplaceService(db_session)
-
-        # Create user who hasn't purchased
-        non_buyer = User(
-            email="nonbuyer@test.com",
-            name="Non Buyer",
-            password="hashed_password",
-            credits=5000,
-        )
-        db_session.add(non_buyer)
+    async def test_creator_submits_template_and_admin_approves(self, db_session, test_users, test_template):
+        """Creator submission and admin approval follow the active moderation contract."""
+        test_template.status = TemplateStatus.DRAFT
         await db_session.commit()
 
-        # Review should fail
-        with pytest.raises(ValueError, match="must purchase"):
-            await service.add_review(
-                template_id=test_template.id,
-                user=non_buyer,
-                rating=5,
-                comment="Trying to review without purchase"
+        submitted = await MarketplaceService.submit_for_review(
+            db_session, test_template.id, test_users["creator"].id
+        )
+        assert submitted.status == TemplateStatus.PENDING_REVIEW
+
+        approved = await MarketplaceService.approve_template(
+            db_session, test_template.id, test_users["admin"], "Meets marketplace policy"
+        )
+        assert approved.status == TemplateStatus.APPROVED
+        assert approved.reviewed_by == test_users["admin"].id
+        assert approved.review_notes == "Meets marketplace policy"
+
+    @pytest.mark.asyncio
+    async def test_creator_cannot_submit_another_users_template(self, db_session, test_users, test_template):
+        """Creators may only submit their own draft templates for review."""
+        with pytest.raises(ValueError, match="not found or not in draft status"):
+            await MarketplaceService.submit_for_review(
+                db_session, test_template.id, test_users["buyer"].id
             )
 
 
@@ -283,43 +254,46 @@ class TestMarketplaceSecurityFixes:
     @pytest.mark.asyncio
     async def test_url_validation(self, db_session, test_users):
         """Test that only HTTPS URLs from approved domains are accepted"""
-        from app.api.v1.marketplace import TemplateCreateRequest
+        from app.api.v1.marketplace import CreateTemplateRequest
         from pydantic import ValidationError
 
         # Test invalid URL (HTTP)
-        with pytest.raises(ValidationError, match="Must use HTTPS"):
-            TemplateCreateRequest(
-                title="Test",
+        with pytest.raises(ValidationError, match="HTTPS protocol"):
+            CreateTemplateRequest(
+                name="Test Template",
                 slug="test",
-                tagline="Test tagline",
-                description="Test description",
+                tagline="A useful test tagline",
+                description="A sufficiently descriptive template description for validation tests.",
                 category=TemplateCategory.IMAGE_GENERATION,
+                tech_stack=["react"],
                 price_credits=1000,
                 template_file_url="http://example.com/template.zip",
                 preview_images=["https://r2.cloudflare.com/preview.jpg"]
             )
 
         # Test invalid domain
-        with pytest.raises(ValidationError, match="approved storage"):
-            TemplateCreateRequest(
-                title="Test",
+        with pytest.raises(ValidationError, match="not approved"):
+            CreateTemplateRequest(
+                name="Test Template",
                 slug="test",
-                tagline="Test tagline",
-                description="Test description",
+                tagline="A useful test tagline",
+                description="A sufficiently descriptive template description for validation tests.",
                 category=TemplateCategory.IMAGE_GENERATION,
+                tech_stack=["react"],
                 price_credits=1000,
                 template_file_url="https://evil.com/malware.zip",
                 preview_images=["https://r2.cloudflare.com/preview.jpg"]
             )
 
         # Test non-ZIP file
-        with pytest.raises(ValidationError, match="Must be ZIP"):
-            TemplateCreateRequest(
-                title="Test",
+        with pytest.raises(ValidationError, match="ZIP archive"):
+            CreateTemplateRequest(
+                name="Test Template",
                 slug="test",
-                tagline="Test tagline",
-                description="Test description",
+                tagline="A useful test tagline",
+                description="A sufficiently descriptive template description for validation tests.",
                 category=TemplateCategory.IMAGE_GENERATION,
+                tech_stack=["react"],
                 price_credits=1000,
                 template_file_url="https://r2.cloudflare.com/template.exe",
                 preview_images=["https://r2.cloudflare.com/preview.jpg"]
@@ -328,17 +302,18 @@ class TestMarketplaceSecurityFixes:
     @pytest.mark.asyncio
     async def test_slug_validation(self, db_session, test_users):
         """Test slug validation prevents reserved words"""
-        from app.api.v1.marketplace import TemplateCreateRequest
+        from app.api.v1.marketplace import CreateTemplateRequest
         from pydantic import ValidationError
 
         # Test reserved slug
         with pytest.raises(ValidationError, match="reserved"):
-            TemplateCreateRequest(
-                title="Test",
+            CreateTemplateRequest(
+                name="Test Template",
                 slug="admin",  # Reserved word
-                tagline="Test tagline",
-                description="Test description",
+                tagline="A useful test tagline",
+                description="A sufficiently descriptive template description for validation tests.",
                 category=TemplateCategory.IMAGE_GENERATION,
+                tech_stack=["react"],
                 price_credits=1000,
                 template_file_url="https://r2.cloudflare.com/template.zip",
                 preview_images=["https://r2.cloudflare.com/preview.jpg"]
@@ -347,11 +322,10 @@ class TestMarketplaceSecurityFixes:
     @pytest.mark.asyncio
     async def test_revenue_integrity_check(self, db_session, test_users, test_template):
         """Test that revenue split calculation is verified"""
-        service = MarketplaceService(db_session)
         buyer = test_users["buyer"]
 
         # Normal purchase should work
-        purchase = await service.purchase_template(test_template.id, buyer)
+        purchase, _ = await MarketplaceService.purchase_template(db_session, buyer, test_template.id)
 
         # Verify split adds up to total
         assert (purchase.creator_revenue + purchase.platform_commission) == purchase.price_paid_credits
