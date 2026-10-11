@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "595a8f45d8d5d9a9b2bb15407dde703c53d84024",
+    "expected_canonical_sha": "ed660aece65261f47200ea991473a8bbf83eda39",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.",
-    "next_ready_workunit": "R7-A1 residual: map media/provider callback and outbox mutation authorities; add direct stale-generation acceptance, then establish TeamRun-to-Task-Control binding with disposable PostgreSQL process-recovery evidence.",
+    "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
+    "next_ready_workunit": "R7-A1 residual: inventory provider-result/poll artifact persistence and outbox/cancellation mutations; add stale-generation acceptance at the real durable write boundary. Then bind a stable AutoTeam TeamRun identity to Task Control and prove retry/provider-wait/recovery/final-verify readback.",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Canonical main is 595a8f45d8d5d9a9b2bb15407dde703c53d84024. PR #600 fences selected recovery mutations and atomically commits accepted terminal state/event; PRs #607/#608 prove no-progress suppression and one useful-work recovery; PR #611 adds persisted worker-job Task Control identity across interruption, retry, provider wait/resume and final verification. TeamRun-to-Task-ID linkage, callback/outbox/cancellation fences, SPEC-271 authority receipt and SPEC-302 Phase 2 remain open.",
+    "resume_point": "Canonical main is ed660aece65261f47200ea991473a8bbf83eda39. PR #623 fences timer-driven async media pipeline advancement through the recovery evaluator; PR #626 revalidates the exact lease after protected DB mutation and proves expiry rollback with disposable PostgreSQL. PRs #607/#608 retain useful-work/no-progress evidence and #611 retains worker-job Task Control continuity. Provider callback/outbox/cancellation effects and TeamRun-to-Task-ID linkage remain open.",
     "waiting_predicate": "Provider callback/outbox/cancellation acceptance and TeamRun-to-Task-Control binding are runnable from canonical main. Only durable receipt schema/migration work waits for an accountable schema owner and explicit approval; all existing dirty historical worktrees remain preserved."
   },
   "continuation_assessment": {
@@ -69,10 +69,27 @@
         "scope": "Disposable PostgreSQL and independent OS workers: one persisted worker-job/task-group identity survives SIGKILL, lease recovery and retry, provider wait/resume, and final verification through the Task Control detail/group projections. Does not prove a TeamRun-to-Task-ID binding, SPEC-224 authorization, or full R7 completion.",
         "source_sha": "21c519d9d7b2576c01bab2dd32d933351f7fb46f",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "1f9de0a308a77a4484a88e761bb08bb1da392cba",
+        "kind": "INTEGRATED_IMPLEMENTATION",
+        "path": "apps/web/server/services/autoTeamMediaCompletionService.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/623",
+        "scope": "Timer-driven media pipeline advancement now dispatches a per-run evaluation through the canonical fenced recovery worker; unqueued or rejected dispatch retries are bounded. Run-ID LIKE metacharacters are escaped for independent no-progress suppression.",
+        "source_sha": "ee3179a03e4fc341230c41b01e71a8c140de2719"
+      },
+      {
+        "canonical_sha": "ed660aece65261f47200ea991473a8bbf83eda39",
+        "kind": "R7_COMMIT_TIME_LEASE_EXPIRY_ACCEPTANCE",
+        "path": "apps/web/server/services/__tests__/autoTeamRunMutationFence.integration.test.ts",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/626",
+        "scope": "Disposable PostgreSQL fixture keeps a leased worker inside a protected TeamRun transaction until its lease expires; commit-time revalidation rejects the mutation and the transaction rolls it back. Existing repeated process-level stale reclaim/restart acceptance passes.",
+        "source_sha": "ceb5374548d3ee4f4a71c0d1827cd67af28b7dda",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
-    "next_action": "Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.",
-    "rationale": "Canonical main already contains the selected recovery mutation fence and stronger stale-worker side-effect/restart acceptance. The newest direct test additionally rejects an explicit user_requested cancellation under the stale lease. Provider callback/outbox/receipt races and AutoTeam TeamRun-to-Task-ID linkage remain unproven; do not infer full Lane A or SPEC-277 completion.",
+    "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
+    "rationale": "Canonical main contains recovery-worker fencing, timer dispatch through the fenced evaluator, persistent useful-work and no-progress acceptance, worker-job Task Control continuity, repeated process-level stale reclaim/restart acceptance, and commit-time lease-expiry rollback. Provider-result/callback/outbox/cancellation races and AutoTeam TeamRun-to-Task-ID binding remain unproven; SPEC-277 remains partial.",
     "residual_requirements": [
       "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
       "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -108,7 +125,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 39,
+  "generation": 41,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -133,7 +150,9 @@
       "085cc0420fd5b16b9e9189489f1cb97158aff732",
       "311bc1e39100a308efcadab61fa278d607a860aa",
       "06068ae9db6c433b9a10353f71f2becdba18218e",
-      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b"
+      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+      "1f9de0a308a77a4484a88e761bb08bb1da392cba",
+      "ed660aece65261f47200ea991473a8bbf83eda39"
     ],
     "mapping": [
       {
@@ -172,9 +191,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "595a8f45d8d5d9a9b2bb15407dde703c53d84024",
+    "canonical_sha": "ed660aece65261f47200ea991473a8bbf83eda39",
     "integrated": true,
-    "integrated_at": "2026-10-11T02:40:01Z"
+    "integrated_at": "2026-10-11T03:37:45Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -232,10 +251,27 @@
           "scope": "Disposable PostgreSQL and independent OS workers: one persisted worker-job/task-group identity survives SIGKILL, lease recovery and retry, provider wait/resume, and final verification through the Task Control detail/group projections. Does not prove a TeamRun-to-Task-ID binding, SPEC-224 authorization, or full R7 completion.",
           "source_sha": "21c519d9d7b2576c01bab2dd32d933351f7fb46f",
           "status": "PASS_PARTIAL_ACCEPTANCE"
+        },
+        {
+          "canonical_sha": "1f9de0a308a77a4484a88e761bb08bb1da392cba",
+          "kind": "INTEGRATED_IMPLEMENTATION",
+          "path": "apps/web/server/services/autoTeamMediaCompletionService.ts",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/623",
+          "scope": "Timer-driven media pipeline advancement now dispatches a per-run evaluation through the canonical fenced recovery worker; unqueued or rejected dispatch retries are bounded. Run-ID LIKE metacharacters are escaped for independent no-progress suppression.",
+          "source_sha": "ee3179a03e4fc341230c41b01e71a8c140de2719"
+        },
+        {
+          "canonical_sha": "ed660aece65261f47200ea991473a8bbf83eda39",
+          "kind": "R7_COMMIT_TIME_LEASE_EXPIRY_ACCEPTANCE",
+          "path": "apps/web/server/services/__tests__/autoTeamRunMutationFence.integration.test.ts",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/626",
+          "scope": "Disposable PostgreSQL fixture keeps a leased worker inside a protected TeamRun transaction until its lease expires; commit-time revalidation rejects the mutation and the transaction rolls it back. Existing repeated process-level stale reclaim/restart acceptance passes.",
+          "source_sha": "ceb5374548d3ee4f4a71c0d1827cd67af28b7dda",
+          "status": "PASS_PARTIAL_ACCEPTANCE"
         }
       ],
-      "next_action": "Continue Lane A direct acceptance for provider callback/outbox/receipt effects and remaining cancellation boundaries after lease reclaim; then implement and verify the AutoTeam TeamRun-to-Task-Control identity binding across retry, provider wait, recovery, and final verify. Keep SPEC-277 partial and migrations approval-gated.",
-      "rationale": "Canonical main already contains the selected recovery mutation fence and stronger stale-worker side-effect/restart acceptance. The newest direct test additionally rejects an explicit user_requested cancellation under the stale lease. Provider callback/outbox/receipt races and AutoTeam TeamRun-to-Task-ID linkage remain unproven; do not infer full Lane A or SPEC-277 completion.",
+      "next_action": "Continue direct acceptance for provider callback/poll, outbox/receipt and remaining cancellation effects after lease reclaim; then implement and verify AutoTeam TeamRun-to-Task-Control identity binding. Keep SPEC-277 partial, SPEC-271 authority-gated, SPEC-302 Phase 2 migration-gated, and SPEC-224 protected dispatch DENY.",
+      "rationale": "Canonical main contains recovery-worker fencing, timer dispatch through the fenced evaluator, persistent useful-work and no-progress acceptance, worker-job Task Control continuity, repeated process-level stale reclaim/restart acceptance, and commit-time lease-expiry rollback. Provider-result/callback/outbox/cancellation races and AutoTeam TeamRun-to-Task-ID binding remain unproven; SPEC-277 remains partial.",
       "residual_requirements": [
         "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
         "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -457,7 +493,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T03:04:26.543819Z",
+  "updated_at": "2026-10-11T03:39:06.420754Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
