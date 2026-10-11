@@ -55,12 +55,16 @@ function isBoundedDenseArray(value: unknown, maximum: number): value is unknown[
   return true;
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function isPosition(value: unknown, budget: { positions: number }): value is GeoJSONPosition {
   budget.positions += 1;
   if (budget.positions > MAX_POSITIONS) throw new Error("GEOMETRY_COMPLEXITY_LIMIT");
   return isBoundedDenseArray(value, 3) && (value.length === 2 || value.length === 3) &&
-    value.every(coordinate => typeof coordinate === "number" && Number.isFinite(coordinate)) &&
-    value[0] >= -180 && value[0] <= 180 && value[1] >= -90 && value[1] <= 90;
+    value.every(isFiniteNumber) &&
+    value[0]! >= -180 && value[0]! <= 180 && value[1]! >= -90 && value[1]! <= 90;
 }
 
 function parseLine(value: unknown, budget: { positions: number }): value is GeoJSONPosition[] {
@@ -78,6 +82,18 @@ function copyPosition(position: GeoJSONPosition): GeoJSONPosition {
 function parseRing(value: unknown, budget: { positions: number }): value is GeoJSONPosition[] {
   if (!isBoundedDenseArray(value, MAX_POSITIONS) || value.length < 4 || !value.every(position => isPosition(position, budget))) return false;
   return samePosition(value[0]!, value[value.length - 1]!);
+}
+
+type GeoJSONMultiPolygonCoordinates = Extract<GeoJSONGeometry, { type: "MultiPolygon" }>["coordinates"];
+
+function parseMultiPolygonCoordinates(
+  value: unknown,
+  budget: { positions: number },
+): value is GeoJSONMultiPolygonCoordinates {
+  return isBoundedDenseArray(value, MAX_GEOMETRIES) && value.every(polygon =>
+    isBoundedDenseArray(polygon, MAX_GEOMETRIES) && polygon.length > 0 &&
+    polygon.every(ring => parseRing(ring, budget))
+  );
 }
 
 function parseGeometry(value: unknown, budget: { positions: number; geometries: number }, depth: number): GeoJSONGeometry | undefined {
@@ -102,7 +118,7 @@ function parseGeometry(value: unknown, budget: { positions: number; geometries: 
       if (!hasOnlyFields(value, GEOMETRY_FIELDS) || !isBoundedDenseArray(value.coordinates, MAX_GEOMETRIES) || value.coordinates.length === 0 || !value.coordinates.every(ring => parseRing(ring, budget))) return undefined;
       return { type: "Polygon", coordinates: value.coordinates.map(ring => ring.map(copyPosition)) };
     case "MultiPolygon":
-      if (!hasOnlyFields(value, GEOMETRY_FIELDS) || !isBoundedDenseArray(value.coordinates, MAX_GEOMETRIES) || !value.coordinates.every(polygon => isBoundedDenseArray(polygon, MAX_GEOMETRIES) && polygon.length > 0 && polygon.every(ring => parseRing(ring, budget)))) return undefined;
+      if (!hasOnlyFields(value, GEOMETRY_FIELDS) || !parseMultiPolygonCoordinates(value.coordinates, budget)) return undefined;
       return { type: "MultiPolygon", coordinates: value.coordinates.map(polygon => polygon.map(ring => ring.map(copyPosition))) };
     case "GeometryCollection": {
       if (!hasOnlyFields(value, COLLECTION_FIELDS) || !isBoundedDenseArray(value.geometries, MAX_GEOMETRIES)) return undefined;
