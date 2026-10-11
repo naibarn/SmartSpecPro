@@ -875,7 +875,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+    "expected_canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
     "expected_spec_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e"
   },
   "continuation": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 39,
+  "generation": 40,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
@@ -1087,7 +1087,8 @@
       "76d88dd7e9c81f6a8a244074463e1a850410769b",
       "bb832db746f11db7a2bf15533ac9135634ad3db9",
       "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
-      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b"
+      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507"
     ],
     "mapping": [
       {
@@ -1155,6 +1156,18 @@
         ],
         "source_sha": "fc8f265ddd2d3ea5ed1e4bc214cb29174e7fbb64",
         "status": "PARTIAL"
+      },
+      {
+        "coverage": "PARTIAL; enabled-provider screenshot analysis and UAT compare/repair contract integrated; no live generation or UAT evidence",
+        "scope": "Bridge integrity-checked staged screenshot bytes into requirements_intake vision analysis and attach bounded visual UAT requirements to the existing Factory UAT stage. Runtime acceptance remains blocked on authorized Runner session/trust.",
+        "source_paths": [
+          "apps/web/server/services/miniAppVisualBlueprint.ts",
+          "apps/web/server/services/miniAppFactoryRunnerStageAdapter.ts",
+          "apps/web/server/services/__tests__/miniAppVisualBlueprint.test.ts",
+          "apps/web/server/services/miniAppFactoryRunnerStageAdapter.test.ts",
+          "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/vision-blueprint-uat-bridge-20261011.json"
+        ],
+        "source_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507"
       }
     ],
     "source_paths": [
@@ -1180,9 +1193,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+    "canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
     "integrated": true,
-    "integrated_at": "2026-10-11T00:54:00Z"
+    "integrated_at": "2026-10-11T01:12:53Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3470,7 +3483,7 @@
     "unresolved": 1246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T00:56:43.469083Z",
+  "updated_at": "2026-10-11T01:14:48.524996Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3534,6 +3547,15 @@
         "scope": "Unknown/third-party rights cannot enable asset reuse in the UI. Focused screenshot intake test passed; no visual generation or UAT claim.",
         "source_sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
         "status": "PASS_PARTIAL"
+      },
+      {
+        "command": "pnpm --dir apps/web exec vitest run server/services/__tests__/miniAppVisualBlueprint.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts",
+        "failed": 0,
+        "kind": "TARGETED_VITEST",
+        "passed": 8,
+        "path": "apps/web/server/services/__tests__/miniAppVisualBlueprint.test.ts; apps/web/server/services/miniAppFactoryRunnerStageAdapter.test.ts",
+        "result": "PASS",
+        "source_sha": "4403bd305ec370b394e1ef305018a5c8bef99658"
       }
     ],
     "freshness": "FRESH",
