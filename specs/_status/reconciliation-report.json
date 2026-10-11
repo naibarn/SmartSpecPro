@@ -140859,7 +140859,7 @@
       "deployment": "UNKNOWN",
       "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "FRESH",
+      "evidence_freshness": "PARTIAL",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-07T04:14:02.839575Z",
       "lifecycle": "VALIDATION_PENDING",
