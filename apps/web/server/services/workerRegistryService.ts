@@ -495,7 +495,9 @@ export function buildCompoundArtifactEnvelopeDigestSeed(input: {
   };
 }
 
-function finalProtectionIntent(job: WorkerJobRecord): {
+type WorkerJobPostProcessingInput = Pick<WorkerJobRecord, "inputJson" | "instructionsJson">;
+
+function finalProtectionIntent(job: WorkerJobPostProcessingInput): {
   choice: "on" | "off";
   choiceSource: "per_export" | "user_default" | "disabled_by_user";
   requireBeforePublish: boolean;
@@ -522,12 +524,12 @@ function finalProtectionIntent(job: WorkerJobRecord): {
   };
 }
 
-export function getCompletedWorkerJobPostProcessingPlan(job: Pick<WorkerJobRecord, "inputJson" | "instructionsJson">): {
+export function getCompletedWorkerJobPostProcessingPlan(job: WorkerJobPostProcessingInput): {
   publishRawArtifact: true;
   enqueueProtection: boolean;
   markUnprotected: boolean;
 } {
-  const intent = finalProtectionIntent(job as WorkerJobRecord);
+  const intent = finalProtectionIntent(job);
   return {
     // The raw render is an independently usable artifact. Content
     // protection is a downstream sibling job and must never gate publication
@@ -2988,7 +2990,10 @@ export async function recordWorkerJobEvent(
             actorUserId: job.requestedByUserId ?? null,
           });
         } else {
-          const postProcessingPlan = getCompletedWorkerJobPostProcessingPlan(job);
+          const postProcessingPlan = getCompletedWorkerJobPostProcessingPlan({
+            inputJson: job.inputJson,
+            instructionsJson: job.instructionsJson,
+          });
           let publishedArtifacts: PublishedWorkerArtifactOutput[] = [];
           if (postProcessingPlan.publishRawArtifact) {
             // Publish the completed raw render first. A protection provider

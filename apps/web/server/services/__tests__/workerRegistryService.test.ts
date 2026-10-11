@@ -47,7 +47,7 @@ describe("workerRegistryService", () => {
         },
       },
       instructionsJson: null,
-    } as any)).toEqual({
+    })).toEqual({
       publishRawArtifact: true,
       enqueueProtection: true,
       markUnprotected: false,
