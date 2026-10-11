@@ -15,6 +15,8 @@ import {
   storyboardSkillProjects,
   storyboardSkillRuns,
   storyboardSkillShots,
+  type StoryboardSkillRun,
+  type StoryboardSkillShot,
   storyboardSkillProjectCharacters,
   workerJobs,
   workerJobEvents,
@@ -55,6 +57,34 @@ type StoryboardDbTransaction = Parameters<
   Parameters<StoryboardDbClient["transaction"]>[0]
 >[0];
 type StoryboardDb = StoryboardDbClient | StoryboardDbTransaction;
+type StoryboardSkillRunControlPlaneJob = Pick<
+  typeof workerJobs.$inferSelect,
+  | "status"
+  | "attempt"
+  | "maxAttempts"
+  | "nextRetryAt"
+  | "statusReason"
+  | "operatorReviewRequired"
+  | "operatorReviewReason"
+  | "errorCode"
+  | "errorMessage"
+  | "progressJson"
+  | "heartbeatAt"
+  | "leaseExpiresAt"
+>;
+type StoryboardSkillRunControlPlaneEvent = {
+  eventType: typeof workerJobEvents.$inferSelect.eventType;
+  eventSequence: typeof workerJobEvents.$inferSelect.eventSequence;
+  attemptId: typeof workerJobEvents.$inferSelect.attemptId;
+  payloadJson: Record<string, unknown>;
+  createdAt: typeof workerJobEvents.$inferSelect.createdAt;
+};
+type StoryboardSkillRunDetail = StoryboardSkillRun & {
+  reviewId: number | null;
+  controlPlaneJob: StoryboardSkillRunControlPlaneJob | null;
+  controlPlaneEvents: StoryboardSkillRunControlPlaneEvent[];
+  shots: Array<StoryboardSkillShot & { imageUrl: string | null }>;
+};
 
 function requireTenant(tenantId: string | null | undefined): string {
   if (!tenantId) throw new Error("Tenant context is required");
@@ -993,11 +1023,11 @@ export async function getStoryboardSkillRun(input: {
   userId: number;
   tenantId: string | null | undefined;
   runId: string;
-}) {
+}): Promise<StoryboardSkillRunDetail | null> {
   const tenantId = requireTenant(input.tenantId);
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const [run] = await db
+  const runRows = await db
     .select()
     .from(storyboardSkillRuns)
     .where(
@@ -1008,6 +1038,7 @@ export async function getStoryboardSkillRun(input: {
       )
     )
     .limit(1);
+  const run = runRows[0] as StoryboardSkillRun | undefined;
   if (!run) return null;
   const [project] = await db
     .select({ reviewId: storyboardSkillProjects.reviewId })
@@ -1020,7 +1051,7 @@ export async function getStoryboardSkillRun(input: {
       )
     )
     .limit(1);
-  const shots = await db
+  const shotRows = await db
     .select()
     .from(storyboardSkillShots)
     .where(
@@ -1030,6 +1061,7 @@ export async function getStoryboardSkillRun(input: {
       )
     )
     .orderBy(storyboardSkillShots.shotNumber);
+  const shots = shotRows as StoryboardSkillShot[];
   const assetIds = shots
     .map(shot => shot.imageAssetId)
     .filter((id): id is number => Number.isSafeInteger(id));
@@ -3416,7 +3448,7 @@ export async function saveStoryboardShotAsCharacter(input: {
   const sourceKey = `storyboard-shot:${input.runId}:${input.shotNumber}:${input.role}`;
   try {
     return await db.transaction(async tx => {
-      const [source] = await tx
+      const sourceRows = await tx
         .select({
           imageAssetId: storyboardSkillShots.imageAssetId,
           status: storyboardSkillShots.status,
@@ -3439,7 +3471,15 @@ export async function saveStoryboardShotAsCharacter(input: {
           )
         )
         .limit(1);
-      if (!source || !isReusableStoryboardImage(source))
+      const source = sourceRows[0] as Pick<
+        StoryboardSkillShot,
+        "imageAssetId" | "status" | "suppressedResult"
+      > | undefined;
+      if (
+        !source ||
+        source.imageAssetId == null ||
+        !isReusableStoryboardImage(source)
+      )
         throw new Error("STORYBOARD_IMAGE_NOT_READY");
 
       const [media] = await tx
