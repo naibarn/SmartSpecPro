@@ -1431,20 +1431,40 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
           runId: string,
           scope: DevelopmentRunScope
         ): Promise<WorkerJobRow | null> => {
-          const [row] = await query
+          const columns = {
+            id: workerJobs.id,
+            tenantId: workerJobs.tenantId,
+            requestedByUserId: workerJobs.requestedByUserId,
+            progressJson: workerJobs.progressJson,
+            inputJson: workerJobs.inputJson,
+            status: workerJobs.status,
+            outputJson: workerJobs.outputJson,
+            resultRef: workerJobs.resultRef,
+            errorCode: workerJobs.errorCode,
+            errorMessage: workerJobs.errorMessage,
+            attempt: workerJobs.attempt,
+          };
+          const [canonicalRow] = await query
             .select({
-              id: workerJobs.id,
-              tenantId: workerJobs.tenantId,
-              requestedByUserId: workerJobs.requestedByUserId,
-              progressJson: workerJobs.progressJson,
-              inputJson: workerJobs.inputJson,
-              status: workerJobs.status,
-              outputJson: workerJobs.outputJson,
-              resultRef: workerJobs.resultRef,
-              errorCode: workerJobs.errorCode,
-              errorMessage: workerJobs.errorMessage,
-              attempt: workerJobs.attempt,
+              ...columns,
             })
+            .from(workerJobs)
+            .where(
+              and(
+                eq(workerJobs.id, stableCanonicalJobId(`run:${runId}`)),
+                eq(workerJobs.tenantId, scope.tenantId),
+                eq(workerJobs.requestedByUserId, scope.actorId)
+              )
+            )
+            .for("update")
+            .limit(1);
+          if (canonicalRow) return canonicalRow;
+
+          // Compatibility for runs initialized by older trusted adapters with
+          // a random canonical job ID: keep the first persisted run row as the
+          // durable event/projection owner when later phase jobs are admitted.
+          const [legacyRoot] = await query
+            .select({ ...columns })
             .from(workerJobs)
             .where(
               and(
@@ -1456,9 +1476,10 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
                 )
               )
             )
+            .orderBy(asc(workerJobs.createdAt), asc(workerJobs.id))
             .for("update")
             .limit(1);
-          return row ?? null;
+          return legacyRoot ?? null;
         };
 
         const loadEvents = async (
@@ -1562,6 +1583,81 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
                   eq(workerJobs.requestedByUserId, scope.actorId)
                 )
               );
+            if (next.run.workerJobId && next.run.workerJobId !== row.id) {
+              const [phaseJob] = await query
+                .select({
+                  id: workerJobs.id,
+                  tenantId: workerJobs.tenantId,
+                  requestedByUserId: workerJobs.requestedByUserId,
+                  inputJson: workerJobs.inputJson,
+                  progressJson: workerJobs.progressJson,
+                })
+                .from(workerJobs)
+                .where(
+                  and(
+                    eq(workerJobs.id, next.run.workerJobId),
+                    eq(workerJobs.tenantId, scope.tenantId),
+                    eq(workerJobs.requestedByUserId, scope.actorId)
+                  )
+                )
+                .for("update")
+                .limit(1);
+              const phaseInput = phaseJob?.inputJson?.spec224Run;
+              const phaseInputRecord =
+                phaseInput &&
+                typeof phaseInput === "object" &&
+                !Array.isArray(phaseInput)
+                  ? phaseInput as Record<string, unknown>
+                  : null;
+              const existingProjection = phaseJob?.progressJson?.spec224;
+              const phaseProjection =
+                existingProjection &&
+                typeof existingProjection === "object" &&
+                !Array.isArray(existingProjection)
+                  ? existingProjection as Record<string, unknown>
+                  : null;
+              if (
+                !phaseJob ||
+                !phaseInputRecord ||
+                phaseInputRecord.runId !== next.run.runId ||
+                phaseInputRecord.tenantId !== scope.tenantId ||
+                Number(phaseInputRecord.actorId) !== scope.actorId ||
+                phaseInputRecord.state !== next.run.state ||
+                phaseInputRecord.workerJobId !== phaseJob.id ||
+                Number(phaseInputRecord.projectionVersion) !== expectedRevision ||
+                !Number.isSafeInteger(Number(phaseInputRecord.fencingVersion)) ||
+                Number(phaseInputRecord.fencingVersion) < 0 ||
+                Number(phaseInputRecord.fencingVersion) > next.run.fencingVersion ||
+                (existingProjection !== undefined &&
+                  (!phaseProjection ||
+                    phaseProjection.runId !== next.run.runId ||
+                    phaseProjection.tenantId !== scope.tenantId ||
+                    Number(phaseProjection.actorId) !== scope.actorId ||
+                    phaseProjection.workerJobId !== phaseJob.id ||
+                    !Number.isSafeInteger(Number(phaseProjection.projectionVersion)) ||
+                    Number(phaseProjection.projectionVersion) < 0 ||
+                    Number(phaseProjection.projectionVersion) > next.revision))
+              ) {
+                throw new Error("RUN_PHASE_JOB_PROJECTION_BINDING_INVALID");
+              }
+              const phaseProgress = {
+                ...phaseJob.progressJson,
+                ...(progress.developmentLifecycle
+                  ? { developmentLifecycle: progress.developmentLifecycle }
+                  : {}),
+                spec224: projectionFromRun(next.run, next.revision),
+              };
+              await query
+                .update(workerJobs)
+                .set({ progressJson: phaseProgress })
+                .where(
+                  and(
+                    eq(workerJobs.id, phaseJob.id),
+                    eq(workerJobs.tenantId, scope.tenantId),
+                    eq(workerJobs.requestedByUserId, scope.actorId)
+                  )
+                );
+            }
           },
           async appendEvent(event, scope) {
             const row = await findRow(event.runId, scope);
