@@ -80,12 +80,13 @@ async def test_users(db_session):
 async def test_template(db_session, test_users):
     """Create test template"""
     template = MarketplaceTemplate(
-        title="Test Image Generation Template",
+        name="Test Image Generation Template",
         slug="test-image-gen",
         tagline="Generate amazing images",
         description="A comprehensive image generation template for SmartSpecPro",
         creator_id=test_users["creator"].id,
         category=TemplateCategory.IMAGE_GENERATION,
+        tech_stack=["react"],
         price_credits=1000,
         template_file_url="https://r2.cloudflare.com/templates/test.zip",
         preview_images=["https://r2.cloudflare.com/previews/1.jpg"],
@@ -125,7 +126,7 @@ class TestMarketplacePurchaseFlow:
         assert purchase is not None
         assert purchase.buyer_id == buyer.id
         assert purchase.template_id == test_template.id
-        assert purchase.credits_paid == 1000
+        assert purchase.price_paid_credits == 1000
         assert purchase.creator_revenue == 850  # 85%
         assert purchase.platform_commission == 150  # 15%
 
@@ -139,7 +140,8 @@ class TestMarketplacePurchaseFlow:
         # Verify template stats updated
         await db_session.refresh(test_template)
         assert test_template.purchase_count == 1
-        assert test_template.total_revenue_credits == 1000
+        assert test_template.total_revenue_credits == 850
+        assert test_template.platform_commission_credits == 150
 
     @pytest.mark.asyncio
     async def test_duplicate_purchase_prevention(self, db_session, test_users, test_template):
@@ -217,7 +219,8 @@ class TestMarketplacePurchaseFlow:
         # Verify template stats
         await db_session.refresh(test_template)
         assert test_template.purchase_count == 3
-        assert test_template.total_revenue_credits == 3000
+        assert test_template.total_revenue_credits == 2550
+        assert test_template.platform_commission_credits == 450
 
 
 class TestMarketplaceReviewSystem:
@@ -351,9 +354,9 @@ class TestMarketplaceSecurityFixes:
         purchase = await service.purchase_template(test_template.id, buyer)
 
         # Verify split adds up to total
-        assert (purchase.creator_revenue + purchase.platform_commission) == purchase.credits_paid
-        assert purchase.creator_revenue == int(purchase.credits_paid * 0.85)
-        assert purchase.platform_commission == int(purchase.credits_paid * 0.15)
+        assert (purchase.creator_revenue + purchase.platform_commission) == purchase.price_paid_credits
+        assert purchase.creator_revenue == int(purchase.price_paid_credits * 0.85)
+        assert purchase.platform_commission == int(purchase.price_paid_credits * 0.15)
 
 
 class TestMarketplaceAnalytics:
