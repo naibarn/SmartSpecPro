@@ -27,6 +27,18 @@ describe("Spec 266 canonical geometry contract", () => {
     expect(parseGeometryContract(contract({ type: "Polygon", coordinates: [[[100, 13], [101, 13], [101, 14], [100, 14]]] })).ok).toBe(false);
   });
 
+  it("accepts bounded MultiPolygon coordinates and preserves their nesting", () => {
+    const multiPolygon = {
+      type: "MultiPolygon",
+      coordinates: [[[[100, 13], [101, 13], [101, 14], [100, 13]]]],
+    };
+
+    expect(parseGeometryContract(contract(multiPolygon))).toMatchObject({
+      ok: true,
+      value: { geometry: multiPolygon },
+    });
+  });
+
   it("rejects unsupported CRS instead of silently relabeling untransformed coordinates", () => {
     expect(parseGeometryContract(contract({ type: "Point", coordinates: [100, 13] }, { crs: "EPSG:3857" }))).toMatchObject({
       ok: false,
