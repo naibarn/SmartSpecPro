@@ -34,7 +34,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+    "expected_canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
     "expected_spec_digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99"
   },
   "continuation": {
@@ -84,7 +84,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/feature/271-smartaihub-portable-uat-acceptance-execution-platform-rev1-5/spec.md",
     "digest": "d73eca74174935058b9c750f0ab1671b58bdde4424efe8ea3d3daad9b4053d99",
@@ -107,7 +107,8 @@
       "2d9ffa5dfca0dc4c54e19c5638d11e2761286b64",
       "904723c3b33365cb971a668e816d64f1adff7622",
       "5b9730424642f45dbf58a2af45aeb1beebc303ab",
-      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b"
+      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507"
     ],
     "mapping": [
       {
@@ -156,6 +157,12 @@
         ],
         "source_sha": "fc8f265ddd2d3ea5ed1e4bc214cb29174e7fbb64",
         "status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-D4AD4BB89D22",
+        "scope": "PARTIAL: existing Factory UAT stage receives bounded visual comparison/repair requirements and functional-regression priority. No browser screenshot, visual diff, repair, functional journey, or durable acceptance receipt has executed; acceptance remains UNKNOWN.",
+        "source_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
+        "status": "PARTIAL"
       }
     ],
     "source_paths": [
@@ -172,9 +179,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
+    "canonical_sha": "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
     "integrated": true,
-    "integrated_at": "2026-10-11T00:54:00Z"
+    "integrated_at": "2026-10-11T01:12:53Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -934,7 +941,7 @@
     "unresolved": 287
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T00:56:43.480466Z",
+  "updated_at": "2026-10-11T01:14:48.572511Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1053,6 +1060,15 @@
         "scope": "The screenshot intake tests are not visual UAT; no rendered app, comparison, repair, or functional regression evidence exists.",
         "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
         "status": "UNVERIFIED"
+      },
+      {
+        "command": "pnpm --dir apps/web exec vitest run server/services/__tests__/miniAppVisualBlueprint.test.ts server/services/miniAppFactoryRunnerStageAdapter.test.ts",
+        "failed": 0,
+        "kind": "TARGETED_VITEST",
+        "passed": 8,
+        "path": "apps/web/server/services/__tests__/miniAppVisualBlueprint.test.ts; apps/web/server/services/miniAppFactoryRunnerStageAdapter.test.ts",
+        "result": "PASS",
+        "source_sha": "4403bd305ec370b394e1ef305018a5c8bef99658"
       }
     ],
     "freshness": "FRESH",

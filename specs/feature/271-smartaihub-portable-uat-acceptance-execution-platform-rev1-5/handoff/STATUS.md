@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 287 unresolved of 287
 - Next action: Resolve owner-approved SPEC-224 run identity, tenant/project authorization and storage-retention adapter bindings; then prove persisted non-production WP2B receipt integrity and replay after a real process restart.
-- Manifest generation: 19
+- Manifest generation: 20
 
 ## Source-declared status and relationship claims
 
