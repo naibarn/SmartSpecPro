@@ -25,7 +25,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           git diff --name-only "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed-paths.txt"
-          if ! rg -q '^(AGENTS\.md$|skills/(brainstorming|development-lifecycle|orchestra|integration-controller|session-finish|deep-plan|deep-implement|deep-plan-quick|deep-project)/|scripts/development-lifecycle/|\.github/workflows/progressive-integration\.yml$)' "$RUNNER_TEMP/changed-paths.txt"; then
+          if ! rg -q '^(AGENTS\.md$|skills/(brainstorming|development-lifecycle|orchestra|integration-controller|session-finish|deep-plan|deep-implement|deep-plan-quick|deep-project)/|scripts/development-lifecycle/|apps/web/scripts/(build-main-deploy\.py|test_build_main_deploy_freshness\.py)$|\.github/workflows/progressive-integration\.yml$)' "$RUNNER_TEMP/changed-paths.txt"; then
             echo "No progressive-integration policy changes; gate is not applicable."
             exit 0
           fi
@@ -43,3 +43,6 @@ jobs:
           python -m unittest discover \
             -s scripts/development-lifecycle \
             -p 'test_canonical_build_retry.py'
+          python -m unittest discover \
+            -s apps/web/scripts \
+            -p 'test_build_main_deploy_freshness.py'
