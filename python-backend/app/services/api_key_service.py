@@ -36,8 +36,8 @@ class APIKeyService:
         # Hash for storage
         key_hash = TokenGenerator.hash_token(key)
         
-        # Prefix for display (first 16 chars + last 4 chars)
-        key_prefix = f"{key[:16]}...{key[-4:]}"
+        # Prefix is limited to the api_keys.key_prefix VARCHAR(20) column.
+        key_prefix = f"{key[:13]}...{key[-4:]}"
         
         return key, key_hash, key_prefix
     
