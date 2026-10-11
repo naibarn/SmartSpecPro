@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { and, asc, count, desc, eq, exists, inArray, isNotNull, isNull, lt, not, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, isNotNull, isNull, lt, not, or, sql, type SQL } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import { workerHeartbeats, workerJobDispatches, workerJobEvents, workerJobOutbox, workerJobSettlements, workerJobs, workers } from "../../drizzle/schema";
@@ -73,16 +73,17 @@ export function decodeJobMonitorCursor(value: string): JobMonitorCursor {
 }
 
 export async function listCanonicalJobs(filter: JobMonitorFilter) {
-  const conditions = [] as any[];
+  const typedDb = getDb();
+  const conditions: SQL[] = [];
   if (filter.tenantId) conditions.push(eq(workerJobs.tenantId, filter.tenantId));
   if (filter.status) conditions.push(inArray(workerJobs.status, storedStatusesForMonitorFilter(filter.status) as any));
   if (filter.jobType) conditions.push(eq(workerJobs.jobType, filter.jobType));
   if (filter.executionClass) conditions.push(eq(workerJobs.executionClass, filter.executionClass));
-  if (filter.adapter) conditions.push(exists(db.select({ id: workerJobDispatches.id }).from(workerJobDispatches).where(and(eq(workerJobDispatches.workerJobId, workerJobs.id), eq(workerJobDispatches.adapter, filter.adapter)))));
+  if (filter.adapter) conditions.push(exists(typedDb.select({ id: workerJobDispatches.id }).from(workerJobDispatches).where(and(eq(workerJobDispatches.workerJobId, workerJobs.id), eq(workerJobDispatches.adapter, filter.adapter)))));
   if (filter.stale) conditions.push(
     inArray(workerJobs.status, [
       "leased", "claimed", "running", "preparing", "uploading", "publishing", "indexing", "waiting_external",
-    ] as any),
+    ]),
     isNotNull(workerJobs.leaseExpiresAt),
     lt(workerJobs.leaseExpiresAt, new Date()),
   );
@@ -90,12 +91,13 @@ export async function listCanonicalJobs(filter: JobMonitorFilter) {
   if (filter.beforeCursor) {
     const cursor = decodeJobMonitorCursor(filter.beforeCursor);
     const cursorDate = new Date(cursor.createdAt);
-    conditions.push(or(
+    const cursorCondition = or(
       lt(workerJobs.createdAt, cursorDate),
       and(eq(workerJobs.createdAt, cursorDate), lt(workerJobs.id, cursor.jobId)),
-    ));
+    );
+    if (cursorCondition) conditions.push(cursorCondition);
   }
-  const rows = await db.select({
+  const rows = await typedDb.select({
     jobId: workerJobs.id,
     tenantId: workerJobs.tenantId,
     requestedByUserId: workerJobs.requestedByUserId,
