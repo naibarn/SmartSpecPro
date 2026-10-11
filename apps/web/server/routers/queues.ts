@@ -47,6 +47,7 @@ import {
 import { getQueueHealthStatus } from '../services/queueHealthMonitor';
 import {
   DEFAULT_WORKER_JOB_DEADLINE_SETTINGS,
+  HARD_MAX_DEADLINE_MINUTES,
   getWorkerJobDeadlineDashboard,
   updateWorkerJobDeadlineSettings,
 } from '../services/workerJobDeadlinePolicy';
@@ -493,9 +494,10 @@ export const queuesRouter = router({
     } catch {
       return {
         settings: DEFAULT_WORKER_JOB_DEADLINE_SETTINGS,
-        hardMaximumMinutes: { python: 60, image: 60, video: 120 },
+        settingsDegraded: true,
+        metricsDegraded: true,
+        hardMaximumMinutes: HARD_MAX_DEADLINE_MINUTES,
         metrics: [],
-        degraded: true,
       };
     }
   }),
