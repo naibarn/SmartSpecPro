@@ -47,6 +47,14 @@ export type SourcePackOwner = { tenantId: string; userId: number };
 const MAX_SOURCE_PACK_SLOTS = 500;
 const MAX_SOURCE_PACK_ASSETS = 500;
 
+function asSourceAssetProvenance(
+  value: unknown
+): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 export class VerticalDramaSourcePackNotReadyError extends Error {
   readonly code = "VD_SOURCE_PACK_NOT_READY" as const;
   constructor(readonly readiness: VdSourcePackReadiness) {
@@ -951,10 +959,11 @@ export async function buildStoredSourcePackBrollManifest(
   }
   const verifiedAssets = await Promise.all(
     result.assets.map(async (asset: VerticalDramaSourceAsset) => {
-      const provenance = asset.provenanceJson;
+      const provenance = asSourceAssetProvenance(asset.provenanceJson);
       if (provenance?.managed !== true) {
         return {
           ...asset,
+          provenance,
           mediaAssetId:
             asset.mediaAssetId && ownedMediaAssetIds.has(asset.mediaAssetId)
               ? asset.mediaAssetId
@@ -978,13 +987,13 @@ export async function buildStoredSourcePackBrollManifest(
       );
       return {
         ...asset,
+        provenance: managedMediaVerified
+          ? provenance
+          : { ...provenance, managed: false },
         mediaAssetId:
           asset.mediaAssetId && ownedMediaAssetIds.has(asset.mediaAssetId)
             ? asset.mediaAssetId
             : null,
-        provenance: managedMediaVerified
-          ? provenance
-          : { ...provenance, managed: false },
       };
     })
   );
@@ -1000,11 +1009,11 @@ export async function buildStoredSourcePackBrollManifest(
       usagePolicy: slot.usagePolicy,
       sourceKind: slot.sourceKind,
     })),
-    assets: verifiedAssets.map((asset: VerticalDramaSourceAsset) => ({
+    assets: verifiedAssets.map(asset => ({
       id: asset.id,
       title: asset.title,
       mediaAssetId: asset.mediaAssetId,
-      provenance: asset.provenanceJson,
+      provenance: asset.provenance,
       rightsStatus: asset.rightsStatus,
       disclosureStatus: asset.disclosureStatus,
     })),
