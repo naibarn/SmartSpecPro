@@ -159,8 +159,9 @@ export default function AdminDeploymentTargets() {
           "Manage Cloudflare targets for preview and staging. This page only records target authority; it does not deploy an app or run migrations.",
           "จัดการ Cloudflare target สำหรับ preview และ staging หน้านี้บันทึก authority ของ target เท่านั้น ไม่ได้ deploy แอปหรือรัน migration",
         )}</p>
-        <p>{text("Project ID and App ID are separate identities.", "Project ID และ App ID เป็นคนละ identity")}
-          {" "}{text("Project Wiki App ID:", "Project Wiki App ID:")} <code>{PROJECT_WIKI_APP_ID}</code>
+        <p>{text("Project ID and App ID are separate identities. The registry stores project/environment scope, not an App ID.", "Project ID และ App ID เป็นคนละ identity โดย registry เก็บ scope ของ project/environment และไม่ได้เก็บ App ID")}
+          {" "}{text("Project Wiki package App ID:", "Project Wiki package App ID:")} <code>{PROJECT_WIKI_APP_ID}</code>
+          {" "}{text("Validate the app binding separately before deployment.", "ต้องตรวจ app binding แยกก่อน deploy")}
         </p>
         <p>{text("This registry authorizes Cloudflare only. Other providers are shown for visibility and cannot be changed here.", "registry นี้ให้สิทธิ์เฉพาะ Cloudflare ผู้ให้บริการอื่นจะแสดงเพื่อให้อ้างอิง แต่แก้ไขจากหน้านี้ไม่ได้")}</p>
       </VStack>
@@ -212,7 +213,7 @@ export default function AdminDeploymentTargets() {
                 <Badge variant="outline">{target.provider}</Badge>
                 {target.provider === "cloudflare" ? <CredentialReadiness target={target} /> : <Badge variant="secondary">{text("Cloudflare-only controls unavailable", "ไม่มี controls สำหรับผู้ให้บริการนี้")}</Badge>}
               </HStack>
-              <p>{text("Scope", "ขอบเขต")}: {target.tenantId} / {target.projectId} / {target.environment} · {text("App ID", "App ID")}: <code>{PROJECT_WIKI_APP_ID}</code></p>
+              <p>{text("Scope", "ขอบเขต")}: {target.tenantId} / {target.projectId} / {target.environment}</p>
               <p>{text("Provider identity", "Provider identity")}: {target.provider} · {text("Provenance", "หลักฐานที่มา")}: {target.provenance}</p>
               {target.provider === "cloudflare" ? <>
                 <details>
