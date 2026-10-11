@@ -172,6 +172,32 @@ export async function withAutoTeamRunMutationFence<T>(input: {
       throw new AutoTeamRunMutationFenceError();
     }
 
-    return input.mutate(tx);
+    const result = await input.mutate(tx);
+    const [stillAuthorized] = await tx
+      .select({ jobId: workerJobs.id })
+      .from(workerJobs)
+      .innerJoin(
+        workerJobAttempts,
+        and(
+          eq(workerJobAttempts.workerJobId, workerJobs.id),
+          eq(workerJobAttempts.id, input.lease.attemptId),
+          eq(workerJobAttempts.attempt, workerJobs.attempt),
+          eq(workerJobAttempts.leaseGeneration, input.lease.fencingVersion),
+          eq(workerJobAttempts.leaseTokenHash, tokenHash)
+        )
+      )
+      .where(
+        and(
+          eq(workerJobs.id, input.lease.jobId),
+          eq(workerJobs.tenantId, input.tenantId),
+          eq(workerJobs.jobType, "auto-team.recovery.evaluate"),
+          eq(workerJobs.status, "running"),
+          eq(workerJobs.fencingVersion, input.lease.fencingVersion),
+          eq(workerJobs.leaseOwnerToken, tokenHash),
+          sql`${workerJobs.leaseExpiresAt} > clock_timestamp()`
+        )
+      );
+    if (!stillAuthorized) throw new AutoTeamRunMutationFenceError();
+    return result;
   });
 }

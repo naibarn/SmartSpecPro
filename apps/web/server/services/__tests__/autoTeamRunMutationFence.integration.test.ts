@@ -256,6 +256,48 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
           snapshot_count: 0,
         });
       }
+
+      const expiryRunId = "run-r7-fence-expiry";
+      const expiryJobId = randomUUID();
+      await client.unsafe(
+        `INSERT INTO team_runs (id, "roomId", "teamId", "initiatedByUserId", "executionMode", status, "startedAt") VALUES ($1, 'room-r7-fence', 'team-r7-fence', 1, 'auto_team', 'running', now())`,
+        [expiryRunId]
+      );
+      await client.unsafe(
+        `INSERT INTO worker_jobs (id, "tenantId", "runtimeType", "jobType", status, "executionClass", "contractVersion", "inputJson", "instructionsJson", "retryPolicyJson", "timeoutPolicyJson", attempt, "maxAttempts", "fencingVersion") VALUES ($1, $2, 'node_job_worker', 'auto-team.recovery.evaluate', 'queued', 'long', 'auto-team-recovery-v1', jsonb_build_object('runId', $3::text), '{}', '{"deadlineMode":"fixed","deadlineMs":60000,"baseDelayMs":1,"maxDelayMs":1}'::jsonb, '{"softTimeoutMs":0,"hardTimeoutMs":60000}'::jsonb, 1, 4, 0)`,
+        [expiryJobId, tenantId, expiryRunId]
+      );
+      const expiryWorker = spawnWorker({
+        role: "reclaiming-worker",
+        tenantId,
+        runId: expiryRunId,
+        jobId: expiryJobId,
+        expireInsideMutation: true,
+      });
+      await waitForOutput(expiryWorker, "SPEC277_FENCE_EXPIRY_WORKER_READY");
+      const [expiryAttempt] = await client.unsafe(
+        `SELECT id FROM worker_job_attempts WHERE "workerJobId" = $1 AND "finishedAt" IS NULL ORDER BY attempt DESC LIMIT 1`,
+        [expiryJobId]
+      );
+      await client.unsafe(
+        `UPDATE worker_jobs SET "leaseExpiresAt" = clock_timestamp() + interval '700 milliseconds' WHERE id = $1`,
+        [expiryJobId]
+      );
+      await client.unsafe(
+        `UPDATE worker_job_attempts SET "leaseExpiresAt" = clock_timestamp() + interval '700 milliseconds' WHERE id = $1`,
+        [expiryAttempt.id]
+      );
+      expiryWorker.child.stdin.end("resume\n");
+      const [expiryExit] = await waitForClose(expiryWorker);
+      expect(expiryExit).toBe(0);
+      expect(expiryWorker.stdout).toContain(
+        "SPEC277_FENCE_EXPIRY_DURING_MUTATION_REJECTED"
+      );
+      const [expiryRun] = await client.unsafe(
+        `SELECT "stopReason" AS stop_reason FROM team_runs WHERE id = $1`,
+        [expiryRunId]
+      );
+      expect(expiryRun.stop_reason).toBeNull();
     } finally {
       for (const child of workers) {
         if (child.exitCode === null && child.signalCode === null) {

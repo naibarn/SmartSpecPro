@@ -16,6 +16,7 @@ type FenceInput = {
   tenantId: string;
   runId: string;
   jobId: string;
+  expireInsideMutation?: boolean;
 };
 
 const input = JSON.parse(
@@ -108,18 +109,20 @@ async function run() {
   }
 
   const controlPlane = createJobControlPlane();
-  process.stdout.write("SPEC277_FENCE_RECOVERY_START\n");
-  const recovered = await controlPlane.recoverExpiredLease(
-    input.jobId,
-    new Date()
-  );
-  if (recovered !== "recovered")
-    throw new Error("SPEC277_FENCE_RECLAIM_NOT_RECOVERED");
-  process.stdout.write("SPEC277_FENCE_RECOVERY_DONE\n");
-  if (!(await controlPlane.makeRetryDue(input.jobId))) {
-    throw new Error("SPEC277_FENCE_RETRY_NOT_DUE");
+  if (!input.expireInsideMutation) {
+    process.stdout.write("SPEC277_FENCE_RECOVERY_START\n");
+    const recovered = await controlPlane.recoverExpiredLease(
+      input.jobId,
+      new Date()
+    );
+    if (recovered !== "recovered")
+      throw new Error("SPEC277_FENCE_RECLAIM_NOT_RECOVERED");
+    process.stdout.write("SPEC277_FENCE_RECOVERY_DONE\n");
+    if (!(await controlPlane.makeRetryDue(input.jobId))) {
+      throw new Error("SPEC277_FENCE_RETRY_NOT_DUE");
+    }
+    process.stdout.write("SPEC277_FENCE_RETRY_DUE\n");
   }
-  process.stdout.write("SPEC277_FENCE_RETRY_DUE\n");
   const nextLease = await controlPlane.claim({
     jobId: input.jobId,
     runnerId: "r7-reclaim-worker",
@@ -129,6 +132,46 @@ async function run() {
   process.stdout.write("SPEC277_FENCE_CLAIMED\n");
   await controlPlane.start(nextLease);
   process.stdout.write("SPEC277_FENCE_STARTED\n");
+  if (input.expireInsideMutation) {
+    process.stdout.write("SPEC277_FENCE_EXPIRY_WORKER_READY\n");
+    await new Promise<void>(resolve => {
+      const readline = createInterface({
+        input: process.stdin,
+        terminal: false,
+      });
+      readline.once("line", () => {
+        readline.close();
+        resolve();
+      });
+    });
+    await withAutoTeamRunMutationFenceContext(
+      { lease: nextLease, tenantId: input.tenantId, runId: input.runId },
+      async () => {
+        try {
+          await withAutoTeamRunMutationFence({
+            lease: nextLease,
+            tenantId: input.tenantId,
+            runId: input.runId,
+            mutate: async tx => {
+              await tx
+                .update(teamRuns)
+                .set({ stopReason: "must_rollback_after_lease_expiry" })
+                .where(eq(teamRuns.id, input.runId));
+              await tx.execute(
+                (await import("drizzle-orm")).sql`SELECT pg_sleep(1.2)`
+              );
+            },
+          });
+          throw new Error("SPEC277_MUTATION_AFTER_LEASE_EXPIRY_WAS_ACCEPTED");
+        } catch (error) {
+          const code = (error as { code?: unknown } | null)?.code;
+          if (code !== "AUTO_TEAM_RUN_MUTATION_FENCE_REJECTED") throw error;
+          process.stdout.write("SPEC277_FENCE_EXPIRY_DURING_MUTATION_REJECTED\n");
+        }
+      }
+    );
+    return;
+  }
   await withAutoTeamRunMutationFenceContext(
     {
       lease: nextLease,
