@@ -3250,9 +3250,14 @@ class LLMGateway:
         else:
             gateway_request_type = "unknown"
 
+        model = (
+            getattr(request, "model", None)
+            or getattr(response, "model", None)
+            or getattr(request, "preferred_model", None)
+        )
         metadata = {
             "request_type": request_type,
-            "model": request.model,
+            "model": model,
             "estimated_cost_usd": float(estimated_cost),
             "actual_cost_usd": float(actual_cost),
             "use_openrouter": use_openrouter,
@@ -3264,9 +3269,9 @@ class LLMGateway:
         gateway_result = await self.web_gateway.deduct_credits(
             user_id=user.id,
             amount_usd=float(actual_cost),
-            description=f"{gateway_request_type.upper()} Generation: {request.model}",
+            description=f"{gateway_request_type.upper()} Generation: {model}",
             request_type=gateway_request_type,
-            model=request.model,
+            model=model,
             metadata=metadata
         )
 
@@ -3290,7 +3295,7 @@ class LLMGateway:
             transaction = await fresh_credit_service.deduct_credits(
                 user_id=str(user.id),
                 llm_cost_usd=Decimal(str(actual_cost)) if not isinstance(actual_cost, Decimal) else actual_cost,
-                description=f"{gateway_request_type.upper()} Generation: {request.model}",
+                description=f"{gateway_request_type.upper()} Generation: {model}",
                 metadata=metadata
             )
             logger.info(

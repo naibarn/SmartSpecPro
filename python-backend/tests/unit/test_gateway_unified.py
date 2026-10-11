@@ -727,3 +727,35 @@ class TestActualCostResolution:
         )
 
         assert cost == Decimal("0.004")
+
+
+class TestLLMBillingModelResolution:
+    @pytest.mark.asyncio
+    async def test_deduct_credits_uses_resolved_response_model(self, gateway, mock_user):
+        from types import SimpleNamespace
+
+        gateway.web_gateway.deduct_credits = AsyncMock(
+            return_value=SimpleNamespace(
+                transaction_id="tx-1", balance_after_usd=Decimal("9.99")
+            )
+        )
+        request = LLMRequest(
+            prompt="hello", task_type="simple", preferred_model="gpt-4o-mini"
+        )
+        response = LLMResponse(
+            content="hello", provider="openai", model="openai/gpt-4o-mini"
+        )
+
+        await gateway._deduct_credits(
+            mock_user,
+            Decimal("0.01"),
+            request,
+            response,
+            Decimal("0.01"),
+            True,
+        )
+
+        gateway.web_gateway.deduct_credits.assert_awaited_once()
+        call = gateway.web_gateway.deduct_credits.await_args.kwargs
+        assert call["model"] == "openai/gpt-4o-mini"
+        assert call["metadata"]["model"] == "openai/gpt-4o-mini"
