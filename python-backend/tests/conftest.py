@@ -13,7 +13,10 @@ from unittest.mock import AsyncMock, MagicMock
 from typing import AsyncGenerator, Generator
 
 from fastapi.testclient import TestClient
+from sqlalchemy import Column, Integer, Table
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.pool import StaticPool
 
 # Import Base first
@@ -39,6 +42,24 @@ from app.models.execution import ExecutionModel, CheckpointModel, ExecutionStatu
 from app.main import app
 from app.core.config import settings
 from app.core.auth import create_access_token, get_password_hash
+
+
+# These tables are owned by SmartSpecWeb and exist in its canonical Drizzle
+# schema. The Python SQLite test database only needs their primary keys to
+# resolve MediaAsset's cross-service foreign keys during metadata creation.
+for _shared_table_name in ("conversations", "messages"):
+    if _shared_table_name not in Base.metadata.tables:
+        Table(
+            _shared_table_name,
+            Base.metadata,
+            Column("id", Integer, primary_key=True),
+        )
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_for_sqlite_tests(_type, _compiler, **_kwargs):
+    """Use SQLite's JSON storage affinity for PostgreSQL JSONB test columns."""
+    return "JSON"
 
 
 # Test database URL - using in-memory SQLite for fast tests
