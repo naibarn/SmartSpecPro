@@ -1,5 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render as renderRTL,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import type { ReactElement } from "react";
+import { ConfirmProvider } from "@/components/ui/confirm/ConfirmProvider";
+
+function render(ui: ReactElement) {
+  return renderRTL(ui, { wrapper: ConfirmProvider });
+}
 
 const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
