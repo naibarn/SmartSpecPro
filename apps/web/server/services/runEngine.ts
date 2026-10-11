@@ -10819,6 +10819,25 @@ export async function stopRun(
   const now = new Date();
   const normalizedStatus =
     reason === "user_requested" ? "stopped" : "completed";
+  const fenceContext = getAutoTeamRunMutationFenceContext(
+    tenantId ?? "",
+    runId
+  );
+  const terminalEvent = fenceContext
+    ? {
+        eventId: crypto.randomUUID(),
+        eventType: "run_completed" as const,
+        tenantId: fenceContext.tenantId,
+        teamId: run.teamId,
+        roomId: run.roomId,
+        runId,
+        ts: now.toISOString(),
+        actorType: "system",
+        actorId: "system",
+        visibility: "transparent" as const,
+        data: { reason, status: normalizedStatus },
+      }
+    : null;
 
   const persistStop = async (tx: any) => {
     // Update run status
@@ -10829,7 +10848,12 @@ export async function stopRun(
         stopReason: reason,
         endedAt: now,
       })
-      .where(and(eq(teamRuns.id, runId), inArray(teamRuns.status, ["running", "paused"])))
+      .where(
+        and(
+          eq(teamRuns.id, runId),
+          inArray(teamRuns.status, ["running", "paused"])
+        )
+      )
       .returning();
     if (!updatedRun) throw new Error("TEAM_RUN_TERMINAL_STATE_ALREADY_CHANGED");
 
@@ -10860,11 +10884,32 @@ export async function stopRun(
       });
     }
 
+    // For lease-owned workers, persist the accepted terminal event in the same
+    // transaction as the terminal state. The event bus is PostgreSQL-backed,
+    // so a separate post-commit publish would leave a crash/reclaim gap.
+    if (terminalEvent) {
+      await tx.insert(agentActivityEvents).values({
+        id: terminalEvent.eventId,
+        tenantId: terminalEvent.tenantId,
+        teamId: terminalEvent.teamId,
+        roomId: terminalEvent.roomId,
+        runId: terminalEvent.runId,
+        assistantId: terminalEvent.actorId,
+        eventType: terminalEvent.eventType,
+        eventCategory: "status_change",
+        visibility: terminalEvent.visibility,
+        summary: terminalEvent.eventType,
+        detailJson: { realtimeEvent: terminalEvent },
+      });
+    }
+
     return [updatedRun];
   };
-  const fenceContext = getAutoTeamRunMutationFenceContext(tenantId ?? "", runId);
   const [updated] = fenceContext
-    ? await withAutoTeamRunMutationFence({ ...fenceContext, mutate: persistStop })
+    ? await withAutoTeamRunMutationFence({
+        ...fenceContext,
+        mutate: persistStop,
+      })
     : await db.transaction(persistStop);
 
   stopAutoStopChecker(runId);
@@ -10893,23 +10938,27 @@ export async function stopRun(
     }
   }
 
-  // Publish run_completed event to Redis for SSE
-  try {
-    const { publishEvent, createEvent } =
-      await import("./orchestratorEventBus");
-    await publishEvent(
-      createEvent("run_completed", {
-        tenantId: tenantId ?? "",
-        teamId: run.teamId,
-        roomId: run.roomId,
-        runId,
-        actorType: "system",
-        actorId: "system",
-        data: { reason, status: normalizedStatus },
-      })
-    );
-  } catch {
-    // Non-critical
+  // Lease-owned workers already persisted the PG-backed event atomically
+  // with the terminal transition. Keep the existing best-effort path for
+  // interactive callers that do not have a recovery lease context.
+  if (!terminalEvent) {
+    try {
+      const { publishEvent, createEvent } =
+        await import("./orchestratorEventBus");
+      await publishEvent(
+        createEvent("run_completed", {
+          tenantId: tenantId ?? "",
+          teamId: run.teamId,
+          roomId: run.roomId,
+          runId,
+          actorType: "system",
+          actorId: "system",
+          data: { reason, status: normalizedStatus },
+        })
+      );
+    } catch {
+      // Non-critical
+    }
   }
 
   // Generate final summary if stop policy requires it

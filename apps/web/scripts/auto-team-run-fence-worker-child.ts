@@ -126,22 +126,47 @@ async function run() {
   process.stdout.write("SPEC277_FENCE_CLAIMED\n");
   await controlPlane.start(nextLease);
   process.stdout.write("SPEC277_FENCE_STARTED\n");
-  await withAutoTeamRunMutationFence({
-    lease: nextLease,
-    tenantId: input.tenantId,
-    runId: input.runId,
-    mutate: tx =>
-      tx
-        .update(teamRuns)
-        .set({
-          runtimeStateJson: {
-            lastAcceptedWorkerGeneration: nextLease.fencingVersion,
-          },
-          stopReason: null,
-        })
-        .where(eq(teamRuns.id, input.runId)),
-  });
-  process.stdout.write("SPEC277_FENCE_RECLAIM_MUTATION_ACCEPTED\n");
+  await withAutoTeamRunMutationFenceContext(
+    {
+      lease: nextLease,
+      tenantId: input.tenantId,
+      runId: input.runId,
+    },
+    async () => {
+      await withAutoTeamRunMutationFence({
+        lease: nextLease,
+        tenantId: input.tenantId,
+        runId: input.runId,
+        mutate: tx =>
+          tx
+            .update(teamRuns)
+            .set({
+              runtimeStateJson: {
+                lastAcceptedWorkerGeneration: nextLease.fencingVersion,
+              },
+              stopReason: null,
+            })
+            .where(eq(teamRuns.id, input.runId)),
+      });
+      process.stdout.write("SPEC277_FENCE_RECLAIM_MUTATION_ACCEPTED\n");
+      await new Promise<void>(resolve => {
+        const readline = createInterface({
+          input: process.stdin,
+          terminal: false,
+        });
+        readline.once("line", () => {
+          readline.close();
+          resolve();
+        });
+      });
+      await runEngine.stopRun(
+        input.runId,
+        "reclaimed_worker_completed",
+        input.tenantId
+      );
+    }
+  );
+  process.stdout.write("SPEC277_FENCE_RECLAIM_TERMINAL_ACCEPTED\n");
 }
 
 let exitCode = 0;

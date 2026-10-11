@@ -10,7 +10,7 @@ import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRu
 describe("AutoTeam mutation fence against worker lease reclaim", () => {
   afterEach(async () => closeDb());
 
-  it("rejects a paused stale process after a newer generation commits TeamRun progress", async () => {
+  it("rejects stale mutations and recovers terminal persistence after worker restart", async () => {
     if (process.env.DATABASE_URL)
       throw new Error("SPEC277_REFUSES_INHERITED_DATABASE_URL");
     const fixture = await createSpec277DisposablePostgres();
@@ -74,6 +74,21 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
           });
         }
       );
+    };
+    const waitForOutput = async (
+      worker: ReturnType<typeof spawnWorker>,
+      marker: string
+    ) => {
+      const deadline = Date.now() + 10_000;
+      while (!worker.stdout.includes(marker) && Date.now() < deadline) {
+        if (worker.child.exitCode !== null)
+          throw new Error(`SPEC277_CHILD_EXITED_EARLY:${worker.stderr}`);
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      if (!worker.stdout.includes(marker))
+        throw new Error(
+          `SPEC277_CHILD_MARKER_TIMEOUT:${marker}:${worker.stderr}`
+        );
     };
 
     try {
@@ -155,12 +170,7 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
           runId,
           jobId,
         });
-        const [reclaimExit] = await waitForClose(reclaim);
-        if (reclaimExit !== 0)
-          throw new Error(`SPEC277_RECLAIM_WORKER_FAILED:${reclaim.stderr}`);
-        expect(reclaim.stdout).toContain(
-          "SPEC277_FENCE_RECLAIM_MUTATION_ACCEPTED"
-        );
+        await waitForOutput(reclaim, "SPEC277_FENCE_RECLAIM_MUTATION_ACCEPTED");
 
         stale.child.stdin.end("resume\n");
         const [staleExit] = await waitForClose(stale);
@@ -171,6 +181,50 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
         expect(stale.stdout).toContain("SPEC277_FENCE_ACTIVITY_EVENT_REJECTED");
         expect(stale.stdout).toContain("SPEC277_FENCE_SNAPSHOT_REJECTED");
 
+        reclaim.child.kill("SIGKILL");
+        const [crashedExit, crashedSignal] = await waitForClose(reclaim);
+        expect(crashedExit).toBeNull();
+        expect(crashedSignal).toBe("SIGKILL");
+        const [currentAttempt] = await client.unsafe(
+          `SELECT id FROM worker_job_attempts WHERE "workerJobId" = $1 AND "finishedAt" IS NULL ORDER BY attempt DESC LIMIT 1`,
+          [jobId]
+        );
+        expect(currentAttempt).toBeTruthy();
+        await client.unsafe(
+          `UPDATE worker_jobs SET "leaseExpiresAt" = clock_timestamp() + interval '700 milliseconds' WHERE id = $1`,
+          [jobId]
+        );
+        await client.unsafe(
+          `UPDATE worker_job_attempts SET "leaseExpiresAt" = clock_timestamp() + interval '700 milliseconds' WHERE id = $1`,
+          [currentAttempt.id]
+        );
+        const [restartedLease] = await client.unsafe(
+          `SELECT "leaseExpiresAt" FROM worker_jobs WHERE id = $1`,
+          [jobId]
+        );
+        while (Date.now() <= new Date(restartedLease.leaseExpiresAt).getTime())
+          await new Promise(resolve => setTimeout(resolve, 20));
+
+        const restarted = spawnWorker({
+          role: "reclaiming-worker",
+          tenantId,
+          runId,
+          jobId,
+        });
+        await waitForOutput(
+          restarted,
+          "SPEC277_FENCE_RECLAIM_MUTATION_ACCEPTED"
+        );
+        restarted.child.stdin.end("complete\n");
+        const [restartedExit] = await waitForClose(restarted);
+        if (restartedExit !== 0)
+          throw new Error(
+            `SPEC277_RESTARTED_WORKER_FAILED:${restarted.stderr}`
+          );
+        expect(restarted.stdout).toContain(
+          "SPEC277_FENCE_RECLAIM_TERMINAL_ACCEPTED"
+        );
+
         const [finalRun] = await client.unsafe(
           `
           SELECT status, "stopReason" AS stop_reason,
@@ -180,15 +234,16 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
           [runId]
         );
         expect(finalRun).toEqual({
-          status: "running",
-          stop_reason: null,
-          accepted_generation: "2",
+          status: "completed",
+          stop_reason: "reclaimed_worker_completed",
+          accepted_generation: "3",
         });
         const [sideEffectCounts] = await client.unsafe(
           `
           SELECT
             (SELECT COUNT(*)::int FROM team_room_messages WHERE "runId" = $1) AS message_count,
             (SELECT COUNT(*)::int FROM agent_activity_events WHERE "runId" = $1 AND "eventType" = 'r7_stale_attempt') AS activity_event_count,
+            (SELECT COUNT(*)::int FROM agent_activity_events WHERE "runId" = $1 AND "eventType" = 'run_completed') AS accepted_terminal_event_count,
             (SELECT COUNT(*)::int FROM run_snapshots WHERE "runId" = $1) AS snapshot_count
         `,
           [runId]
@@ -196,6 +251,7 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
         expect(sideEffectCounts).toEqual({
           message_count: 0,
           activity_event_count: 0,
+          accepted_terminal_event_count: 1,
           snapshot_count: 0,
         });
       }
