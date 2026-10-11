@@ -46,6 +46,7 @@ describe("authenticated provider callback persistence", () => {
       const callback = {
         adapterNamespace: "r7-synthetic-provider",
         providerEventId: "event-r7-1",
+        businessAttempt: 2,
         tenantId,
         jobId,
         occurredAt: new Date().toISOString(),
@@ -54,6 +55,11 @@ describe("authenticated provider callback persistence", () => {
       };
       const first = await recordAuthenticatedJobCallback(callback);
       const duplicate = await recordAuthenticatedJobCallback(callback);
+      const staleAttempt = await recordAuthenticatedJobCallback({
+        ...callback,
+        providerEventId: "event-r7-stale-attempt",
+        businessAttempt: 1,
+      });
       const crossTenant = await recordAuthenticatedJobCallback({
         ...callback,
         providerEventId: "event-r7-cross-tenant",
@@ -62,6 +68,7 @@ describe("authenticated provider callback persistence", () => {
 
       expect(first.disposition).toBe("accepted");
       expect(duplicate.disposition).toBe("duplicate");
+      expect(staleAttempt.disposition).toBe("rejected");
       expect(crossTenant.disposition).toBe("rejected");
       const [afterJob] = await client.unsafe(
         `SELECT status, attempt, "fencingVersion" AS fencing_version FROM worker_jobs WHERE id = $1`,
@@ -72,16 +79,45 @@ describe("authenticated provider callback persistence", () => {
         [runId]
       );
       const [callbackRows] = await client.unsafe(
-        `SELECT COUNT(*)::int AS callback_count, COUNT(*) FILTER (WHERE disposition = 'rejected' AND "workerJobId" IS NULL)::int AS rejected_unbound_count FROM worker_job_callbacks`,
+        `SELECT COUNT(*)::int AS callback_count,
+          COUNT(*) FILTER (WHERE disposition = 'rejected' AND "workerJobId" IS NULL)::int AS rejected_unbound_count,
+          COUNT(*) FILTER (WHERE disposition = 'rejected' AND "workerJobId" = $1)::int AS rejected_stale_attempt_count
+         FROM worker_job_callbacks`,
+        [jobId]
       );
       const [callbackEventCounts] = await client.unsafe(
-        `SELECT COUNT(*)::int AS event_count FROM worker_job_events WHERE "workerJobId" = $1 AND "eventType" = 'CALLBACK_ACCEPTED'`,
+        `SELECT
+          COUNT(*) FILTER (WHERE "eventType" = 'CALLBACK_ACCEPTED')::int AS accepted_count,
+          COUNT(*) FILTER (WHERE "eventType" = 'CALLBACK_REJECTED')::int AS rejected_count
+         FROM worker_job_events WHERE "workerJobId" = $1`,
         [jobId]
+      );
+      const [staleCallbackEvidence] = await client.unsafe(
+        `SELECT c."workerJobId" AS worker_job_id,
+          c."payloadJson"->>'callbackBusinessAttempt' AS callback_business_attempt,
+          (SELECT e."payloadJson" FROM worker_job_events e
+           WHERE e."workerJobId" = c."workerJobId" AND e."eventType" = 'CALLBACK_REJECTED'
+           LIMIT 1) AS rejected_event
+         FROM worker_job_callbacks c WHERE c."providerEventId" = 'event-r7-stale-attempt'`,
       );
       expect(afterJob).toEqual(beforeJob);
       expect(afterRun).toEqual(beforeRun);
-      expect(callbackRows).toEqual({ callback_count: 2, rejected_unbound_count: 1 });
-      expect(callbackEventCounts.event_count).toBe(1);
+      expect(callbackRows).toEqual({
+        callback_count: 3,
+        rejected_unbound_count: 1,
+        rejected_stale_attempt_count: 1,
+      });
+      expect(callbackEventCounts).toEqual({ accepted_count: 1, rejected_count: 1 });
+      expect(staleCallbackEvidence).toEqual({
+        worker_job_id: jobId,
+        callback_business_attempt: "1",
+        rejected_event: {
+          adapterNamespace: "r7-synthetic-provider",
+          disposition: "rejected",
+          callbackBusinessAttempt: 1,
+          currentBusinessAttempt: 2,
+        },
+      });
     } finally {
       await closeDb();
       if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;

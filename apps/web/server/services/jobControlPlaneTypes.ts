@@ -311,6 +311,7 @@ export type AuthenticatedJobCallback = {
   occurredAt: string;
   tenantId?: string;
   jobId?: string;
+  businessAttempt?: number;
   signatureVerified: boolean;
   payload: Record<string, unknown>;
 };
