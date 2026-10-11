@@ -471,10 +471,6 @@ export async function getVerticalDramaShotPromptJobStatus(
   dependencies?: Partial<VerticalDramaShotPromptJobStoreDependencies>,
 ): Promise<VerticalDramaShotPromptJobRecord | null> {
   return readCanonicalPromptRecord({ jobId, owner });
-  const deps = resolveDependencies(dependencies);
-  const record = await readRecord(jobId, deps);
-  if (!record || !ownerMatches(record, owner)) return null;
-  return reconcileCanonicalActiveJob(record, deps);
 }
 
 export async function getActiveVerticalDramaShotPromptJob(
@@ -488,16 +484,6 @@ export async function getActiveVerticalDramaShotPromptJob(
     activeOnly: true,
   });
   return rows.map(canonicalRecord).find(record => record && ownerMatches(record, owner)) ?? null;
-  const deps = resolveDependencies(dependencies);
-  const pointer = activePointerKey(owner, payloadRole(owner));
-  const jobId = await deps.redis.get(pointer);
-  if (!jobId) return null;
-  const record = await readRecord(jobId, deps);
-  if (!record || !ownerMatches(record, owner) || !isActive(record.status)) {
-    await deps.redis.compareDelete(pointer, jobId).catch(() => false);
-    return null;
-  }
-  return record;
 }
 
 export async function enqueueVerticalDramaShotPromptJob(
@@ -505,98 +491,6 @@ export async function enqueueVerticalDramaShotPromptJob(
   dependencies?: VerticalDramaShotPromptJobEnqueueDependencies,
 ): Promise<{ jobId: string; status: VerticalDramaShotPromptJobStatus; deduped: boolean }> {
   return enqueueCanonicalPromptJob(payload);
-  const deps = resolveDependencies(dependencies);
-  const idempotencyPointer = payload.input.idempotencyKey
-    ? idempotencyPointerKey(payload, payload.input.idempotencyKey)
-    : null;
-
-  if (idempotencyPointer) {
-    const priorJobId = await deps.redis.get(idempotencyPointer);
-    if (priorJobId) {
-      const prior = await readRecord(priorJobId, deps);
-      if (prior && ownerMatches(prior, payload)) {
-        return { jobId: prior.jobId, status: prior.status, deduped: true };
-      }
-      await deps.redis.compareDelete(idempotencyPointer, priorJobId).catch(() => false);
-    }
-  }
-
-  const activePointer = activePointerKey(payload, payloadRole(payload));
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const existingJobId = await deps.redis.get(activePointer);
-    if (existingJobId) {
-      const existing = await readRecord(existingJobId, deps);
-      if (existing && ownerMatches(existing, payload) && isActive(existing.status)) {
-        return { jobId: existing.jobId, status: existing.status, deduped: true };
-      }
-      await deps.redis.compareDelete(activePointer, existingJobId).catch(() => false);
-    }
-
-    const jobId = randomUUID();
-    const nowIso = new Date(deps.now()).toISOString();
-    const record: VerticalDramaShotPromptJobRecord = {
-      ...payload,
-      jobId,
-      status: "queued",
-      result: null,
-      error: null,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    };
-    await writeRecord(record, deps);
-    const claimed = await deps.redis.setNx(
-      activePointer,
-      jobId,
-      POINTER_TTL_SECONDS,
-    );
-    if (!claimed) continue;
-
-    try {
-      if (idempotencyPointer) {
-        await deps.redis.set(
-          idempotencyPointer,
-          jobId,
-          "EX",
-          RECORD_TTL_SECONDS,
-        );
-      }
-      if (isFeature186HardCutoverEnabled()) {
-        await createFeature186VerticalDramaJob({
-          jobId,
-          tenantId: payload.tenantId,
-          userId: payload.userId,
-          jobType: "vertical_drama.shot_prompt",
-          executionClass: "long",
-          payload: record as unknown as Record<string, unknown>,
-        });
-      } else {
-        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
-      }
-    } catch (error) {
-      const failed: VerticalDramaShotPromptJobRecord = {
-        ...record,
-        status: "failed",
-        error: boundedError(error),
-        updatedAt: new Date(deps.now()).toISOString(),
-      };
-      await writeRecord(failed, deps);
-      await clearPointers(failed, deps);
-      debugError(
-        "verticalDramaShotPromptJobs",
-        `Failed to enqueue shot prompt job ${jobId}`,
-        error,
-      );
-      return { jobId, status: "failed", deduped: false };
-    }
-    return { jobId, status: "queued", deduped: false };
-  }
-
-  const winnerId = await deps.redis.get(activePointer);
-  const winner = winnerId ? await readRecord(winnerId, deps) : null;
-  if (winner && ownerMatches(winner, payload) && isActive(winner.status)) {
-    return { jobId: winner.jobId, status: winner.status, deduped: true };
-  }
-  throw new Error("Unable to reserve the shot prompt job slot — retry");
 }
 
 export async function runVerticalDramaShotPromptJob(

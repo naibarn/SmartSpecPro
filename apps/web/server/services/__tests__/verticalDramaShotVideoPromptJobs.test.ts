@@ -1,53 +1,70 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const state = vi.hoisted(() => ({ rows: new Map<string, any>() }));
+
 vi.mock("../../_core/logger", () => ({ debugError: vi.fn() }));
-vi.mock("../redis", () => ({
-  getRedisClient: vi.fn(() => {
-    throw new Error("live Redis must not be used in unit tests");
-  }),
+vi.mock("../verticalDramaCanonicalPromptJobs", () => ({
+  readCanonicalPromptJob: vi.fn(
+    async ({ jobId, tenantId, userId, jobType }) => {
+      const row = state.rows.get(jobId);
+      return row?.input.tenantId === tenantId &&
+        row?.input.userId === userId &&
+        row?.jobType === jobType
+        ? row
+        : null;
+    }
+  ),
+  findCanonicalPromptJobByIdempotencyKey: vi.fn(
+    async ({ tenantId, userId, jobType, idempotencyKey }) =>
+      [...state.rows.values()].find(
+        row =>
+          row.input.tenantId === tenantId &&
+          row.input.userId === userId &&
+          row.jobType === jobType &&
+          row.input.input.idempotencyKey === idempotencyKey
+      ) ?? null
+  ),
+  listCanonicalPromptJobs: vi.fn(
+    async ({ tenantId, userId, jobType, activeOnly }) =>
+      [...state.rows.values()]
+        .reverse()
+        .filter(
+          row =>
+            row.input.tenantId === tenantId &&
+            row.input.userId === userId &&
+            row.jobType === jobType &&
+            (!activeOnly || ["queued", "running"].includes(row.status))
+        )
+  ),
+}));
+vi.mock("../feature186VerticalDramaJobAdapter", () => ({
+  createFeature186VerticalDramaJob: vi.fn(
+    async ({ jobId, jobType, payload }) => {
+      const now = new Date().toISOString();
+      state.rows.set(jobId, {
+        jobId,
+        jobType,
+        status: "queued",
+        canonicalStatus: "queued",
+        input: payload,
+        output: null,
+        error: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return jobId;
+    }
+  ),
 }));
 
 import {
   enqueueVerticalDramaShotVideoPromptJob,
+  getActiveVerticalDramaShotVideoPromptJob,
   getActiveVerticalDramaShotVideoPromptJobs,
   getVerticalDramaShotVideoPromptJobStatus,
-  isVerticalDramaShotVideoPromptWorkerExecution,
-  recoverVerticalDramaShotVideoPromptJob,
-  runVerticalDramaShotVideoPromptJob,
   VerticalDramaShotVideoPromptConflictError,
   type VerticalDramaShotVideoPromptJobPayload,
-  type VerticalDramaShotVideoPromptJobRedisAdapter,
 } from "../verticalDramaShotVideoPromptJobs";
-
-function makeFakeRedis(): VerticalDramaShotVideoPromptJobRedisAdapter & {
-  store: Map<string, string>;
-} {
-  const store = new Map<string, string>();
-  return {
-    store,
-    get: vi.fn(async key => store.get(key) ?? null),
-    set: vi.fn(async (key, value) => {
-      store.set(key, value);
-      return "OK";
-    }),
-    setNx: vi.fn(async (key, value) => {
-      if (store.has(key)) return false;
-      store.set(key, value);
-      return true;
-    }),
-    incr: vi.fn(async key => {
-      const value = Number(store.get(key) ?? "0") + 1;
-      store.set(key, String(value));
-      return value;
-    }),
-    del: vi.fn(async key => (store.delete(key) ? 1 : 0)),
-    compareDelete: vi.fn(async (key, expected) => {
-      if (store.get(key) !== expected) return false;
-      store.delete(key);
-      return true;
-    }),
-  };
-}
 
 function payload(
   overrides: Partial<VerticalDramaShotVideoPromptJobPayload> = {}
@@ -79,51 +96,50 @@ const owner = {
   shotNumber: 9,
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  state.rows.clear();
+  vi.clearAllMocks();
+});
 
-describe("vertical drama shot video prompt queue", () => {
-  it("deduplicates a repeated request and rejects a conflicting active instruction", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-    const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob,
-    });
-    const replay = await enqueueVerticalDramaShotVideoPromptJob(
-      payload({
-        input: { ...payload().input, idempotencyKey: "request-2" },
-      }),
-      { redis, enqueueBullmqJob }
-    );
-
-    expect(replay).toMatchObject({
-      jobId: first.jobId,
+describe("canonical vertical drama shot video prompt jobs", () => {
+  it("creates and reads a canonical worker job with tenant ownership enforced", async () => {
+    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload());
+    expect(submitted).toMatchObject({
       status: "queued",
-      deduplicated: true,
+      deduplicated: false,
+      queuePosition: 1,
     });
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner)
+    ).resolves.toMatchObject({ jobId: submitted.jobId, status: "queued" });
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, {
+        ...owner,
+        tenantId: "other-tenant",
+      })
+    ).resolves.toBeNull();
+  });
+
+  it("deduplicates identical active requests and rejects conflicting instructions", async () => {
+    const first = await enqueueVerticalDramaShotVideoPromptJob(payload());
+    await expect(
+      enqueueVerticalDramaShotVideoPromptJob(payload())
+    ).resolves.toMatchObject({ jobId: first.jobId, deduplicated: true });
     await expect(
       enqueueVerticalDramaShotVideoPromptJob(
         payload({
           input: {
             ...payload().input,
             instruction: "เปลี่ยนเป็น close-up",
-            idempotencyKey: "request-3",
+            idempotencyKey: "request-2",
           },
-        }),
-        { redis, enqueueBullmqJob }
+        })
       )
     ).rejects.toBeInstanceOf(VerticalDramaShotVideoPromptConflictError);
-    expect(enqueueBullmqJob).toHaveBeenCalledOnce();
   });
 
-  it("blocks a Legacy/Enhanced overlap for the same shot", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-    await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob,
-    });
-
+  it("enforces one active prompt job per shot across variants", async () => {
+    const first = await enqueueVerticalDramaShotVideoPromptJob(payload());
     await expect(
       enqueueVerticalDramaShotVideoPromptJob(
         payload({
@@ -133,45 +149,19 @@ describe("vertical drama shot video prompt queue", () => {
             variantId: "enhanced",
             idempotencyKey: "enhanced-1",
           },
-        }),
-        { redis, enqueueBullmqJob }
+        })
       )
     ).rejects.toBeInstanceOf(VerticalDramaShotVideoPromptConflictError);
-    expect(enqueueBullmqJob).toHaveBeenCalledOnce();
-  });
-
-  it("reads legacy records that stored Enhanced only inside input", async () => {
-    const redis = makeFakeRedis();
-    const submitted = await enqueueVerticalDramaShotVideoPromptJob(
-      payload({
-        input: {
-          ...payload().input,
-          variantId: "enhanced",
-          idempotencyKey: "old-enhanced-record",
-        },
-      }),
-      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
-    );
-
     await expect(
-      getVerticalDramaShotVideoPromptJobStatus(
-        submitted.jobId,
-        { ...owner, variantId: "enhanced" },
-        { redis },
-      ),
-    ).resolves.toMatchObject({
-      jobId: submitted.jobId,
-      variantId: "enhanced",
-    });
+      getActiveVerticalDramaShotVideoPromptJob({
+        ...owner,
+        variantId: "legacy",
+      })
+    ).resolves.toMatchObject({ jobId: first.jobId });
   });
 
-  it("keeps different shots in one episode queued in sequence", async () => {
-    const redis = makeFakeRedis();
-    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
-    const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob,
-    });
+  it("lists active jobs with canonical queue positions", async () => {
+    const first = await enqueueVerticalDramaShotVideoPromptJob(payload());
     const second = await enqueueVerticalDramaShotVideoPromptJob(
       payload({
         shotNumber: 10,
@@ -180,270 +170,19 @@ describe("vertical drama shot video prompt queue", () => {
           shotNumber: 10,
           idempotencyKey: "shot-10",
         },
-      }),
-      { redis, enqueueBullmqJob }
+      })
     );
-
-    expect(second.jobId).not.toBe(first.jobId);
-    await expect(
-      getActiveVerticalDramaShotVideoPromptJobs(
-        {
-          tenantId: owner.tenantId,
-          userId: owner.userId,
-          seriesId: 21,
-          episodeId: 137,
-        },
-        { redis }
-      )
-    ).resolves.toEqual(
+    const active = await getActiveVerticalDramaShotVideoPromptJobs({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+    });
+    expect(active).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ jobId: first.jobId, queuePosition: 1 }),
         expect.objectContaining({ jobId: second.jobId, queuePosition: 2 }),
       ])
     );
-  });
-
-  it("reconciles a stale Redis turn when the canonical predecessor is terminal", async () => {
-    const redis = makeFakeRedis();
-    const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-    const second = await enqueueVerticalDramaShotVideoPromptJob(
-      payload({
-        shotNumber: 10,
-        input: { ...payload().input, shotNumber: 10, idempotencyKey: "shot-10" },
-      }),
-      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
-    );
-
-    const firstRecordKey = `vd:shot-video-prompt-job:${first.jobId}`;
-    const firstRecord = JSON.parse(redis.store.get(firstRecordKey) ?? "null");
-    redis.store.set(firstRecordKey, JSON.stringify({
-      ...firstRecord,
-      status: "running",
-      updatedAt: new Date().toISOString(),
-    }));
-
-    await runVerticalDramaShotVideoPromptJob(second.jobId, vi.fn().mockResolvedValue({
-      prompt: "generated after stale predecessor recovery",
-      creditsUsed: 1,
-      usedVision: false,
-    }), {
-      redis,
-      canonicalStatusReader: vi.fn().mockResolvedValue(new Map([
-        [first.jobId, { status: "failed", reason: "canonical predecessor failed" }],
-      ])),
-      sleep: vi.fn().mockResolvedValue(undefined),
-    });
-
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(second.jobId, { ...owner, shotNumber: 10 }, { redis }),
-    ).resolves.toMatchObject({ status: "succeeded" });
-  });
-
-  it("persists terminal success, clears the active shot, and proves worker-only execution", async () => {
-    const redis = makeFakeRedis();
-    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-    const executor = vi
-      .fn()
-      .mockImplementation(
-        async (_payload, execution: { jobId: string; token: string }) => {
-          expect(
-            isVerticalDramaShotVideoPromptWorkerExecution(
-              execution.jobId,
-              execution.token
-            )
-          ).toBe(true);
-          return {
-            prompt: "generated prompt",
-            creditsUsed: 2,
-            usedVision: true,
-          };
-        }
-      );
-
-    await runVerticalDramaShotVideoPromptJob(submitted.jobId, executor, {
-      redis,
-    });
-
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
-        redis,
-      })
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      result: { prompt: "generated prompt", usedVision: true },
-    });
-    expect(
-      isVerticalDramaShotVideoPromptWorkerExecution(
-        submitted.jobId,
-        executor.mock.calls[0]?.[1].token
-      )
-    ).toBe(false);
-  });
-
-  it("keeps a transient provider failure active and retries the same shot", async () => {
-    const redis = makeFakeRedis();
-    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-    const sleep = vi.fn().mockResolvedValue(undefined);
-    const executor = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("LLM response was empty; expected one complete JSON object"))
-      .mockResolvedValueOnce({
-        prompt: "recovered prompt",
-        creditsUsed: 1,
-        usedVision: true,
-      });
-
-    await runVerticalDramaShotVideoPromptJob(submitted.jobId, executor, {
-      redis,
-      sleep,
-    });
-
-    expect(executor).toHaveBeenCalledTimes(2);
-    expect(sleep).toHaveBeenCalledWith(5_000);
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
-        redis,
-      })
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      result: { prompt: "recovered prompt" },
-    });
-  });
-
-  it("does not retry structural failures from the worker", async () => {
-    const redis = makeFakeRedis();
-    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-    const sleep = vi.fn().mockResolvedValue(undefined);
-    const executor = vi
-      .fn()
-      .mockRejectedValue(new Error("ต้องมีภาพหลักของช็อตก่อน"));
-
-    await runVerticalDramaShotVideoPromptJob(submitted.jobId, executor, {
-      redis,
-      sleep,
-    });
-
-    expect(executor).toHaveBeenCalledOnce();
-    expect(sleep).not.toHaveBeenCalled();
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
-        redis,
-      })
-    ).resolves.toMatchObject({ status: "failed" });
-  });
-
-  it("reconciles a BullMQ failure so a stalled job cannot block later shots", async () => {
-    const redis = makeFakeRedis();
-    const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-    const second = await enqueueVerticalDramaShotVideoPromptJob(
-      payload({
-        shotNumber: 10,
-        input: {
-          ...payload().input,
-          shotNumber: 10,
-          idempotencyKey: "shot-10-recovery",
-        },
-      }),
-      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) }
-    );
-
-    await expect(
-      recoverVerticalDramaShotVideoPromptJob(
-        first.jobId,
-        "BullMQ job stalled",
-        { redis }
-      )
-    ).resolves.toBe(true);
-
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(first.jobId, owner, { redis })
-    ).resolves.toMatchObject({ status: "failed", error: "BullMQ job stalled" });
-    await expect(
-      getActiveVerticalDramaShotVideoPromptJobs(
-        { tenantId: owner.tenantId, userId: owner.userId, seriesId: 21, episodeId: 137 },
-        { redis }
-      )
-    ).resolves.toEqual([expect.objectContaining({ jobId: second.jobId, queuePosition: 1 })]);
-  });
-
-  it("reconciles an orphaned active job when its status is polled after the stale threshold", async () => {
-    const redis = makeFakeRedis();
-    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      now: () => 0,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-
-    await expect(
-      getActiveVerticalDramaShotVideoPromptJobs(
-        {
-          tenantId: owner.tenantId,
-          userId: owner.userId,
-          seriesId: 21,
-          episodeId: 137,
-        },
-        { redis, now: () => 30 * 60 * 1000 + 1 }
-      )
-    ).resolves.toEqual([]);
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
-        redis,
-        now: () => 30 * 60 * 1000 + 1,
-      })
-    ).resolves.toMatchObject({
-      status: "failed",
-      error: "Background job became stale; it was not retried automatically.",
-    });
-  });
-
-  it("reconciles an active Redis projection from a terminal canonical worker job", async () => {
-    const redis = makeFakeRedis();
-    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
-      redis,
-      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
-    });
-
-    await expect(
-      getActiveVerticalDramaShotVideoPromptJobs(
-        {
-          tenantId: owner.tenantId,
-          userId: owner.userId,
-          seriesId: owner.seriesId,
-          episodeId: owner.episodeId,
-        },
-        {
-          redis,
-          canonicalStatusReader: vi.fn().mockResolvedValue(
-            new Map([
-              [submitted.jobId, { status: "failed", reason: "worker lease expired" }],
-            ])
-          ),
-        }
-      )
-    ).resolves.toEqual([]);
-
-    await expect(
-      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
-        redis,
-      })
-    ).resolves.toMatchObject({
-      status: "failed",
-      error: "worker lease expired",
-    });
   });
 });
