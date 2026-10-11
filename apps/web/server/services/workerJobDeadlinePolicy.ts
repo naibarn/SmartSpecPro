@@ -263,7 +263,23 @@ export async function getWorkerJobDeadlineDashboard() {
     metrics: JOB_FAMILIES.map(family => {
       const metric = byFamily.get(family) ?? null;
       const recommendation = recommendRetryDeadlineMs(settings.families[family], metric, settings.adaptive);
-      return { family, ...(metric ?? { queued: 0, active: 0, activeUsers: 0, avgQueueWaitMs: null, p95QueueWaitMs: null, avgExecutionMs: null, p95ExecutionMs: null, avgEndToEndMs: null, p95EndToEndMs: null, completedLastHour: 0 }),
+      const metricRow = metric ?? {
+        family,
+        queued: 0,
+        active: 0,
+        activeUsers: 0,
+        avgQueueWaitMs: null,
+        p95QueueWaitMs: null,
+        avgExecutionMs: null,
+        p95ExecutionMs: null,
+        avgEndToEndMs: null,
+        p95EndToEndMs: null,
+        completedLastHour: 0,
+      };
+      const { family: metricFamily, ...metricValues } = metricRow;
+      return {
+        family: metricFamily,
+        ...metricValues,
         recommendedRetryMinutes: Math.ceil(recommendation.deadlineMs / 60_000),
         confidence: recommendation.confidence,
         capApplied: recommendation.capApplied,
