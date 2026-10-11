@@ -4,13 +4,27 @@ Unit tests for Additional Models
 
 import pytest
 from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from app.models.notification import Notification
 from app.models.audit_log import AuditLog
+
+
+@pytest.fixture
+def model_session():
+    """Persist model rows so SQLAlchemy client defaults are applied."""
+    engine = create_engine("sqlite:///:memory:")
+    Notification.__table__.create(engine)
+    AuditLog.__table__.create(engine)
+    with Session(engine) as session:
+        yield session
+    engine.dispose()
+
 
 class TestNotificationModel:
     """Test Notification model"""
 
-    def test_notification_creation(self):
+    def test_notification_creation(self, model_session):
         """Test creating notification"""
         notification = Notification(
             id="notif_123",
@@ -19,6 +33,8 @@ class TestNotificationModel:
             title="Welcome",
             message="Hello World"
         )
+        model_session.add(notification)
+        model_session.flush()
         
         assert notification.id == "notif_123"
         assert notification.user_id == "user_123"
@@ -58,13 +74,15 @@ class TestNotificationModel:
 class TestAuditLogModel:
     """Test AuditLog model"""
 
-    def test_audit_log_creation(self):
+    def test_audit_log_creation(self, model_session):
         """Test creating audit log"""
         log = AuditLog(
             action="login",
             user_id="user_123",
             user_email="test@example.com"
         )
+        model_session.add(log)
+        model_session.flush()
         
         assert log.action == "login"
         assert log.user_id == "user_123"
