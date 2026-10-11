@@ -97,7 +97,11 @@ The sections directory must contain:
   - section-NN-<name>.md files for each section
 ═══════════════════════════════════════════════════════════════
 ```
-**Stop and wait for user to re-invoke with correct path.**
+Before asking, recover the sections path from the active task packet, canonical
+handoff, implementation config or completed deep-plan output. Continue with
+that path in the same execution. If sections are genuinely missing, resume the
+earliest incomplete planning stage from existing requirements; ask only when
+the source requirements cannot be recovered or product intent is undecidable.
 
 ### C. Discover Plugin Root
 
@@ -443,6 +447,13 @@ reconciling its prerequisites and impacted-check evidence. If the SPEC remains
 open, keep its requirement ledger open. A post-merge regression pauses further
 integration and routes to the established repair/revert path before another
 slice can enter the queue; unrelated implementation may continue safely.
+
+This is an internal transition: execute the next ready WorkUnit in the same
+run. Do not end the turn with an offer to continue or request another command.
+For registered external workers use the existing Integration Controller's
+`--workunits`, `--worker-command`, `--next-worktree`, and `--receipt` options;
+otherwise continue inline. Update the canonical handoff through its existing
+writer, without creating another lifecycle store.
 
 ### Step 12: Record Section Checkpoint
 

@@ -13,7 +13,8 @@
   of RAM constraints. Repository-wide TypeScript checks may run in CI only after
   the implementation SHA is integrated into `origin/main`, or locally when the
   user explicitly requests it and resource admission allows it. Never make a
-  heavy typecheck a prerequisite for integrating a fast-gate-passing change.
+  heavy local typecheck a prerequisite for integrating a fast-gate-passing change.
+  Required repository checks still apply and must use an authorized CI runner.
 - If you discover issues directly related to the requested work, required
   verification, task-caused failing tests, data safety, security, or correctness,
   report and address them as part of the task.
@@ -194,9 +195,32 @@ Implementation may run in parallel, but `origin/main` is the central source of t
 
 ### Core invariant
 
+Trunk-Based Development and Continuous Progressive Integration apply to every
+SPEC and development task, without a SPEC-number allowlist. At every start or
+resume, fetch and verify the configured canonical ref before discovery; use an
+isolated workspace when the primary checkout is dirty or stale. Plan small,
+independently mergeable WorkUnits and submit each verified slice immediately.
+All repository-required checks, security gates, reviews, and merge authority
+remain mandatory; the fast gate never overrides them.
+
+After merge, record the exact reachable canonical SHA and continue the next
+ready WorkUnit on that baseline in the same execution. An OPEN SPEC, a partial
+checkpoint, local review/tool counters, or pending unrelated workspace cleanup
+does not require human approval or end the implementation run. Continue until
+the requested outcome is verified or only evidenced external authority/safety
+blockers remain; collect non-blocking review items for the final report. Keep
+platform/user budgets and real security/data-safety boundaries intact.
+
+Pause further promotion on a task-caused main regression and use the existing
+repair/revert path. Preserve disjoint baseline failures as separate evidence.
+Serialize only the merge-critical section; use affected checks, incremental
+builds and cache only while their exact inputs/dependencies remain valid.
+Record branch age, merge latency, integration delta, conflict rate, exact-SHA
+main health and time-to-first-preview through the Integration Controller.
+
 Use this development sequence throughout the task:
 
-`implement → safe checkpoint → FAST INTEGRATION GATE → commit → integrate into origin/main → record handoff → continue`
+`implement → safe checkpoint → slice/repository-required checks → FAST INTEGRATION GATE → commit → integrate into origin/main → record SHA/handoff → continue next ready WorkUnit`
 
 Repeat this sequence as work advances. Run heavy verification/UAT continuously or after integration against the recorded SHA; release and deployment require their own gates.
 
@@ -221,7 +245,7 @@ FAST INTEGRATION GATE:
 
 Commit and promote each safe checkpoint after this gate passes. Record the integrated commit SHA and confirm it is reachable from the updated `origin/main`. For partial work, record completed scope, remaining scope, pending validation, known failures, next action, and a durable handoff/recovery reference.
 
-Do not require full typecheck, full build, heavy tests, integration/UAT, provider/rights checks, or production verification before promotion unless a fast-gate finding shows the change would make the system unusable or unsafe to start. Run those checks after integration through CI, a dedicated runner, or a safe resource window.
+Do not add full typecheck, full build, heavy tests, integration/UAT, provider/rights checks, or production verification as ad hoc pre-promotion gates. Repository-required checks remain mandatory before merge and run through suitable CI runners. Other heavy checks run after integration against its exact SHA.
 
 Checkpoint outcomes:
 
@@ -289,7 +313,7 @@ The promotion flow must:
 - refresh and reconcile with latest `origin/main` immediately before promotion;
 - integrate each safe fast-gate-passing checkpoint promptly, including partial work;
 - preserve unrelated dirty work and never stage it accidentally;
-- run only the FAST INTEGRATION GATE before promotion;
+- pass slice/repository-required checks and the FAST INTEGRATION GATE before promotion;
 - record heavy checks as post-integration obligations against the main SHA;
 - use normal non-force GitHub promotion and honor required repository protection;
 - never remove another session's worktree or discard uncommitted changes as part of promotion.

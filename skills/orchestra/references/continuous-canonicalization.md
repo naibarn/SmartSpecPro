@@ -14,12 +14,19 @@ After each implementation wave or coherent task-owned slice:
 
 1. Preserve unrelated work and identify the exact task-owned delta.
 2. Reconcile with the latest configured canonical ref and select the largest coherent safe subset.
-3. Pass the bounded FAST INTEGRATION GATE on that exact candidate.
+3. Pass slice/repository-required impacted checks, applicable security and compatibility gates, and the bounded FAST INTEGRATION GATE on that exact candidate. Required CI is never waived by this policy.
 4. Commit and promote the safe checkpoint through the normal non-force path; honor branch protection.
 5. Verify the promoted SHA is reachable from the updated configured canonical ref.
 6. Refresh the workspace used for subsequent work. Fast-forward only when the active checkout is clean, on the configured canonical branch, and can fast-forward. Otherwise preserve it and create/reuse a clean worktree at the exact canonical SHA. Verify and report the absolute path, repository identity, SHA, and clean status so an SSH/editor user can open the actual current files.
 7. Record the handoff, canonical workspace path/SHA, and pending post-integration checks against the integrated SHA.
 8. Continue implementation from the new canonical state. Any in-flight task left on an older branch must record its base SHA and reconcile at its next safe checkpoint; unrelated work starts from the current canonical workspace.
+
+An integrated checkpoint is an internal transition in the active execution,
+not a reason to return control to the user. Perform the next ready WorkUnit
+immediately. Use the existing Integration Controller's worker continuation
+arguments for registered external execution; otherwise the conductor performs
+it inline. Human review is reserved for a genuine unresolved authority or
+safety decision. Collect non-blocking feedback in the final outcome report.
 
 If the entire delta is not safe, split and promote an independent safe subset. Preserve the remainder durably with an owner, recovery location, failure/blocker, and next action. Resource-blocked heavy checks stay pending after integration and never turn a passing fast gate into a promotion blocker.
 

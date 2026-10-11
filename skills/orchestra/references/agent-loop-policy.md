@@ -36,21 +36,29 @@ Use this profile unless the user or a plan artifact provides a stricter one:
 
 ## Enforcement Model
 
+The numeric defaults above bound one execution tranche, not the user's entire
+outcome. Rotate the tranche, reconcile canonical state and continue ready work
+automatically when a local default counter is reached. Change strategy after
+repeated no-progress repairs. Only explicit user/platform budgets are hard
+execution stops; never invent a user approval boundary from an estimated cost
+or a default iteration/review count. Resource admission still gates expensive
+commands, while independent scoped work continues.
+
 Orchestra is a skill-level workflow, not a process supervisor. It must enforce
 what it can directly observe and record soft limits for values that require host
 telemetry.
 
 | Field | Enforcement |
 |---|---|
-| `max_iterations` | Hard workflow limit. Count planning, implementation, review, repair, and verification cycles. |
+| `max_iterations` | Tranche limit by default; checkpoint/reconcile and continue automatically. Explicit user/platform limits remain hard. |
 | `max_tool_calls` | Soft limit. Increment a manual counter in `orchestra/progress.md` before each tool call batch or notable command group. |
-| `max_cost_usd` | Soft limit. Track estimated-cost proxies: model tier, sub-agent count, web/browser/image calls, full-suite gates, and long-running commands. Stop before high-cost actions when the estimate could exceed the limit. |
-| `max_dispatch_waves` | Hard wave-planning limit unless a blocker requires user approval to continue. |
+| `max_cost_usd` | Soft default estimate; queue expensive checks when resources are unavailable and continue safe work. Honor explicit user/platform cost limits. |
+| `max_dispatch_waves` | Tranche planning limit; continue inline or rotate the tranche automatically. |
 | `max_active_subagents` | Hard dispatch-planning limit. Never launch a wave above this count. |
 | `max_parallel_writers` | Hard dispatch-planning limit. Split writer waves above this count. |
 | `max_subagent_wait_minutes` | Hard wait limit for required sub-agents. Record timeout before recovery, replacement, or stop. |
 | `max_background_analysis_wait_minutes` | Hard wait limit for optional/background read-only agents. Integrate late results only if still relevant. |
-| `max_repair_rounds` | Hard review/repair limit, also bounded by `review-convergence.md`. |
+| `max_repair_rounds` | Strategy-change threshold; preserve the gap, replan and continue safe work. Explicit user/platform limits remain hard. |
 | `max_context_capsule_words` | Hard context discipline limit for Task Packet handoffs and Result Capsules. |
 
 If a soft limit cannot be measured, record `unknown` and use the conservative
