@@ -79,11 +79,37 @@ type StoryboardSkillRunControlPlaneEvent = {
   payloadJson: Record<string, unknown>;
   createdAt: typeof workerJobEvents.$inferSelect.createdAt;
 };
+type StoryboardSkillRunShotDetail = {
+  id: number;
+  runId: string;
+  tenantId: string;
+  shotNumber: number;
+  beat: string;
+  context: string;
+  status: string;
+  skillInput: Record<string, unknown>;
+  skillResponse: Record<string, unknown> | null;
+  generationPrompt: string | null;
+  generationRequest: Record<string, unknown> | null;
+  effectiveGenerationRequest: Record<string, unknown> | null;
+  imageAssetId: number | null;
+  videoPrompt: string | null;
+  videoModelId: string | null;
+  attempt: number;
+  promptVersion: number;
+  providerOperationKey: string | null;
+  referenceAssetIds: string[];
+  suppressedResult: boolean;
+  error: Record<string, unknown> | null;
+  createdAt: Date;
+  updatedAt: Date;
+  imageUrl: string | null;
+};
 type StoryboardSkillRunDetail = StoryboardSkillRun & {
   reviewId: number | null;
   controlPlaneJob: StoryboardSkillRunControlPlaneJob | null;
   controlPlaneEvents: StoryboardSkillRunControlPlaneEvent[];
-  shots: Array<StoryboardSkillShot & { imageUrl: string | null }>;
+  shots: StoryboardSkillRunShotDetail[];
 };
 
 function requireTenant(tenantId: string | null | undefined): string {
@@ -1061,7 +1087,7 @@ export async function getStoryboardSkillRun(input: {
       )
     )
     .orderBy(storyboardSkillShots.shotNumber);
-  const shots = shotRows as StoryboardSkillShot[];
+  const shots = shotRows as StoryboardSkillRunShotDetail[];
   const assetIds = shots
     .map(shot => shot.imageAssetId)
     .filter((id): id is number => Number.isSafeInteger(id));
@@ -1767,6 +1793,12 @@ export async function resumeStoryboardSkillRun(input: {
     }
   }
   if (transition.run.workerJobId && coordinatorIsTerminal) {
+    const resumedRun = await getStoryboardSkillRun({
+      userId: input.userId,
+      tenantId,
+      runId: transition.run.id,
+    });
+    if (!resumedRun) throw new Error("Storyboard run not found after resume");
     const staleChildJobs = await db
       .select({ id: workerJobs.id })
       .from(workerJobs)
@@ -1804,8 +1836,8 @@ export async function resumeStoryboardSkillRun(input: {
         )
       );
     }
-    const anchor = run.shots.find(shot => shot.shotNumber === 1);
-    const queueableShots = run.shots.filter(
+    const anchor = resumedRun.shots.find(shot => shot.shotNumber === 1);
+    const queueableShots = resumedRun.shots.filter(
       shot =>
         !isReusableStoryboardImage(shot) &&
         (shot.status === "pending" ||
@@ -1825,7 +1857,7 @@ export async function resumeStoryboardSkillRun(input: {
         userId: input.userId,
         shotNumbers: shotsToQueue.map(shot => shot.shotNumber),
         attemptByShot: new Map(
-          run.shots.map(shot => [shot.shotNumber, shot.attempt + 1])
+          resumedRun.shots.map(shot => [shot.shotNumber, shot.attempt + 1])
         ),
       });
     }
@@ -2489,7 +2521,10 @@ export async function rebuildStoryboardSkillReviewProjection(input: {
   if (!project) throw new Error("Storyboard project not found");
   const global = normalizeStoryboardGlobalInput(run.normalizedSnapshot);
   const planned = planStoryboardShots(global);
-  const responseByShot = new Map(
+  const responseByShot = new Map<
+    number,
+    ReturnType<typeof storyboardCanonicalSkillResponseSchema.parse>
+  >(
     run.shots
       .filter(shot => shot.generationRequest && shot.generationPrompt)
       .map(shot => [
