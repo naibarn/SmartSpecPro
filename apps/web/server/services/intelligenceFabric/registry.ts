@@ -112,6 +112,7 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const isId = (value: unknown): value is string => typeof value === "string" && ID.test(value);
 const reject = (code: RegistryResolutionError) => ({ ok: false as const, code });
 const RIGHTS_VERDICTS = new Set<RightsVerdict>(["allowed", "restricted", "forbidden", "unknown"]);
+const RIGHTS_CACHE_POLICIES = new Set(["allowed", "ttl_limited", "forbidden", "unknown"]);
 const RIGHTS_BOOLEAN_FIELDS = ["attributionRequired"] as const;
 const RIGHTS_VERDICT_FIELDS = ["commercialUse", "redistribution", "derivedData", "rawExport", "resultExport", "modelTrainingUse", "crossTenantLearningUse", "sublicensing"] as const;
 const MAX_REGISTRY_ENTRIES = 10_000;
@@ -145,6 +146,10 @@ function hasOnlyFields(value: Record<string, unknown>, allowed: ReadonlySet<stri
 
 function isInstant(value: unknown): value is string {
   return typeof value === "string" && INSTANT.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+}
+
+function isSetMember<T extends string>(values: ReadonlySet<T>, value: unknown): value is T {
+  return typeof value === "string" && values.has(value as T);
 }
 
 function isDenseBoundedRecordArray(value: unknown): value is Record<string, unknown>[] {
@@ -191,20 +196,22 @@ function isValidRegistry(registry: unknown): registry is RegistrySnapshot {
   if (!isPlainRecord(registry) || !isDenseBoundedRecordArray(registry.providers) || !isDenseBoundedRecordArray(registry.sources) ||
     !isDenseBoundedRecordArray(registry.datasets) || !isDenseBoundedRecordArray(registry.rights) ||
     !hasUniqueIds(registry.providers) || !hasUniqueIds(registry.sources) || !hasUniqueIds(registry.datasets) || !hasUniqueIds(registry.rights)) return false;
-  return registry.providers.every(provider => hasOnlyFields(provider, PROVIDER_FIELDS) && isId(provider.id) && typeof provider.name === "string" && provider.name.trim().length > 0 && provider.name.length <= 256 && PROVIDER_OWNERS.has(provider.ownerType) && PROVIDER_STATUSES.has(provider.status) &&
+  return registry.providers.every(provider => hasOnlyFields(provider, PROVIDER_FIELDS) && isId(provider.id) && typeof provider.name === "string" && provider.name.trim().length > 0 && provider.name.length <= 256 && isSetMember(PROVIDER_OWNERS, provider.ownerType) && isSetMember(PROVIDER_STATUSES, provider.status) &&
       (provider.authorityClass === undefined || isId(provider.authorityClass)) && (provider.homepageRef === undefined || isId(provider.homepageRef)) && (provider.contactRef === undefined || isId(provider.contactRef))) &&
-    registry.sources.every(source => hasOnlyFields(source, SOURCE_FIELDS) && isId(source.id) && isId(source.providerId) && typeof source.name === "string" && source.name.trim().length > 0 && source.name.length <= 256 && SOURCE_OWNERS.has(source.ownerType) && SOURCE_TYPES.has(source.sourceType) && SOURCE_VISIBILITIES.has(source.visibility) && SOURCE_STATUSES.has(source.status) &&
+    registry.sources.every(source => hasOnlyFields(source, SOURCE_FIELDS) && isId(source.id) && isId(source.providerId) && typeof source.name === "string" && source.name.trim().length > 0 && source.name.length <= 256 && isSetMember(SOURCE_OWNERS, source.ownerType) && isSetMember(SOURCE_TYPES, source.sourceType) && isSetMember(SOURCE_VISIBILITIES, source.visibility) && isSetMember(SOURCE_STATUSES, source.status) &&
       isId(source.adapterRef) && isId(source.sourceContractRef) && isId(source.rightsPolicyRef) && isId(source.qualityProfileRef) &&
       [source.ownerId, source.credentialRef, source.geographyCoverageRef, source.temporalCoverageRef, source.refreshPolicyRef, source.pricingPolicyRef, source.executionPlacementPolicyRef].every(value => value === undefined || isId(value)) &&
       (source.description === undefined || (typeof source.description === "string" && source.description.length <= 4_096))) &&
-    registry.datasets.every(dataset => hasOnlyFields(dataset, DATASET_FIELDS) && isId(dataset.id) && isId(dataset.sourceId) && isId(dataset.schemaRef) && typeof dataset.name === "string" && dataset.name.trim().length > 0 && dataset.name.length <= 256 && DATASET_STATUSES.has(dataset.status) && DATASET_UPDATE_MODES.has(dataset.updateMode) && DATASET_INDEX_POLICIES.has(dataset.vectorIndexPolicy) && isIdList(dataset.semanticCapabilities, 256) &&
+    registry.datasets.every(dataset => hasOnlyFields(dataset, DATASET_FIELDS) && isId(dataset.id) && isId(dataset.sourceId) && isId(dataset.schemaRef) && typeof dataset.name === "string" && dataset.name.trim().length > 0 && dataset.name.length <= 256 && isSetMember(DATASET_STATUSES, dataset.status) && isSetMember(DATASET_UPDATE_MODES, dataset.updateMode) && isSetMember(DATASET_INDEX_POLICIES, dataset.vectorIndexPolicy) && isIdList(dataset.semanticCapabilities, 256) &&
       [dataset.semanticMappingRef, dataset.geographyCoverageRef, dataset.temporalCoverageRef].every(value => value === undefined || isId(value)) && (dataset.description === undefined || (typeof dataset.description === "string" && dataset.description.length <= 4_096)) &&
       (dataset.evidenceClassDefault === undefined || EVIDENCE_CLASSES.has(dataset.evidenceClassDefault as EvidenceClass)));
 }
 
-function isValidRightsPolicy(policy: Record<string, unknown>): policy is Record<string, unknown> & DataRightsPolicy {
-  return hasOnlyFields(policy, RIGHTS_FIELDS) && RIGHTS_VERDICT_FIELDS.every(field => RIGHTS_VERDICTS.has(policy[field] as RightsVerdict)) &&
-    ["allowed", "ttl_limited", "forbidden", "unknown"].includes(policy.cachePolicy as string) &&
+function isValidRightsPolicy(value: unknown): value is DataRightsPolicy {
+  if (!isPlainRecord(value)) return false;
+  const policy = value;
+  return hasOnlyFields(policy, RIGHTS_FIELDS) && RIGHTS_VERDICT_FIELDS.every(field => isSetMember(RIGHTS_VERDICTS, policy[field])) &&
+    isSetMember(RIGHTS_CACHE_POLICIES, policy.cachePolicy) &&
     RIGHTS_BOOLEAN_FIELDS.every(field => typeof policy[field] === "boolean") && isId(policy.id) && isId(policy.revision) &&
     (policy.cacheTtlSeconds === undefined || (Number.isSafeInteger(policy.cacheTtlSeconds) && (policy.cacheTtlSeconds as number) > 0 && (policy.cacheTtlSeconds as number) <= 31_536_000)) &&
     (policy.cachePolicy !== "ttl_limited" || policy.cacheTtlSeconds !== undefined) && (policy.cachePolicy === "ttl_limited" || policy.cacheTtlSeconds === undefined) &&
