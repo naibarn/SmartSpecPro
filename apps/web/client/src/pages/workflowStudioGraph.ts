@@ -631,9 +631,14 @@ export function duplicateWorkflowNode(
     data: { ...source.data, config: structuredClone(source.data.config) },
     selected: true,
   };
+  const nodes: WorkflowGraphNode[] = graph.nodes.map(node => ({
+    ...node,
+    selected: false,
+  }));
+  nodes.push(copy);
   return {
     ...graph,
-    nodes: graph.nodes.map(node => ({ ...node, selected: false })).concat(copy),
+    nodes,
   };
 }
 
