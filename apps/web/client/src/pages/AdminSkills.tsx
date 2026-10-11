@@ -429,7 +429,23 @@ const categoryLabelKeys: Record<string, string> = {
   other: "admin.skillsPage.categoryLabels.other",
 };
 
-const executionModeLabelKeys: Record<SkillExecutionMode, string> = {
+type EditableSkillExecutionMode = Exclude<
+  SkillExecutionMode,
+  `sandbox-${string}`
+>;
+
+function isEditableSkillExecutionMode(
+  executionMode: SkillExecutionMode
+): executionMode is EditableSkillExecutionMode {
+  return (
+    executionMode === "llm-only" ||
+    executionMode === "enhance-prompt" ||
+    executionMode === "media-generate" ||
+    executionMode === "python"
+  );
+}
+
+const executionModeLabelKeys: Record<EditableSkillExecutionMode, string> = {
   "llm-only": "admin.skillsPage.executionModes.llmOnly",
   "enhance-prompt": "admin.skillsPage.executionModes.enhancePrompt",
   "media-generate": "admin.skillsPage.executionModes.mediaGenerate",
@@ -482,14 +498,14 @@ function applySandboxDefaults(
 function applySandboxDefaultsToNewSkill<
   T extends {
     category: string;
-    executionMode: SkillExecutionMode;
+    executionMode: EditableSkillExecutionMode;
     sandboxProfileSlug: string | null;
     requiresNetwork: boolean | null;
     requiresBrowser: boolean | null;
     maxRuntimeSeconds: number | null;
     maxInputMb: number | null;
   },
->(draft: T, executionMode: SkillExecutionMode): T {
+>(draft: T, executionMode: EditableSkillExecutionMode): T {
   return {
     ...draft,
     executionMode,
@@ -948,7 +964,7 @@ export default function AdminSkills() {
     tenantCreditCost: 2,
     skillOwnerCreditCost: 0,
     priority: 50,
-    executionMode: "llm-only" as SkillExecutionMode,
+    executionMode: "llm-only" as EditableSkillExecutionMode,
     sandboxProfileSlug: null as string | null,
     requiresNetwork: null as boolean | null,
     requiresBrowser: null as boolean | null,
@@ -3720,7 +3736,7 @@ export default function AdminSkills() {
       tenantCreditCost: 2,
       skillOwnerCreditCost: 0,
       priority: 50,
-      executionMode: "llm-only" as SkillExecutionMode,
+      executionMode: "llm-only" as EditableSkillExecutionMode,
       sandboxProfileSlug: null,
       requiresNetwork: null,
       requiresBrowser: null,
@@ -3911,7 +3927,11 @@ export default function AdminSkills() {
       llmModelId: editingSkill.llmModelId ?? editingSkill.defaultModel,
       preferredProviderId: editingSkill.preferredProviderId ?? null,
       strictProviderPin: editingSkill.strictProviderPin ?? false,
-      executionMode: editingSkill.executionMode || "llm-only",
+      executionMode:
+        editingSkill.executionMode &&
+        isEditableSkillExecutionMode(editingSkill.executionMode)
+          ? editingSkill.executionMode
+          : undefined,
       sandboxProfileSlug: editingSkill.sandboxProfileSlug,
       requiresNetwork: editingSkill.requiresNetwork,
       requiresBrowser: editingSkill.requiresBrowser,
@@ -9218,7 +9238,7 @@ export default function AdminSkills() {
                           setNewSkillData(
                             applySandboxDefaultsToNewSkill(
                               newSkillData,
-                              value as SkillExecutionMode
+                              value as EditableSkillExecutionMode
                             )
                           )
                         }
@@ -9229,10 +9249,12 @@ export default function AdminSkills() {
                         <SelectContent>
                           {getAllowedExecutionModesForSkillCategory(
                             newSkillData.category
-                          ).map(mode => (
-                            <SelectItem key={mode} value={mode}>
-                              {executionModeLabels[mode]}
-                            </SelectItem>
+                          )
+                            .filter(isEditableSkillExecutionMode)
+                            .map(mode => (
+                              <SelectItem key={mode} value={mode}>
+                                {executionModeLabels[mode]}
+                              </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -10248,13 +10270,13 @@ export default function AdminSkills() {
                       applySandboxDefaults(
                         {
                           ...editingSkill,
-                          executionMode: value as SkillExecutionMode,
+                          executionMode: value as EditableSkillExecutionMode,
                           defaultModel: null,
                           llmModelId: null,
                           preferredProviderId: null,
                           strictProviderPin: false,
                         },
-                        value as SkillExecutionMode
+                        value as EditableSkillExecutionMode
                       )
                     )
                   }
@@ -10265,10 +10287,12 @@ export default function AdminSkills() {
                   <SelectContent>
                     {getAllowedExecutionModesForSkillCategory(
                       editingSkill.category
-                    ).map(mode => (
-                      <SelectItem key={mode} value={mode}>
-                        {executionModeLabels[mode]}
-                      </SelectItem>
+                    )
+                      .filter(isEditableSkillExecutionMode)
+                      .map(mode => (
+                        <SelectItem key={mode} value={mode}>
+                          {executionModeLabels[mode]}
+                        </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -10282,8 +10306,8 @@ export default function AdminSkills() {
               </div>
 
               {editingSkill !== null &&
-                false &&
-                isSandboxExecutionMode(editingSkill.executionMode) && (
+                isSandboxExecutionMode(editingSkill.executionMode) &&
+                false && (
                 <div className="space-y-4 rounded-xl border p-4">
                   <div>
                     <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
@@ -10306,10 +10330,11 @@ export default function AdminSkills() {
                           "browser-default"
                         }
                         onValueChange={value =>
-                          setEditingSkill({
-                            ...editingSkill,
-                            sandboxProfileSlug: value,
-                          })
+                          setEditingSkill(current =>
+                            current
+                              ? { ...current, sandboxProfileSlug: value }
+                              : current
+                          )
                         }
                       >
                         <SelectTrigger>
@@ -10359,13 +10384,13 @@ export default function AdminSkills() {
                           ).maxRuntimeSeconds ??
                           300
                         }
-                        onChange={e =>
-                          setEditingSkill({
-                            ...editingSkill,
-                            maxRuntimeSeconds:
-                              parseInt(e.target.value, 10) || null,
-                          })
-                        }
+                        onChange={e => {
+                          const maxRuntimeSeconds =
+                            parseInt(e.target.value, 10) || null;
+                          setEditingSkill(current =>
+                            current ? { ...current, maxRuntimeSeconds } : current
+                          );
+                        }}
                       />
                     </div>
 
@@ -10386,12 +10411,12 @@ export default function AdminSkills() {
                           ).maxInputMb ??
                           25
                         }
-                        onChange={e =>
-                          setEditingSkill({
-                            ...editingSkill,
-                            maxInputMb: parseInt(e.target.value, 10) || null,
-                          })
-                        }
+                        onChange={e => {
+                          const maxInputMb = parseInt(e.target.value, 10) || null;
+                          setEditingSkill(current =>
+                            current ? { ...current, maxInputMb } : current
+                          );
+                        }}
                       />
                     </div>
                   </div>
@@ -10415,10 +10440,9 @@ export default function AdminSkills() {
                           ).requiresNetwork
                         }
                         onCheckedChange={checked =>
-                          setEditingSkill({
-                            ...editingSkill,
-                            requiresNetwork: checked,
-                          })
+                          setEditingSkill(current =>
+                            current ? { ...current, requiresNetwork: checked } : current
+                          )
                         }
                       />
                     </div>
@@ -10441,10 +10465,9 @@ export default function AdminSkills() {
                           ).requiresBrowser
                         }
                         onCheckedChange={checked =>
-                          setEditingSkill({
-                            ...editingSkill,
-                            requiresBrowser: checked,
-                          })
+                          setEditingSkill(current =>
+                            current ? { ...current, requiresBrowser: checked } : current
+                          )
                         }
                       />
                     </div>
