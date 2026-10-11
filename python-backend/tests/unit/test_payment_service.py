@@ -7,9 +7,10 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from decimal import Decimal
 from datetime import datetime
 from fastapi import HTTPException
-from app.services.payment_service import PaymentService
+from app.core.config import settings
 from app.models.user import User
 from app.models.payment import PaymentTransaction
+from app.services.payment_service import PaymentService
 
 class TestPaymentService:
     """Test PaymentService class"""
@@ -40,11 +41,11 @@ class TestPaymentService:
         
         # Too low
         with pytest.raises(HTTPException):
-            payment_service.validate_amount(Decimal("0.50"))
+            payment_service.validate_amount(Decimal(str(settings.PAYMENT_MIN_AMOUNT)) - Decimal("0.01"))
             
         # Too high
         with pytest.raises(HTTPException):
-            payment_service.validate_amount(Decimal("10000.00"))
+            payment_service.validate_amount(Decimal(str(settings.PAYMENT_MAX_AMOUNT)) + Decimal("0.01"))
 
     def test_calculate_credits(self, payment_service):
         """Test credit calculation"""
@@ -155,7 +156,7 @@ class TestPaymentService:
         payment_service.credit_service.add_credits.assert_called_once()
         call_kwargs = payment_service.credit_service.add_credits.call_args[1]
         assert call_kwargs["user_id"] == "user_123"
-        assert call_kwargs["credits"] == 1000
+        assert call_kwargs["amount"] == 1000
         
         mock_db.commit.assert_called_once()
 
@@ -202,7 +203,7 @@ class TestPaymentService:
         await payment_service.handle_payment_failed(payment_intent_payload)
         
         assert tx.status == "failed"
-        assert tx.metadata["failure_reason"] == "Card declined"
+        assert tx.meta_data["failure_reason"] == "Card declined"
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio

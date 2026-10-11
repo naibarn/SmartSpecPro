@@ -420,8 +420,10 @@ class PaymentService:
         
         # Update status
         payment_tx.status = 'failed'
-        payment_tx.metadata = payment_tx.metadata or {}
-        payment_tx.metadata['failure_reason'] = payment_intent.get('last_payment_error', {}).get('message')
+        payment_tx.meta_data = {
+            **(payment_tx.meta_data or {}),
+            "failure_reason": payment_intent.get('last_payment_error', {}).get('message'),
+        }
         
         await self.db.commit()
         
