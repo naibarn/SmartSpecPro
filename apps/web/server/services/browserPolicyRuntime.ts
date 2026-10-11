@@ -483,7 +483,8 @@ async function defaultLoadPreviousEventHash(scopeKey: string): Promise<string | 
       SELECT event_hash FROM browser_policy_audit_heads
       WHERE scope_key = ${scopeKey} AND expires_at > now()
     `);
-    return result[0]?.event_hash ?? null;
+    const eventHash: unknown = result[0]?.event_hash;
+    return typeof eventHash === "string" ? eventHash : null;
   } catch {
     return null;
   }
