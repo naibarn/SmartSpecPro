@@ -1,0 +1,11 @@
+# Visual reference Create Mini App bridge — 2026-10-11
+
+- WorkUnit: `SPEC-224_VISUAL_REFERENCE_FACTORY_CREATE_STAGE_BRIDGE` — `PARTIAL_INTEGRATED`.
+- PR #585 merged into `origin/main` as `0cae9cc21a30c5b16c1a271fe37c4f8891e0482b` (source `fc8f265ddd2d3ea5ed1e4bc214cb29174e7fbb64`). The progressive integration gate passed; build preview was skipped.
+- On that integrated SHA, six focused Vitest files passed (36 tests): staging, Factory stage adapter, settlement, pipeline, Create Mini App API, and panel suite.
+- The bridge carries the staged, digest-checked tenant/run/job-bound screenshot manifest and image bytes through the existing Factory Create stage and authorized Runner job; settlement continues through the existing DevelopmentRun and worker_jobs/outbox path.
+- The existing Runner is instructed to analyze actual staged images and emit a visual blueprint consumed by later stages. This is implemented as a runtime instruction and staged input contract; no live model execution or blueprint quality is claimed.
+- End-to-end status: `BLOCKED`. Fresh read-only `smartaihub-runner status --json` reports local-runner 0.2.23 `state=ready` but `readyToolCount=0`; Codex auth is unknown/trust discovered (`probe_required`) and browser availability is unknown/trust discovered (`probe_required`). No authenticated non-production test identity/project and fresh authorized Runner capability/session bound to a DevelopmentRun/workspace/source was available. No actual generated app, browser render, visual comparison/repair, or independent UAT receipt was created. The registered Windows Runner's latest recorded evidence remains stale/degraded. No live dispatch was attempted.
+- Next WorkUnit: `SPEC-224_VISUAL_REFERENCE_LIVE_RUNNER_GENERATION_AND_UAT`. It must use an owner-authorized non-production identity and a fresh trusted SPEC-224 Runner capability/attestation, then capture browser render, comparison/repair, and independent functional acceptance evidence. Do not count unit tests or synthetic worker fixtures as E2E.
+- SPEC-270 G0 remains open. No provider was enabled, DDL added, or authority bypassed. Optional URL capture remains security-blocked and is not a prerequisite for screenshot-only execution.
+- Detailed receipt and check scope: `orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json`.
