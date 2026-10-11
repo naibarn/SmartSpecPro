@@ -87,25 +87,28 @@ class ProgressiveIntegrationTests(unittest.TestCase):
 
     def test_concurrent_nonoverlapping_work_can_integrate_sequentially(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            repo = Path(temporary)
-            git(repo, "init", "--initial-branch=main")
-            git(repo, "config", "user.name", "Lifecycle Test")
-            git(repo, "config", "user.email", "test@example.invalid")
-            (repo / "base.txt").write_text("base\n", encoding="utf-8")
-            git(repo, "add", "base.txt")
-            git(repo, "commit", "-m", "base")
-            git(repo, "branch", "codex/spec-alpha")
-            git(repo, "branch", "codex/spec-beta")
-            for branch, filename in (("codex/spec-alpha", "alpha.txt"), ("codex/spec-beta", "beta.txt")):
-                git(repo, "switch", branch)
-                (repo / filename).write_text(f"{branch}\n", encoding="utf-8")
-                git(repo, "add", filename)
-                git(repo, "commit", "-m", f"add {filename}")
-            git(repo, "switch", "main")
-            git(repo, "merge", "--no-ff", "codex/spec-alpha", "-m", "integrate alpha")
-            git(repo, "merge", "--no-ff", "codex/spec-beta", "-m", "integrate beta")
-            self.assertTrue((repo / "alpha.txt").is_file())
-            self.assertTrue((repo / "beta.txt").is_file())
+            root = Path(temporary)
+            main = root / "main"
+            session_alpha, session_beta = root / "session-alpha", root / "session-beta"
+            git(root, "init", "--initial-branch=main", str(main))
+            git(main, "config", "user.name", "Lifecycle Test")
+            git(main, "config", "user.email", "test@example.invalid")
+            (main / "base.txt").write_text("base\n", encoding="utf-8")
+            git(main, "add", "base.txt")
+            git(main, "commit", "-m", "base")
+            git(main, "worktree", "add", "-b", "codex/spec-alpha", str(session_alpha), "main")
+            git(main, "worktree", "add", "-b", "codex/spec-beta", str(session_beta), "main")
+            for workspace, branch, filename in (
+                (session_alpha, "codex/spec-alpha", "alpha.txt"),
+                (session_beta, "codex/spec-beta", "beta.txt"),
+            ):
+                (workspace / filename).write_text(f"{branch}\n", encoding="utf-8")
+                git(workspace, "add", filename)
+                git(workspace, "commit", "-m", f"add {filename}")
+            git(main, "merge", "--no-ff", "codex/spec-alpha", "-m", "integrate alpha")
+            git(main, "merge", "--no-ff", "codex/spec-beta", "-m", "integrate beta")
+            self.assertTrue((main / "alpha.txt").is_file())
+            self.assertTrue((main / "beta.txt").is_file())
             self.assertEqual(
                 "ISOLATE_WORKTREE",
                 lifecycle_policy.decide_closure({
@@ -113,6 +116,39 @@ class ProgressiveIntegrationTests(unittest.TestCase):
                     "facts": {"isolated_workspace_available": True},
                 }),
             )
+
+    def test_two_sessions_with_overlapping_edits_require_conflict_reconciliation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            main = root / "main"
+            session_a, session_b = root / "session-a", root / "session-b"
+            git(root, "init", "--initial-branch=main", str(main))
+            git(main, "config", "user.name", "Lifecycle Test")
+            git(main, "config", "user.email", "test@example.invalid")
+            (main / "shared.txt").write_text("value=base\n", encoding="utf-8")
+            git(main, "add", "shared.txt")
+            git(main, "commit", "-m", "base shared file")
+            git(main, "worktree", "add", "-b", "codex/session-a", str(session_a), "main")
+            git(main, "worktree", "add", "-b", "codex/session-b", str(session_b), "main")
+
+            (session_a / "shared.txt").write_text("value=session-a\n", encoding="utf-8")
+            git(session_a, "add", "shared.txt")
+            git(session_a, "commit", "-m", "session A edits shared file")
+            (session_b / "shared.txt").write_text("value=session-b\n", encoding="utf-8")
+            git(session_b, "add", "shared.txt")
+            git(session_b, "commit", "-m", "session B edits shared file")
+
+            git(main, "merge", "--no-ff", "codex/session-a", "-m", "integrate session A")
+            conflict = subprocess.run(
+                ["git", "-C", str(main), "merge", "--no-ff", "codex/session-b", "-m", "integrate session B"],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertNotEqual(0, conflict.returncode)
+            self.assertIn("UU shared.txt", git(main, "status", "--porcelain"))
+            git(main, "merge", "--abort")
+            self.assertEqual("value=session-a", (main / "shared.txt").read_text(encoding="utf-8").strip())
 
     def test_required_security_failure_blocks_integration(self) -> None:
         self.assertEqual(

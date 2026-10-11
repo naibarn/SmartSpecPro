@@ -151,9 +151,30 @@ Path(REPORT_PATH).write_text(json.dumps({"unit":args.workunit_id, "baseline":arg
         before = self.git(self.repo, "rev-parse", "origin/trunk").stdout
         process = self.invoke("--execute", env={**self.env, "PROGRESSIVE_FAIL_GATE": "1"})
         self.assertEqual(3, process.returncode)
-        self.assertEqual("BLOCKED", json.loads(process.stdout)["status"])
+        self.assertEqual("BLOCKED_BEFORE_MERGE", json.loads(process.stdout)["status"])
         self.assertFalse((self.root / "state-7.json").exists())
         self.assertEqual(before, self.git(self.repo, "rev-parse", "origin/trunk").stdout)
+
+    def test_pr_merged_by_another_session_is_reconciled_without_second_merge(self):
+        external_merge = self.root / "external-merge"
+        self.git(self.repo, "worktree", "add", "--detach", str(external_merge), "origin/trunk")
+        self.git(external_merge, "merge", "--no-ff", "origin/slice-one", "-m", "external session merge")
+        self.git(external_merge, "push", "origin", "HEAD:refs/heads/trunk")
+        merge_sha = self.git(external_merge, "rev-parse", "HEAD").stdout.strip()
+        (self.root / "state-7.json").write_text(json.dumps({
+            "state": "MERGED", "mergeCommit": {"oid": merge_sha},
+            "mergedAt": "2026-10-12T10:00:00Z",
+        }))
+
+        process = self.invoke("--execute")
+
+        self.assertEqual(0, process.returncode, process.stdout + process.stderr)
+        result = json.loads(process.stdout)
+        self.assertEqual("ALREADY_MERGED", result["status"])
+        self.assertEqual("ANOTHER_SESSION", result["merge_source"])
+        self.assertEqual(merge_sha, result["merge_sha"])
+        self.assertEqual(merge_sha, result["canonical_sha"])
+        self.assertEqual(merge_sha, self.git(self.repo, "rev-parse", "origin/trunk").stdout.strip())
 
     def test_failed_worker_preserves_merge_receipt_and_does_not_repeat_merge(self):
         work = self.root / "workunits.json"
