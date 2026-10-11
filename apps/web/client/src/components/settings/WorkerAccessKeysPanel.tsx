@@ -61,6 +61,7 @@ const WORKER_RUNTIME_LABELS: Record<WorkerRuntimeType, string> = {
   hiclaw_cluster: "HiClaw",
   hermes_agent_gateway: "Hermes",
   remotion_executor: "Remotion Executor",
+  local_llm_worker: "Local LLM Worker",
 };
 
 const WORKER_PERMISSION_GROUPS: Array<{
