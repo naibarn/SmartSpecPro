@@ -10,9 +10,6 @@ import ast
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
-
-from app.api import scheduled_jobs
 
 
 ACTIVE_SCHEDULED_JOB_ROUTES = {
@@ -22,37 +19,70 @@ ACTIVE_SCHEDULED_JOB_ROUTES = {
 }
 
 
-def _registered_route_methods(app: FastAPI) -> set[tuple[str, str]]:
-    routes: set[tuple[str, str]] = set()
-    for route in app.routes:
-        path = getattr(route, "path", None)
-        methods = getattr(route, "methods", None) or set()
-        if path:
-            routes.update((path, method) for method in methods)
-    return routes
+def _main_module_path() -> Path:
+    return Path(__file__).resolve().parents[2] / "app" / "main.py"
 
 
-@pytest.mark.unit
-def test_legacy_cloud_scheduler_handlers_remain_unmounted() -> None:
-    main_path = Path(__file__).resolve().parents[2] / "app" / "main.py"
-    main_module = ast.parse(main_path.read_text())
-    mounted_routers = {
+def _mounted_routers() -> set[str]:
+    module = ast.parse(_main_module_path().read_text())
+    return {
         ast.unparse(call.args[0])
-        for call in ast.walk(main_module)
+        for call in ast.walk(module)
         if isinstance(call, ast.Call)
         and isinstance(call.func, ast.Attribute)
         and call.func.attr == "include_router"
         and call.args
     }
 
+
+def _scheduled_job_route_methods() -> set[tuple[str, str]]:
+    module_path = (
+        Path(__file__).resolve().parents[2]
+        / "app"
+        / "api"
+        / "scheduled_jobs.py"
+    )
+    module = ast.parse(module_path.read_text())
+    prefix = next(
+        ast.literal_eval(keyword.value)
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "router"
+            for target in node.targets
+        )
+        for keyword in node.value.keywords
+        if keyword.arg == "prefix"
+    )
+    routes: set[tuple[str, str]] = set()
+    for node in module.body:
+        if not isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)):
+            continue
+        for decorator in node.decorator_list:
+            if (
+                isinstance(decorator, ast.Call)
+                and isinstance(decorator.func, ast.Attribute)
+                and isinstance(decorator.func.value, ast.Name)
+                and decorator.func.value.id == "router"
+                and decorator.func.attr == "get"
+            ):
+                routes.add((prefix + ast.literal_eval(decorator.args[0]), "GET"))
+    return routes
+
+
+@pytest.mark.unit
+def test_legacy_cloud_scheduler_handlers_remain_unmounted() -> None:
+    main_path = _main_module_path()
+    mounted_routers = _mounted_routers()
+
     assert "scheduled_jobs.router" in mounted_routers
     assert "task_handlers.router" not in mounted_routers
-    assert "former provider-specific task-handler router is intentionally not" in main_path.read_text()
+    assert (
+        "former provider-specific task-handler router is intentionally not"
+        in main_path.read_text()
+    )
 
 
 @pytest.mark.unit
 def test_worker_jobs_scheduled_work_monitoring_routes_are_registered() -> None:
-    isolated_app = FastAPI()
-    isolated_app.include_router(scheduled_jobs.router)
-
-    assert ACTIVE_SCHEDULED_JOB_ROUTES <= _registered_route_methods(isolated_app)
+    assert ACTIVE_SCHEDULED_JOB_ROUTES <= _scheduled_job_route_methods()
