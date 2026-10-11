@@ -69,12 +69,12 @@ class TestToolAnnotations:
     def test_tool_definitions_include_annotations(self):
         """tool definitions include annotations (readOnlyHint, destructiveHint)."""
         import os
-        mcp_server_path = os.path.join(
+        mcp_registry_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "..",
-            "..", "apps", "web", "server", "_core", "mcpPublicServer.ts"
+            "..", "apps", "web", "server", "_core", "mcpRegistry.ts"
         )
-        mcp_server_path = os.path.normpath(mcp_server_path)
-        with open(mcp_server_path) as f:
+        mcp_registry_path = os.path.normpath(mcp_registry_path)
+        with open(mcp_registry_path) as f:
             content = f.read()
 
         assert "annotations" in content
