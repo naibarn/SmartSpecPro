@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "3ad29b4049661dff1437e4d79691d5616c2f2195",
+    "expected_canonical_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Inspect repository callers/producers for authenticated provider callbacks and determine whether any real producer can bind a business attempt. If none exists, preserve the evidence-only compatibility endpoint and record the absence; do not invent a producer. Keep durable receipt schema and migration work gated on identified SPEC-302 ownership and explicit authorization. Keep SPEC-277 PARTIAL.",
+    "next_action": "Inspect actual provider callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from this service-level projection test alone.",
     "next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "R9 evidence is unchanged by documentation-only PR #666, integrated at 3ad29b4049661dff1437e4d79691d5616c2f2195. Provider poll/callback/Task Control service tests ran at ee21738005c66ed9ca80a15048df0acdd34d2d2f; outbox fencing tests ran at b6ca0541d192913414834744ed215d9fa7ec0c14. All tested runtime files are unchanged through current canonical. Exact evidence remains in the R9 handoff evidence file.",
+    "resume_point": "PR #670 integrated at 2ab08d51f9a34d6d216545f4b3ede3040e05a8b7 adds synthetic SPEC-224 DevelopmentRun stage visibility to Task Control. Its evidence is recorded at specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-task-control-projection-20261011.json. No SPEC-277 requirement was promoted to PASS; broader UI/user-acceptance obligations remain open. Continue the callback producer/attempt-correlation review without inventing a producer and retain schema/ownership authorization gates.",
     "waiting_predicate": "Provider polling, callback evidence safety, and outbox/terminal fencing now have direct native-PostgreSQL evidence. The next independent review is whether any actual producer sends callback attempt metadata. Durable receipt schema/migration waits on identified SPEC-302 owner and explicit authorization. Do not repeat primary workspace convergence while it remains dirty/stale."
   },
   "continuation_assessment": {
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 54,
+  "generation": 55,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -253,9 +253,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3ad29b4049661dff1437e4d79691d5616c2f2195",
+    "canonical_sha": "2ab08d51f9a34d6d216545f4b3ede3040e05a8b7",
     "integrated": true,
-    "integrated_at": "2026-10-11T06:28:36Z"
+    "integrated_at": "2026-10-11T06:41:09Z"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -616,7 +616,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:29:21.413287Z",
+  "updated_at": "2026-10-11T06:42:12.212012Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
