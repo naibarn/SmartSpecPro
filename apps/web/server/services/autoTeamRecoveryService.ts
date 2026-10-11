@@ -20,6 +20,10 @@ export interface AutoTeamRecoverySweepResult {
   usefulWorkEvidence: string[];
 }
 
+function escapeLikeLiteral(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
 export async function sweepPendingAutoTeamRuns(options: {
   onlyRunId?: string;
   expectedStateFingerprint?: string;
@@ -427,6 +431,7 @@ export function isRecoveryEvaluationEligible(
 /** Queue independent, durable evaluation jobs so one waiting run cannot block others. */
 export async function dispatchPendingAutoTeamEvaluations(
   now = new Date(),
+  onlyRunId?: string,
 ): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
@@ -449,6 +454,7 @@ export async function dispatchPendingAutoTeamEvaluations(
           "awaiting_async_media_pipeline",
         ]),
       ),
+      onlyRunId ? eq(teamRuns.id, onlyRunId) : undefined,
     ))
     .orderBy(asc(teamRuns.startedAt), asc(teamRuns.id))
     .limit(100);
@@ -481,7 +487,7 @@ export async function dispatchPendingAutoTeamEvaluations(
             inArray(workerJobs.status, ["failed", "cancelled", "expired"]),
             like(
               workerJobs.idempotencyKey,
-              `auto-team-recovery:${candidate.id}:${stateFingerprint}:%`,
+              `${escapeLikeLiteral(`auto-team-recovery:${candidate.id}:${stateFingerprint}:`)}%`,
             ),
           ))
           .limit(1);
@@ -495,7 +501,10 @@ export async function dispatchPendingAutoTeamEvaluations(
               eq(workerJobs.tenantId, candidate.tenantId),
               eq(workerJobs.jobType, "auto-team.recovery.evaluate"),
             inArray(workerJobs.status, ["completed", "succeeded"]),
-              like(workerJobs.idempotencyKey, `auto-team-recovery:${candidate.id}:${stateFingerprint}:%`),
+              like(
+                workerJobs.idempotencyKey,
+                `${escapeLikeLiteral(`auto-team-recovery:${candidate.id}:${stateFingerprint}:`)}%`,
+              ),
             ))
             .orderBy(desc(workerJobs.createdAt))
             .limit(3);
