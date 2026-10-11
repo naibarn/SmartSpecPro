@@ -875,15 +875,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
+    "expected_canonical_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
-    "next_action": "Continue SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE with a synthetic failed-check → bounded repair → independent verification slice using existing contracts. Persist results and retry evidence in disposable PostgreSQL. Do not claim WorkUnit implementation completion or run completion unless the canonical evidence gate passes; keep live Runner and protected dispatch unauthorized.",
+    "next_action": "Continue SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE with a same-run disposable-PostgreSQL lease-expiry/reclaim and stale-worker fencing acceptance. Then submit the coherent slice through a normal PR and guarded Integration Controller; do not bypass required checks. Preserve Final Verify blocked until genuine run-bound convergence/retirement receipts and requirement-closure evidence exist. Continue the next independent ready WorkUnit if live Runner authority or CI remains unavailable.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "PR #673 integrated at 07a30fb838ba82ac3f3c8f435170692dfe27dcc2. Exact evidence: handoff/evidence/r9-developmentrun-phase-restart-20261011.json. On source candidate 12d86c473f7ea75df9afd959a8bed0d42e509697, 24 focused PostgreSQL/phase/persistence tests passed. The synthetic canonical job settled once, a conflicting result was denied, a separate process reconciled after restart and admitted the next phase, safe retry created no duplicate phase job, and Task Control showed the durable PLANNING stage. This exposes a synthetic persistence/recovery slice; actual implementation adapter, bounded repair, independent Final Verify, completion receipts and final completion remain open. Previous stage projection evidence is handoff/evidence/r9-task-control-projection-20261011.json. Main build health for 07a30fb838ba82ac3f3c8f435170692dfe27dcc2 is pending.",
-    "waiting_predicate": "Live Windows Runner readiness remains waiting for authorized owner reconnection and fresh capability/Codex/source binding evidence. Protected dispatch remains DENY. Independent synthetic native-PostgreSQL DevelopmentRun slice is READY and must continue without TeamRun coupling."
+    "resume_point": "R10 source checkpoint e4628527ad4013c4bc699f1f2f8a7df2d2bf3780, based on canonical main b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc. Evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json. Four focused files/24 tests pass; all phases, real failing candidate, bounded repair, separate-process verifier, cancellation guard and fresh-process durable blocked state are proven. Final Verify reason is workspace_convergence_or_retirement_evidence_missing; no RUN_COMPLETED. R10 typecheck was stopped at about 3.3 GiB RSS; pre-existing CI baseline failures are classified in the evidence. Resume with lease expiry/reclaim and stale worker fencing, then normal PR gates.",
+    "waiting_predicate": "Live Windows Runner readiness still requires owner-authorized review build installation and fresh session, capability/Codex, source/workspace binding, grant, approval, budget and verifier-access evidence. Protected dispatch remains DENY. This wait does not block independent synthetic WorkUnits."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 48,
+  "generation": 52,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1210,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "07a30fb838ba82ac3f3c8f435170692dfe27dcc2",
+    "canonical_sha": "b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc",
     "integrated": true,
-    "integrated_at": "2026-10-11T06:57:53Z"
+    "integrated_at": "2026-10-11T07:03:11Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -1222,7 +1222,8 @@
       "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint",
       "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23",
       "PR #406 merged at fad61d4be74557872d03cbbfcd09986c621eb3fd; SPEC224_COMMIT_TIME_CANONICAL_GRANT_REVALIDATION verified on disposable PostgreSQL",
-      "orchestra/tasks/spec224-commit-time-revalidation-20261009/implementation-handoff.md#Verification"
+      "orchestra/tasks/spec224-commit-time-revalidation-20261009/implementation-handoff.md#Verification",
+      "R10 synthetic Git implementation, bounded repair, independent verification and durable nonterminal Final Verify evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json at source e4628527ad4013c4bc699f1f2f8a7df2d2bf3780; live Runner/owner approval and actual workspace lifecycle authority remain unresolved."
     ],
     "updated_at": "2026-10-08T02:06:09.264229Z"
   },
@@ -2258,7 +2259,8 @@
         "orchestra/tasks/spec224-remote-source-trust-authority-20261009/owner-approval-request.md#Inventory checkpoint",
         "PR #390 merged at 65f60ae0795a30a8f95523822459c2ce42284d23",
         "PR #406 merged at fad61d4be74557872d03cbbfcd09986c621eb3fd; SPEC224_COMMIT_TIME_CANONICAL_GRANT_REVALIDATION verified on disposable PostgreSQL",
-        "orchestra/tasks/spec224-commit-time-revalidation-20261009/implementation-handoff.md#Verification"
+        "orchestra/tasks/spec224-commit-time-revalidation-20261009/implementation-handoff.md#Verification",
+        "R10 synthetic Git implementation, bounded repair, independent verification and durable nonterminal Final Verify evidence: handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json at source e4628527ad4013c4bc699f1f2f8a7df2d2bf3780; live Runner/owner approval and actual workspace lifecycle authority remain unresolved."
       ],
       "updated_at": "2026-10-08T02:06:09.264229Z"
     }
@@ -2344,9 +2346,11 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:58:34.247949Z",
+  "updated_at": "2026-10-11T07:53:50.345874Z",
   "verification": {
-    "baseline_issues": [],
+    "baseline_issues": [
+      "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried."
+    ],
     "evidence": [
       "apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts",
       "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts",
@@ -2417,13 +2421,20 @@
         "path": "apps/web/server/services/__tests__/miniAppVisualBlueprint.test.ts; apps/web/server/services/miniAppFactoryRunnerStageAdapter.test.ts",
         "result": "PASS",
         "source_sha": "4403bd305ec370b394e1ef305018a5c8bef99658"
+      },
+      {
+        "kind": "R10_SYNTHETIC_GIT_IMPLEMENTATION_REPAIR_AND_INDEPENDENT_VERIFY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json",
+        "scope": "Owner-marked disposable PostgreSQL and temporary Git repository; same WorkUnit/run traversed all 12 phases in canonical order: IMPLEMENT wrote the candidate, TEST reproduced unittest failure, DEBUG_REPAIR applied a bounded idempotent repair, TEST passed, and VERIFY launched a separate OS process. Verifier checked exact source/diff/artifacts and reran tests; cancellation guard refused repair write; fresh process reread VERIFY evidence. Final Verify correctly stopped at missing genuine workspace lifecycle receipts. No live Runner/provider or production authority.",
+        "source_sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
+    "sha": "e4628527ad4013c4bc699f1f2f8a7df2d2bf3780",
     "status": "PARTIAL",
     "task_regressions": []
   }
