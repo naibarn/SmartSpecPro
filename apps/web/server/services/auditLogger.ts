@@ -25,6 +25,8 @@ export type AuditEventType =
   | "provider_deployment_target_disabled"
   | "provider_deployment_credential_configured"
   | "provider_deployment_credential_revoked"
+  | "project_wiki_staging_approval_requested"
+  | "project_wiki_release_candidate_registered"
   | "chat_context_timing"
   | "media_request"
   | "media_response"

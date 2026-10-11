@@ -2838,6 +2838,48 @@ export const miniAppProjectWikiPages = pgTable(
   ],
 );
 
+/** Immutable Project Wiki package candidate intake; qualification stays external. */
+export const projectWikiPackageCandidates = pgTable(
+  "project_wiki_package_candidates",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    projectId: varchar("project_id", { length: 36 }).notNull(),
+    appId: varchar("app_id", { length: 128 }).notNull(),
+    sourceRevision: varchar("source_revision", { length: 40 }).notNull(),
+    packageDigest: varchar("package_digest", { length: 128 }).notNull(),
+    archiveSha256: varchar("archive_sha256", { length: 64 }).notNull(),
+    objectKey: varchar("object_key", { length: 1024 }).notNull(),
+    approvalRef: varchar("approval_ref", { length: 36 }).notNull(),
+    approvalPayloadSha256: varchar("approval_payload_sha256", { length: 64 }).notNull(),
+    qualificationStatus: varchar("qualification_status", { length: 32 }).notNull().default("CANDIDATE_NOT_RELEASED"),
+    validationStatus: varchar("validation_status", { length: 32 }).notNull().default("needs_context"),
+    provenance: jsonb("provenance").$type<{
+      sourceRevision: string;
+      verificationProfile: "offline-package";
+      verifiedArchiveSha256: string;
+      inventory: string[];
+    }>().notNull(),
+    createdBy: integer("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  t => [
+    uniqueIndex("project_wiki_package_candidates_scope_digest_unique").on(t.tenantId, t.projectId, t.appId, t.packageDigest),
+    uniqueIndex("project_wiki_package_candidates_object_key_unique").on(t.objectKey),
+    foreignKey({ name: "project_wiki_package_candidates_project_fk", columns: [t.tenantId, t.projectId], foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId] }).onDelete("restrict"),
+    foreignKey({ name: "project_wiki_package_candidates_app_fk", columns: [t.tenantId, t.appId], foreignColumns: [appIdentities.tenantId, appIdentities.appId] }).onDelete("restrict"),
+    check("project_wiki_package_candidates_app_check", sql`${t.appId} = 'app_project_wiki_pages'`),
+    check("project_wiki_package_candidates_source_sha_check", sql`${t.sourceRevision} ~ '^[0-9a-f]{40}$'`),
+    check("project_wiki_package_candidates_package_digest_check", sql`${t.packageDigest} ~ '^spaas-package-v1:sha256:[0-9a-f]{64}$'`),
+    check("project_wiki_package_candidates_archive_sha_check", sql`${t.archiveSha256} ~ '^[0-9a-f]{64}$'`),
+    check("project_wiki_package_candidates_approval_sha_check", sql`${t.approvalPayloadSha256} ~ '^[0-9a-f]{64}$'`),
+    check("project_wiki_package_candidates_qualification_check", sql`${t.qualificationStatus} = 'CANDIDATE_NOT_RELEASED'`),
+    check("project_wiki_package_candidates_validation_check", sql`${t.validationStatus} = 'needs_context'`),
+  ],
+);
+export type ProjectWikiPackageCandidate = typeof projectWikiPackageCandidates.$inferSelect;
+export type InsertProjectWikiPackageCandidate = typeof projectWikiPackageCandidates.$inferInsert;
+
 /**
  * Chat Conversations - Multi-chat support with settings
  * Each conversation belongs to a user and can have custom settings

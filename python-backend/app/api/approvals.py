@@ -227,6 +227,7 @@ class ApprovalRequestResponse(BaseModel):
     extra_data: dict = Field(default_factory=dict)
     action_digest: str | None = None
     correlation_key: str | None = None
+    revoked_at: datetime | None = None
     risk_level: RiskLevel
     required_approvers: int
     current_approvals: int
