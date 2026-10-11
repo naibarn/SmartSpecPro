@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 207 unresolved of 207
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 15
+- Manifest generation: 16
 
 ## Source-declared status and relationship claims
 

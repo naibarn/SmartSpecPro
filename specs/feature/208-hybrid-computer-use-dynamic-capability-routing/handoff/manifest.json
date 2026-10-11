@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -25,9 +25,29 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
+        "digest": "43b9ad64d09942ed3ccc0f8cf5bcf4ef774386a86dc45e81ee9e42029c05d48f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
+      },
+      {
+        "digest": "94bca3e0de7437ee12e202aa68d854ea161afb85e0964bfdab311fe24e50325f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      },
+      {
         "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "27de5df8351aecabfea2632dd399fafa028c3cd2f70d95f7b61cbd2eac66bb6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json"
+      },
+      {
+        "digest": "f3220eae5ef5ad8063378b1b3b2c2a574870a1e74fd4ce95254d5b088c225728",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
       },
       {
         "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
@@ -55,59 +75,39 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-qa-review-2026-10-10.md"
       },
       {
-        "digest": "183d7e5eda3aace0609a84302d53a0800d7b16cc9ec13fe6b9ae2c68761547d3",
+        "digest": "d6d0a1990f4eb729242730a249d1db4301c4f49cc80b075b8ffbeb5b30c9d375",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation/completion.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md"
       },
       {
-        "digest": "49c362c99cdadf5d3de594c96a8fa3388ae2053ef3934c444bc45af472a30350",
+        "digest": "37ef0bbd9f2a146ca210302f4a4a883bd28a763bb3b3a3e4e1e9eaf58e947c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md"
       },
       {
-        "digest": "591a90c98389337dffcac070dfd6c2146a9647af6a1f1402e5d5f9e1265044a7",
+        "digest": "3979a0601b52c5a48263e9e90e061b84dc9574b0ff29681f9d8cdaa3eb663247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/release-gate.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md"
       },
       {
-        "digest": "27c607acb258b860e09c10fefa3f819434635ebcc8308b1a61ad4e14786ad852",
+        "digest": "e6e7279d1c2785b1c1fc19aeb7cc71737ffdf3e529b92855cea682cb97226002",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md"
       },
       {
-        "digest": "6ab77611948cfa4fecf79535d1b4d49c1a56db921ef4ab7c9da3c182e805c8e4",
+        "digest": "5b06995d20efc671928237cf04a25f443a545e5c79d97963902e0221dae086f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/index.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md"
       },
       {
-        "digest": "a0b1eaa14a313aa5f1726851c6b7f4b13e43bed9525cbc4a037e7cc31f65ce2e",
+        "digest": "b2c3f2e78edc2dbd86ddf7470ef22c20eb329916adb304778d0d49a67e4c9dcf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-01-capability-route-graph.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
       },
       {
-        "digest": "f6f66d1059366257d2dc3f078edf59bb52805a1eefff2d3f37e243b63aa48a61",
+        "digest": "09710aada395a5c014fa5cbf729d5597c48a832b3bd1dadcef2c045d09041b3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-02-webmcp-semantic-browser.md"
-      },
-      {
-        "digest": "bb7318a154a950e37da8f127719c973ca413fcbab8513dc3d45b3dcfe26317a3",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-03-local-browser-runner.md"
-      },
-      {
-        "digest": "77a7403d0eea64080f87d5b70f1f9ca35fea9184a9663254c53d581dda1c5cf7",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-04-policy-economics-fallback.md"
-      },
-      {
-        "digest": "d68bdd5afc3b9106cb4701a9048044da02187c9c4563cc11f693f29a13965031",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-05-operator-ui-projection.md"
-      },
-      {
-        "digest": "4b35cc3d583a1df1f4abd2bbcefdbadc9a66cc0f4e3933458637f6204f258f53",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md"
       }
     ],
     "predecessors": [],
@@ -156,7 +156,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "c6a7d63d486f94b500444ef082834ecab597ba4c",
-    "expected_spec_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43"
+    "expected_spec_digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1"
   },
   "continuation": {
     "next_action": "W2-R Runner-owned Moli execution is integrated and passed the rootless systemd synthetic acceptance. Continue W4 by resuming the controlled candidate build, SBOM/advisory/license notice review, and provenance work. W3 remains blocked pending an explicitly authorized disposable non-production worker_jobs database and synthetic Runner authorization target; do not claim W3 settlement or enable production Moli.",
@@ -267,7 +267,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -282,9 +282,29 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
+        "digest": "43b9ad64d09942ed3ccc0f8cf5bcf4ef774386a86dc45e81ee9e42029c05d48f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
+      },
+      {
+        "digest": "94bca3e0de7437ee12e202aa68d854ea161afb85e0964bfdab311fe24e50325f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      },
+      {
         "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "27de5df8351aecabfea2632dd399fafa028c3cd2f70d95f7b61cbd2eac66bb6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json"
+      },
+      {
+        "digest": "f3220eae5ef5ad8063378b1b3b2c2a574870a1e74fd4ce95254d5b088c225728",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
       },
       {
         "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
@@ -312,76 +332,56 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-qa-review-2026-10-10.md"
       },
       {
-        "digest": "183d7e5eda3aace0609a84302d53a0800d7b16cc9ec13fe6b9ae2c68761547d3",
+        "digest": "d6d0a1990f4eb729242730a249d1db4301c4f49cc80b075b8ffbeb5b30c9d375",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation/completion.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md"
       },
       {
-        "digest": "49c362c99cdadf5d3de594c96a8fa3388ae2053ef3934c444bc45af472a30350",
+        "digest": "37ef0bbd9f2a146ca210302f4a4a883bd28a763bb3b3a3e4e1e9eaf58e947c18",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation/deep_implement_config.json"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md"
       },
       {
-        "digest": "591a90c98389337dffcac070dfd6c2146a9647af6a1f1402e5d5f9e1265044a7",
+        "digest": "3979a0601b52c5a48263e9e90e061b84dc9574b0ff29681f9d8cdaa3eb663247",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/release-gate.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md"
       },
       {
-        "digest": "27c607acb258b860e09c10fefa3f819434635ebcc8308b1a61ad4e14786ad852",
+        "digest": "e6e7279d1c2785b1c1fc19aeb7cc71737ffdf3e529b92855cea682cb97226002",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/reviews/self-review-round-1.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md"
       },
       {
-        "digest": "6ab77611948cfa4fecf79535d1b4d49c1a56db921ef4ab7c9da3c182e805c8e4",
+        "digest": "5b06995d20efc671928237cf04a25f443a545e5c79d97963902e0221dae086f8",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/index.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md"
       },
       {
-        "digest": "a0b1eaa14a313aa5f1726851c6b7f4b13e43bed9525cbc4a037e7cc31f65ce2e",
+        "digest": "b2c3f2e78edc2dbd86ddf7470ef22c20eb329916adb304778d0d49a67e4c9dcf",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-01-capability-route-graph.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
       },
       {
-        "digest": "f6f66d1059366257d2dc3f078edf59bb52805a1eefff2d3f37e243b63aa48a61",
+        "digest": "09710aada395a5c014fa5cbf729d5597c48a832b3bd1dadcef2c045d09041b3e",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-02-webmcp-semantic-browser.md"
-      },
-      {
-        "digest": "bb7318a154a950e37da8f127719c973ca413fcbab8513dc3d45b3dcfe26317a3",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-03-local-browser-runner.md"
-      },
-      {
-        "digest": "77a7403d0eea64080f87d5b70f1f9ca35fea9184a9663254c53d581dda1c5cf7",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-04-policy-economics-fallback.md"
-      },
-      {
-        "digest": "d68bdd5afc3b9106cb4701a9048044da02187c9c4563cc11f693f29a13965031",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-05-operator-ui-projection.md"
-      },
-      {
-        "digest": "4b35cc3d583a1df1f4abd2bbcefdbadc9a66cc0f4e3933458637f6204f258f53",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections/section-06-conformance-rollout.md"
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md"
       }
     ],
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 42,
+  "generation": 43,
   "identity": {
     "canonical_path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-    "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+    "digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-10T02:18:48.585399Z",
+      "last_evidence_at": "2026-10-11T01:58:44.309302Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
     },
-    "revision": "8",
+    "revision": "9",
     "slug": "208-hybrid-computer-use-dynamic-capability-routing",
     "spec_id": "208",
     "title": "Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing"
@@ -717,10 +717,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-10T02:18:48.585399Z",
+    "reconciled_at": "2026-10-11T01:58:44.309302Z",
     "sources": [
       {
-        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -735,9 +735,29 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
+        "digest": "43b9ad64d09942ed3ccc0f8cf5bcf4ef774386a86dc45e81ee9e42029c05d48f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
+      },
+      {
+        "digest": "94bca3e0de7437ee12e202aa68d854ea161afb85e0964bfdab311fe24e50325f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      },
+      {
         "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "27de5df8351aecabfea2632dd399fafa028c3cd2f70d95f7b61cbd2eac66bb6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json"
+      },
+      {
+        "digest": "f3220eae5ef5ad8063378b1b3b2c2a574870a1e74fd4ce95254d5b088c225728",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
       },
       {
         "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
@@ -763,6 +783,41 @@
         "digest": "4a5011eb7850d066ab6ab88165a0797f7f09ee98bdde1f3c9f82430259fdf537",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-qa-review-2026-10-10.md"
+      },
+      {
+        "digest": "d6d0a1990f4eb729242730a249d1db4301c4f49cc80b075b8ffbeb5b30c9d375",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md"
+      },
+      {
+        "digest": "37ef0bbd9f2a146ca210302f4a4a883bd28a763bb3b3a3e4e1e9eaf58e947c18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md"
+      },
+      {
+        "digest": "3979a0601b52c5a48263e9e90e061b84dc9574b0ff29681f9d8cdaa3eb663247",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md"
+      },
+      {
+        "digest": "e6e7279d1c2785b1c1fc19aeb7cc71737ffdf3e529b92855cea682cb97226002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md"
+      },
+      {
+        "digest": "5b06995d20efc671928237cf04a25f443a545e5c79d97963902e0221dae086f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md"
+      },
+      {
+        "digest": "b2c3f2e78edc2dbd86ddf7470ef22c20eb329916adb304778d0d49a67e4c9dcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
+      },
+      {
+        "digest": "09710aada395a5c014fa5cbf729d5597c48a832b3bd1dadcef2c045d09041b3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md"
       },
       {
         "digest": "183d7e5eda3aace0609a84302d53a0800d7b16cc9ec13fe6b9ae2c68761547d3",
@@ -827,7 +882,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "source_digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "value": "Architecture Freeze Candidate / Ready for Implementation"
       },
       {
@@ -838,7 +893,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 10,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "source_digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "value": "Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use."
       }
     ],
@@ -869,7 +924,7 @@
         "excerpt": "**Status:** Architecture Freeze Candidate / Ready for Implementation",
         "line": 3,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "source_digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "value": "Architecture Freeze Candidate / Ready for Implementation"
       },
       {
@@ -879,14 +934,14 @@
         "excerpt": "**Implementation status:** Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use.",
         "line": 10,
         "source": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-        "source_digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "source_digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "value": "Target architecture; current repository provides partial Job/Runner/Agent runtime building blocks, not production-complete Computer Use."
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "00e393ce4d999544d266935685df78a18b422cbf3fd4c1ac99bf1587857e0e43",
+        "digest": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md"
       },
@@ -901,9 +956,29 @@
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/claude-spec.md"
       },
       {
+        "digest": "43b9ad64d09942ed3ccc0f8cf5bcf4ef774386a86dc45e81ee9e42029c05d48f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-execution-checkpoint-2026-10-10.md"
+      },
+      {
+        "digest": "94bca3e0de7437ee12e202aa68d854ea161afb85e0964bfdab311fe24e50325f",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-local-isolation-acceptance-2026-10-10.json"
+      },
+      {
         "digest": "fe557cd1159bc2eb24ab0e062c5ed66bbe2958f18a3d356b7ad9fa2f74f8de2f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-phase1-80-case-suite.json"
+      },
+      {
+        "digest": "27de5df8351aecabfea2632dd399fafa028c3cd2f70d95f7b61cbd2eac66bb6d",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-acceptance-2026-10-10.json"
+      },
+      {
+        "digest": "f3220eae5ef5ad8063378b1b3b2c2a574870a1e74fd4ce95254d5b088c225728",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-runner-owned-qa-review-2026-10-10.md"
       },
       {
         "digest": "b7fca5fad2a69be6b11be47da45203852e4f96cc8cb5330e36b8601553145a53",
@@ -929,6 +1004,41 @@
         "digest": "4a5011eb7850d066ab6ab88165a0797f7f09ee98bdde1f3c9f82430259fdf537",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-qa-review-2026-10-10.md"
+      },
+      {
+        "digest": "d6d0a1990f4eb729242730a249d1db4301c4f49cc80b075b8ffbeb5b30c9d375",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w1-scoped-typecheck-2026-10-10.md"
+      },
+      {
+        "digest": "37ef0bbd9f2a146ca210302f4a4a883bd28a763bb3b3a3e4e1e9eaf58e947c18",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-engine-guard-2026-10-10.md"
+      },
+      {
+        "digest": "3979a0601b52c5a48263e9e90e061b84dc9574b0ff29681f9d8cdaa3eb663247",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-qa-review-2026-10-10.md"
+      },
+      {
+        "digest": "e6e7279d1c2785b1c1fc19aeb7cc71737ffdf3e529b92855cea682cb97226002",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w2-w3-checkpoint-2026-10-10.md"
+      },
+      {
+        "digest": "5b06995d20efc671928237cf04a25f443a545e5c79d97963902e0221dae086f8",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-recheck-2026-10-10.md"
+      },
+      {
+        "digest": "b2c3f2e78edc2dbd86ddf7470ef22c20eb329916adb304778d0d49a67e4c9dcf",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/moli-w4-release-audit-2026-10-10.md"
+      },
+      {
+        "digest": "09710aada395a5c014fa5cbf729d5597c48a832b3bd1dadcef2c045d09041b3e",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/evidence/runner-browser-cancel-2026-10-10.md"
       },
       {
         "digest": "183d7e5eda3aace0609a84302d53a0800d7b16cc9ec13fe6b9ae2c68761547d3",
@@ -992,16 +1102,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 6,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 358,
-    "unresolved": 358
+    "total": 363,
+    "unresolved": 363
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T15:51:15.853981Z",
+  "updated_at": "2026-10-11T01:58:44.309302Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

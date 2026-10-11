@@ -5,37 +5,12 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "208",
-        "referenced_spec_id": "208",
-        "referencing_spec_id": "213",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L2613",
-        "source_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-        "successor_spec_id": "213"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "208",
-        "referenced_spec_id": "208",
-        "referencing_spec_id": "213",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md#L9181",
-        "source_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
-        "successor_spec_id": "213"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
       }
@@ -47,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007"
+    "expected_spec_digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d"
   },
   "continuation": {
     "next_action": null,
@@ -61,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
       }
@@ -88,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
       }
@@ -96,18 +71,18 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
-    "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+    "digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.462746Z",
+      "last_evidence_at": "2026-10-11T02:00:58.143114Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-20T12:59:58+07:00"
     },
-    "revision": "9",
+    "revision": "10",
     "slug": "213-jev-system-one-post-implementation-upgrade",
     "spec_id": "213",
     "title": "Spec 213 — SmartAIHub Jev / System-One Post-Implementation Upgrade & Hardening"
@@ -126,10 +101,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.462746Z"
+    "updated_at": "2026-10-11T02:00:58.143114Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -139,10 +114,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.462746Z",
+    "reconciled_at": "2026-10-11T02:00:58.143114Z",
     "sources": [
       {
-        "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
       },
@@ -154,11 +129,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
-        "source_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "source_digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "value": "Proposed / Implementation Patch Specification"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -168,7 +148,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -180,14 +160,14 @@
         "excerpt": "**Status:** Proposed / Implementation Patch Specification",
         "line": 4,
         "source": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
-        "source_digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "source_digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "value": "Proposed / Implementation Patch Specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007",
+        "digest": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md"
       }
@@ -195,7 +175,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -203,11 +183,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 997,
-    "unresolved": 997
+    "total": 999,
+    "unresolved": 999
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.462746Z",
+  "updated_at": "2026-10-11T02:00:58.143114Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

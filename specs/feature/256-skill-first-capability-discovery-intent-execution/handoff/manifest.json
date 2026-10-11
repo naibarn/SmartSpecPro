@@ -5,195 +5,39 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
+    "claims": [],
+    "confidence": "LOW",
+    "conflicts": [
       {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "186",
-        "referenced_spec_id": "186",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
+        "kind": "DUPLICATE_SPEC_ID",
+        "paths": [
+          "specs/feature/256-skill-first-capability-discovery-intent-execution",
+          "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution"
+        ]
       },
       {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "207",
-        "referenced_spec_id": "207",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "215",
-        "referenced_spec_id": "215",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "221",
-        "referenced_spec_id": "221",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "248",
-        "referenced_spec_id": "248",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "252",
-        "referenced_spec_id": "252",
-        "referencing_spec_id": "256",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L560",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "253",
-        "referenced_spec_id": "253",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L40",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "253",
-        "referenced_spec_id": "253",
-        "referencing_spec_id": "256",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md#L868",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
-        "successor_spec_id": "256"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "256",
-        "referenced_spec_id": "256",
-        "referencing_spec_id": "276",
-        "relation_text": "replacement",
-        "requirement_ids": [
-          "R2"
-        ],
-        "source": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md#L10",
-        "source_digest": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
-        "successor_spec_id": "276"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "256",
-        "referenced_spec_id": "256",
-        "referencing_spec_id": "276",
-        "relation_text": "replacing",
-        "requirement_ids": [],
-        "source": "specs/feature/276-smartaihub-runtime-efficiency-recoverable-context-execution-authority-r1-3/spec.md#L2313",
-        "source_digest": "7ffdd84c990ae6353bc95e3c8710153a54e653633ab6454c8fbf67e681c828a0",
-        "successor_spec_id": "276"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "256",
-        "referenced_spec_id": "256",
-        "referencing_spec_id": "279",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md#L2444",
-        "source_digest": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909",
-        "successor_spec_id": "279"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "256",
-        "referenced_spec_id": "256",
-        "referencing_spec_id": "283",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/283-external-capability-intelligence-agent-federation-r1-0/spec.md#L98",
-        "source_digest": "14b35ad120f15028f8a2d96d6c429f0f20004b87a957b8630b84db3fd636c7a7",
-        "successor_spec_id": "283"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "256",
-        "referenced_spec_id": "256",
-        "referencing_spec_id": "286",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md#L2672",
-        "source_digest": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72",
-        "successor_spec_id": "286"
+        "kind": "DUPLICATE_SPEC_REVISION",
+        "paths": [
+          "specs/feature/256-skill-first-capability-discovery-intent-execution",
+          "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution"
+        ]
       }
     ],
-    "confidence": "UNRESOLVED",
-    "conflicts": [],
     "evidence": [
       {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       }
     ],
     "predecessors": [],
-    "status": "UNRESOLVED",
+    "status": "AUTHORITY_CONFLICT",
     "successors": []
   },
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3"
+    "expected_spec_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe"
   },
   "continuation": {
     "next_action": null,
@@ -207,13 +51,13 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-    "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
+    "rationale": "Duplicate identity requires explicit authority resolution before continuation.",
     "residual_requirements": []
   },
   "dependencies": {
@@ -234,7 +78,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       }
@@ -242,13 +86,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 10,
   "identity": {
     "canonical_path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-    "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+    "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.343983Z",
+      "last_evidence_at": "2026-10-11T02:00:58.484519Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-02T19:34:42+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -272,10 +116,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.343983Z"
+    "updated_at": "2026-10-11T02:00:58.484519Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -285,10 +129,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.343983Z",
+    "reconciled_at": "2026-10-11T02:00:58.484519Z",
     "sources": [
       {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       },
@@ -300,11 +144,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "source_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "value": "R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -314,7 +163,7 @@
   },
   "relevance_assessment": {
     "active_references": [],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -326,14 +175,14 @@
         "excerpt": "status: R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED",
         "line": 6,
         "source": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-        "source_digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "source_digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "value": "R1_2_DESIGN_REVISED_SECOND_12_PASS_DESK_AUDIT_IMPLEMENTATION_NOT_VERIFIED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3",
+        "digest": "43c97243ddb365dafd3b6e434e3af845315f80f7c6f2a042e0051c9d64cc86fe",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md"
       }
@@ -341,7 +190,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -349,11 +198,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 161,
-    "unresolved": 161
+    "total": 162,
+    "unresolved": 162
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:18.343983Z",
+  "updated_at": "2026-10-11T02:00:58.484519Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

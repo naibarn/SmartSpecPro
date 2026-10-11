@@ -5,159 +5,12 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "220",
-        "referenced_spec_id": "220",
-        "referencing_spec_id": "231",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "231",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1895",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "229",
-        "referenced_spec_id": "229",
-        "referencing_spec_id": "231",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L639",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "RELATIONSHIP_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "232",
-        "referencing_spec_id": "231",
-        "relation_text": "successor",
-        "requirement_ids": [
-          "R1.MD",
-          "R2",
-          "R2.1"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": null
-      },
-      {
-        "confidence": "LOW",
-        "direction": "RELATIONSHIP_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "245",
-        "referencing_spec_id": "231",
-        "relation_text": "successor",
-        "requirement_ids": [
-          "R1.MD",
-          "R2",
-          "R2.1"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L1942",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": null
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "231",
-        "referencing_spec_id": "232",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R1.MD",
-          "R2",
-          "R2.1"
-        ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L27",
-        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-        "successor_spec_id": "232"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "231",
-        "referencing_spec_id": "232",
-        "relation_text": "replace",
-        "requirement_ids": [
-          "R1"
-        ],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L660",
-        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-        "successor_spec_id": "232"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "231",
-        "referenced_spec_id": "231",
-        "referencing_spec_id": "232",
-        "relation_text": "replacement",
-        "requirement_ids": [],
-        "source": "specs/feature/232-Zero-Downtime RedisBullMQ to Cloudflare Migration & Runtime Hardening/spec.md#L764",
-        "source_digest": "72b35544eb64068a83c15c4e5c2001f94bf9ccb794b9bb15f86538f2fa976a73",
-        "successor_spec_id": "232"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "232",
-        "referenced_spec_id": "232",
-        "referencing_spec_id": "231",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R2",
-          "R3",
-          "R5",
-          "R6",
-          "R7"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "245",
-        "referenced_spec_id": "245",
-        "referencing_spec_id": "231",
-        "relation_text": "superseded",
-        "requirement_ids": [
-          "R2",
-          "R3",
-          "R5",
-          "R6",
-          "R7"
-        ],
-        "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md#L15",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
-        "successor_spec_id": "231"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -259,7 +112,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6"
+    "expected_spec_digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8"
   },
   "continuation": {
     "next_action": null,
@@ -273,7 +126,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -366,146 +219,6 @@
         "digest": "aa21bf34f535f4d1756e8a6a5f3e3e3482bac91285674f2232f959304c1a3762",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
-      },
-      {
-        "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2871,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 17667,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 18012,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 attempt input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-complete-attempt-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 attempt process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 16,
-        "path": "apps/web/scripts/spec231-complete-attempt-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 reservation input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-create-reservation-process.ts"
-      },
-      {
-        "excerpt": "process.stderr.write(`${error instanceof Error ? error.message : \"Spec 231 reservation process failed\"}\\n`);",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 22,
-        "path": "apps/web/scripts/spec231-create-reservation-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 test input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-persist-plan-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 process test failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 18,
-        "path": "apps/web/scripts/spec231-persist-plan-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 route input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-plan-route-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 route process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 23,
-        "path": "apps/web/scripts/spec231-plan-route-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 settlement input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-settle-reservation-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 settlement process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 16,
-        "path": "apps/web/scripts/spec231-settle-reservation-process.ts"
-      },
-      {
-        "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2805,
-        "path": "apps/web/server/_core/index.ts"
-      },
-      {
-        "excerpt": "/** Versioned authority configuration for Spec 231 automatic route selection. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 608,
-        "path": "apps/web/server/routers/llmProviders.ts"
-      },
-      {
-        "excerpt": "* Routes non-explicit chat through Spec 231 only under a verified platform",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 103,
-        "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
-      },
-      {
-        "excerpt": "* Maps server-resolved chat selections into strict Spec 231 intents. Tenant,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 135,
-        "path": "apps/web/server/services/inference/chatInferenceIntent.ts"
-      },
-      {
-        "excerpt": "* Converts the existing creditService reservation snapshot into Spec 231's",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 30,
-        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 183,
-        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
-      },
-      {
-        "excerpt": "* immutable owner identity before any Spec 231 plan/provider dispatch may use it.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 226,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -530,7 +243,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -628,13 +341,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 8,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-    "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+    "digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.963854Z",
+      "last_evidence_at": "2026-10-11T01:58:44.019364Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-02T19:34:42+07:00"
@@ -658,10 +371,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.963854Z"
+    "updated_at": "2026-10-11T01:58:44.019364Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -671,10 +384,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.963854Z",
+    "reconciled_at": "2026-10-11T01:58:44.019364Z",
     "sources": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -769,468 +482,6 @@
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/sections/section-10-certification-and-rollout.md"
       },
       {
-        "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2871,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 17667,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 18012,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 attempt input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-complete-attempt-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 attempt process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 16,
-        "path": "apps/web/scripts/spec231-complete-attempt-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 reservation input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-create-reservation-process.ts"
-      },
-      {
-        "excerpt": "process.stderr.write(`${error instanceof Error ? error.message : \"Spec 231 reservation process failed\"}\\n`);",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 22,
-        "path": "apps/web/scripts/spec231-create-reservation-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 test input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-persist-plan-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 process test failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 18,
-        "path": "apps/web/scripts/spec231-persist-plan-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 route input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-plan-route-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 route process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 23,
-        "path": "apps/web/scripts/spec231-plan-route-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 settlement input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-settle-reservation-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 settlement process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 16,
-        "path": "apps/web/scripts/spec231-settle-reservation-process.ts"
-      },
-      {
-        "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2805,
-        "path": "apps/web/server/_core/index.ts"
-      },
-      {
-        "excerpt": "/** Versioned authority configuration for Spec 231 automatic route selection. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 608,
-        "path": "apps/web/server/routers/llmProviders.ts"
-      },
-      {
-        "excerpt": "* Routes non-explicit chat through Spec 231 only under a verified platform",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 103,
-        "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
-      },
-      {
-        "excerpt": "* Maps server-resolved chat selections into strict Spec 231 intents. Tenant,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 135,
-        "path": "apps/web/server/services/inference/chatInferenceIntent.ts"
-      },
-      {
-        "excerpt": "* Converts the existing creditService reservation snapshot into Spec 231's",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 30,
-        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 183,
-        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
-      },
-      {
-        "excerpt": "* immutable owner identity before any Spec 231 plan/provider dispatch may use it.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 226,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "{ tenantId: input.tenantId, description: \"Spec 231 inference budget reservation\" }",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 293,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "// Only this call created the expired row. No Spec 231 plan or provider call",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 345,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 unused inference reservation refund\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 523,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "* Direct legacy Web callsites that still bypass the Spec 231 plan pipeline.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/server/services/inference/legacyLlmCallerInventory.ts"
-      },
-      {
-        "excerpt": "/** Exact immutable upstream model ID required by a Spec 231 deployment plan. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 872,
-        "path": "apps/web/server/services/llmRouter.ts"
-      },
-      {
-        "excerpt": "/** Exact persisted mapping surface required by a Spec 231 deployment plan. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 874,
-        "path": "apps/web/server/services/llmRouter.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 primary Chat route rollout handoff\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 53,
-        "path": "apps/web/server/_core/llmChatRolloutHandoff.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 inference attempt status endpoint\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/_core/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 settlement recovery schedule\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 19,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "it(\"routes a resolved database model lock through Spec 231\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 139,
-        "path": "apps/web/server/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "it(\"fails closed without an active Spec 231 rollout instead of using legacy routing\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 176,
-        "path": "apps/web/server/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "it(\"routes an explicit database model through Spec 231 and does not fallback\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 626,
-        "path": "apps/web/server/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "describe.skipIf(!enabled)(\"Spec 231 Chat message idempotency\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 13,
-        "path": "apps/web/server/services/chatService.spec231.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 retry safety policy\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/inference/__tests__/attemptPolicy.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 policy-routed inference request facade\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 33,
-        "path": "apps/web/server/services/inference/__tests__/automaticInferenceRequest.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 live capability probe\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 90,
-        "path": "apps/web/server/services/inference/__tests__/capabilityProbe.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 chat inference gateway\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/inference/__tests__/chatInferenceGateway.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 primary Chat rollout gate\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/inference/__tests__/chatRolloutGate.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 provider connectivity evidence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 90,
-        "path": "apps/web/server/services/inference/__tests__/connectivityProbe.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 SAH-INFERENCE-2 contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 56,
-        "path": "apps/web/server/services/inference/__tests__/contracts.test.ts"
-      },
-      {
-        "excerpt": "inferencePlanR4Schema.safeParse({ ...plan, specUid: \"Spec 231\" }).success",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 203,
-        "path": "apps/web/server/services/inference/__tests__/contracts.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 credit owner settlement adapter\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 32,
-        "path": "apps/web/server/services/inference/__tests__/creditReservationAuthority.test.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 59,
-        "path": "apps/web/server/services/inference/__tests__/creditReservationAuthority.test.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 82,
-        "path": "apps/web/server/services/inference/__tests__/creditReservationAuthority.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 execution coordinator\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 188,
-        "path": "apps/web/server/services/inference/__tests__/executionCoordinator.test.ts"
-      },
-      {
-        "excerpt": "// The central router defines the API; the Spec 231 adapter is its approved",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 35,
-        "path": "apps/web/server/services/inference/__tests__/legacyLlmCallerInventory.test.ts"
-      },
-      {
-        "excerpt": "describe.skipIf(!enabled)(\"Spec 231 PostgreSQL persistence integration\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 183,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 response delivery fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 204,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 reservation fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 360,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 recovered reservation fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 466,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 cross-process settlement fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 524,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 concurrent reservation creation fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 606,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 active attempt fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 668,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 job settlement fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 2312,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 immutable plan factory\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 114,
-        "path": "apps/web/server/services/inference/__tests__/planFactory.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 policy administration contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "apps/web/server/services/inference/__tests__/policyAdministration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 deterministic eligibility hard filters\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 97,
-        "path": "apps/web/server/services/inference/__tests__/policyResolver.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 profile certification\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 119,
-        "path": "apps/web/server/services/inference/__tests__/profileCertification.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 profile registry\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 172,
-        "path": "apps/web/server/services/inference/__tests__/profileRegistry.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 deployment qualification\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 105,
-        "path": "apps/web/server/services/inference/__tests__/qualification.test.ts"
-      },
-      {
-        "excerpt": "describe.skipIf(!enabled)(\"Spec 231 signed rollout bundle persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 15,
-        "path": "apps/web/server/services/inference/__tests__/rolloutBundle.integration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 signed inference rollout bundle\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 33,
-        "path": "apps/web/server/services/inference/__tests__/rolloutBundle.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 route planning pipeline\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 146,
-        "path": "apps/web/server/services/inference/__tests__/routePlanner.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 settlement reconciliation\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 26,
-        "path": "apps/web/server/services/inference/__tests__/settlementReconciliation.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 canonical settlement recovery job\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 32,
-        "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "it(\"does not dispatch when a Spec 231 native model or API surface pin has drifted\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 383,
-        "path": "apps/web/server/services/llmRouter.test.ts"
-      },
-      {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
         "claim_kind": "DECLARED_STATUS",
         "confidence": "LOW",
@@ -1238,11 +489,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "source_digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -1251,474 +507,11 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "/** Scoped digest used to replay completed Spec 231 Chat requests safely */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2871,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 17667,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 18012,
-        "path": "apps/web/drizzle/schema.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 attempt input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-complete-attempt-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 attempt process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 16,
-        "path": "apps/web/scripts/spec231-complete-attempt-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 reservation input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-create-reservation-process.ts"
-      },
-      {
-        "excerpt": "process.stderr.write(`${error instanceof Error ? error.message : \"Spec 231 reservation process failed\"}\\n`);",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 22,
-        "path": "apps/web/scripts/spec231-create-reservation-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 test input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-persist-plan-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 process test failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 18,
-        "path": "apps/web/scripts/spec231-persist-plan-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 route input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-plan-route-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 route process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 23,
-        "path": "apps/web/scripts/spec231-plan-route-process.ts"
-      },
-      {
-        "excerpt": "if (!serialized) throw new Error(\"Spec 231 settlement input is missing\");",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 6,
-        "path": "apps/web/scripts/spec231-settle-reservation-process.ts"
-      },
-      {
-        "excerpt": "`${error instanceof Error ? error.message : \"Spec 231 settlement process failed\"}\\n`,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 16,
-        "path": "apps/web/scripts/spec231-settle-reservation-process.ts"
-      },
-      {
-        "excerpt": "\"[Startup] Failed to initialize Spec 231 settlement recovery job:\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2805,
-        "path": "apps/web/server/_core/index.ts"
-      },
-      {
-        "excerpt": "/** Versioned authority configuration for Spec 231 automatic route selection. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 608,
-        "path": "apps/web/server/routers/llmProviders.ts"
-      },
-      {
-        "excerpt": "* Routes non-explicit chat through Spec 231 only under a verified platform",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 103,
-        "path": "apps/web/server/services/inference/chatInferenceGateway.ts"
-      },
-      {
-        "excerpt": "* Maps server-resolved chat selections into strict Spec 231 intents. Tenant,",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 135,
-        "path": "apps/web/server/services/inference/chatInferenceIntent.ts"
-      },
-      {
-        "excerpt": "* Converts the existing creditService reservation snapshot into Spec 231's",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 30,
-        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 183,
-        "path": "apps/web/server/services/inference/creditReservationAuthority.ts"
-      },
-      {
-        "excerpt": "* immutable owner identity before any Spec 231 plan/provider dispatch may use it.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 226,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "{ tenantId: input.tenantId, description: \"Spec 231 inference budget reservation\" }",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 293,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "// Only this call created the expired row. No Spec 231 plan or provider call",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 345,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 unused inference reservation refund\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 523,
-        "path": "apps/web/server/services/inference/durableCreditReservation.ts"
-      },
-      {
-        "excerpt": "* Direct legacy Web callsites that still bypass the Spec 231 plan pipeline.",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 2,
-        "path": "apps/web/server/services/inference/legacyLlmCallerInventory.ts"
-      },
-      {
-        "excerpt": "/** Exact immutable upstream model ID required by a Spec 231 deployment plan. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 872,
-        "path": "apps/web/server/services/llmRouter.ts"
-      },
-      {
-        "excerpt": "/** Exact persisted mapping surface required by a Spec 231 deployment plan. */",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 874,
-        "path": "apps/web/server/services/llmRouter.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 primary Chat route rollout handoff\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 53,
-        "path": "apps/web/server/_core/llmChatRolloutHandoff.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 inference attempt status endpoint\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 31,
-        "path": "apps/web/server/_core/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 settlement recovery schedule\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 19,
-        "path": "apps/web/server/jobs/inferenceSettlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "it(\"routes a resolved database model lock through Spec 231\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 139,
-        "path": "apps/web/server/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "it(\"fails closed without an active Spec 231 rollout instead of using legacy routing\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 176,
-        "path": "apps/web/server/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "it(\"routes an explicit database model through Spec 231 and does not fallback\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 626,
-        "path": "apps/web/server/llmRoutes.test.ts"
-      },
-      {
-        "excerpt": "describe.skipIf(!enabled)(\"Spec 231 Chat message idempotency\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 13,
-        "path": "apps/web/server/services/chatService.spec231.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 retry safety policy\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/inference/__tests__/attemptPolicy.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 policy-routed inference request facade\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 33,
-        "path": "apps/web/server/services/inference/__tests__/automaticInferenceRequest.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 live capability probe\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 90,
-        "path": "apps/web/server/services/inference/__tests__/capabilityProbe.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 chat inference gateway\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 52,
-        "path": "apps/web/server/services/inference/__tests__/chatInferenceGateway.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 primary Chat rollout gate\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 18,
-        "path": "apps/web/server/services/inference/__tests__/chatRolloutGate.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 provider connectivity evidence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 90,
-        "path": "apps/web/server/services/inference/__tests__/connectivityProbe.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 SAH-INFERENCE-2 contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 56,
-        "path": "apps/web/server/services/inference/__tests__/contracts.test.ts"
-      },
-      {
-        "excerpt": "inferencePlanR4Schema.safeParse({ ...plan, specUid: \"Spec 231\" }).success",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 203,
-        "path": "apps/web/server/services/inference/__tests__/contracts.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 credit owner settlement adapter\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 32,
-        "path": "apps/web/server/services/inference/__tests__/creditReservationAuthority.test.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 59,
-        "path": "apps/web/server/services/inference/__tests__/creditReservationAuthority.test.ts"
-      },
-      {
-        "excerpt": "\"Spec 231 inference attempt settlement\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 82,
-        "path": "apps/web/server/services/inference/__tests__/creditReservationAuthority.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 execution coordinator\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 188,
-        "path": "apps/web/server/services/inference/__tests__/executionCoordinator.test.ts"
-      },
-      {
-        "excerpt": "// The central router defines the API; the Spec 231 adapter is its approved",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 35,
-        "path": "apps/web/server/services/inference/__tests__/legacyLlmCallerInventory.test.ts"
-      },
-      {
-        "excerpt": "describe.skipIf(!enabled)(\"Spec 231 PostgreSQL persistence integration\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 183,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 response delivery fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 204,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 reservation fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 360,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 recovered reservation fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 466,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 cross-process settlement fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 524,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 concurrent reservation creation fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 606,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 active attempt fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 668,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "description: \"Spec 231 job settlement fixture\",",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 2312,
-        "path": "apps/web/server/services/inference/__tests__/persistence.integration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 immutable plan factory\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 114,
-        "path": "apps/web/server/services/inference/__tests__/planFactory.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 policy administration contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "apps/web/server/services/inference/__tests__/policyAdministration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 deterministic eligibility hard filters\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 97,
-        "path": "apps/web/server/services/inference/__tests__/policyResolver.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 profile certification\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 119,
-        "path": "apps/web/server/services/inference/__tests__/profileCertification.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 profile registry\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 172,
-        "path": "apps/web/server/services/inference/__tests__/profileRegistry.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 deployment qualification\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 105,
-        "path": "apps/web/server/services/inference/__tests__/qualification.test.ts"
-      },
-      {
-        "excerpt": "describe.skipIf(!enabled)(\"Spec 231 signed rollout bundle persistence\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 15,
-        "path": "apps/web/server/services/inference/__tests__/rolloutBundle.integration.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 signed inference rollout bundle\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 33,
-        "path": "apps/web/server/services/inference/__tests__/rolloutBundle.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 route planning pipeline\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 146,
-        "path": "apps/web/server/services/inference/__tests__/routePlanner.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 settlement reconciliation\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 26,
-        "path": "apps/web/server/services/inference/__tests__/settlementReconciliation.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 231 canonical settlement recovery job\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 32,
-        "path": "apps/web/server/services/inference/__tests__/settlementRecoveryJob.test.ts"
-      },
-      {
-        "excerpt": "it(\"does not dispatch when a Spec 231 native model or API surface pin has drifted\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 383,
-        "path": "apps/web/server/services/llmRouter.test.ts"
-      }
-    ],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
     "declared_claims": [
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -1727,14 +520,14 @@
         "excerpt": "**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending",
         "line": 3,
         "source": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-        "source_digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "source_digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "value": "R6 owner-directed identity and integration design; Git registry/production verification pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6",
+        "digest": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md"
       },
@@ -1832,7 +625,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -1840,11 +633,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 211,
-    "unresolved": 211
+    "total": 224,
+    "unresolved": 224
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.963854Z",
+  "updated_at": "2026-10-11T01:58:44.019364Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

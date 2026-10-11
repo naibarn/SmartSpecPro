@@ -2195,3 +2195,11 @@ Verified on 2026-10-02 against Cloudflare documentation:
 ---
 
 ## End of Spec 272
+
+# Clef credential and account ownership boundary (2026-10-11)
+
+**Current-state assessment:** Spec 272 already defines the credential root of trust and provider broker, including native Cloudflare bindings and tenant-owned provider credentials. Its canonical handoff remains unresolved; this amendment does not assert that Workers AI Decision Model credentials or Clef calls are implemented. The request and provider policy is owned by [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11).
+
+Clef calls SHALL use the existing provider credential/binding broker and least-privilege Cloudflare account credentials; never hardcode a token or expose it to tenants, model prompts, logs, or task output. Resolve platform-owned versus tenant-owned Cloudflare accounts using existing tenant configuration and policy. Record the account ownership class and a non-secret credential reference for billing/cost attribution. Do not create a Clef-specific secret store or require an external Jev subscription for normal operation. The tenant may retain BYO providers and may use a tenant-owned Cloudflare account where existing multi-tenant policy permits.
+
+Acceptance: credential resolution is tenant-scoped, revocable, auditable, and uses existing secret ownership; provider failure never triggers a cross-tenant credential fallback; and platform billing, tenant responsibility, and SmartAIHub credit attribution remain distinct.

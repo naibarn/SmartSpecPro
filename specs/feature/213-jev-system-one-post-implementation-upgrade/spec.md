@@ -3,20 +3,20 @@
 
 **Status:** Proposed / Implementation Patch Specification  
 **Spec ID:** 213  
-**Revision:** 9 — targeted System-One Provider Semantics, Local/Open Provider Qualification & Decision Routing Amendment; preserves Revision 8 hardening while generalizing the implemented Jev path into a provider-neutral System-One decision layer with explicit execution semantics, capability manifests, calibration isolation, local/Runner routes, maturity gates and provider-specific question strategies  
+**Revision:** 10 — Clef-first Decision Provider amendment; preserves Revision 9's provider-neutral System-One semantics, calibration isolation, local/Runner routes, maturity gates and provider-specific question strategies
 **Date:** 2026-09-20  
 **Suggested repository path:** `specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md`  
 **Baseline implementation:** Spec 208 — SmartAIHub Hybrid Computer Use Engine & Dynamic Capability Routing  
-**Primary objective:** Upgrade the already-implemented Spec 208 Jev/System-One decision path without reimplementing, forking, or destabilizing the existing Computer Use architecture, while ensuring that TypeSafe Jev is one qualified provider rather than a permanent architectural dependency and that local/open/future System-One providers can be adopted through the same governed provider-neutral contract.  
+**Primary objective:** Upgrade the existing Spec 208 System-One decision path without reimplementing, forking, or destabilizing the Computer Use architecture; prefer Cloudflare Clef for normal Decision Model routing, while retaining TypeSafe Jev only for an inventoried legacy integration and supporting other providers through the same governed provider-neutral contract.
 **Companion systems:** Spec 208, Feature 195 Unified Async Job Control Plane, Feature 196 Goal/Plan Orchestrator, Feature 197 SmartAIHub Runner Adaptive Execution Fabric, Specs 199/200/206/207/209/212, Capability Registry/Resolver, Approval Service, Library/Asset Gateway, Browser Companion, SmartAIHub Runner, SmartAIHub Worker.  
-**External dependency covered by this spec:** TypeSafe AI System One / Jev provider, currently `jev-1.13.0` as verified on 2026-09-20.  
+**External dependency covered by this spec:** Cloudflare Workers AI Clef for preferred Decision Model inference; TypeSafe AI System One / Jev is legacy-compatible only where required by an existing integration.
 **Change class:** Post-implementation hardening, provider optimization, migration, observability, regression protection.  
 
 ---
 
 # 0. Executive Decision
 
-Spec 208 is already implemented and SHALL be treated as the **implemented baseline**, not as a draft to be rewritten.
+Spec 208 has an existing implementation baseline, but its canonical handoff reports partial integration with implementation and security work still open. Treat the verified current code and handoff as the baseline; do not infer production completeness from this Spec's earlier wording.
 
 Spec 213 SHALL therefore be implemented as an **incremental upgrade layer over the existing Spec 208 codebase**.
 
@@ -637,7 +637,7 @@ and tell us whether the whole task will finish successfully.
 
 Complex workflow planning remains Feature 196 / Agent orchestration responsibility.
 
-Jev is used for bounded immediate decisions.
+An enabled Jev legacy adapter is limited to bounded immediate decisions. New normal-path Decision Model routing follows the Clef-first provider policy in this Spec's Revision 10 amendment.
 
 ---
 
@@ -2228,8 +2228,9 @@ After broad promotion and a defined stability period, the legacy provider mode M
 computer_use:
   decision:
     mode: shadow
-    default_provider: jev
+    default_provider: clef-flash
 
+    # Compatibility adapter only; keep enabled only for an inventoried legacy consumer.
     jev:
       production_model: jev-1.13.0
       max_choice_options: 255
@@ -7812,7 +7813,7 @@ Revision 8 SHALL remain patch-in-place against the canonical owners from Spec 20
 The TypeSafe contract re-verified for this revision remains:
 
 ```text
-current production Jev: jev-1.13.0
+historical Jev profile verification for Revision 8/9 (2026-09-20): jev-1.13.0; current deployed provider state was not reverified by this document update
 request context: 64k total
 state + longest question: 32k
 Choice: selected option + full probability distribution + confidence
@@ -9453,3 +9454,14 @@ shadow/canary/rollback evidence demonstrates that Jev and any new local/open rou
 
 **Final Revision 9 posture:** SmartAIHub treats System-One decision capability as a governed, replaceable platform abstraction. TypeSafe Jev remains an important production provider, but API compatibility is never confused with behavioral equivalence; each provider is described by explicit capacity, modality, locality, execution semantics, calibration and maturity contracts. Local/open providers may become first-class Runner capabilities when they prove themselves on SmartAIHub workloads, while deterministic execution, independent verification, approval, data-egress policy and reconciliation remain invariant regardless of which decision model is selected.
 
+# Cloudflare Clef Decision-Provider Amendment (2026-10-11)
+
+This amendment supersedes Revision 9's preference for Jev as the current production Decision Model in normal SmartAIHub routing. It preserves the Spec 213 provider-neutral System-One abstraction, typed question semantics, safety controls, calibration isolation, and legacy Jev adapter where an existing integration requires it. It does not claim the earlier unresolved requirements or implementation status in this Spec are complete.
+
+The default Decision Model family is Cloudflare Workers AI Clef through the existing provider registry/inference gateway. Use `@cf/cloudflare/clef-flash` for routine typed decisions, `@cf/cloudflare/clef-omni` for required audio/video multimodal decisions, and `@cf/cloudflare/clef` when measured quality or hosted context limits justify it. The authoritative selector order, API schema, current hosted limits/prices, tenant/billing requirements, error handling and evaluation gates live in [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11). Do not adapt by changing only the model identifier: compile SmartAIHub's typed decision request to the documented `model`, `state`, `questions`, and optional modality fields; validate the structured `answers` and `usage` response. OpenAI-compatible chat completion bodies are not equivalent.
+
+Jev is no longer required for normal operation. Retain its provider adapter and historical schemas only for inventoried live integrations during migration; provider-specific question limits/calibration never transfer to Clef by API-shape resemblance. The migration SHALL shadow-compare the current path and Clef, canary only through existing policy controls, and preserve rollback to deterministic or eligible Reasoning LLM fallback. It must preserve all Spec 208 authorization, deterministic execution, independent verification, cancellation and recovery gates. Existing in-flight jobs retain their pinned provider and request/policy snapshot; do not interrupt or rewrite their state.
+
+Clef outputs remain advisory and uncalibrated unless SmartAIHub separately establishes task-specific calibration. Confidence cannot bypass authorization, permissions, evidence, policy, or execution checks. The decision provider remains distinct from text-generation, vision-reasoning, and coding models. This amendment changes the preferred Decision Model only and does not change unrelated technology whose name includes Jev.
+
+**Acceptance for this amendment:** provider profiles identify Clef's documented structured semantics, hosted limits and media support; results are validated and traceable; existing Jev consumers are inventoried and kept compatible only as needed; tenant isolation, secrets, usage and credit attribution use existing owners; fallback does not strand work; and no rollout superiority is claimed until SmartAIHub workload evidence passes Spec 231 gates. Spec 213's generated handoff remains `DORMANT_UNRESOLVED`; this document change does not alter its reconciliation status.
