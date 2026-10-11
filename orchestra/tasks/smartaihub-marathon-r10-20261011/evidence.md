@@ -1,7 +1,7 @@
 # SmartAIHub Marathon R10 — Evidence Index
 
-- Canonical integrated checkpoint: `1a817425cc14833d15d27f5048e496d8570dabbf` (PRs #676, #677, #678).
-- Implementation/test source: `caf8bc7930fb94c220adbb27e44d8b6ac6690267`; exact post-integration recheck: `1a817425cc14833d15d27f5048e496d8570dabbf`.
+- Canonical integrated checkpoint: `ad527e21f6174f7ed05782825a13d5ad3de2291c` (PRs #676, #677, #678, #680).
+- Implementation/test source: `caf8bc7930fb94c220adbb27e44d8b6ac6690267`; exact post-integration recheck: `ad527e21f6174f7ed05782825a13d5ad3de2291c`.
 - Full acceptance record: `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`.
 - Exact focused command: `SPEC224_EMIT_EVIDENCE=1 node_modules/.bin/vitest run --config apps/web/vitest.config.ts apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts apps/web/server/services/__tests__/spec224DisposableGitAcceptance.test.ts`.
 - Result: 4 files, 24 tests passed; owner-marked disposable PostgreSQL and temporary Git repository; one Run/WorkUnit identity; all 12 phases exercised in canonical action order (candidate edit in IMPLEMENT; real failure in TEST; bounded repair in DEBUG_REPAIR; pass in TEST; independent process in VERIFY); fresh process reread persisted run and evidence; cancellation gate blocked repair writes; implementation Node worker was SIGKILLed after candidate commit and before acknowledgment; same-run lease recovery fenced 1→2, rejected stale settlement, and recovered the candidate without a duplicate commit; Final Verify denied completion due missing real workspace receipts.
