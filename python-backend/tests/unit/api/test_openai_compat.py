@@ -13,7 +13,9 @@ def app():
 
 @pytest.fixture
 def client(app):
-    return TestClient(app)
+    # Starlette defaults the ASGI peer to "testclient", which is not a
+    # loopback address and correctly trips the localhost-only production guard.
+    return TestClient(app, client=("127.0.0.1", 50000))
 
 @pytest.fixture
 def mock_settings(monkeypatch):
@@ -46,7 +48,7 @@ async def test_chat_completions_json(client, mock_settings):
 
 @pytest.mark.asyncio
 async def test_chat_completions_stream(client, mock_settings):
-    async def mock_gen(payload, trace_id):
+    async def mock_gen(payload, trace_id, user_token=None):
         yield b"data: chunk1\n\n"
         yield b"data: chunk2\n\n"
 
@@ -60,9 +62,8 @@ async def test_chat_completions_stream(client, mock_settings):
         )
         
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/event-stream"
-        # TestClient doesn't support async generators well in some versions, 
-        # but let's see if it works or if we need to mock StreamingResponse
+        assert response.headers["content-type"].startswith("text/event-stream")
+        assert response.content == b"data: chunk1\n\ndata: chunk2\n\n"
 
 @pytest.mark.asyncio
 async def test_models_success(client, mock_settings):
@@ -92,19 +93,26 @@ async def test_unauthorized(client, mock_settings):
 @pytest.mark.asyncio
 async def test_localhost_only(client, monkeypatch):
     monkeypatch.setattr(settings, "SMARTSPEC_LOCALHOST_ONLY", True)
-    # Mocking req.client.host is tricky with TestClient, 
-    # but we can test the logic by setting the proxy token and calling
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "test-proxy-token")
+    monkeypatch.setattr(settings, "SMARTSPEC_USE_WEB_GATEWAY", True)
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://gateway.test")
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.content = b'{"data": []}'
+    mock_response.headers = {"content-type": "application/json"}
     with patch("app.api.openai_compat.reject_legacy_key_http"):
-        # TestClient usually uses 127.0.0.1 by default
-        response = client.get("/v1/models", headers={"x-proxy-token": "test-proxy-token"})
-        # If it's localhost, it should pass (or fail further down due to other mocks)
-        # Here it might fail at forward_models if not mocked, but let's just check the status
-        assert response.status_code != 403 
+        with patch("app.api.openai_compat.forward_models", new_callable=AsyncMock) as forward:
+            forward.return_value = mock_response
+            response = client.get("/v1/models", headers={"x-proxy-token": "test-proxy-token"})
+
+    assert response.status_code == 200
+    assert forward.called
 
 @pytest.mark.asyncio
 async def test_gateway_disabled(client, monkeypatch):
     monkeypatch.setattr(settings, "SMARTSPEC_USE_WEB_GATEWAY", False)
     monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "token")
+    monkeypatch.setattr(settings, "SMARTSPEC_LOCALHOST_ONLY", False)
     with patch("app.api.openai_compat.reject_legacy_key_http"):
         response = client.get("/v1/models", headers={"x-proxy-token": "token"})
         assert response.status_code == 503

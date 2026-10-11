@@ -166,6 +166,16 @@ class SkillListResponse(BaseModel):
     total: int
 
 
+class DiffResponse(BaseModel):
+    """Response model for diff operations."""
+
+    synced: List[str]
+    only_kilo: List[str]
+    only_claude: List[str]
+    total_kilo: int
+    total_claude: int
+
+
 class TemplateInfo(BaseModel):
     """Information about a skill template."""
 
@@ -307,6 +317,48 @@ async def get_template(
         "mode": template.mode.value if hasattr(template, "mode") else "generic",
         "tags": template.tags if hasattr(template, "tags") else [],
     }
+
+
+@router.get("/diff", response_model=DiffResponse)
+async def diff_skills(
+    workspace: str = Query(..., description="Workspace identifier"),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Show differences between Kilo Code and Claude Code skill directories.
+
+    Returns lists of skills that exist in one directory but not the other.
+    """
+    try:
+        workspace_path = _resolve_workspace(workspace)
+        from pathlib import Path
+
+        kilo_dir = Path(workspace_path) / ".kilocode" / "skills"
+        claude_dir = Path(workspace_path) / ".claude" / "skills"
+
+        kilo_skills = set()
+        claude_skills = set()
+
+        if kilo_dir.exists():
+            for skill_dir in kilo_dir.iterdir():
+                if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
+                    kilo_skills.add(skill_dir.name)
+
+        if claude_dir.exists():
+            for skill_dir in claude_dir.iterdir():
+                if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
+                    claude_skills.add(skill_dir.name)
+
+        return DiffResponse(
+            synced=sorted(list(kilo_skills & claude_skills)),
+            only_kilo=sorted(list(kilo_skills - claude_skills)),
+            only_claude=sorted(list(claude_skills - kilo_skills)),
+            total_kilo=len(kilo_skills),
+            total_claude=len(claude_skills),
+        )
+    except Exception as e:
+        logger.error("Failed to diff skills", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{skill_name}", response_model=SkillResponse)
@@ -680,16 +732,6 @@ class SyncResponse(BaseModel):
     message: str
 
 
-class DiffResponse(BaseModel):
-    """Response model for diff operations."""
-
-    synced: List[str]
-    only_kilo: List[str]
-    only_claude: List[str]
-    total_kilo: int
-    total_claude: int
-
-
 @router.post("/sync", response_model=SyncResponse)
 async def sync_skills(
     request: SyncRequest,
@@ -733,48 +775,6 @@ async def sync_skills(
         )
     except Exception as e:
         logger.error("Failed to sync skills", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/diff", response_model=DiffResponse)
-async def diff_skills(
-    workspace: str = Query(..., description="Workspace identifier"),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Show differences between Kilo Code and Claude Code skill directories.
-
-    Returns lists of skills that exist in one directory but not the other.
-    """
-    try:
-        workspace_path = _resolve_workspace(workspace)
-        from pathlib import Path
-
-        kilo_dir = Path(workspace_path) / ".kilocode" / "skills"
-        claude_dir = Path(workspace_path) / ".claude" / "skills"
-
-        kilo_skills = set()
-        claude_skills = set()
-
-        if kilo_dir.exists():
-            for skill_dir in kilo_dir.iterdir():
-                if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
-                    kilo_skills.add(skill_dir.name)
-
-        if claude_dir.exists():
-            for skill_dir in claude_dir.iterdir():
-                if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
-                    claude_skills.add(skill_dir.name)
-
-        return DiffResponse(
-            synced=sorted(list(kilo_skills & claude_skills)),
-            only_kilo=sorted(list(kilo_skills - claude_skills)),
-            only_claude=sorted(list(claude_skills - kilo_skills)),
-            total_kilo=len(kilo_skills),
-            total_claude=len(claude_skills),
-        )
-    except Exception as e:
-        logger.error("Failed to diff skills", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
