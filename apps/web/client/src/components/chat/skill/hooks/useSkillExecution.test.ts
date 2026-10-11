@@ -63,7 +63,6 @@ vi.mock('@/lib/posthog', () => ({
 const mockMutateAsync = vi.fn();
 const mockSaveAssistantMessageMutateAsync = vi.fn();
 const mockGetSkillTaskResultFetch = vi.fn();
-const mockSandboxGetJobStatusFetch = vi.fn();
 const mockGetSkillFetch = vi.fn();
 let mockSuccessCallback: ((data: any) => void) | null = null;
 let mockErrorCallback: ((error: Error) => void) | null = null;
@@ -105,11 +104,6 @@ vi.mock('@/lib/trpc', () => ({
           fetch: (...args: any[]) => mockGetSkillTaskResultFetch(...args),
         },
       },
-      sandbox: {
-        getJobStatus: {
-          fetch: (...args: any[]) => mockSandboxGetJobStatusFetch(...args),
-        },
-      },
     })),
   },
 }));
@@ -128,7 +122,6 @@ describe('useSkillExecution', () => {
       },
     });
     mockGetSkillTaskResultFetch.mockReset();
-    mockSandboxGetJobStatusFetch.mockReset();
     mockGetSkillFetch.mockReset();
     mockExecuteTauriLocalSkill.mockReset();
     mockExecuteTauriLocalGemmaText.mockReset();
@@ -531,8 +524,7 @@ describe('useSkillExecution', () => {
     });
   });
 
-  it('polls sandbox media jobs and returns generated image urls', async () => {
-    vi.useFakeTimers();
+  it('fails closed when a stale skill returns a retired async runtime handle', async () => {
     mockMutateAsync.mockResolvedValue({
       success: true,
       skillId: 'image-creator',
@@ -541,41 +533,27 @@ describe('useSkillExecution', () => {
       jobId: 'job-123',
       message: 'Job dispatched',
     });
-    mockSandboxGetJobStatusFetch.mockResolvedValue({
-      jobId: 'job-123',
-      status: 'completed',
-      artifacts: [
-        { url: 'https://example.com/out.png', mimeType: 'image/png', key: 'out.png' },
-      ],
-    });
 
     const { result } = renderHook(() =>
       useSkillExecution({ conversationId: 123 })
     );
 
     let executionResult: any;
-    const executionPromise = result.current.execute({
-      skillId: 'image-creator',
-      dynamicParams: {},
-    });
-
-    await vi.advanceTimersByTimeAsync(3000);
     await act(async () => {
-      executionResult = await executionPromise;
+      executionResult = await result.current.execute({
+        skillId: 'image-creator',
+        dynamicParams: {},
+      });
     });
 
-    expect(mockSandboxGetJobStatusFetch).toHaveBeenCalledWith({ jobId: 'job-123' });
-    expect(executionResult).toEqual({
-      success: true,
-      skillId: 'image-creator',
-      type: 'image',
-      resultUrl: 'https://example.com/out.png',
-      resultUrls: ['https://example.com/out.png'],
-      message: 'Image generated successfully!',
+    expect(mockGetSkillTaskResultFetch).not.toHaveBeenCalled();
+    expect(executionResult).toMatchObject({
+      success: false,
+      type: 'text',
+      error: 'This skill uses a retired sandbox runtime; migrate it to worker_jobs before execution.',
       isAsync: true,
       jobId: 'job-123',
     });
-    vi.useRealTimers();
   });
 
   it('keeps loading while polling async Python skills and returns the final result', async () => {
