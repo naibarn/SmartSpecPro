@@ -1,11 +1,11 @@
 """
 Integration tests for the presentation export FastAPI endpoints.
 
-POST /api/v1/presentations/export  — enqueue a Celery render task
-GET  /api/v1/presentations/export/{celery_task_id}  — poll task status
+POST /api/v1/presentations/export  — enqueue a canonical worker job
+GET  /api/v1/presentations/export/{job_id}  — poll canonical job status
 
-Uses httpx.AsyncClient + ASGITransport (async). Celery tasks and AsyncResult
-are mocked. Auth is bypassed via FastAPI's app.dependency_overrides.
+Uses httpx.AsyncClient + ASGITransport (async). The worker control-plane
+boundary is mocked. Auth is bypassed via FastAPI's app.dependency_overrides.
 """
 
 import os
@@ -66,15 +66,15 @@ def _render_auth_token(user_id: int = 1, tenant_id: str = "tenant-test") -> str:
 class TestPresentationExportPost:
     """POST /api/v1/presentations/export"""
 
-    async def test_returns_celery_task_id_and_queued_status(self):
-        """Valid authenticated request enqueues Celery task and returns task id."""
+    async def test_returns_job_id_and_queued_status(self):
+        """Valid authenticated request dispatches a worker job and returns its id."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
             with (
                 patch("app.api.v1.presentations_export.CELERY_ENABLED", True),
-                patch("app.api.v1.presentations_export.render_presentation") as mock_task,
+                patch("app.services.job_control_plane.dispatch_python_task") as mock_dispatch,
             ):
-                mock_task.delay.return_value = MagicMock(id="test-celery-task-id-123")
+                mock_dispatch.return_value = MagicMock(id="test-celery-task-id-123")
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
@@ -141,15 +141,15 @@ class TestPresentationExportPost:
 
         assert response.status_code == 422
 
-    async def test_returns_503_when_celery_dispatch_raises(self):
-        """If render_presentation.delay() raises, endpoint returns 503."""
+    async def test_returns_503_when_control_plane_dispatch_raises(self):
+        """If canonical job dispatch fails, endpoint returns 503."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
             with (
                 patch("app.api.v1.presentations_export.CELERY_ENABLED", True),
-                patch("app.api.v1.presentations_export.render_presentation") as mock_task,
+                patch("app.services.job_control_plane.dispatch_python_task") as mock_dispatch,
             ):
-                mock_task.delay.side_effect = Exception("Redis connection refused")
+                mock_dispatch.side_effect = Exception("Control plane unavailable")
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post("/api/v1/presentations/export", json=_VALID_PAYLOAD)
@@ -158,50 +158,50 @@ class TestPresentationExportPost:
 
         assert response.status_code == 503
 
-    async def test_render_spec_passed_to_celery_task(self):
-        """The render_spec dict from the request body is forwarded to the Celery task unchanged."""
+    async def test_render_spec_passed_to_worker_job(self):
+        """The render_spec dict is forwarded unchanged in the worker job args."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
             render_spec = {"deck_id": 7, "slides": [1, 2], "width": 1920, "height": 1080}
             payload = {"render_spec": render_spec, "quality": "high", "format": "pdf"}
             with (
                 patch("app.api.v1.presentations_export.CELERY_ENABLED", True),
-                patch("app.api.v1.presentations_export.render_presentation") as mock_task,
+                patch("app.services.job_control_plane.dispatch_python_task") as mock_dispatch,
             ):
-                mock_task.delay.return_value = MagicMock(id="abc123")
+                mock_dispatch.return_value = MagicMock(id="abc123")
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post("/api/v1/presentations/export", json=payload)
-                call_args = mock_task.delay.call_args
+                call_args = mock_dispatch.call_args
         finally:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 201
-        assert call_args[0][0] == render_spec  # first positional arg is render_spec
+        assert call_args.kwargs["args"][0] == render_spec
 
-    async def test_format_and_quality_passed_to_celery_task(self):
-        """format and quality values from the request are forwarded to the Celery task."""
+    async def test_format_and_quality_passed_to_worker_job(self):
+        """format and quality values are forwarded in the worker job args."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
             payload = {"render_spec": {}, "quality": "draft", "format": "mp4"}
             with (
                 patch("app.api.v1.presentations_export.CELERY_ENABLED", True),
-                patch("app.api.v1.presentations_export.render_presentation") as mock_task,
+                patch("app.services.job_control_plane.dispatch_python_task") as mock_dispatch,
             ):
-                mock_task.delay.return_value = MagicMock(id="abc")
+                mock_dispatch.return_value = MagicMock(id="abc")
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post("/api/v1/presentations/export", json=payload)
-                call_args = mock_task.delay.call_args
+                call_args = mock_dispatch.call_args
         finally:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 201
-        assert call_args[0][1] == "draft"  # quality (second positional arg)
-        assert call_args[0][2] == "mp4"    # format (third positional arg)
+        assert call_args.kwargs["args"][1] == "draft"
+        assert call_args.kwargs["args"][2] == "mp4"
 
     async def test_render_auth_is_forwarded_for_authenticated_actor(self):
-        """Tenant-scoped actor is forwarded to the Celery task for protected media."""
+        """Tenant-scoped actor is forwarded to the canonical job for protected media."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
             payload = {
@@ -210,9 +210,9 @@ class TestPresentationExportPost:
             }
             with (
                 patch("app.api.v1.presentations_export.CELERY_ENABLED", True),
-                patch("app.api.v1.presentations_export.render_presentation") as mock_task,
+                patch("app.services.job_control_plane.dispatch_python_task") as mock_dispatch,
             ):
-                mock_task.delay.return_value = MagicMock(id="actor-task")
+                mock_dispatch.return_value = MagicMock(id="actor-task")
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.post(
@@ -220,13 +220,13 @@ class TestPresentationExportPost:
                         json=payload,
                         headers={"X-Presentation-Render-Token": _render_auth_token()},
                     )
-                call_args = mock_task.delay.call_args
+                call_args = mock_dispatch.call_args
         finally:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 201
-        assert len(call_args[0]) == 3
-        assert call_args[0][0]["__presentation_render_auth"] == {
+        assert len(call_args.kwargs["args"]) == 3
+        assert call_args.kwargs["args"][0]["__presentation_render_auth"] == {
             "user_id": 1,
             "tenant_id": "tenant-test",
         }
@@ -251,16 +251,16 @@ class TestPresentationExportPost:
 
 @pytest.mark.integration
 class TestPresentationExportGetStatus:
-    """GET /api/v1/presentations/export/{celery_task_id}"""
+    """GET /api/v1/presentations/export/{job_id}"""
 
-    async def test_returns_percent_and_stage_for_pending_task(self):
-        """Polling a PENDING task returns state=queued, percent=0, stage=None."""
+    async def test_returns_percent_and_stage_for_queued_job(self):
+        """Polling a queued job returns state=queued, percent=0, stage=None."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with patch("app.api.v1.presentations_export.AsyncResult") as mock_result_cls:
-                mock_result = MagicMock()
-                mock_result.state = "PENDING"
-                mock_result_cls.return_value = mock_result
+            with patch(
+                "app.services.job_control_plane.JobControlPlaneClient.status",
+                return_value={"status": "queued", "progress": {}},
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get(
@@ -275,15 +275,17 @@ class TestPresentationExportGetStatus:
         assert data["percent"] == 0
         assert data["stage"] is None
 
-    async def test_returns_progress_for_in_progress_task(self):
-        """Polling a PROGRESS task returns state=processing with percent and stage from meta."""
+    async def test_returns_progress_for_running_job(self):
+        """Polling a running job returns progress and stage from its snapshot."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with patch("app.api.v1.presentations_export.AsyncResult") as mock_result_cls:
-                mock_result = MagicMock()
-                mock_result.state = "PROGRESS"
-                mock_result.info = {"percent": 45, "stage": "rendering"}
-                mock_result_cls.return_value = mock_result
+            with patch(
+                "app.services.job_control_plane.JobControlPlaneClient.status",
+                return_value={
+                    "status": "running",
+                    "progress": {"progress": 45, "stage": "rendering"},
+                },
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get(
@@ -299,17 +301,19 @@ class TestPresentationExportGetStatus:
         assert data["stage"] == "rendering"
 
     async def test_returns_done_and_output_url_for_successful_task(self):
-        """When AsyncResult state is SUCCESS, response includes state=done and output_url."""
+        """A succeeded worker job returns the persisted output metadata."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with patch("app.api.v1.presentations_export.AsyncResult") as mock_result_cls:
-                mock_result = MagicMock()
-                mock_result.state = "SUCCESS"
-                mock_result.result = {
-                    "output_url": "https://example.com/export.png",
-                    "output_bytes": 1024,
-                }
-                mock_result_cls.return_value = mock_result
+            with patch(
+                "app.services.job_control_plane.JobControlPlaneClient.status",
+                return_value={
+                    "status": "succeeded",
+                    "output": {
+                        "output_url": "https://example.com/export.png",
+                        "output_storage_key": "exports/tenant-test/42.png",
+                    },
+                },
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get(
@@ -325,14 +329,16 @@ class TestPresentationExportGetStatus:
         assert data["percent"] == 100
 
     async def test_returns_error_and_message_for_failed_task(self):
-        """When AsyncResult state is FAILURE, response includes state=error and error_message."""
+        """A failed worker job returns its bounded error message."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with patch("app.api.v1.presentations_export.AsyncResult") as mock_result_cls:
-                mock_result = MagicMock()
-                mock_result.state = "FAILURE"
-                mock_result.result = Exception("Playwright crashed during render")
-                mock_result_cls.return_value = mock_result
+            with patch(
+                "app.services.job_control_plane.JobControlPlaneClient.status",
+                return_value={
+                    "status": "failed",
+                    "errorMessage": "Playwright crashed during render",
+                },
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get(
@@ -346,14 +352,14 @@ class TestPresentationExportGetStatus:
         assert data["state"] == "error"
         assert "Playwright crashed" in data["error_message"]
 
-    async def test_returns_error_for_revoked_task(self):
-        """When AsyncResult state is REVOKED (cancelled), response includes state=error."""
+    async def test_returns_error_for_cancelled_job(self):
+        """A cancelled canonical worker job returns an error state."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with patch("app.api.v1.presentations_export.AsyncResult") as mock_result_cls:
-                mock_result = MagicMock()
-                mock_result.state = "REVOKED"
-                mock_result_cls.return_value = mock_result
+            with patch(
+                "app.services.job_control_plane.JobControlPlaneClient.status",
+                return_value={"status": "cancelled"},
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get(
@@ -367,14 +373,14 @@ class TestPresentationExportGetStatus:
         assert data["state"] == "error"
         assert data["error_message"] is not None
 
-    async def test_unknown_task_id_returns_queued_state(self):
-        """An unrecognised task_id returns state=queued (Celery PENDING), not 404."""
+    async def test_control_plane_status_failure_returns_generic_error(self):
+        """A status backend failure does not expose internal exception details."""
         app.dependency_overrides[get_current_user] = _override_auth()
         try:
-            with patch("app.api.v1.presentations_export.AsyncResult") as mock_result_cls:
-                mock_result = MagicMock()
-                mock_result.state = "PENDING"
-                mock_result_cls.return_value = mock_result
+            with patch(
+                "app.services.job_control_plane.JobControlPlaneClient.status",
+                side_effect=RuntimeError("private control-plane endpoint detail"),
+            ):
                 transport = ASGITransport(app=app)
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     response = await client.get(
@@ -384,7 +390,9 @@ class TestPresentationExportGetStatus:
             app.dependency_overrides.pop(get_current_user, None)
 
         assert response.status_code == 200
-        assert response.json()["state"] == "queued"
+        assert response.json()["state"] == "error"
+        assert response.json()["error_message"] == "Status check temporarily unavailable"
+        assert "private" not in response.text
 
     async def test_returns_401_without_auth_header(self):
         """Unauthenticated status poll is rejected by the app auth layer."""
