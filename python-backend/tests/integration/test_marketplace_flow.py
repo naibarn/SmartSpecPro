@@ -5,12 +5,10 @@ Tests the complete user flows including purchase, review, and security fixes
 
 import pytest
 import asyncio
-from decimal import Decimal
-from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
-from app.models.user import User
+from app.models.user import Role, User
 from app.models.marketplace_template import MarketplaceTemplate, TemplatePurchase, TemplateReview, TemplateStatus, TemplateCategory
 from app.services.marketplace_service import MarketplaceService
 from app.services.credit_service import CreditService
@@ -49,27 +47,24 @@ async def test_users(db_session):
     """Create test users"""
     buyer = User(
         email="buyer@test.com",
-        username="buyer_user",
-        hashed_password="hashed_password",
-        is_active=True,
-        credit_balance=Decimal("5000.00")
+        name="Buyer User",
+        password="hashed_password",
+        credits=5000,
     )
 
     creator = User(
         email="creator@test.com",
-        username="creator_user",
-        hashed_password="hashed_password",
-        is_active=True,
-        credit_balance=Decimal("0.00")
+        name="Creator User",
+        password="hashed_password",
+        credits=0,
     )
 
     admin = User(
         email="admin@test.com",
-        username="admin_user",
-        hashed_password="hashed_password",
-        is_active=True,
-        is_superuser=True,
-        credit_balance=Decimal("0.00")
+        name="Admin User",
+        password="hashed_password",
+        role=Role.admin,
+        credits=0,
     )
 
     db_session.add_all([buyer, creator, admin])
@@ -117,8 +112,8 @@ class TestMarketplacePurchaseFlow:
 
         buyer = test_users["buyer"]
         creator = test_users["creator"]
-        initial_buyer_balance = buyer.credit_balance
-        initial_creator_balance = creator.credit_balance
+        initial_buyer_balance = buyer.credits
+        initial_creator_balance = creator.credits
 
         # Purchase template
         purchase = await service.purchase_template(
@@ -138,8 +133,8 @@ class TestMarketplacePurchaseFlow:
         await db_session.refresh(buyer)
         await db_session.refresh(creator)
 
-        assert buyer.credit_balance == initial_buyer_balance - 1000
-        assert creator.credit_balance == initial_creator_balance + 850
+        assert buyer.credits == initial_buyer_balance - 1000
+        assert creator.credits == initial_creator_balance + 850
 
         # Verify template stats updated
         await db_session.refresh(test_template)
@@ -174,10 +169,9 @@ class TestMarketplacePurchaseFlow:
         # Create user with insufficient credits
         poor_user = User(
             email="poor@test.com",
-            username="poor_user",
-            hashed_password="hashed_password",
-            is_active=True,
-            credit_balance=Decimal("100.00")
+            name="Poor User",
+            password="hashed_password",
+            credits=100,
         )
         db_session.add(poor_user)
         await db_session.commit()
@@ -199,10 +193,9 @@ class TestMarketplacePurchaseFlow:
         for i in range(3):
             buyer = User(
                 email=f"buyer{i}@test.com",
-                username=f"buyer_{i}",
-                hashed_password="hashed_password",
-                is_active=True,
-                credit_balance=Decimal("5000.00")
+                name=f"Buyer {i}",
+                password="hashed_password",
+                credits=5000,
             )
             db_session.add(buyer)
             buyers.append(buyer)
@@ -264,10 +257,9 @@ class TestMarketplaceReviewSystem:
         # Create user who hasn't purchased
         non_buyer = User(
             email="nonbuyer@test.com",
-            username="non_buyer",
-            hashed_password="hashed_password",
-            is_active=True,
-            credit_balance=Decimal("5000.00")
+            name="Non Buyer",
+            password="hashed_password",
+            credits=5000,
         )
         db_session.add(non_buyer)
         await db_session.commit()
