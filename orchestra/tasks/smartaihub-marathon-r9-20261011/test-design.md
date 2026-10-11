@@ -18,3 +18,5 @@ npx vitest run server/services/__tests__/spec224BoundedRealSpecFinalVerify.test.
 ```
 
 See `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-synthetic-provider-poll-and-scope-20261011.json` for exact revision, environment, proof boundaries and results.
+
+| Outbox reclaim/settlement is fenced to current owner | One dispatch and one terminal result; stale workers cannot duplicate retry outbox | Native disposable PostgreSQL: `autoTeamOutboxPublisherReclaim.integration.test.ts`, `autoTeamStaleOutbox.integration.test.ts` | Existing concurrent/child-process tests | 2/2 passed at exact canonical source `b6ca0541…` | Synthetic transport adapter; not provider API or economic settlement |
