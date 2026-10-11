@@ -133,7 +133,7 @@
     "rationale": "Repository authority and canonical ID ownership are validated for this Spec; dependent contracts retain their separate authority boundaries. Runtime acceptance remains incomplete, and external Spec Library collision status is not verified.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 23,
+  "generation": 24,
   "identity": {
     "canonical_path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/spec.md",
     "digest": "977d655fbe2854480c7da80afa1f7705b1758d4a1f2638a1493cb3ca0595195d",
@@ -422,7 +422,7 @@
     "unresolved": 11
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T08:15:20.107044Z",
+  "updated_at": "2026-10-11T02:54:37.826178Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -481,11 +481,18 @@
         "scope": "Exact origin/main SHA d3566cc4e0f6011c1b262bf0456fcf5c83803d1f: 21 focused files / 261 tests passed across invocation receipt binding/revocation/replay contracts, NO_PROJECT denial, scoped memory router/service authorization, durable Project write denial, and team-room policy. No durable receipt persistence, migration, concurrency transaction, or database restart claim.",
         "source_sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
         "status": "PASS"
+      },
+      {
+        "kind": "R7_SPEC302_PHASE1_FOCUSED_REGRESSION",
+        "path": "specs/feature/302-smartaihub-unified-project-identity-project-app-binding-context-resolution/handoff/evidence/r7-phase1-focused-regression-45c8357.md",
+        "scope": "Canonical origin/main 45c8357329f033d9e9aca8559f3e5c8fd2258b28: 4 Vitest files / 75 tests passed for ingress context, App-bound memory runtime, invocation-scoped Project resolution, and replay contract. Focused regression only; no deployed ingress UAT, direct cross-App/Project live acceptance, durable receipt persistence, migration, or production claim.",
+        "source_sha": "45c8357329f033d9e9aca8559f3e5c8fd2258b28",
+        "status": "PASS"
       }
     ],
-    "freshness": "FRESH",
+    "freshness": "PARTIAL",
     "required_profiles": [],
-    "sha": "d3566cc4e0f6011c1b262bf0456fcf5c83803d1f",
+    "sha": "45c8357329f033d9e9aca8559f3e5c8fd2258b28",
     "status": "PARTIAL",
     "task_regressions": []
   }
