@@ -101,7 +101,20 @@ export function releaseEconomicHoldState(row: {
   };
 }
 
-function toHoldState(row: EconomicHoldRow, replayed: boolean) {
+function toHoldState(
+  row: Pick<
+    EconomicHoldRow,
+    | "id"
+    | "tenantId"
+    | "intentId"
+    | "currency"
+    | "amountMinorUnits"
+    | "capturedMinorUnits"
+    | "releasedMinorUnits"
+    | "status"
+  >,
+  replayed: boolean,
+) {
   return {
     id: row.id,
     tenantId: row.tenantId,
