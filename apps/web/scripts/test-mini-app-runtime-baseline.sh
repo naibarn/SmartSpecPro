@@ -30,7 +30,7 @@ on_exit() {
 trap on_exit EXIT
 
 if [[ -z "${MINI_APP_BASELINE_DATABASE_URL:-}" ]]; then
-  BASELINE_DIR="$(mktemp -d /tmp/miniapp-baseline.XXXXXX)"
+  BASELINE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/miniapp-baseline.XXXXXX")"
   mkdir "$BASELINE_DIR/socket"
   PORT="$(node -e 'const net=require("node:net");const s=net.createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close();});')"
   "$PG_BIN/initdb" -D "$BASELINE_DIR/data" --auth=trust --no-locale --encoding=UTF8 >/dev/null

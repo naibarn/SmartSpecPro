@@ -8,7 +8,7 @@ fi
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PG_BIN="$(pg_config --bindir)"
-RUNTIME_DIR="$(mktemp -d /tmp/miniapp-auth-runtime.XXXXXX)"
+RUNTIME_DIR="$(mktemp -d "${TMPDIR:-/tmp}/miniapp-auth-runtime.XXXXXX")"
 mkdir "$RUNTIME_DIR/socket"
 STARTED=0
 PASSED=0
