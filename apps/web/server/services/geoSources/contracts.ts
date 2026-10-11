@@ -139,7 +139,12 @@ function parseRecord(value: unknown): GeoSourceRecordContract | undefined {
 }
 
 /** Parses a declared adapter version. Unknown top-level fields are rejected unless the adapter explicitly permits additive fields. */
-export function parseGeoSourceContract(value: unknown, adapterPolicy: { readonly allowAdditionalFields: boolean } = { allowAdditionalFields: false }): GeoSourceContractResult<GeoSourceContract> {
+export function parseGeoSourceContract(
+  value: unknown,
+  adapterPolicy: { readonly allowAdditionalFields: boolean } = { allowAdditionalFields: false },
+):
+  | { readonly ok: true; readonly value: GeoSourceContract }
+  | { readonly ok: false; readonly code: Exclude<GeoSourceContractError, "GEO_SOURCE_POLICY_INVALID"> } {
   if (!isPlainRecord(value)) return { ok: false, code: "GEO_SOURCE_CONTRACT_INVALID" };
   const known = ["providerId", "contractVersion", "sourceRef", "sourceRevision", "acquiredAt", "observedAt", "schemaVersion", "contentHash", "licenseRef", "attribution", "allowedPurposes", "retentionClass", "freshness", "records"];
   const adapterAllowsExtensions = adapterPolicy.allowAdditionalFields === true;
