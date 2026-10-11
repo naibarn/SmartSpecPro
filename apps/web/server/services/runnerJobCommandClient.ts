@@ -3,11 +3,9 @@ import {
   getCachedPreferredInternalToken,
   getCachedRunnerControlPlaneOrigin,
 } from "./appRuntimeConfig";
-import {
-  validateRunnerJobCommand,
-  type RunnerJobCommand,
-} from "./runnerJobCommandContracts";
+import { validateRunnerJobCommand } from "./runnerJobCommandContracts";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
+import type { RunnerJobCommand } from "./runnerContracts";
 
 export type RunnerJobCommandDispatchResult = {
   status: "accepted" | "duplicate";
