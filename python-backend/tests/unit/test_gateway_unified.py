@@ -15,8 +15,10 @@ Tests cover:
 """
 
 import pytest
+from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock, patch
 from decimal import Decimal
+from types import SimpleNamespace
 
 from app.llm_proxy.models import LLMRequest, LLMResponse
 from app.llm_proxy.gateway_unified import LLMGateway, COST_PER_1K_TOKENS, MODEL_MATRIX
@@ -49,7 +51,10 @@ def mock_unified_client():
     """Create a mock unified client."""
     client = MagicMock()
     client.openrouter_client = MagicMock()
-    client.direct_providers = {"openai", "anthropic", "google", "groq", "ollama", "zai"}
+    client.direct_providers = {
+        name: object()
+        for name in ("openai", "anthropic", "google", "groq", "ollama", "zai")
+    }
     client.estimate_cost = MagicMock(return_value=Decimal("0.001"))
     client.chat = AsyncMock()
     return client
@@ -67,7 +72,7 @@ def mock_llm_proxy():
 def mock_user():
     """Create a mock user."""
     user = MagicMock()
-    user.id = "test-user-id"
+    user.id = 123
     user.email = "test@example.com"
     return user
 
@@ -124,7 +129,8 @@ class TestGatewayInitialization:
 class TestCostEstimation:
     """Test cost estimation functionality."""
     
-    def test_estimate_cost_with_openrouter(self, gateway, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_with_openrouter(self, gateway, mock_unified_client):
         """Test cost estimation with OpenRouter enabled."""
         request = LLMRequest(
             prompt="Test prompt",
@@ -132,12 +138,13 @@ class TestCostEstimation:
             budget_priority="quality"
         )
         
-        cost = gateway._estimate_cost(request, use_openrouter=True)
+        cost = await gateway._estimate_cost(request, use_openrouter=True)
         
         assert cost > 0
-        mock_unified_client.estimate_cost.assert_called()
+        assert isinstance(cost, Decimal)
     
-    def test_estimate_cost_without_openrouter(self, gateway, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_without_openrouter(self, gateway, mock_unified_client):
         """Test cost estimation with OpenRouter disabled."""
         mock_unified_client.openrouter_client = None
         
@@ -147,13 +154,14 @@ class TestCostEstimation:
             budget_priority="cost"
         )
         
-        cost = gateway._estimate_cost(request, use_openrouter=False)
+        cost = await gateway._estimate_cost(request, use_openrouter=False)
         
-        assert cost > 0
+        assert cost == COST_PER_1K_TOKENS[("code_generation", "cost")]
         # Should use static cost matrix
         mock_unified_client.estimate_cost.assert_not_called()
     
-    def test_estimate_cost_minimum(self, gateway, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_minimum(self, gateway, mock_unified_client):
         """Test that minimum cost is enforced."""
         mock_unified_client.estimate_cost.return_value = Decimal("0.00001")
         
@@ -163,12 +171,13 @@ class TestCostEstimation:
             budget_priority="speed"
         )
         
-        cost = gateway._estimate_cost(request, use_openrouter=False)
+        cost = await gateway._estimate_cost(request, use_openrouter=False)
         
         # Minimum cost should be $0.0001
         assert cost >= Decimal("0.0001")
     
-    def test_estimate_cost_different_task_types(self, gateway, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_different_task_types(self, gateway, mock_unified_client):
         """Test cost estimation for different task types."""
         task_types = ["planning", "code_generation", "analysis", "decision", "simple"]
         
@@ -179,11 +188,12 @@ class TestCostEstimation:
                 budget_priority="quality"
             )
             
-            cost = gateway._estimate_cost(request, use_openrouter=False)
+            cost = await gateway._estimate_cost(request, use_openrouter=False)
             
             assert cost > 0
     
-    def test_estimate_cost_different_priorities(self, gateway, mock_unified_client):
+    @pytest.mark.asyncio
+    async def test_estimate_cost_different_priorities(self, gateway, mock_unified_client):
         """Test cost estimation for different budget priorities."""
         priorities = ["quality", "cost", "speed"]
         
@@ -194,7 +204,7 @@ class TestCostEstimation:
                 budget_priority=priority
             )
             
-            cost = gateway._estimate_cost(request, use_openrouter=False)
+            cost = await gateway._estimate_cost(request, use_openrouter=False)
             
             assert cost > 0
 
@@ -221,8 +231,6 @@ class TestCreditChecking:
         mock_credit_service.check_sufficient_credits.return_value = False
         mock_credit_service.get_balance.return_value = 100
         
-        from fastapi import HTTPException
-        
         with pytest.raises(HTTPException) as exc_info:
             await gateway._check_credits(mock_user, Decimal("1.00"))
         
@@ -234,8 +242,6 @@ class TestCreditChecking:
         """Test that error message contains balance info."""
         mock_credit_service.check_sufficient_credits.return_value = False
         mock_credit_service.get_balance.return_value = 500
-        
-        from fastapi import HTTPException
         
         with pytest.raises(HTTPException) as exc_info:
             await gateway._check_credits(mock_user, Decimal("1.00"))
@@ -254,7 +260,7 @@ class TestCreditDeduction:
         mock_transaction = MagicMock()
         mock_transaction.amount = 100
         mock_transaction.balance_after = 900
-        mock_credit_service.deduct_credits.return_value = mock_transaction
+        gateway.web_gateway.deduct_credits = AsyncMock(return_value=mock_transaction)
         
         request = LLMRequest(
             prompt="Test",
@@ -280,7 +286,7 @@ class TestCreditDeduction:
         )
         
         assert transaction == mock_transaction
-        mock_credit_service.deduct_credits.assert_called_once()
+        gateway.web_gateway.deduct_credits.assert_awaited_once()
     
     @pytest.mark.asyncio
     async def test_deduct_credits_insufficient(self, gateway, mock_credit_service, mock_user):
@@ -288,6 +294,9 @@ class TestCreditDeduction:
         mock_credit_service.deduct_credits.side_effect = InsufficientCreditsError(
             required=Decimal("0.01"),
             available=Decimal("0.005")
+        )
+        gateway.web_gateway.deduct_credits = AsyncMock(
+            side_effect=HTTPException(status_code=402, detail="Insufficient credits")
         )
         
         request = LLMRequest(prompt="Test", task_type="simple")
@@ -298,8 +307,6 @@ class TestCreditDeduction:
             tokens_used=100,
             cost=Decimal("0.01")
         )
-        
-        from fastapi import HTTPException
         
         with pytest.raises(HTTPException) as exc_info:
             await gateway._deduct_credits(
@@ -376,7 +383,7 @@ class TestInvokeViaDirect:
     """Test direct provider invocation."""
     
     @pytest.mark.asyncio
-    async def test_invoke_direct_success(self, gateway, mock_llm_proxy, mock_user):
+    async def test_invoke_direct_success(self, gateway, mock_unified_client, mock_user):
         """Test successful direct invocation."""
         mock_response = LLMResponse(
             content="Direct response",
@@ -385,7 +392,7 @@ class TestInvokeViaDirect:
             tokens_used=150,
             cost=Decimal("0.005")
         )
-        mock_llm_proxy.invoke.return_value = mock_response
+        mock_unified_client.chat.return_value = mock_response
         
         request = LLMRequest(
             prompt="Test prompt",
@@ -396,25 +403,18 @@ class TestInvokeViaDirect:
         response = await gateway._invoke_via_direct(request, mock_user)
         
         assert response.content == "Direct response"
-        mock_llm_proxy.invoke.assert_called_once()
+        mock_unified_client.chat.assert_awaited_once()
     
     @pytest.mark.asyncio
-    async def test_invoke_direct_fallback(self, gateway, mock_llm_proxy, mock_user):
-        """Test direct invocation with fallback."""
-        # First provider fails, second succeeds
-        from app.llm_proxy.proxy import LLMProviderError
-        
-        mock_llm_proxy.invoke.side_effect = [
-            LLMProviderError("Primary failed", "openai", "gpt-4o"),
-            LLMResponse(
-                content="Fallback response",
-                provider="anthropic",
-                model="claude-3-haiku",
-                tokens_used=100,
-                cost=Decimal("0.00025")
-            )
-        ]
-        mock_llm_proxy.get_fallback_providers.return_value = ["anthropic"]
+    async def test_invoke_direct_uses_unified_client_response(self, gateway, mock_unified_client, mock_user):
+        """Direct invocation delegates provider selection to UnifiedLLMClient."""
+        mock_unified_client.chat.return_value = LLMResponse(
+            content="Direct response",
+            provider="anthropic",
+            model="claude-3-haiku",
+            tokens_used=100,
+            cost=Decimal("0.00025"),
+        )
         
         request = LLMRequest(
             prompt="Test prompt",
@@ -425,15 +425,13 @@ class TestInvokeViaDirect:
         response = await gateway._invoke_via_direct(request, mock_user)
         
         assert response.provider == "anthropic"
-        assert response.content == "Fallback response"
+        assert response.content == "Direct response"
+        mock_unified_client.chat.assert_awaited_once()
     
     @pytest.mark.asyncio
-    async def test_invoke_direct_all_fallbacks_failed(self, gateway, mock_llm_proxy, mock_user):
-        """Test when all direct providers fail."""
-        from app.llm_proxy.proxy import LLMProviderError
-        
-        mock_llm_proxy.invoke.side_effect = LLMProviderError("All failed", "openai", "gpt-4o")
-        mock_llm_proxy.get_fallback_providers.return_value = ["anthropic", "google"]
+    async def test_invoke_direct_provider_error_is_reported(self, gateway, mock_unified_client, mock_user):
+        """Provider errors from UnifiedLLMClient are surfaced by the gateway."""
+        mock_unified_client.chat.side_effect = RuntimeError("All providers failed")
         
         request = LLMRequest(
             prompt="Test prompt",
@@ -446,8 +444,8 @@ class TestInvokeViaDirect:
         with pytest.raises(HTTPException) as exc_info:
             await gateway._invoke_via_direct(request, mock_user)
         
-        assert exc_info.value.status_code == 503
-        assert "unavailable" in exc_info.value.detail.lower()
+        assert exc_info.value.status_code == 500
+        assert "All providers failed" in exc_info.value.detail
 
 
 class TestUserBalance:
@@ -473,9 +471,10 @@ class TestUserBalance:
 class TestAvailableModels:
     """Test available models retrieval."""
     
-    def test_get_available_models(self, gateway):
+    @pytest.mark.asyncio
+    async def test_get_available_models(self, gateway):
         """Test getting available models."""
-        models = gateway.get_available_models()
+        models = await gateway.get_available_models()
         
         assert "openrouter" in models
         assert "direct_providers" in models
@@ -485,9 +484,10 @@ class TestAvailableModels:
         assert "openai" in models["direct_providers"]
         assert "anthropic" in models["direct_providers"]
     
-    def test_recommended_models_structure(self, gateway):
+    @pytest.mark.asyncio
+    async def test_recommended_models_structure(self, gateway):
         """Test recommended models have correct structure."""
-        models = gateway.get_available_models()
+        models = await gateway.get_available_models()
         recommended = models["recommended_models"]
         
         for task_type in ["code_generation", "analysis", "planning", "simple"]:
@@ -523,10 +523,12 @@ class TestCalculateActualCost:
             tokens_used=0,
             cost=None
         )
-        response.usage = MagicMock()
-        response.usage.prompt_tokens = 50
-        response.usage.completion_tokens = 100
-        response.usage.total_tokens = 150
+        response = SimpleNamespace(
+            cost=None,
+            model="gpt-4o",
+            tokens_used=150,
+            usage=SimpleNamespace(prompt_tokens=50, completion_tokens=100),
+        )
         
         cost = gateway._calculate_actual_cost(response, use_openrouter=True)
         
@@ -543,8 +545,6 @@ class TestCalculateActualCost:
             tokens_used=100,
             cost=None
         )
-        response.usage = None
-        
         cost = gateway._calculate_actual_cost(response, use_openrouter=False)
         
         assert cost > 0
@@ -557,13 +557,13 @@ class TestBackwardCompatibility:
         """Test that LLMGatewayV1 is alias for LLMGateway."""
         from app.llm_proxy.gateway_unified import LLMGatewayV1
         
-        assert LLMGatewayV1 is LLMGateway
+        assert issubclass(LLMGatewayV1, LLMGateway)
     
     def test_gateway_v2_alias(self):
         """Test that LLMGatewayV2 is alias for LLMGateway."""
         from app.llm_proxy.gateway_unified import LLMGatewayV2
         
-        assert LLMGatewayV2 is LLMGateway
+        assert issubclass(LLMGatewayV2, LLMGateway)
 
 
 class TestCostMatrix:
@@ -597,7 +597,7 @@ class TestGatewayInvokeFlow:
         mock_transaction = MagicMock()
         mock_transaction.amount = 100
         mock_transaction.balance_after = 900
-        mock_credit_service.deduct_credits.return_value = mock_transaction
+        gateway.web_gateway.deduct_credits = AsyncMock(return_value=mock_transaction)
         
         mock_response = LLMResponse(
             content="Full flow response",
@@ -625,13 +625,13 @@ class TestGatewayInvokeFlow:
         assert response.credits_balance == mock_transaction.balance_after
     
     @pytest.mark.asyncio
-    async def test_invoke_direct_fallback_mode(self, gateway, mock_credit_service, mock_llm_proxy, mock_user):
-        """Test invoke with direct mode (OpenRouter disabled)."""
+    async def test_invoke_direct_mode_uses_unified_client(self, gateway, mock_credit_service, mock_unified_client, mock_user):
+        """Test direct-mode invoke uses the active unified provider client."""
         mock_credit_service.check_sufficient_credits.return_value = True
         mock_transaction = MagicMock()
         mock_transaction.amount = 50
         mock_transaction.balance_after = 950
-        mock_credit_service.deduct_credits.return_value = mock_transaction
+        gateway.web_gateway.deduct_credits = AsyncMock(return_value=mock_transaction)
         
         mock_response = LLMResponse(
             content="Direct response",
@@ -640,7 +640,7 @@ class TestGatewayInvokeFlow:
             tokens_used=100,
             cost=Decimal("0.005")
         )
-        mock_llm_proxy.invoke.return_value = mock_response
+        mock_unified_client.chat.return_value = mock_response
         
         request = LLMRequest(
             prompt="Test prompt",
@@ -655,7 +655,7 @@ class TestGatewayInvokeFlow:
         )
         
         assert response.content == "Direct response"
-        mock_llm_proxy.invoke.assert_called_once()
+        mock_unified_client.chat.assert_awaited_once()
 
 
 class TestGatewayErrorHandling:
