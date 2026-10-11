@@ -152,11 +152,23 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
           persistence: defaultDevelopmentRunPersistenceAdapter,
           controlPlane: createJobControlPlane(), executorRegistry: defaultJobExecutorRegistry,
         });
+        const retry = await reconcileAndContinueNextPhase({
+          runId, tenantId, actorId,
+          expectedRevision: 1,
+          expectedFencingVersion: Number(process.env.TEST_FENCING_VERSION) + 2,
+          idempotencyKey: \`r9-task-control-continue:\${runId}\`,
+          provider: "codex", runtime: "local_runner", planId: \`plan-\${runId}\`,
+          planRevision: 2, skillIds: [], requestedCapabilities: ["workspace.edit"],
+          authorizationScope: "spec224.development.run",
+          persistence: defaultDevelopmentRunPersistenceAdapter,
+          controlPlane: createJobControlPlane(), executorRegistry: defaultJobExecutorRegistry,
+        });
         const persisted = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get({runId, tenantId, actorId});
         const sql = postgres(process.env.DATABASE_URL, { max: 1 });
         const [job] = await sql.unsafe('SELECT "progressJson" FROM worker_jobs WHERE id = $1', [result.continuation?.jobRef.jobId]);
         process.stdout.write("R9_RESULT:" + JSON.stringify({
           action: result.reconcile.action, reason: result.reconcile.reason,
+          retry: { action: retry.reconcile.action, reason: retry.reconcile.reason, continuation: retry.continuation },
           state: persisted.run.state, workerJobId: persisted.run.workerJobId,
           events: persisted.events.map(event => event.type),
           continuation: result.continuation && { accepted: result.continuation.accepted, jobRef: result.continuation.jobRef },
@@ -195,6 +207,11 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         accepted: true,
         jobRef: { created: true },
       });
+      expect(phase.retry).toMatchObject({
+        action: "WAIT",
+        reason: "worker_job_not_terminal",
+        continuation: null,
+      });
       const planningJobId = phase.continuation.jobRef.jobId as string;
       expect(phase.workerJobId).toBe(planningJobId);
       expect(planningJobId).not.toBe(first.jobRef.jobId);
@@ -219,6 +236,13 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         [first.jobRef.jobId]
       );
       expect(terminalCounts).toEqual({ settlements: 1, completions: 1 });
+      const [runJobCount] = await client.unsafe(
+        `SELECT COUNT(*)::int AS count FROM worker_jobs
+         WHERE "tenantId" = $1 AND "requestedByUserId" = $2
+           AND "inputJson"->'spec224Run'->>'runId' = $3`,
+        [tenantId, actorId, runId]
+      );
+      expect(runJobCount.count).toBe(2);
 
       const [job] = await client.unsafe(
         `SELECT id, "tenantId", "requestedByUserId", "runtimeType", "workflowRunId",
