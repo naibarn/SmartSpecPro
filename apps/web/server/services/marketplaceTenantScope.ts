@@ -5,7 +5,10 @@ import { eq, isNull, or } from "drizzle-orm";
  * tenantId. This is only for an already user-owned query; it is not a public
  * or group-visibility fallback.
  */
-export function marketplaceOwnerTenantScope(column: any, tenantId?: string) {
+export function marketplaceOwnerTenantScope(
+  column: any,
+  tenantId?: string | null,
+) {
   const normalizedTenantId = tenantId?.trim();
   return normalizedTenantId
     ? or(eq(column, normalizedTenantId), isNull(column))
