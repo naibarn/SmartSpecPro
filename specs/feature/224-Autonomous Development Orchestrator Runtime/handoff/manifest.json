@@ -882,7 +882,7 @@
     "next_action": "Continue the independent non-protected slice by adding one owner-marked native PostgreSQL acceptance that joins canonical DevelopmentRun/WorkUnit persistence, a deterministic synthetic executor result, bounded repair/retry, independent evidence-gated Final Verify, Task Control visibility, and fresh-process reconstruction. Do not use TeamRun as a prerequisite. Keep live Runner/Windows authorization and protected dispatch DENY unchanged.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "R9 source proof at ee21738005c66ed9ca80a15048df0acdd34d2d2f: deterministic provider poll persistence/cancellation/replay passed on an owner-marked disposable PostgreSQL fixture (3/3 tests with callback safety and Task Control lease continuity); DevelopmentRun/Final Verify services passed focused suites (100/100 and 33/33). Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-synthetic-provider-poll-and-scope-20261011.json. This is synthetic provider evidence, not live API/Runner evidence. No single persistent DevelopmentRun-to-Final-Verify end-to-end test is established yet.",
+    "resume_point": "R9 service/poll/callback tests ran against ee21738005c66ed9ca80a15048df0acdd34d2d2f; outbox fencing tests ran against current canonical b6ca0541d192913414834744ed215d9fa7ec0c14. The only intervening source diff is tests/unit/test_periodic_handlers.py; all tested web service/test paths are unchanged. Provider poll, callback safety, Task Control restart and outbox fencing passed on owner-marked disposable PostgreSQL. Separate DevelopmentRun/Final Verify service suites passed 100/100 and 33/33. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-synthetic-provider-poll-and-scope-20261011.json. This remains synthetic evidence; no single persistent DevelopmentRun-to-Final-Verify E2E is established.",
     "waiting_predicate": "Live Windows Runner readiness remains waiting for authorized owner reconnection and fresh capability/Codex/source binding evidence. Protected dispatch remains DENY. Independent synthetic native-PostgreSQL DevelopmentRun slice is READY and must continue without TeamRun coupling."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 44,
+  "generation": 45,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -2344,7 +2344,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:26:27.677076Z",
+  "updated_at": "2026-10-11T06:28:12.768478Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

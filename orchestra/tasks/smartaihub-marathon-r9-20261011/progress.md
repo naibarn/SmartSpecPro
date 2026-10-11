@@ -13,7 +13,7 @@
 
 ## SPEC-277
 - No requirement status was changed. The reviewed candidates have broader UI, user acceptance, or deployment obligations than the focused persistence evidence; closing them would overstate proof.
-- Official handoff writer advanced manifest generations: SPEC-224 42→44 and SPEC-277 50→52. Both now bind to canonical `b6ca0541d192913414834744ed215d9fa7ec0c14` and have an explicit R9 resume WorkUnit. The initial stale write was rejected because prior integration SHA differed; fresh expected values were used for the successful write.
+- Official handoff writer advanced manifest generations: SPEC-224 42→45 and SPEC-277 50→53. Both now bind to canonical `b6ca0541d192913414834744ed215d9fa7ec0c14` and have an explicit R9 resume WorkUnit. The initial stale write was rejected because prior integration SHA differed; fresh expected values were used for the successful write.
 - Exact test/evidence details are in each Spec handoff evidence directory and mirrored in `evidence.md`.
 
 ## Remaining / Next READY WorkUnit
