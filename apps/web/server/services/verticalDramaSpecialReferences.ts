@@ -208,7 +208,7 @@ export async function reconcileSpecialStorySceneSlot(input: {
 export function isUsableSpecialCharacterReference(asset: {
   mediaAssetId: number | null;
   originalUrl: string | null;
-  status: string;
+  status: string | null;
   assetType: string;
 }) {
   return Boolean(
@@ -466,7 +466,7 @@ export async function materializeMarketplaceImageReference(input: {
       marketplaceProductId: input.productId,
       marketplaceImageId: input.imageId,
       imageType: image.type,
-      accessType: bundle.accessType,
+      accessType: bundle.product.accessType,
     },
   };
 }
