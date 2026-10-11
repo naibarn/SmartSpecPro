@@ -125,7 +125,7 @@ export function VerticalDramaObjectReferenceTab({
   const generateObjectImage =
     trpc.verticalDramaSeries.generateObjectReferenceImage.useMutation({
       onSuccess: result => {
-        setGenerationTaskId(result.taskId);
+        setGenerationTaskId(result.taskId ?? null);
         setGeneratedObjectId(generateObjectId);
         setGenerateObjectId(null);
         toast.success(
