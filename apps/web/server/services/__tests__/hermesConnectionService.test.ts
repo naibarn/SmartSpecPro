@@ -565,6 +565,19 @@ describe("buildAuthorizeJobInsert", () => {
     });
     expect(insert.timeoutSeconds).toBe(HERMES_CONNECTION_AUTHORIZE_TIMEOUT_SECONDS);
   });
+
+  it("preserves internal worker runtime types in the job contract", () => {
+    const insert = buildAuthorizeJobInsert({
+      tenantId: TENANT_ID,
+      connectionId: "conn-2",
+      workerId: "worker-2",
+      runtimeType: "node_job_worker",
+      requestedByUserId: USER_ID,
+      profileReference: "conn_conn-2",
+    });
+
+    expect(insert.runtimeType).toBe("node_job_worker");
+  });
 });
 
 describe("getHermesConnectStatus", () => {
