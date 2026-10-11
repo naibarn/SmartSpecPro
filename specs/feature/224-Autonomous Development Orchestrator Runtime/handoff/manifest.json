@@ -875,14 +875,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "b6ca0541d192913414834744ed215d9fa7ec0c14",
+    "expected_canonical_sha": "3ad29b4049661dff1437e4d79691d5616c2f2195",
     "expected_spec_digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4"
   },
   "continuation": {
     "next_action": "Continue the independent non-protected slice by adding one owner-marked native PostgreSQL acceptance that joins canonical DevelopmentRun/WorkUnit persistence, a deterministic synthetic executor result, bounded repair/retry, independent evidence-gated Final Verify, Task Control visibility, and fresh-process reconstruction. Do not use TeamRun as a prerequisite. Keep live Runner/Windows authorization and protected dispatch DENY unchanged.",
     "next_ready_workunit": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
     "reactivation_predicate": "Owner approval is durably recorded and exact approved issuer, key/signing operation, trust scope, evidence storage, and independent read-only verifier permissions are confirmed.",
-    "resume_point": "R9 service/poll/callback tests ran against ee21738005c66ed9ca80a15048df0acdd34d2d2f; outbox fencing tests ran against current canonical b6ca0541d192913414834744ed215d9fa7ec0c14. The only intervening source diff is tests/unit/test_periodic_handlers.py; all tested web service/test paths are unchanged. Provider poll, callback safety, Task Control restart and outbox fencing passed on owner-marked disposable PostgreSQL. Separate DevelopmentRun/Final Verify service suites passed 100/100 and 33/33. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-synthetic-provider-poll-and-scope-20261011.json. This remains synthetic evidence; no single persistent DevelopmentRun-to-Final-Verify E2E is established.",
+    "resume_point": "R9 evidence is unchanged by documentation-only PR #666, integrated at 3ad29b4049661dff1437e4d79691d5616c2f2195. Provider poll/callback/Task Control service tests ran at ee21738005c66ed9ca80a15048df0acdd34d2d2f; outbox fencing tests ran at b6ca0541d192913414834744ed215d9fa7ec0c14. All tested runtime files are unchanged through current canonical. Exact evidence remains in the R9 handoff evidence file.",
     "waiting_predicate": "Live Windows Runner readiness remains waiting for authorized owner reconnection and fresh capability/Codex/source binding evidence. Protected dispatch remains DENY. Independent synthetic native-PostgreSQL DevelopmentRun slice is READY and must continue without TeamRun coupling."
   },
   "continuation_assessment": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 45,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "a74671736b85cf31740f3071a30f660f54ea2b01c48f009f30c4a7fc9d3ff8f4",
@@ -1210,9 +1210,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b6ca0541d192913414834744ed215d9fa7ec0c14",
+    "canonical_sha": "3ad29b4049661dff1437e4d79691d5616c2f2195",
     "integrated": true,
-    "integrated_at": "2026-10-11T06:24:10Z"
+    "integrated_at": "2026-10-11T06:28:36Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2344,7 +2344,7 @@
     "unresolved": 1247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T06:28:12.768478Z",
+  "updated_at": "2026-10-11T06:29:21.321296Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

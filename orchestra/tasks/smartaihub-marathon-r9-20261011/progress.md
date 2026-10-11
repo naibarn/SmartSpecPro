@@ -2,7 +2,7 @@
 
 ## Canonical State
 - Initial recorded canonical source was `ee21738005c66ed9ca80a15048df0acdd34d2d2f`.
-- `origin/main` advanced during the run to `b6ca0541d192913414834744ed215d9fa7ec0c14` (#661). The only code diff in that advancement is `tests/unit/test_periodic_handlers.py`; relevant web services and test paths used below are unchanged.
+- `origin/main` advanced during the run to `b6ca0541d192913414834744ed215d9fa7ec0c14` (#661), then R9 evidence PR #666 merged at `3ad29b4049661dff1437e4d79691d5616c2f2195`. The only code diff in that advancement is `tests/unit/test_periodic_handlers.py`; relevant web services and test paths used below are unchanged.
 - Worktree `/home/dev/worktrees/r9-developmentrun-vertical-20261011` remains isolated. Primary `/home/dev/projects/SmartSpecPro` remains dirty/stale and untouched.
 
 ## Completed WorkUnits
@@ -13,7 +13,7 @@
 
 ## SPEC-277
 - No requirement status was changed. The reviewed candidates have broader UI, user acceptance, or deployment obligations than the focused persistence evidence; closing them would overstate proof.
-- Official handoff writer advanced manifest generations: SPEC-224 42→45 and SPEC-277 50→53. Both now bind to canonical `b6ca0541d192913414834744ed215d9fa7ec0c14` and have an explicit R9 resume WorkUnit. The initial stale write was rejected because prior integration SHA differed; fresh expected values were used for the successful write.
+- Official handoff writer advanced manifest generations: SPEC-224 42→46 and SPEC-277 50→54. Both now bind to canonical `3ad29b4049661dff1437e4d79691d5616c2f2195` and have an explicit R9 resume WorkUnit. The initial stale write was rejected because prior integration SHA differed; fresh expected values were used for the successful write.
 - Exact test/evidence details are in each Spec handoff evidence directory and mirrored in `evidence.md`.
 
 ## Remaining / Next READY WorkUnit
