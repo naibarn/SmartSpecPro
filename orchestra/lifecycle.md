@@ -171,3 +171,13 @@ Completion invariants:
 - Next action: integrate the focused error-classification fix, retry full normal migrations on the same disposable DB, then seed authenticated synthetic users/projects/App and start the local server only when loopback binding is verified.
 - Waiting predicate: if the existing app/server or shared PostgreSQL-pull worker cannot run without production credentials/data, keep only the affected provider/deploy stage in `WAITING_ENVIRONMENT`, continue independent package/action/UI evidence, and record the exact missing variable/capability by name (never its value).
 - User outcome remains open until M1–M5 and a reusable persisted Factory pipeline pass; M6 follows when environment permits.
+
+## Active outcome: SPEC224 Mini App visual-reference intake (2026-10-11)
+
+- State: `PARTIAL_INTEGRATED`; source checkpoint `4f76b17f338e8b3f6e2f642dec0ddfd36dbfdea3` is reachable from `origin/main`.
+- Canonical WorkUnit and evidence: Spec 270 `handoff/manifest.json`, `handoff/requirement-ledger.json`; PRs #570 and #571.
+- Resume from: `IMPLEMENT`; next ready WorkUnit `SPEC-224_VISUAL_REFERENCE_CREATE_UI_AND_CAPTURE`.
+- Integrated: additive provider-neutral reference schema, rights/default-similarity validation, tenant/project asset authorization port, immutable-draft persistence, focused tests.
+- Open gap: no user-facing Create Mini App reference intake or connected capture → blueprint → render/compare → bounded repair path was found. Extend an existing authoring surface if one is present in the next canonical audit; otherwise reconcile the missing entrypoint with the Mini App Factory owner before adding a new flow.
+- Next action: inspect the current Mini App Factory and workflow authoring call paths at the latest canonical SHA, then implement multi-asset intake and connect it to the existing authorized storage and Runner/UAT authorities.
+- Acceptance remains `UNVERIFIED`; do not infer end-to-end completion from schema tests or visual similarity alone.
