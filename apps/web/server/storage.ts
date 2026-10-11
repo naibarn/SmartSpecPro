@@ -629,7 +629,7 @@ async function forgeStoragePutFromPath(
     },
     body: multipart.body,
     duplex: "half",
-  } as RequestInit & { duplex: "half" });
+  } as unknown as RequestInit & { duplex: "half" });
 
   if (!response.ok) {
     const message = await response.text().catch(() => response.statusText);

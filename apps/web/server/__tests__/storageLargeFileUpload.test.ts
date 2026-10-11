@@ -79,6 +79,7 @@ describe("large runtime archive storage uploads", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
     const headers = init.headers as Record<string, string>;
+    expect((init as RequestInit & { duplex?: string }).duplex).toBe("half");
     expect(headers["Content-Type"]).toMatch(/^multipart\/form-data; boundary=/);
     expect(headers["Content-Length"]).toMatch(/^\d+$/);
     expect(init.body).toEqual(expect.objectContaining({ pipe: expect.any(Function) }));
