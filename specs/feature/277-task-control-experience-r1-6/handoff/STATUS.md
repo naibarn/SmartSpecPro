@@ -5,5 +5,5 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 431 unresolved of 431
-- Next action: Promote PR #646 after its refreshed integration gate passes, then integrate PR #648 stale-attempt callback correlation and continue pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.
-- Manifest generation: 47
+- Next action: Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.
+- Manifest generation: 49

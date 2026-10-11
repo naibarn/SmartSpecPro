@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
+    "expected_canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
     "expected_spec_digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574"
   },
   "continuation": {
-    "next_action": "Promote the direct PostgreSQL outbox publisher lease-reclaim fix after its integration gate passes, then integrate the stale-attempt callback correlation fix and continue pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
-    "next_ready_workunit": "R7-A1 continuation: merge PR #646 outbox publisher lease-reclaim fix, then merge PR #648 stale provider callback attempt rejection after current-main reconciliation.",
+    "next_action": "Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+    "next_ready_workunit": "R7-A1 continuation: integrate PR #648 stale-attempt callback rejection against current main; then continue receipt/outbox consistency acceptance without crossing SPEC-302 owner or migration gates.",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Latest canonical origin/main is 6d760ed9474f8b8c813aba88a6a925eaa09d3fe7. The exact PR #632 merged-SHA test remains PASS at c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b. Eight focused R7/provider suites passed on latest main 6d760ed9474f8b8c813aba88a6a925eaa09d3fe7. PR #641 is integrated at 75a652fa4ff3474da59354ed522ee1932e265f31. PR #646 candidate 7dd85cab78e5a12c5c76224c7cf1d5c35074ccd3 passed direct PostgreSQL publisher lease-reclaim acceptance; a combined 10-file/17-test R7 and outbox regression passed on candidate 93a09fe3d930defaed9aa4fbaea973c9f8a119d6. PR #648 passed 3 files/76 tests on candidate 46933c4b76b595a191ad64f918510cf12570a355 and rejects explicit attempt-1 callbacks after concurrent retry to attempt 2. Both PRs need integration against the current canonical ref; late callback receipt bindings, durable receipt authority, and full SPEC-277 acceptance remain open.",
+    "resume_point": "Latest canonical origin/main is f76f60a02d03ac52498d5290e9981cc19ba9755e. Exact PR #632 merged-SHA acceptance passed at c741792e2df3bfbea6f50fefc4dfb1f4e9c63c0b. PR #639 TeamRun-to-Task-Control identity and PR #641 provider poll timestamp/stale lease fixes are integrated. PR #646 outbox publisher lease fencing is integrated at f76f60a02d03ac52498d5290e9981cc19ba9755e; the 10-file/17-test focused suite passed on that exact main SHA. PR #648 candidate 31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c passed 3 files/76 tests after main reconciliation, including a direct PostgreSQL concurrent retry/callback race that rejects attempt 1 against current attempt 2. Integrate PR #648 after its gate; callbacks without attempt metadata and durable receipt authority remain unresolved, along with full SPEC-277 acceptance.",
     "waiting_predicate": "Provider callback/outbox/cancellation acceptance and TeamRun-to-Task-Control binding are runnable from canonical main. Only durable receipt schema/migration work waits for an accountable schema owner and explicit approval; all existing dirty historical worktrees remain preserved."
   },
   "continuation_assessment": {
@@ -124,10 +124,33 @@
         "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
         "source_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "kind": "R7_POST_PR646_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+        "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "kind": "R7_OUTBOX_PUBLISHER_LEASE_RECLAIM_POST_INTEGRATION",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/646",
+        "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "kind": "R7_PROVIDER_CALLBACK_STALE_ATTEMPT_POST_PR646_CANDIDATE",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/648",
+        "source_sha": "31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
-    "next_action": "Promote PR #646 after its refreshed integration gate passes, then integrate PR #648 stale-attempt callback correlation and continue pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
-    "rationale": "PR #632 exact merged-SHA acceptance passed; PR #639 integrated the TeamRun-to-Task-Control identity binding; PR #641 integrated provider poll timestamp and lease-fencing repairs. Eight focused R7/provider suites passed at latest canonical main 6d760ed9474f8b8c813aba88a6a925eaa09d3fe7. PR #646 candidate 7dd85cab78e5a12c5c76224c7cf1d5c35074ccd3 passed direct PostgreSQL outbox publisher lease-reclaim acceptance after latest-main reconciliation. PR #648 candidate 46933c4b76b595a191ad64f918510cf12570a355 passed callback/service/route acceptance and proves explicit stale business-attempt callbacks are rejected under a row lock without changing job lifecycle. Late callback contracts without attempt metadata, durable receipt authority, complete recovery classification, and full SPEC-277 acceptance remain open.",
+    "next_action": "Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+    "rationale": "PR #632 exact merged-SHA acceptance passed. PR #639 TeamRun-to-Task-Control identity, PR #641 provider poll serialization/fencing, and PR #646 outbox publisher lease-reclaim settlement are integrated. Ten focused R7/provider/outbox suites passed at latest canonical main f76f60a02d03ac52498d5290e9981cc19ba9755e. PR #648 candidate 31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c passed direct PostgreSQL callback retry-race and 3-file/76-test focused checks. Callback producers without attempt metadata, durable receipt authority, remaining recovery classification, and full SPEC-277 acceptance remain open.",
     "residual_requirements": [
       "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
       "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -163,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 47,
+  "generation": 49,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "3870bafe8400d19a16e43997bfde0c3ae11e53dd44a687817d5d013147571574",
@@ -230,9 +253,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
+    "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
     "integrated": true,
-    "integrated_at": "2026-10-11T12:00:27+07:00"
+    "integrated_at": "2026-10-11T12:02:41+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -345,10 +368,33 @@
           "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
           "source_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
           "status": "PASS_PARTIAL_ACCEPTANCE"
+        },
+        {
+          "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+          "kind": "R7_POST_PR646_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+          "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+          "status": "PASS_PARTIAL_ACCEPTANCE"
+        },
+        {
+          "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+          "kind": "R7_OUTBOX_PUBLISHER_LEASE_RECLAIM_POST_INTEGRATION",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/646",
+          "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+          "status": "PASS_PARTIAL_ACCEPTANCE"
+        },
+        {
+          "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+          "kind": "R7_PROVIDER_CALLBACK_STALE_ATTEMPT_POST_PR646_CANDIDATE",
+          "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/648",
+          "source_sha": "31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c",
+          "status": "PASS_PARTIAL_ACCEPTANCE"
         }
       ],
-      "next_action": "Promote PR #646 after its refreshed integration gate passes, then integrate PR #648 stale-attempt callback correlation and continue pending receipt/outbox consistency acceptance. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
-      "rationale": "PR #632 exact merged-SHA acceptance passed; PR #639 integrated the TeamRun-to-Task-Control identity binding; PR #641 integrated provider poll timestamp and lease-fencing repairs. Eight focused R7/provider suites passed at latest canonical main 6d760ed9474f8b8c813aba88a6a925eaa09d3fe7. PR #646 candidate 7dd85cab78e5a12c5c76224c7cf1d5c35074ccd3 passed direct PostgreSQL outbox publisher lease-reclaim acceptance after latest-main reconciliation. PR #648 candidate 46933c4b76b595a191ad64f918510cf12570a355 passed callback/service/route acceptance and proves explicit stale business-attempt callbacks are rejected under a row lock without changing job lifecycle. Late callback contracts without attempt metadata, durable receipt authority, complete recovery classification, and full SPEC-277 acceptance remain open.",
+      "next_action": "Integrate PR #648 after its refreshed integration gate passes, then continue explicit attempt-correlation coverage for callback producers that can provide attempt metadata and pending receipt/outbox consistency work. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
+      "rationale": "PR #632 exact merged-SHA acceptance passed. PR #639 TeamRun-to-Task-Control identity, PR #641 provider poll serialization/fencing, and PR #646 outbox publisher lease-reclaim settlement are integrated. Ten focused R7/provider/outbox suites passed at latest canonical main f76f60a02d03ac52498d5290e9981cc19ba9755e. PR #648 candidate 31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c passed direct PostgreSQL callback retry-race and 3-file/76-test focused checks. Callback producers without attempt metadata, durable receipt authority, remaining recovery classification, and full SPEC-277 acceptance remain open.",
       "residual_requirements": [
         "Atomic fencing for all applicable worker-owned TeamRun mutations, stale cancellation, provider callbacks and outbox/receipt effects after lease reclaim; preserve authenticated user and scheduler authority boundaries.",
         "One logical Task Control identity linked to the AutoTeam TeamRun across interruption, reclaim, attempt, retry, provider wait and final verification; PR #611 only proves worker-job identity and task-group persistence.",
@@ -570,7 +616,7 @@
     "unresolved": 431
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T05:00:53.347253Z",
+  "updated_at": "2026-10-11T05:04:53.618204Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -730,6 +776,29 @@
         "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/646",
         "source_sha": "7dd85cab78e5a12c5c76224c7cf1d5c35074ccd3",
         "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "kind": "R7_POST_PR646_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+        "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "kind": "R7_OUTBOX_PUBLISHER_LEASE_RECLAIM_POST_INTEGRATION",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/646",
+        "source_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
+      },
+      {
+        "canonical_sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
+        "kind": "R7_PROVIDER_CALLBACK_STALE_ATTEMPT_POST_PR646_CANDIDATE",
+        "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/r7-post-pr641-poll-and-outbox-reclaim-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/648",
+        "source_sha": "31898b7f2ce63ae84564e87fb70ea33e0a0d2b8c",
+        "status": "PASS_PARTIAL_ACCEPTANCE"
       }
     ],
     "freshness": "PARTIAL",
@@ -737,7 +806,7 @@
       "quick",
       "integration"
     ],
-    "sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
+    "sha": "f76f60a02d03ac52498d5290e9981cc19ba9755e",
     "status": "PARTIAL",
     "task_regressions": []
   }
