@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
+import type { LocalSituationFeedItem } from "@shared/emergency/feedSemantics";
 import EmergencyPublicMap from "@/components/emergency/EmergencyPublicMap";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, KeyRound, Loader2, Map, RefreshCw, Save, ShieldAlert, XCircle } from "lucide-react";
@@ -146,6 +147,7 @@ export default function GoogleMapsSettingsPanel() {
   const [previewCenter, setPreviewCenter] = useState<[number, number]>([100.5018, 13.7563]);
   const [previewKey, setPreviewKey] = useState(0);
   const [previewItems, setPreviewItems] = useState<Array<Record<string, unknown>>>([]);
+  const [, setPreviewFeed] = useState<readonly LocalSituationFeedItem[]>([]);
   const handlePreviewItemsChange = useCallback((items: Array<Record<string, unknown>>) => setPreviewItems(items), []);
   const [connectionResult, setConnectionResult] = useState<{
     credentials: "PASS" | "FAIL";
@@ -431,7 +433,7 @@ export default function GoogleMapsSettingsPanel() {
           <Select value={previewMapType} onValueChange={(value: GoogleMapType) => setPreviewMapType(value)}><SelectTrigger className="w-[12rem]"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(mapTypeLabels) as GoogleMapType[]).map((mapType) => <SelectItem key={mapType} value={mapType}>{isThai ? mapTypeLabels[mapType].th : mapTypeLabels[mapType].en}</SelectItem>)}</SelectContent></Select>
           <Button variant="outline" onClick={updatePreview}><RefreshCw size={16} />{text("Apply unsaved view", "ใช้มุมมองที่ยังไม่บันทึก")}</Button>
         </HStack>
-        <EmergencyPublicMap items={previewItems} onItemsChange={handlePreviewItemsChange} previewMapType={previewMapType} previewCenter={previewCenter} resetPreviewKey={previewKey} />
+        <EmergencyPublicMap items={previewItems} onItemsChange={handlePreviewItemsChange} onFeedChange={setPreviewFeed} previewMapType={previewMapType} previewCenter={previewCenter} resetPreviewKey={previewKey} />
       </VStack>
     </DashboardCard>
   </VStack>;

@@ -93,14 +93,6 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
   const [uploading, setUploading] = useState(false);
   const [preparing, setPreparing] = useState(false);
-  const [preparation, setPreparation] = useState<{
-    planId: string;
-    planRevision: number;
-    requirementCount: number;
-    runnableWorkPackageIds: string[];
-    blockers: string[];
-    workPackages: Array<{ id: string; externalId: string; readiness: "READY" | "BLOCKED"; blockers: string[] }>;
-  } | null>(null);
   const [startKeys, setStartKeys] = useState<Record<string, string>>({});
 
   function addVisualReferences(files: FileList | null) {
@@ -134,9 +126,12 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const bindMutation = trpc.spec226DevelopmentControl.bindConversationWorkspace.useMutation();
   const ingestMutation = trpc.spec226DevelopmentControl.ingestSpecSet.useMutation();
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
+  type Preparation = Awaited<ReturnType<typeof prepareMutation.mutateAsync>>;
+  const [preparation, setPreparation] = useState<Preparation | null>(null);
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const boundWorkspace = workspaceQuery.data?.workspace;
+  const specSet = workspaceQuery.data?.specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
     : "";
@@ -331,8 +326,8 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
           {boundWorkspace ? (
             <p className={`mt-2 text-xs ${workspaceQuery.data?.availability?.available ? "text-emerald-700" : "text-amber-800"}`} role="status">
               ผูกกับ {boundWorkspace.workspaceId}
-              {workspaceQuery.data?.availability?.status ? ` · ${workspaceQuery.data.availability.status}` : ""}
-              {workspaceQuery.data.specSet ? ` · Spec Set r${workspaceQuery.data.specSet.revision}` : " · ยังไม่มี Spec Set"}
+              {workspaceQuery.data?.availability?.status ? ` · ${workspaceQuery.data?.availability?.status}` : ""}
+              {specSet ? ` · Spec Set r${specSet.revision}` : " · ยังไม่มี Spec Set"}
             </p>
           ) : null}
           {workspaces.length === 0 && !workspacesQuery.isLoading ? (
@@ -393,11 +388,11 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             ) : null}
           </fieldset>
 
-          {workspaceQuery.data?.specSet ? (
+          {specSet ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="Spec Set manifest">
-              <p className="text-xs font-medium">Revision {workspaceQuery.data.specSet.revision} · {workspaceQuery.data.specSet.files.length} files · {workspaceQuery.data.specSet.requirementCount} parsed requirements</p>
+              <p className="text-xs font-medium">Revision {specSet.revision} · {specSet.files.length} files · {specSet.requirementCount} parsed requirements</p>
               <ul className="mt-1 list-inside list-disc text-xs">
-                {workspaceQuery.data.specSet.files.map(file => <li key={file.path}>{file.path}</li>)}
+                {specSet.files.map(file => <li key={file.path}>{file.path}</li>)}
               </ul>
             </section>
           ) : null}

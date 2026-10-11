@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { and, asc, count, desc, eq, exists, inArray, isNotNull, isNull, lt, not, or, sql } from "drizzle-orm";
 
-import { db } from "../db";
+import { db, getDb } from "../db";
 import { workerHeartbeats, workerJobDispatches, workerJobEvents, workerJobOutbox, workerJobSettlements, workerJobs, workers } from "../../drizzle/schema";
 import { redactJobPayload } from "./jobCanonicalization";
 import { canonicalizeStoredStatus, compatibilityStatus, createJobControlPlane } from "./jobControlPlane";
@@ -271,6 +271,7 @@ export async function getWorkerJobDashboardSummary(input: {
   tenantId?: string;
   userId?: number;
 } = {}) {
+  const typedDb = getDb();
   const jobConditions: any[] = [];
   if (input.tenantId) jobConditions.push(eq(workerJobs.tenantId, input.tenantId));
   if (input.userId) jobConditions.push(eq(workerJobs.requestedByUserId, input.userId));
@@ -287,15 +288,15 @@ export async function getWorkerJobDashboardSummary(input: {
   const includeCapacity = !input.userId;
   const now = new Date();
   const [grouped, staleRows, recentJobs, openJobRows, oldestQueuedRows, pendingOutbox, failedOutbox, quarantinedOutbox, workersRows, assignedActiveRows] = await Promise.all([
-    db.select({ status: workerJobs.status, total: count() })
+    typedDb.select({ status: workerJobs.status, total: count() })
       .from(workerJobs).where(jobScope).groupBy(workerJobs.status),
-    db.select({ total: count() }).from(workerJobs).where(and(
+    typedDb.select({ total: count() }).from(workerJobs).where(and(
       ...(jobConditions.length ? jobConditions : []),
       inArray(workerJobs.status, ["leased", "claimed", "running", "preparing", "uploading", "publishing", "indexing", "waiting_external"] as any),
       isNotNull(workerJobs.leaseExpiresAt),
       lt(workerJobs.leaseExpiresAt, now),
     )),
-    db.select({
+    typedDb.select({
       jobId: workerJobs.id,
       jobType: workerJobs.jobType,
       status: workerJobs.status,
@@ -308,7 +309,7 @@ export async function getWorkerJobDashboardSummary(input: {
       workerId: workerJobs.workerId,
       failureReason: workerJobs.failureReason,
     }).from(workerJobs).where(jobScope).orderBy(desc(workerJobs.createdAt)).limit(8),
-    db.select({
+    typedDb.select({
       jobId: workerJobs.id,
       jobType: workerJobs.jobType,
       status: workerJobs.status,
@@ -323,18 +324,18 @@ export async function getWorkerJobDashboardSummary(input: {
       ...(jobConditions.length ? jobConditions : []),
       inArray(workerJobs.status, DASHBOARD_OPEN_STORED_STATUSES as any),
     )).orderBy(asc(workerJobs.createdAt), asc(workerJobs.id)).limit(50),
-    db.select({ createdAt: workerJobs.createdAt }).from(workerJobs).where(and(
+    typedDb.select({ createdAt: workerJobs.createdAt }).from(workerJobs).where(and(
       ...(jobConditions.length ? jobConditions : []),
       inArray(workerJobs.status, ["pending", "queued"] as any),
     )).orderBy(asc(workerJobs.createdAt)).limit(1),
-    db.select({ total: count(), oldestAt: sql`min(${workerJobOutbox.createdAt})` })
+    typedDb.select({ total: count(), oldestAt: sql`min(${workerJobOutbox.createdAt})` })
       .from(workerJobOutbox).innerJoin(workerJobs, eq(workerJobs.id, workerJobOutbox.workerJobId))
       .where(scopedOutboxCondition(and(isNull(workerJobOutbox.publishedAt), isNull(workerJobOutbox.cancelledAt), isNull(workerJobOutbox.quarantinedAt)))),
-    db.select({ total: count() }).from(workerJobOutbox).innerJoin(workerJobs, eq(workerJobs.id, workerJobOutbox.workerJobId))
+    typedDb.select({ total: count() }).from(workerJobOutbox).innerJoin(workerJobs, eq(workerJobs.id, workerJobOutbox.workerJobId))
       .where(scopedOutboxCondition(and(isNull(workerJobOutbox.publishedAt), isNotNull(workerJobOutbox.failedReason)))),
-    db.select({ total: count() }).from(workerJobOutbox).innerJoin(workerJobs, eq(workerJobs.id, workerJobOutbox.workerJobId))
+    typedDb.select({ total: count() }).from(workerJobOutbox).innerJoin(workerJobs, eq(workerJobs.id, workerJobOutbox.workerJobId))
       .where(scopedOutboxCondition(isNotNull(workerJobOutbox.quarantinedAt))),
-    includeCapacity ? db.select({
+    includeCapacity ? typedDb.select({
       id: workers.id,
       displayName: workers.displayName,
       runtimeType: workers.runtimeType,
@@ -343,7 +344,7 @@ export async function getWorkerJobDashboardSummary(input: {
       capabilitiesJson: workers.capabilitiesJson,
       healthSummaryJson: workers.healthSummaryJson,
     }).from(workers).where(input.tenantId ? eq(workers.tenantId, input.tenantId) : undefined) : Promise.resolve([]),
-    includeCapacity ? db.select({ workerId: workerJobs.workerId, total: count() })
+    includeCapacity ? typedDb.select({ workerId: workerJobs.workerId, total: count() })
       .from(workerJobs)
       .where(and(
         ...(jobConditions.length ? jobConditions : []),
