@@ -1,0 +1,34 @@
+{
+  "workunit_id": "R9-A-PROVIDER-POLL-RESTART-AND-REPLAY",
+  "source_sha": "ee21738005c66ed9ca80a15048df0acdd34d2d2f",
+  "canonical_ref": "origin/main",
+  "environment": "owner-marked disposable PostgreSQL 17 from spec277DisposablePostgres; loopback only; no production DB",
+  "classification": "SYNTHETIC_PROVIDER_OBSERVATION",
+  "runtime_path": "postgresProviderSchedulerRepository.claimDue -> provider observation -> jobControlPlane.completeExternal/failExternalWait -> worker_jobs and worker_job_events settlement; poll reservation fencing/release and provider capacity update",
+  "callback_classification": "C_AUDIT_ONLY_COMPATIBILITY_INPUT",
+  "callback_basis": "recordAuthenticatedJobCallback is documented evidence-only; only repository caller is the internal route; no in-repository producer was found outside tests. Persistence test proves callback replay, stale-attempt, missing-attempt, cross-tenant and conflicting duplicate handling without changing job or TeamRun state.",
+  "commands": [
+    "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 npx vitest run server/services/__tests__/autoTeamProviderPollPersistence.integration.test.ts server/services/__tests__/autoTeamProviderCallback.integration.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts",
+    "npx vitest run server/services/__tests__/spec224FinalVerify.test.ts server/services/__tests__/spec224DevelopmentRunIntegration.test.ts server/services/__tests__/spec224DevelopmentRunPersistence.test.ts server/services/__tests__/jobControlPlane.test.ts",
+    "npx vitest run server/services/__tests__/spec224BoundedRealSpecFinalVerify.test.ts server/services/__tests__/spec224PhaseController.test.ts server/services/__tests__/spec224RequirementClosurePersistence.test.ts server/services/__tests__/spec224DevelopmentRunPersistence.test.ts"
+  ],
+  "results": [
+    {"suite": "Provider poll, callback safety, Task Control continuity", "files": 3, "tests": 3, "passed": 3},
+    {"suite": "DevelopmentRun, Final Verify, job control plane", "files": 4, "tests": 100, "passed": 100},
+    {"suite": "Bounded real-Spec closure, phase controller, closure persistence", "files": 4, "tests": 33, "passed": 33}
+  ],
+  "provider_assertions": [
+    "Completed provider result settles canonical worker job once and releases reservation/capacity",
+    "Duplicate result does not create another terminal event",
+    "Expired poll lease is reclaimed with a new token; stale observation cannot settle; current observation succeeds",
+    "Cancellation/completion race yields exactly one valid terminal outcome and releases capacity"
+  ],
+  "restart_assertion": "Task Control continuity test kills an attempt process, recovers the lease, schedules retry, and reconstructs the same task/job group identity from PostgreSQL. It is a TeamRun/Task Control test; it does not prove DevelopmentRun Final Verify across process restart.",
+  "known_gaps": [
+    "Provider test uses a deterministic synthetic provider observation, not a live provider submission/API.",
+    "The dedicated SPEC-224 Runner continuation PostgreSQL child-process suite still uses the retired-for-this-task Docker fixture, so it was not run here.",
+    "DevelopmentRun and Final Verify passed separate service/contract suites, but no single disposable-Postgres test currently joins Goal -> WorkUnit -> executor -> implement/test/repair -> evidence -> Final Verify -> Task Control across restart.",
+    "Task Control continuity test writes a synthetic finalVerification projection marker; it is not SPEC-224 Final Verify evidence.",
+    "No SPEC-277 requirement was closed: existing candidate clauses include wider UI, acceptance or deployment obligations not satisfied by this test set."
+  ]
+}
