@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "spec_id": "277",
+  "workunit": "R7 post-PR-641 provider polling and outbox publisher lease-reclaim acceptance",
+  "observed_at": "2026-10-11T05:00:27Z",
+  "environment": {
+    "node": "v22.22.3",
+    "pnpm": "10.4.1",
+    "install": "pnpm install --filter @smartspec/web... --filter @smartspec/remotion-render... --frozen-lockfile --offline; 1630 packages linked with 1626 reused from the pnpm store; no tracked manifests or lockfiles changed",
+    "workspace_build_artifact": "pnpm --filter @smartspec/remotion-render build generated ignored dist entrypoints required by workerRuntime imports",
+    "postgres": "Integration tests created and removed owner-marked disposable PostgreSQL clusters bound to 127.0.0.1 on ephemeral ports; inherited DATABASE_URL was rejected; the host PostgreSQL service and shared databases were not used",
+    "resource_observation": "Focused integration ran with one Vitest worker; no OOM, signal, or resource interruption occurred"
+  },
+  "checks": [
+    {
+      "kind": "R7_POST_PR641_LATEST_MAIN_FOCUSED_ACCEPTANCE",
+      "source_sha": "b8610ac021e55981ab67b1edb0f87389cdd98c1c",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/autoTeamStaleOutbox.integration.test.ts server/services/__tests__/autoTeamRunMutationFence.integration.test.ts server/services/__tests__/autoTeamProviderCallback.integration.test.ts server/services/__tests__/autoTeamRecoveryUsefulWork.integration.test.ts server/services/__tests__/autoTeamRecoveryNoProgress.integration.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts server/services/__tests__/providerSchedulerService.test.ts server/services/__tests__/autoTeamProviderPollPersistence.integration.test.ts",
+      "scope": "Latest-main regression for stale outbox settlement, TeamRun mutation fencing, provider callback persistence, useful-work and no-progress recovery, Task Control identity continuity, provider scheduler policy, and provider poll result/cancellation/reclaim persistence",
+      "started_at": "2026-10-11T04:49:19Z",
+      "finished_at": "2026-10-11T04:50:03Z",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS",
+      "tests": {
+        "files": 8,
+        "passed_files": 8,
+        "tests": 13,
+        "passed_tests": 13
+      }
+    },
+    {
+      "kind": "R7_OUTBOX_PUBLISHER_LEASE_RECLAIM_ACCEPTANCE",
+      "source_sha": "882feb825e5078032473e2c5c278b538e909f589",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/jobOutboxPublisher.test.ts server/services/__tests__/autoTeamOutboxPublisherReclaim.integration.test.ts",
+      "scope": "Disposable PostgreSQL race where publisher one pauses during transport publication, its lease expires, publisher two reclaims and commits, and publisher one finishes late. The stale publisher reports skipped, does not cancel the live dispatch, and leaves one dispatch row, one DISPATCHED event, and publisher fence version 2.",
+      "started_at": "2026-10-11T04:50:19Z",
+      "finished_at": "2026-10-11T04:50:23Z",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS_PARTIAL_ACCEPTANCE",
+      "tests": {
+        "files": 2,
+        "passed_files": 2,
+        "tests": 4,
+        "passed_tests": 4
+      },
+      "residual": "Proves database settlement fencing and cancellation classification for the exercised publisher race. Does not prove external transport deduplication across response-loss or close all SPEC-277 durable receipt and authority obligations."
+    },
+    {
+      "kind": "R7_PROVIDER_POLL_TIMESTAMP_AND_STALE_LEASE_FIX",
+      "source_sha": "75a652fa4ff3474da59354ed522ee1932e265f31",
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/641",
+      "profile": "integration",
+      "scope": "PR #641 merged a raw-SQL timestamp serialization fix and direct PostgreSQL acceptance for due-poll claims, completed result persistence, exactly-once capacity release, duplicate observations, stale poller results after lease reclaim, and cancellation-versus-completion races. Latest-main regression at b8610ac021e55981ab67b1edb0f87389cdd98c1c passed the provider poll test and scheduler unit suite.",
+      "outcome": "PASS_PARTIAL_ACCEPTANCE",
+      "tests": {
+        "files": 2,
+        "passed_files": 2,
+        "tests": 7,
+        "passed_tests": 7
+      },
+      "residual": "Covers the exercised provider poll path only; does not prove every AutoTeam job producer or full SPEC-277 acceptance."
+    },
+    {
+      "kind": "R7_LATEST_MAIN_POST_PR647_FOCUSED_ACCEPTANCE",
+      "source_sha": "6d760ed9474f8b8c813aba88a6a925eaa09d3fe7",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/autoTeamStaleOutbox.integration.test.ts server/services/__tests__/autoTeamRunMutationFence.integration.test.ts server/services/__tests__/autoTeamProviderCallback.integration.test.ts server/services/__tests__/autoTeamRecoveryUsefulWork.integration.test.ts server/services/__tests__/autoTeamRecoveryNoProgress.integration.test.ts server/services/__tests__/taskControlLeaseContinuity.integration.test.ts server/services/__tests__/providerSchedulerService.test.ts server/services/__tests__/autoTeamProviderPollPersistence.integration.test.ts",
+      "scope": "Latest-main regression for stale outbox settlement, TeamRun mutation fencing, provider callback persistence, useful-work and no-progress recovery, Task Control identity continuity, provider scheduler policy, and provider poll result/cancellation/reclaim persistence.",
+      "started_at": "2026-10-11T04:59:13Z",
+      "finished_at": "2026-10-11T04:59:58Z",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS",
+      "tests": {
+        "files": 8,
+        "passed_files": 8,
+        "tests": 13,
+        "passed_tests": 13
+      }
+    },
+    {
+      "kind": "R7_OUTBOX_PUBLISHER_LEASE_RECLAIM_POST_MAIN_RECONCILIATION",
+      "source_sha": "7dd85cab78e5a12c5c76224c7cf1d5c35074ccd3",
+      "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/646",
+      "profile": "integration",
+      "command": "cd apps/web && env -u DATABASE_URL JWT_SECRET=<synthetic-local-secret> pnpm exec vitest run --maxWorkers=1 server/services/__tests__/jobOutboxPublisher.test.ts server/services/__tests__/autoTeamOutboxPublisherReclaim.integration.test.ts",
+      "scope": "Reconciled candidate based on exact latest main 6d760ed9474f8b8c813aba88a6a925eaa09d3fe7; direct PostgreSQL expiry/reclaim race verifies only the current publisher commits dispatch evidence and the stale publisher neither reports published nor cancels the live dispatch.",
+      "started_at": "2026-10-11T05:00:07Z",
+      "finished_at": "2026-10-11T05:00:11Z",
+      "exit_code": 0,
+      "signal": null,
+      "outcome": "PASS_PARTIAL_ACCEPTANCE",
+      "tests": {
+        "files": 2,
+        "passed_files": 2,
+        "tests": 4,
+        "passed_tests": 4
+      },
+      "residual": "External transport dedupe under response loss, durable receipts, and full SPEC-277 acceptance remain open."
+    }
+  ],
+  "next_ready_workunit": "Promote the stale outbox publisher lease-reclaim fix after its integration gate passes; then continue direct acceptance for late provider callback attempt correlation and pending receipt/outbox consistency. Keep SPEC-277 PARTIAL."
+}

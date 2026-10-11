@@ -214,8 +214,29 @@ export async function publishJobOutboxRow(
   }
 
   let cancellationWon = false;
+  let publicationCommitted = false;
   await db.transaction(async tx => {
     const query = tx as any;
+    const [published] = await query.update(workerJobOutbox).set({
+      publishedAt: now,
+      publisherLeaseTokenHash: null,
+      publisherLeaseExpiresAt: null,
+      updatedAt: now,
+    }).where(and(
+      eq(workerJobOutbox.id, claimed.id),
+      eq(workerJobOutbox.publisherLeaseTokenHash, publisherLeaseTokenHash),
+      eq(workerJobOutbox.publisherFencingVersion, claimed.publisherFencingVersion),
+      isNull(workerJobOutbox.cancelledAt),
+    )).returning({ id: workerJobOutbox.id });
+    if (!published) {
+      const [current] = await query.select({ cancelledAt: workerJobOutbox.cancelledAt })
+        .from(workerJobOutbox)
+        .where(eq(workerJobOutbox.id, claimed.id))
+        .limit(1);
+      cancellationWon = current?.cancelledAt != null;
+      return;
+    }
+    publicationCommitted = true;
     await query.insert(workerJobDispatches).values({
       id: reference.dispatchId || randomUUID(),
       workerJobId: reference.jobId,
@@ -248,21 +269,6 @@ export async function publishJobOutboxRow(
         containerInstanceId: reference.containerInstanceId,
       }),
     });
-    const [published] = await query.update(workerJobOutbox).set({
-      publishedAt: now,
-      publisherLeaseTokenHash: null,
-      publisherLeaseExpiresAt: null,
-      updatedAt: now,
-    }).where(and(
-      eq(workerJobOutbox.id, claimed.id),
-      eq(workerJobOutbox.publisherLeaseTokenHash, publisherLeaseTokenHash),
-      // The claim UPDATE already returned the incremented fencing version.
-      // Comparing with +1 here made every successful publish look stale after
-      // its dispatch/event were written, leaving publishedAt NULL forever.
-      eq(workerJobOutbox.publisherFencingVersion, claimed.publisherFencingVersion),
-      isNull(workerJobOutbox.cancelledAt),
-    )).returning({ id: workerJobOutbox.id });
-    cancellationWon = !published;
   });
 
   if (cancellationWon && adapter.cancel) {
@@ -277,7 +283,11 @@ export async function publishJobOutboxRow(
     }
   }
 
-  return { outboxId, state: "published", dispatchRef: reference };
+  return {
+    outboxId,
+    state: publicationCommitted ? "published" : "skipped",
+    ...(publicationCommitted ? { dispatchRef: reference } : {}),
+  };
 }
 
 async function recordPublishFailure(
