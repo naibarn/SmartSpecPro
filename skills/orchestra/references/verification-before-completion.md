@@ -80,5 +80,9 @@ external state, destructive, high-cost, or require a product/security decision.
 
 ## Retry Rule
 
-For blocking gates, retry at most three times. After three failures, stop and
-report the exact failing command, relevant output, and likely owner.
+For blocking gates, after three evidence-backed failed attempts, record the
+exact command, decisive output and owner, then change strategy, repair the
+cause or continue independent ready work. Stop the affected path only for an
+evidenced external authority/safety blocker or an explicit user/platform limit.
+Do not end an authorized implementation run merely because a retry count was
+reached, and do not retry unchanged inputs without new evidence.

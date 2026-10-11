@@ -4,7 +4,11 @@
 
 Before a safe task checkpoint enters the configured canonical ref, establish that its changed scope has no syntax/compile error, unresolved merge conflict, damaged patch, or accidental secret. Keep this gate bounded to the changed scope. Repair gate failures before promoting, while preserving a durable copy of the task changes.
 
-Do not require full typecheck/build, heavy tests, integration/UAT, provider/rights checks, or production gates before central integration. Those checks may reveal later work, but safe valuable code, including partial progress, must first become visible in the configured canonical ref.
+Pass the slice's impacted compile/tests, security/authorization, compatibility
+and feature-off fallback checks before merge. Repository-required CI and
+reviews remain mandatory, including heavy checks when protection requires
+them; run those on an authorized runner. Do not add unrelated full builds,
+typechecks, UAT or production checks as ad hoc promotion requirements.
 
 ## Heavy checks after promotion
 
