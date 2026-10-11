@@ -293,7 +293,7 @@ export function projectRunnerWorkspaceAuthority(input: {
   const activeSessionsById = new Map<string, Record<string, unknown>>();
   for (const row of [...sessions, ...localActiveSessions]) {
     const id = typeof row.sessionId === "string" ? row.sessionId
-      : typeof row.session_id === "string" ? row.session_id : null;
+      : "session_id" in row && typeof row.session_id === "string" ? row.session_id : null;
     if (id) {
       const existing = activeSessionsById.get(id);
       activeSessionsById.set(id, existing ? mergeActiveSessionFacts(existing, row) : row);
