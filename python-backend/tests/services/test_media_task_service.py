@@ -3,7 +3,6 @@ Tests for MediaTaskService
 """
 
 import pytest
-import uuid
 from decimal import Decimal
 
 from app.services.media_task_service import MediaTaskService, normalize_media_prompt
@@ -19,10 +18,9 @@ class TestMediaTaskService:
     async def test_create_task(self, test_db):
         """Test creating a media task"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -47,10 +45,9 @@ class TestMediaTaskService:
     async def test_create_task_sanitizes_json_unsafe_parameters(self, test_db):
         """create_task should normalize JSON-unsafe parameter payloads."""
         user = User(
-            id=str(uuid.uuid4()),
             email="test-safe@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -99,10 +96,9 @@ class TestMediaTaskService:
     async def test_create_task_normalizes_fenced_prompt(self, test_db):
         """create_task stores normalized prompt text instead of fenced markdown."""
         user = User(
-            id=str(uuid.uuid4()),
             email="test-normalize@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -129,10 +125,9 @@ class TestMediaTaskService:
     async def test_get_task(self, test_db):
         """Test getting a task by ID"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test2@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -155,16 +150,14 @@ class TestMediaTaskService:
     async def test_get_task_wrong_user(self, test_db):
         """Test getting task with wrong user returns None"""
         user1 = User(
-            id=str(uuid.uuid4()),
             email="user1@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         user2 = User(
-            id=str(uuid.uuid4()),
             email="user2@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add_all([user1, user2])
         await test_db.commit()
@@ -186,10 +179,9 @@ class TestMediaTaskService:
     async def test_update_task_status(self, test_db):
         """Test updating task status"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test3@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -215,10 +207,9 @@ class TestMediaTaskService:
     async def test_update_task_status_completed(self, test_db):
         """Test updating task to completed status"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test4@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -250,10 +241,9 @@ class TestMediaTaskService:
     async def test_update_task_status_sanitizes_result_data(self, test_db):
         """result_data should be JSON safe before persistence."""
         user = User(
-            id=str(uuid.uuid4()),
             email="test4b@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -289,10 +279,9 @@ class TestMediaTaskService:
     async def test_update_task_status_failed(self, test_db):
         """Test updating task to failed status"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test5@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -320,10 +309,9 @@ class TestMediaTaskService:
     async def test_cancel_task(self, test_db):
         """Test cancelling a task"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test6@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -345,10 +333,9 @@ class TestMediaTaskService:
     async def test_cancel_completed_task_fails(self, test_db):
         """Test that completed tasks cannot be cancelled"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test7@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -377,10 +364,9 @@ class TestMediaTaskService:
     async def test_list_user_tasks(self, test_db):
         """Test listing user tasks"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test8@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -416,10 +402,9 @@ class TestMediaTaskService:
     async def test_list_user_tasks_with_media_filter(self, test_db):
         """Test listing user tasks with media type filter"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test9@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -459,10 +444,9 @@ class TestMediaTaskService:
     async def test_list_user_tasks_with_status_filter(self, test_db):
         """Test listing user tasks with status filter"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test10@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -502,10 +486,9 @@ class TestMediaTaskService:
     async def test_get_task_count(self, test_db):
         """Test getting task count"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test11@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
@@ -527,10 +510,9 @@ class TestMediaTaskService:
     async def test_pagination(self, test_db):
         """Test task list pagination"""
         user = User(
-            id=str(uuid.uuid4()),
             email="test12@example.com",
-            password_hash="hash",
-            credits_balance=1000
+            password="hash",
+            credits=1000
         )
         test_db.add(user)
         await test_db.commit()
