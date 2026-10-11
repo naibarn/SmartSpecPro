@@ -125,9 +125,12 @@ describe("resolveDataRequirement", () => {
     const result = resolveDataRequirement({ ...requirement, commercialUseRequired: true, redistributableRequired: true, maximumCostCredits: 2 }, [
       offer({ id: "noncommercial", rights: { status: "granted", commercialUse: false, redistributable: true, contentHydrationAllowed: false, policyVersion: "rights-r1" } }),
       offer({ id: "over-budget", estimatedCost: { kind: "known", credits: 3 } }),
+      offer({ id: "zero-cost", estimatedCost: { kind: "zero" } }),
     ], options());
-    expect(result.satisfied).toBe(false);
+    expect(result.satisfied).toBe(true);
     expect(result.rejections.map(item => item.code)).toEqual(expect.arrayContaining(["COMMERCIAL_USE_FORBIDDEN", "COST_LIMIT_EXCEEDED"]));
+    expect(result.eligible.map(item => item.id)).toContain("zero-cost");
+    expect(result.rejections.some(item => item.offerId === "zero-cost")).toBe(false);
   });
 
   it("rejects malformed offer economics and keeps placement failures distinct from privacy", () => {
