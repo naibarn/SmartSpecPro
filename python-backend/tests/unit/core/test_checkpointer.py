@@ -15,14 +15,17 @@ from app.core.checkpointer import (
 )
 
 
-@pytest.fixture(autouse=True)
-async def reset_checkpointer_state():
-    await cleanup_checkpointers()
-    yield
-    await cleanup_checkpointers()
+@pytest.fixture
+def isolated_checkpointer_state(monkeypatch):
+    """Keep module-global caches local to these tests without closing app pools."""
+    monkeypatch.setattr(checkpointer_module, "_postgres_pool", None)
+    monkeypatch.setattr(checkpointer_module, "_postgres_checkpointer", None)
+    monkeypatch.setattr(checkpointer_module, "_memory_checkpointer", None)
 
 
-def test_memory_checkpointer_is_cached_and_legacy_alias_uses_current_memory_api():
+def test_memory_checkpointer_is_cached_and_legacy_alias_uses_current_memory_api(
+    isolated_checkpointer_state,
+):
     memory = get_memory_checkpointer()
     assert isinstance(memory, MemorySaver)
     assert get_memory_checkpointer() is memory
@@ -31,13 +34,17 @@ def test_memory_checkpointer_is_cached_and_legacy_alias_uses_current_memory_api(
 
 
 @pytest.mark.asyncio
-async def test_factory_can_select_memory_without_database_access():
+async def test_factory_can_select_memory_without_database_access(
+    isolated_checkpointer_state,
+):
     memory = await CheckpointerFactory.create(use_postgres=False)
     assert isinstance(memory, MemorySaver)
 
 
 @pytest.mark.asyncio
-async def test_postgres_checkpointer_opens_pool_and_runs_setup():
+async def test_postgres_checkpointer_opens_pool_and_runs_setup(
+    isolated_checkpointer_state,
+):
     pool = AsyncMock()
     saver = AsyncMock()
     with (
@@ -56,7 +63,9 @@ async def test_postgres_checkpointer_opens_pool_and_runs_setup():
 
 
 @pytest.mark.asyncio
-async def test_postgres_checkpointer_reuses_initialized_saver():
+async def test_postgres_checkpointer_reuses_initialized_saver(
+    isolated_checkpointer_state,
+):
     pool = AsyncMock()
     saver = AsyncMock()
     with (
@@ -72,10 +81,12 @@ async def test_postgres_checkpointer_reuses_initialized_saver():
 
 
 @pytest.mark.asyncio
-async def test_cleanup_closes_pool_and_resets_cached_instances():
+async def test_cleanup_closes_pool_and_resets_cached_instances(
+    isolated_checkpointer_state, monkeypatch
+):
     pool = AsyncMock()
-    checkpointer_module._postgres_pool = pool
-    checkpointer_module._postgres_checkpointer = MagicMock()
+    monkeypatch.setattr(checkpointer_module, "_postgres_pool", pool)
+    monkeypatch.setattr(checkpointer_module, "_postgres_checkpointer", MagicMock())
     memory = get_memory_checkpointer()
 
     await cleanup_checkpointers()
