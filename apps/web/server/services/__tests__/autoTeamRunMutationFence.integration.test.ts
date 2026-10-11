@@ -167,6 +167,9 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
         if (staleExit !== 0)
           throw new Error(`SPEC277_STALE_WORKER_FAILED:${stale.stderr}`);
         expect(stale.stdout).toContain("SPEC277_FENCE_MUTATION_REJECTED");
+        expect(stale.stdout).toContain("SPEC277_FENCE_MESSAGE_REJECTED");
+        expect(stale.stdout).toContain("SPEC277_FENCE_ACTIVITY_EVENT_REJECTED");
+        expect(stale.stdout).toContain("SPEC277_FENCE_SNAPSHOT_REJECTED");
 
         const [finalRun] = await client.unsafe(
           `
@@ -180,6 +183,20 @@ describe("AutoTeam mutation fence against worker lease reclaim", () => {
           status: "running",
           stop_reason: null,
           accepted_generation: "2",
+        });
+        const [sideEffectCounts] = await client.unsafe(
+          `
+          SELECT
+            (SELECT COUNT(*)::int FROM team_room_messages WHERE "runId" = $1) AS message_count,
+            (SELECT COUNT(*)::int FROM agent_activity_events WHERE "runId" = $1 AND "eventType" = 'r7_stale_attempt') AS activity_event_count,
+            (SELECT COUNT(*)::int FROM run_snapshots WHERE "runId" = $1) AS snapshot_count
+        `,
+          [runId]
+        );
+        expect(sideEffectCounts).toEqual({
+          message_count: 0,
+          activity_event_count: 0,
+          snapshot_count: 0,
         });
       }
     } finally {

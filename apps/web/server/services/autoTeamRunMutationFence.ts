@@ -65,6 +65,29 @@ export async function persistAutoTeamRunMutation<T>(input: {
 }
 
 /**
+ * Fences a durable side effect emitted by a recovery evaluation against the
+ * same tenant-bound active TeamRun. Calls outside recovery execution retain
+ * their existing behavior.
+ */
+export async function persistAutoTeamRunSideEffect<T>(input: {
+  executor: any;
+  tenantId: string;
+  runId?: string | null;
+  mutate: (executor: any) => Promise<T>;
+}): Promise<T> {
+  const context = activeFence.getStore();
+  if (!context) return input.mutate(input.executor);
+  if (
+    context.tenantId !== input.tenantId ||
+    !input.runId ||
+    context.runId !== input.runId
+  ) {
+    throw new AutoTeamRunMutationFenceError();
+  }
+  return withAutoTeamRunMutationFence({ ...context, mutate: input.mutate });
+}
+
+/**
  * Runs a TeamRun mutation while holding the canonical worker_jobs row lock.
  * Lease reclaim updates the same row, so the authority check and business write
  * are ordered atomically without adding another run lease or schema field.

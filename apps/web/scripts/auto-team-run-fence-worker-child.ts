@@ -2,9 +2,13 @@ import { createInterface } from "node:readline";
 import { eq } from "drizzle-orm";
 import { closeDb, getDb } from "../server/db";
 import { teamRuns } from "../drizzle/schema";
-import { withAutoTeamRunMutationFence } from "../server/services/autoTeamRunMutationFence";
-import { withAutoTeamRunMutationFenceContext } from "../server/services/autoTeamRunMutationFence";
+import {
+  withAutoTeamRunMutationFence,
+  withAutoTeamRunMutationFenceContext,
+} from "../server/services/autoTeamRunMutationFence";
 import * as runEngine from "../server/services/runEngine";
+import * as monitoringService from "../server/services/monitoringService";
+import * as roomService from "../server/services/roomService";
 import { createJobControlPlane } from "../server/services/jobControlPlane";
 
 type FenceInput = {
@@ -46,21 +50,57 @@ async function run() {
         resolve();
       });
     });
-    try {
-      await withAutoTeamRunMutationFenceContext(
-        {
-          lease,
-          tenantId: input.tenantId,
-          runId: input.runId,
-        },
-        () => runEngine.stopRun(input.runId, "stale_worker", input.tenantId)
-      );
-      process.stdout.write("SPEC277_FENCE_MUTATION_ACCEPTED\n");
-    } catch (error) {
-      const code = (error as { code?: unknown } | null)?.code;
-      if (code !== "AUTO_TEAM_RUN_MUTATION_FENCE_REJECTED") throw error;
-      process.stdout.write("SPEC277_FENCE_MUTATION_REJECTED\n");
-    }
+    await withAutoTeamRunMutationFenceContext(
+      {
+        lease,
+        tenantId: input.tenantId,
+        runId: input.runId,
+      },
+      async () => {
+        const expectFenced = async (
+          label: string,
+          work: () => Promise<unknown>
+        ) => {
+          try {
+            await work();
+            throw new Error(`SPEC277_STALE_${label}_WAS_ACCEPTED`);
+          } catch (error) {
+            const code = (error as { code?: unknown } | null)?.code;
+            if (code !== "AUTO_TEAM_RUN_MUTATION_FENCE_REJECTED") throw error;
+            process.stdout.write(`SPEC277_FENCE_${label}_REJECTED\n`);
+          }
+        };
+
+        await expectFenced("MUTATION", () =>
+          runEngine.stopRun(input.runId, "stale_worker", input.tenantId)
+        );
+        await expectFenced("MESSAGE", () =>
+          roomService.sendMessage({
+            roomId: "room-r7-fence",
+            tenantId: input.tenantId,
+            senderType: "system",
+            recipientType: "all",
+            runId: input.runId,
+            content: "stale worker must not persist this message",
+          })
+        );
+        await expectFenced("ACTIVITY_EVENT", () =>
+          monitoringService.recordEvent({
+            tenantId: input.tenantId,
+            teamId: "team-r7-fence",
+            roomId: "room-r7-fence",
+            runId: input.runId,
+            assistantId: "system",
+            eventType: "r7_stale_attempt",
+            eventCategory: "status_change",
+            summary: "stale worker must not persist this event",
+          })
+        );
+        await expectFenced("SNAPSHOT", () =>
+          monitoringService.captureSnapshot(input.runId, input.tenantId)
+        );
+      }
+    );
     return;
   }
 
