@@ -10,7 +10,7 @@ export type GasCityProviderManifest = {
 export class GasCityProviderError extends Error {
   readonly code: "LICENSE_UNVERIFIED" | "MANIFEST_INVALID";
 
-  constructor(code: GasCityProviderError["code"], message = code) {
+  constructor(code: GasCityProviderError["code"], message: string = code) {
     super(message);
     this.name = "GasCityProviderError";
     this.code = code;
