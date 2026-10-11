@@ -43,11 +43,13 @@ import {
   buildDevelopmentHarnessJob,
   recordDevelopmentEvent,
   transitionDevelopmentRun,
+  readSpec224WorkspaceLifecycleReceipts,
   workspaceLifecycleEvidenceErrorCode,
   type DevelopmentEvent,
   type DevelopmentEventType,
   type DevelopmentRun,
   type DevelopmentRunState,
+  type Spec224WorkspaceLifecycleReceiptReader,
 } from "./spec224DevelopmentRunContracts";
 import type { AgentTaskPolicyBinding } from "./agentControlPlaneContracts";
 
@@ -408,6 +410,7 @@ export function createDevelopmentRunService(
       resumeKey: string;
     }) => Promise<boolean>;
     hasDependencyPredicate?: (predicateId: string) => boolean;
+    workspaceLifecycleReceiptReader?: Spec224WorkspaceLifecycleReceiptReader;
   } = {}
 ) {
   const hasDependencyPredicate = options.hasDependencyPredicate ?? ((predicateId: string) =>
@@ -1164,8 +1167,21 @@ export function createDevelopmentRunService(
                 reason: "workspace_convergence_or_retirement_evidence_missing",
               };
             }
-            const convergenceReceipt = job.output?.workspaceConvergenceReceipt;
-            const retirementReceipt = job.output?.worktreeRetirementReceipt;
+            const lifecycleEvidence = await readSpec224WorkspaceLifecycleReceipts(
+              options.workspaceLifecycleReceiptReader,
+              record.run,
+              evidenceRefs
+            );
+            if (lifecycleEvidence.status !== "VERIFIED") {
+              return {
+                action: "WAIT",
+                run: record.run,
+                revision: record.revision,
+                reason: lifecycleEvidence.reason,
+              };
+            }
+            const convergenceReceipt = lifecycleEvidence.convergenceReceipt;
+            const retirementReceipt = lifecycleEvidence.retirementReceipt;
             const lifecycleEvidenceError =
               typeof convergenceReceipt === "object" && convergenceReceipt !== null &&
               typeof retirementReceipt === "object" && retirementReceipt !== null
@@ -1253,6 +1269,8 @@ export function createDevelopmentRunService(
                 resultRef: job.resultRef ?? null,
                 workspaceConvergenceReceipt: convergenceReceipt,
                 worktreeRetirementReceipt: retirementReceipt,
+                workspaceConvergenceAuthorityJobId: lifecycleEvidence.convergenceAuthorityJobId,
+                worktreeRetirementAuthorityJobId: lifecycleEvidence.retirementAuthorityJobId,
               },
               evidenceRefs,
             });

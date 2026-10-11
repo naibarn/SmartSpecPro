@@ -33,9 +33,16 @@ const baseRun: DevelopmentRun = {
     contextPackHash: "a".repeat(64),
     workspaceId: "workspace:run-224-final-verify",
   }),
+  metadata: {
+    projectId: "project-224",
+    canonicalRef: "refs/heads/main",
+    integratedSha: "1".repeat(40),
+  },
   evidenceRefs: [
     ...readyFinalFixture.evidenceRefs,
     "evidence:blocker-final-verify",
+    "evidence:workspace-authority-action:convergence:workspace-job-converge",
+    "evidence:workspace-authority-action:retirement:workspace-job-retire",
   ],
   state: "FINAL_VERIFY",
 };
@@ -157,36 +164,52 @@ function verifyInput(overrides: Record<string, unknown> = {}) {
     finalEvidenceRef: "evidence:final-224-r22",
     workspaceConvergenceEvidenceRef: "evidence:workspace-convergence:receipt-224",
     worktreeRetirementEvidenceRef: "evidence:worktree-retirement:receipt-224",
-    workspaceConvergenceReceipt: {
-      receipt_id: "receipt-224",
-      project_id: "project-224",
-      repository_id: "smartspecpro",
-      workspace_id: "canonical-user-workspace",
-      task_id: baseRun.runId,
-      workspace_role: "CANONICAL_USER_WORKSPACE",
-      result: "USER_WORKSPACE_CONVERGED",
-      dirty: false,
-      integrated_sha: "1".repeat(40),
-      canonical_sha: "2".repeat(40),
-      canonical_user_workspace_sha: "2".repeat(40),
-      verified_at: "2026-10-07T00:00:00.000Z",
-    },
-    worktreeRetirementReceipt: {
-      receipt_id: "receipt-224",
-      project_id: "project-224",
-      repository_id: "smartspecpro",
-      workspace_id: "task-worktree-224",
-      task_id: baseRun.runId,
-      workspace_role: "TASK_WORKTREE",
-      result: "WORKTREE_RETIRED",
-      integration_verified: true,
-      owner_state: "NO_ACTIVE_SESSION",
-      workspace_sha: "2".repeat(40),
-      canonical_sha: "2".repeat(40),
-      retired_at: "2026-10-07T00:00:00.000Z",
-    },
     ...overrides,
   };
+}
+
+function persistedReceiptReader(
+  run: DevelopmentRun = baseRun,
+  overrides: { convergenceReceipt?: Record<string, unknown>; retirementReceipt?: Record<string, unknown> } = {}
+) {
+  return {
+    async readPersistedReceipts(input: { runId: string; tenantId: string; actorId: number; convergenceEvidenceRef: string; retirementEvidenceRef: string; convergenceAuthorityJobId: string; retirementAuthorityJobId: string }) {
+      if (
+        input.runId !== run.runId || input.tenantId !== run.tenantId || input.actorId !== run.actorId ||
+        input.convergenceEvidenceRef !== "evidence:workspace-convergence:receipt-224" ||
+        input.retirementEvidenceRef !== "evidence:worktree-retirement:receipt-224" ||
+        input.convergenceAuthorityJobId !== "workspace-job-converge" ||
+        input.retirementAuthorityJobId !== "workspace-job-retire"
+      ) return { status: "PENDING" as const, reason: "WORKSPACE_LIFECYCLE_RECEIPTS_NOT_FOUND" };
+      return {
+        status: "VERIFIED" as const,
+        convergenceReceipt: overrides.convergenceReceipt ?? {
+          receipt_id: "workspace-convergence:receipt-224",
+          project_id: "project-224", repository_id: "smartspecpro", workspace_id: "canonical-user-workspace",
+          task_id: run.runId, workspace_role: "CANONICAL_USER_WORKSPACE", result: "USER_WORKSPACE_CONVERGED",
+          dirty: false, canonical_ref: "refs/heads/main", integrated_sha: "1".repeat(40),
+          canonical_sha: "2".repeat(40), canonical_user_workspace_sha: "2".repeat(40),
+          verified_at: "2026-10-07T00:00:00.000Z",
+        },
+        retirementReceipt: overrides.retirementReceipt ?? {
+          receipt_id: "worktree-retirement:receipt-224",
+          project_id: "project-224", repository_id: "smartspecpro", workspace_id: "task-worktree-224",
+          task_id: run.runId, workspace_role: "TASK_WORKTREE", result: "WORKTREE_RETIRED",
+          integration_verified: true, owner_state: "NO_ACTIVE_SESSION", workspace_sha: "2".repeat(40),
+          canonical_sha: "2".repeat(40), retired_at: "2026-10-07T00:00:00.000Z",
+        },
+        convergenceAuthorityJobId: "workspace-job-converge",
+        retirementAuthorityJobId: "workspace-job-retire",
+        verifiedAt: "2026-10-07T00:00:01.000Z",
+      };
+    },
+  };
+}
+
+function finalVerifyService(adapter: DevelopmentRunPersistenceAdapter) {
+  return createSpec224FinalVerifyService(adapter, {
+    workspaceLifecycleReceiptReader: persistedReceiptReader(),
+  });
 }
 
 async function attachGraph(
@@ -205,12 +228,32 @@ async function attachGraph(
 }
 
 describe("Spec 224 independent persisted Final Verify", () => {
+  it("does not complete from shape-valid worker receipts without persisted authority lookup", async () => {
+    const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    await attachGraph(adapter, readyFinalFixture.graph);
+
+    const result = await createSpec224FinalVerifyService(adapter).verify(verifyInput({
+      workspaceConvergenceReceipt: { result: "USER_WORKSPACE_CONVERGED", dirty: false },
+      worktreeRetirementReceipt: { result: "WORKTREE_RETIRED", integration_verified: true },
+    }));
+
+    expect(result).toMatchObject({
+      status: "WAIT",
+      outcome: "CONVERGENCE_PENDING",
+      reason: "WORKSPACE_LIFECYCLE_AUTHORITY_UNAVAILABLE",
+      run: { state: "FINAL_VERIFY" },
+      revision: 1,
+    });
+    expect(adapter.read().run.state).toBe("FINAL_VERIFY");
+    expect(adapter.read().events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
+  });
+
   it("returns repair required without completing when a persisted requirement is unverified", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
     await attachGraph(adapter);
 
     const result =
-      await createSpec224FinalVerifyService(adapter).verify(verifyInput());
+      await finalVerifyService(adapter).verify(verifyInput());
 
     expect(result).toMatchObject({
       status: "FAIL",
@@ -243,7 +286,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
       }),
     });
 
-    const result = await createSpec224FinalVerifyService(adapter).verify(
+    const result = await finalVerifyService(adapter).verify(
       verifyInput({ expectedRevision: 2 })
     );
 
@@ -265,11 +308,15 @@ describe("Spec 224 independent persisted Final Verify", () => {
     });
     await attachGraph(attachedAdapter, readyFinalFixture.graph);
     const corrupted = attachedAdapter.read();
-    corrupted.run.evidenceRefs = ["evidence:final-224-r22"];
+    corrupted.run.evidenceRefs = [
+      "evidence:final-224-r22",
+      "evidence:workspace-authority-action:convergence:workspace-job-converge",
+      "evidence:workspace-authority-action:retirement:workspace-job-retire",
+    ];
     const adapter = memoryAdapter(corrupted);
 
     const result =
-      await createSpec224FinalVerifyService(adapter).verify(verifyInput());
+      await finalVerifyService(adapter).verify(verifyInput());
 
     expect(result).toMatchObject({
       status: "FAIL",
@@ -311,7 +358,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
       verificationRefs: ["evidence:blocker-final-verify"],
     });
 
-    const service = createSpec224FinalVerifyService(adapter);
+    const service = finalVerifyService(adapter);
     const first = await service.verify(verifyInput({ expectedRevision: 3 }));
     const duplicate = await service.verify(
       verifyInput({ expectedRevision: 4 })
@@ -344,7 +391,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
   it("rejects stale revision and another tenant or actor", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
     await attachGraph(adapter, readyFinalFixture.graph);
-    const service = createSpec224FinalVerifyService(adapter);
+    const service = finalVerifyService(adapter);
 
     await expect(
       service.verify(verifyInput({ expectedRevision: 0 }))
@@ -362,7 +409,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
     await attachGraph(adapter, readyFinalFixture.graph);
 
     await expect(
-      createSpec224FinalVerifyService(adapter).verify(
+      finalVerifyService(adapter).verify(
         verifyInput({
           provenance: {
             candidateSha: "a".repeat(64),

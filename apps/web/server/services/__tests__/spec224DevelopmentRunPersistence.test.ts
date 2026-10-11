@@ -543,6 +543,11 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     const ready = finalVerifyReadyFixture();
     return {
       ...baseRun,
+      metadata: {
+        projectId: "project-224",
+        canonicalRef: "refs/heads/main",
+        integratedSha: "1".repeat(40),
+      },
       evidenceRefs: [
         ...new Set([
           ...baseRun.evidenceRefs,
@@ -557,37 +562,72 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
   }
 
   function finalVerifyLifecycleOutput(run: ReturnType<typeof finalVerifyRun>) {
+    const { convergenceReceipt, retirementReceipt } = persistedFinalVerifyReceipts(run);
     return {
-      evidenceRefs: ["evidence:final-worker-result", "evidence:workspace-convergence:receipt-test", "evidence:worktree-retirement:receipt-test"],
-      workspaceConvergenceReceipt: {
+      evidenceRefs: [
+        "evidence:final-worker-result",
+        "evidence:workspace-convergence:receipt-test",
+        "evidence:worktree-retirement:receipt-test",
+        "evidence:workspace-authority-action:convergence:authority-job-converge",
+        "evidence:workspace-authority-action:retirement:authority-job-retire",
+      ],
+      workspaceConvergenceReceipt: convergenceReceipt,
+      worktreeRetirementReceipt: retirementReceipt,
+    };
+  }
+
+  function persistedFinalVerifyReceipts(run: ReturnType<typeof finalVerifyRun>) {
+    return {
+      convergenceReceipt: {
         receipt_id: "workspace-convergence:receipt-test",
-        project_id: "project-224",
-        repository_id: "smartspecpro",
-        workspace_id: "canonical-user-workspace",
-        task_id: run.runId,
-        workspace_role: "CANONICAL_USER_WORKSPACE",
-        result: "USER_WORKSPACE_CONVERGED",
-        dirty: false,
-        integrated_sha: "1".repeat(40),
-        canonical_sha: "2".repeat(40),
-        canonical_user_workspace_sha: "2".repeat(40),
+        project_id: "project-224", repository_id: "smartspecpro", workspace_id: "canonical-user-workspace",
+        task_id: run.runId, workspace_role: "CANONICAL_USER_WORKSPACE", result: "USER_WORKSPACE_CONVERGED",
+        dirty: false, canonical_ref: "refs/heads/main", integrated_sha: "1".repeat(40),
+        canonical_sha: "2".repeat(40), canonical_user_workspace_sha: "2".repeat(40),
         verified_at: "2026-10-07T00:00:00.000Z",
       },
-      worktreeRetirementReceipt: {
+      retirementReceipt: {
         receipt_id: "worktree-retirement:receipt-test",
-        project_id: "project-224",
-        repository_id: "smartspecpro",
-        workspace_id: "task-worktree-224",
-        task_id: run.runId,
-        workspace_role: "TASK_WORKTREE",
-        result: "WORKTREE_RETIRED",
-        integration_verified: true,
-        owner_state: "NO_ACTIVE_SESSION",
-        workspace_sha: "2".repeat(40),
-        canonical_sha: "2".repeat(40),
-        retired_at: "2026-10-07T00:00:00.000Z",
+        project_id: "project-224", repository_id: "smartspecpro", workspace_id: "task-worktree-224",
+        task_id: run.runId, workspace_role: "TASK_WORKTREE", result: "WORKTREE_RETIRED",
+        integration_verified: true, owner_state: "NO_ACTIVE_SESSION", workspace_sha: "2".repeat(40),
+        canonical_sha: "2".repeat(40), retired_at: "2026-10-07T00:00:00.000Z",
       },
     };
+  }
+
+  function persistedFinalVerifyReader(
+    run: ReturnType<typeof finalVerifyRun>,
+    overrides: { convergenceReceipt?: Record<string, unknown>; retirementReceipt?: Record<string, unknown> } = {}
+  ) {
+    const actual = persistedFinalVerifyReceipts(run);
+    return {
+      async readPersistedReceipts(input: { runId: string; tenantId: string; actorId: number; convergenceEvidenceRef: string; retirementEvidenceRef: string; convergenceAuthorityJobId: string; retirementAuthorityJobId: string }) {
+        if (
+          input.runId !== run.runId || input.tenantId !== run.tenantId || input.actorId !== run.actorId ||
+          input.convergenceEvidenceRef !== "evidence:workspace-convergence:receipt-test" ||
+          input.retirementEvidenceRef !== "evidence:worktree-retirement:receipt-test" ||
+          input.convergenceAuthorityJobId !== "authority-job-converge" ||
+          input.retirementAuthorityJobId !== "authority-job-retire"
+        ) return { status: "PENDING" as const, reason: "WORKSPACE_LIFECYCLE_RECEIPTS_NOT_FOUND" };
+        return {
+          status: "VERIFIED" as const,
+          convergenceReceipt: overrides.convergenceReceipt ?? actual.convergenceReceipt,
+          retirementReceipt: overrides.retirementReceipt ?? actual.retirementReceipt,
+          convergenceAuthorityJobId: "authority-job-converge",
+          retirementAuthorityJobId: "authority-job-retire",
+          verifiedAt: "2026-10-07T00:00:01.000Z",
+        };
+      },
+    };
+  }
+
+  function finalVerifyService(
+    adapter: DevelopmentRunPersistenceAdapter,
+    run: ReturnType<typeof finalVerifyRun>,
+    reader = persistedFinalVerifyReader(run)
+  ) {
+    return createDevelopmentRunService(adapter, { workspaceLifecycleReceiptReader: reader });
   }
 
   function finalVerifyGraph() {
@@ -804,7 +844,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       }
     );
     await attachFinalVerifyGraph(adapter);
-    const service = createDevelopmentRunService(adapter);
+    const service = finalVerifyService(adapter, run);
 
     const result = await service.reconcile({
       runId: run.runId,
@@ -834,6 +874,29 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     ).toHaveLength(1);
   });
 
+  it("does not treat worker-supplied lifecycle receipts as persisted authority", async () => {
+    const run = finalVerifyRun();
+    const adapter = memoryAdapter(
+      { run, revision: 0, events: [] },
+      { status: "succeeded", output: finalVerifyLifecycleOutput(run) }
+    );
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
+
+    const result = await createDevelopmentRunService(adapter).reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+
+    expect(result).toMatchObject({
+      action: "WAIT",
+      reason: "WORKSPACE_LIFECYCLE_AUTHORITY_UNAVAILABLE",
+      run: { state: "FINAL_VERIFY" },
+      revision: 1,
+    });
+    expect(result.run.events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
+  });
+
   it("rejects Final Verify when the persisted closure graph is missing", async () => {
     const run = finalVerifyRun();
     const adapter = memoryAdapter(
@@ -844,7 +907,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       }
     );
 
-    const result = await createDevelopmentRunService(adapter).reconcile({
+    const result = await finalVerifyService(adapter, run).reconcile({
       runId: run.runId,
       tenantId: run.tenantId,
       actorId: run.actorId,
@@ -885,7 +948,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       }),
     });
 
-    const result = await createDevelopmentRunService(adapter).reconcile({
+    const result = await finalVerifyService(adapter, run).reconcile({
       runId: run.runId,
       tenantId: run.tenantId,
       actorId: run.actorId,
@@ -911,7 +974,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
-    const service = createDevelopmentRunService(adapter);
+    const service = finalVerifyService(adapter, run);
     const result = await service.reconcile({
       runId: run.runId,
       tenantId: run.tenantId,
@@ -942,7 +1005,11 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
-    const result = await createDevelopmentRunService(adapter).reconcile({
+    const receipts = persistedFinalVerifyReceipts(run);
+    const service = finalVerifyService(adapter, run, persistedFinalVerifyReader(run, {
+      convergenceReceipt: { ...receipts.convergenceReceipt, task_id: "another-run" },
+    }));
+    const result = await service.reconcile({
       runId: run.runId,
       tenantId: run.tenantId,
       actorId: run.actorId,
@@ -976,7 +1043,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
-    const service = createDevelopmentRunService(adapter);
+    const service = finalVerifyService(adapter, run);
     const result = await service.reconcile({
       runId: run.runId,
       tenantId: run.tenantId,
@@ -1019,7 +1086,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
-    const result = await createDevelopmentRunService(adapter).reconcile({
+    const result = await finalVerifyService(adapter, run).reconcile({
       runId: run.runId,
       tenantId: run.tenantId,
       actorId: run.actorId,
@@ -1048,7 +1115,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     );
     await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
-    const service = createDevelopmentRunService(adapter);
+    const service = finalVerifyService(adapter, run);
     const result = await service.reconcile({
       runId: run.runId,
       tenantId: run.tenantId,

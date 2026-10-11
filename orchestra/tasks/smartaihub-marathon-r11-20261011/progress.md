@@ -1,0 +1,31 @@
+# R11 Progress
+
+Loop policy:
+  orchestra_id: smartaihub_marathon_r11
+  purpose: canonical delivery evidence and safe DevelopmentRun completion
+  iteration: 2/12
+  tool_call_batches: 20/30 (approximate; host telemetry unavailable)
+  estimated_cost_usd: unknown <= 0.50 (local scoped work only)
+  dispatch_waves: 0/6
+  active_subagents: 0/4
+  parallel_writers: 0/2
+  required_subagent_wait: 0/10 minutes
+  background_subagent_wait: 0/15 minutes
+  repair_rounds: 0/5
+  stop_conditions: success_criteria_met, tests_passed, lifecycle_converged, no_open_blockers
+  stop_reason: active
+
+## Checkpoints
+
+- [COMPLETE] R10 canonical reconciliation — PRs #676, #677, #678, #680, #682 integrated; exact current source `d3d6e9d92bd8120049dc993977043a07c64f548c`.
+- [COMPLETE] Resolver root-cause diagnosis — old primary SHA `ccd4cd11` used unbounded worktree/status Git calls across a large shared worktree set; current canonical bounded resolver succeeded from isolated R11 worktree in 0.540s. Primary checkout remains untouched.
+- [COMPLETE] Receipt trust boundary implementation — both direct Final Verify and DevelopmentRun reconciliation require authority-job snapshots; fabricated worker objects remain WAIT. Snapshot receipt envelope now must match persisted Runner ID/revision/status, and the legacy receipt validator binds both inner receipts to run ID, tenant/run scope, repository, target, and SHA.
+- [PASS, SYNTHETIC IMPLEMENTATION] Focused Vitest acceptance — six files / 40 tests passed after the envelope binding guard. Includes positive in-memory authority-reader tests and worker-object-only denial. This is not live Runner or PostgreSQL final completion proof.
+- [BLOCKED, EXTERNAL AUTHORITY] Genuine positive acceptance — existing shared `smartspec_test` has `runner_nodes`, but read-only inventory found 0 trusted non-revoked Runners, 0 with fresh snapshots, and 0 active sessions; it also has no `spec224_development_runs` table. No authorized fixture Runner/job authority exists to issue persisted lifecycle receipts. No fixture receipt/Runner was fabricated and no shared DB was mutated.
+- [BLOCKED, OWNER APPROVAL] Canonical-delivery-only completion — proposal and executable acceptance matrix are in `policy-proposal.md`; not activated. R21 and current policy still require the canonical user workspace.
+- [BLOCKED, EXTERNAL AUTHORITY] Live Runner readiness — no current trusted Runner/snapshot; protected dispatch remains DENY. Exact owner/action recorded in `lifecycle.md`.
+- [PENDING] One bounded next-WorkUnit selection after checkpoint promotion; do not manufacture a WorkUnit while current R11 proof depends on external authority.
+
+Evidence references: `plan.md`, `test-design.md`, `lifecycle.md`, SPEC-224 R10 evidence under `specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r10-developmentrun-synthetic-repair-20261011.json`.
+
+Current R11 source changes are still uncommitted on the isolated task branch. They are a partial safety improvement and must be fast-gated and promoted before this task pauses. Post-integration live acceptance remains open.
