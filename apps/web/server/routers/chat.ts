@@ -65,7 +65,10 @@ import {
   canAutoExecute,
   type SkillExecutionResult,
 } from "../services/skillExecutor";
-import { parseSkillCreateAction } from "../services/skillActionContract";
+import {
+  parseSkillCreateAction,
+  type SkillCreateAction,
+} from "../services/skillActionContract";
 import { signBearerToken } from "../_core/tokens";
 import {
   skillDetectionLimiter,
@@ -409,6 +412,14 @@ async function handleIscCreateSkill(
     `[ISC] Created private skill '${finalSlug}' (id=${newSkill.id}) for user ${userId}`
   );
   return { ok: true, skillId: newSkill.id };
+}
+
+type SkillCreateResult = Awaited<ReturnType<typeof handleIscCreateSkill>>;
+
+function isSkillCreateSuccess(
+  result: SkillCreateResult,
+): result is Extract<SkillCreateResult, { ok: true }> {
+  return result.ok === true;
 }
 
 // Helper to create secure token for skill execution
@@ -3695,7 +3706,7 @@ export const chatRouter = router({
           skillCreateAction,
           ctx.user.id
         );
-        if (createResult.ok) {
+        if (isSkillCreateSuccess(createResult)) {
           result = {
             ...result,
             message:
