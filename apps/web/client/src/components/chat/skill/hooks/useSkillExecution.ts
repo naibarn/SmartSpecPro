@@ -60,10 +60,8 @@ export interface UseSkillExecutionOptions {
     | "chat"
     | "team_room"
     | "team_run"
-    | "agency"
     | "public_api"
     | "scheduler"
-    | "workflow_background"
     | "channel_bridge";
   localAiEnabled?: boolean;
   localAiExecutionMode?: LocalAiExecutionMode;

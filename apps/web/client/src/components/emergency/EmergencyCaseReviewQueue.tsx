@@ -46,7 +46,7 @@ export default function EmergencyCaseReviewQueue({ canVerify, caseId }: { canVer
       <Text>{t(`reviewQueue.kind.${item.kind}`)} · {item.hazardCategory} · {item.severity}</Text>
       <Link href={getSpec260PagePath("dashboard.case", { caseId: item.caseId })}>{t("reviewQueue.openCase")}</Link>
       {item.basis.map(reason => <Text key={reason}>{reason}</Text>)}
-      <TextArea label={t("reviewQueue.reason")} minLength={8} maxLength={500} value={reasons[item.id] ?? ""} onChange={value => setReasons(current => ({ ...current, [item.id]: value }))} />
+      <TextArea label={t("reviewQueue.reason")} value={reasons[item.id] ?? ""} onChange={value => setReasons(current => ({ ...current, [item.id]: value.slice(0, 500) }))} />
       <Button type="button" isDisabled={(item.kind === "verification" && !canVerify) || (reasons[item.id]?.trim().length ?? 0) < 8}
         label={t("reviewQueue.complete")} clickAction={() => void resolve(item)} />
     </VStack>)}
