@@ -1,14 +1,14 @@
 {
   "schema_version": "spec224.r10.synthetic-developmentrun-evidence.v1",
-  "observed_at": "2026-10-11T08:05:02Z",
-  "source_sha": "caf8bc7930fb94c220adbb27e44d8b6ac6690267",
+  "observed_at": "2026-10-11T08:09:40Z",
+  "source_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
   "canonical_base_sha": "8c56966cbac0f00b2ee51120a4084d93dd6c829e",
   "workunit_id": "SPEC224_NATIVE_POSTGRES_DEVELOPMENTRUN_FULL_SLICE",
   "run": {
-    "run_id": "1c44bebe-aa1b-4e0f-bec9-d42d47ba7aa5",
-    "tenant_id": "73e19b80-87a6-4d5d-bd46-4235f464ada0",
+    "run_id": "f03c2195-f202-4289-bc81-5b4df7e630a5",
+    "tenant_id": "16ead9ed-6f0b-4a61-a44f-26322829bd01",
     "actor_id": 22401,
-    "workunit_identity": "work-1c44bebe-aa1b-4e0f-bec9-d42d47ba7aa5",
+    "workunit_identity": "work-f03c2195-f202-4289-bc81-5b4df7e630a5",
     "environment": "owner-marked disposable PostgreSQL and owner-marked temporary Git repository",
     "execution_mode": "SYNTHETIC",
     "provider_generated": false
@@ -20,9 +20,9 @@
       "rejects blank label",
       "rejects non-string label"
     ],
-    "base_sha": "6360910b674de3b0ef1386412749a4b78e74c19d",
-    "failed_candidate_sha": "88baa272e7efd11f5b8880ccecdf0db47ff94477",
-    "repaired_candidate_sha": "6fb57675973a6524a54ad23dccef3b1aa6dbed7d",
+    "base_sha": "215c1479a4039acec0d8772fc305b703e9ee3052",
+    "failed_candidate_sha": "62e588e5bd31cf5bdee4598bfaf76777e5677e90",
+    "repaired_candidate_sha": "b2283ae4725696f3b3fc4972ca3700ebf34789a7",
     "diff_sha256": "3cc1fdcbe1802e2b2c679a238627666535b794fb27d838d51345efa810bceaff"
   },
   "phases": [
@@ -43,13 +43,13 @@
     "initial_test_command": "python3 -m unittest -v",
     "initial_exit_code": 1,
     "initial_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "initial_stderr_sha256": "4a0932daeed1f99f4c65aad241f5ca62c28bb5a8fb8a0434abb3b5816180963b",
+    "initial_stderr_sha256": "4ca359cbda4760f8260f79fc83db6a13e18ed03970efc48cb9768463d6560643",
     "failure_classification": "FUNCTIONAL_TEST_FAILURE",
     "policy_result": "canonical reconciliation admitted DEBUG_REPAIR",
     "attempts": 2,
     "maximum_attempts": 2,
     "third_attempt": "rejected with REPAIR_ATTEMPT_LIMIT_REACHED",
-    "retry_candidate_sha": "6fb57675973a6524a54ad23dccef3b1aa6dbed7d",
+    "retry_candidate_sha": "b2283ae4725696f3b3fc4972ca3700ebf34789a7",
     "repair_retry_created_duplicate_commit": false,
     "repaired_test_command": "python3 -m unittest -v",
     "repaired_exit_code": 0,
@@ -64,9 +64,9 @@
   },
   "independent_verification": {
     "result": "PASS",
-    "process_id": 984435,
+    "process_id": 1081861,
     "profile": "synthetic-disposable-python-unittest-v1",
-    "source_sha": "6fb57675973a6524a54ad23dccef3b1aa6dbed7d",
+    "source_sha": "b2283ae4725696f3b3fc4972ca3700ebf34789a7",
     "checks": [
       "candidate HEAD equals expected repaired Git SHA",
       "base commit is an ancestor of candidate",
@@ -77,22 +77,22 @@
       "foreign tenant binding is rejected",
       "conflicting evidence digest is rejected"
     ],
-    "evidence_bundle_sha256": "d1ce68cc7dc2ddfe116819e4fa16a7669f121da1317e13bf6005afe40c711fd5",
+    "evidence_bundle_sha256": "1b0eaf5e2c56b1a7d02c2902ae449157a3170bbdff597275c750d1eb768da765",
     "artifact_digests": [
       {
-        "ref": "evidence:spec224-disposable:1c44bebe-aa1b-4e0f-bec9-d42d47ba7aa5:acceptance.json",
-        "sha256": "a5cd9d316af0ebfe05e4f6f342a21b197eb2925a4c30be9ad0f0901c90c9fe2a"
+        "ref": "evidence:spec224-disposable:f03c2195-f202-4289-bc81-5b4df7e630a5:acceptance.json",
+        "sha256": "6a330eb0142d55a59674e3aaca47ad4998eb0c936a7c43bb6837bedcfd3b474c"
       },
       {
-        "ref": "evidence:spec224-disposable:1c44bebe-aa1b-4e0f-bec9-d42d47ba7aa5:candidate.diff",
+        "ref": "evidence:spec224-disposable:f03c2195-f202-4289-bc81-5b4df7e630a5:candidate.diff",
         "sha256": "3cc1fdcbe1802e2b2c679a238627666535b794fb27d838d51345efa810bceaff"
       },
       {
-        "ref": "evidence:spec224-disposable:1c44bebe-aa1b-4e0f-bec9-d42d47ba7aa5:failed-test.json",
-        "sha256": "df7274b24b81ce1b2fe511e821d6dca29bc3609bac4a380f91277d5d651fdcc4"
+        "ref": "evidence:spec224-disposable:f03c2195-f202-4289-bc81-5b4df7e630a5:failed-test.json",
+        "sha256": "1164c0eb50dc76adc7cc9e7ee9ee40e054721e22dd8f0761c402542c54854c36"
       },
       {
-        "ref": "evidence:spec224-disposable:1c44bebe-aa1b-4e0f-bec9-d42d47ba7aa5:repair-test.json",
+        "ref": "evidence:spec224-disposable:f03c2195-f202-4289-bc81-5b4df7e630a5:repair-test.json",
         "sha256": "b99284cc905e096a01fa47c019aff7e18fc9a02b8addb985aba7d8366806d49d"
       }
     ]
@@ -122,12 +122,12 @@
   "focused_verification": {
     "profile": "integration",
     "command": "SPEC224_EMIT_EVIDENCE=1 node_modules/.bin/vitest run --config apps/web/vitest.config.ts apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts apps/web/server/services/__tests__/spec224DevelopmentRunIntegration.test.ts apps/web/server/services/__tests__/spec224DisposableGitAcceptance.test.ts",
-    "source_sha": "caf8bc7930fb94c220adbb27e44d8b6ac6690267",
+    "source_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
     "result": "PASS",
     "files_passed": 4,
     "tests_passed": 24,
     "tests_failed": 0,
-    "observed_at": "2026-10-11T08:05:02Z",
+    "observed_at": "2026-10-11T08:08:15Z",
     "phase_ordering": "verified in order: IMPLEMENT candidate write; TEST failure; DEBUG_REPAIR bounded source repair; TEST pass; VERIFY separate-process verifier"
   },
   "typecheck": {
@@ -177,8 +177,14 @@
     "fencing_followup_merge_sha": "8c56966cbac0f00b2ee51120a4084d93dd6c829e",
     "fencing_followup_merged_at": "2026-10-11T08:01:13Z",
     "fencing_followup_gate": "progressive_integration_gate:PASS",
-    "latest_post_integration_sha": "8c56966cbac0f00b2ee51120a4084d93dd6c829e",
-    "latest_post_integration_build": "PENDING"
+    "latest_post_integration_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+    "latest_post_integration_build": "RESOURCE_BLOCKED; web build not started by resource preflight",
+    "fencing_recovery_checkpoint_pr": "https://github.com/naibarn/SmartSpecPro/pull/677",
+    "fencing_recovery_merge_sha": "8c56966cbac0f00b2ee51120a4084d93dd6c829e",
+    "fencing_recovery_merged_at": "2026-10-11T08:01:13Z",
+    "implementation_crash_recovery_pr": "https://github.com/naibarn/SmartSpecPro/pull/678",
+    "implementation_crash_recovery_merge_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+    "implementation_crash_recovery_merged_at": "2026-10-11T08:07:51Z"
   },
   "lease_recovery": {
     "same_development_run": true,
@@ -194,5 +200,19 @@
     "implementation_process_exit_signal": "SIGKILL",
     "candidate_commit_recovered": true,
     "candidate_commit_count_after_recovery": 2
+  },
+  "canonical_build": {
+    "profile": "full-canonical-build",
+    "command": "/home/dev/.codex/skills/canonical-checkout-sync/scripts/build-canonical-main.sh /home/dev/projects/SmartSpecPro --required-integrated-revision 86d744878dcd67e1f8187a125f713b9364353573 --required-integrated-revision 8c56966cbac0f00b2ee51120a4084d93dd6c829e --required-integrated-revision 1a817425cc14833d15d27f5048e496d8570dabbf",
+    "source_sha": "1a817425cc14833d15d27f5048e496d8570dabbf",
+    "source_verified": true,
+    "target": "smartspec-web",
+    "result": "RESOURCE_BLOCKED",
+    "build_started": false,
+    "exit_code": 137,
+    "resource_observation": "central build preflight reported less than 512 MiB swap headroom; effective user-slice memory about 3.43 GB with 18.0 GiB high / 20 GiB max and swap nearly exhausted",
+    "result_file": "/home/dev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/1a817425cc14833d15d27f5048e496d8570dabbf-39d366d3-fec5-4c21-9dae-aa38a7b8b700.json",
+    "primary_checkout_sync": "SKIPPED_RESOURCE_BLOCKED; primary checkout is on the wrong SHA and dirty; preserved unchanged",
+    "retry_policy": "not retried; requires a fresh resource observation or changed capacity"
   }
 }
