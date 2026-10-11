@@ -875,7 +875,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+    "expected_canonical_sha": "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
     "expected_spec_digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e"
   },
   "continuation": {
@@ -1065,7 +1065,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 37,
+  "generation": 38,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "74ed9645b32e64ca06c0c2d30f749f0f7c8da46539577f23d5563e20f4061c1e",
@@ -1085,7 +1085,8 @@
     "checkpoint_shas": [
       "074eb72c5bd3a3c62028e052f60831d451e3f4e9",
       "76d88dd7e9c81f6a8a244074463e1a850410769b",
-      "bb832db746f11db7a2bf15533ac9135634ad3db9"
+      "bb832db746f11db7a2bf15533ac9135634ad3db9",
+      "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce"
     ],
     "mapping": [
       {
@@ -1135,6 +1136,14 @@
           "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json"
         ],
         "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647"
+      },
+      {
+        "canonical_sha": "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
+        "coverage": "PARTIAL; UI reuse rights now match server/schema restrictions",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/581",
+        "scope": "PR #581 disables asset reuse for unknown and third-party references and allows it only for user_owned/authorized rights. Focused UI test passed 1/1; progressive_integration_gate passed. This does not add Library asset authorization or visual UAT.",
+        "source_sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
+        "status": "PARTIAL"
       }
     ],
     "source_paths": [
@@ -1159,9 +1168,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bb832db746f11db7a2bf15533ac9135634ad3db9",
+    "canonical_sha": "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
     "integrated": true,
-    "integrated_at": "2026-10-11T00:24:02Z"
+    "integrated_at": "2026-10-11T00:34:07Z"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -3449,7 +3458,7 @@
     "unresolved": 1246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T00:25:42.444235Z",
+  "updated_at": "2026-10-11T00:34:39.814692Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -3504,13 +3513,22 @@
         "scope": "PR #578 integrates optional screenshot intake into the existing authorized SPEC-224 Runner workspace flow. Focused Vitest passed 11/11, Runner Rust tests 3/3, rustfmt/diff checks and progressive_integration_gate passed. The slice stores a tenant/run-bound manifest and safe image files. It does not implement Mini App Factory generation, URL/video acquisition, visual blueprinting, render/compare/repair, or end-to-end acceptance; acceptance remains UNVERIFIED.",
         "source_sha": "6663706dc01c94c4982c62f023ffafb723e38647",
         "status": "PARTIAL"
+      },
+      {
+        "canonical_sha": "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
+        "kind": "SPEC224_VISUAL_REFERENCE_RIGHTS_UI_REPAIR",
+        "path": "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/screenshot-intake-20261011.json",
+        "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/581",
+        "scope": "Unknown/third-party rights cannot enable asset reuse in the UI. Focused screenshot intake test passed; no visual generation or UAT claim.",
+        "source_sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
+        "status": "PASS_PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "6663706dc01c94c4982c62f023ffafb723e38647",
+    "sha": "8bf95a62c5a38c416290e18eb2bf8d7b343f8560",
     "status": "PARTIAL",
     "task_regressions": []
   }
