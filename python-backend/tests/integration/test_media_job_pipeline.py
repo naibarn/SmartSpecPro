@@ -8,30 +8,45 @@ These tests verify the validation and fixture layers integrate correctly.
 """
 
 import json
+import socket
+
 import pytest
 
-from app.core.media_job_validators import (
-    validate_job_spec_security,
-    validate_uri_no_ssrf,
-    validate_output_path,
-    validate_codec,
-    FFMPEG_TIMEOUT_SECONDS,
-    MAX_OUTPUT_FILE_BYTES,
-    ALLOWED_CODECS,
-)
+
+@pytest.fixture(autouse=True)
+def resolve_placeholder_cdn_as_public(monkeypatch):
+    """Keep public-URL integration cases independent of runner DNS policy."""
+    original_getaddrinfo = socket.getaddrinfo
+
+    def getaddrinfo(host, *args, **kwargs):
+        if host == "cdn.example.com":
+            return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", 443))]
+        return original_getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+import os
 
 # Import from our shared fixtures
 import sys
-import os
+
+from app.core.media_job_validators import (
+    ALLOWED_CODECS,
+    FFMPEG_TIMEOUT_SECONDS,
+    MAX_OUTPUT_FILE_BYTES,
+    validate_codec,
+    validate_job_spec_security,
+)
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from fixtures.media_job_fixtures import (
+    mock_ffmpeg_progress_lines,
+    mock_ffprobe_output,
+    mock_silence_detect_stderr,
+    valid_dead_air_spec,
     valid_probe_spec,
     valid_render_spec,
     valid_waveform_spec,
-    valid_dead_air_spec,
-    mock_ffprobe_output,
-    mock_silence_detect_stderr,
-    mock_ffmpeg_progress_lines,
 )
 
 
