@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { promisify } from "node:util";
 
 import postgres from "postgres";
@@ -11,10 +12,10 @@ import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRu
 
 const execFileAsync = promisify(execFile);
 
-describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () => {
+describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — PostgreSQL", () => {
   afterEach(async () => closeDb());
 
-  it("settles one canonical phase and resumes the same DevelopmentRun with Task Control visibility", async () => {
+  it("executes the persisted phase lifecycle through bounded repair and refuses Final Verify without workspace receipts", async () => {
     if (process.env.DATABASE_URL)
       throw new Error("SPEC224_REFUSES_INHERITED_DATABASE_URL");
 
@@ -118,7 +119,7 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
       if (!lease) throw new Error("SPEC224_SYNTHETIC_JOB_NOT_CLAIMED");
       await controlPlane.start(lease);
       await controlPlane.complete(lease, {
-        resultRef: `evidence:spec224-workunit-${runId}`,
+        resultRef: `evidence:phase-${runId}`,
         output: { evidenceRefs: [`evidence:phase-${runId}`] },
       });
       await expect(
@@ -165,7 +166,7 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         });
         const persisted = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get({runId, tenantId, actorId});
         const sql = postgres(process.env.DATABASE_URL, { max: 1 });
-        const [job] = await sql.unsafe('SELECT "progressJson" FROM worker_jobs WHERE id = $1', [result.continuation?.jobRef.jobId]);
+        const [job] = await sql.unsafe('SELECT "progressJson", "outputJson" FROM worker_jobs WHERE id = $1', [process.env.TEST_INITIAL_JOB_ID]);
         process.stdout.write("R9_RESULT:" + JSON.stringify({
           action: result.reconcile.action, reason: result.reconcile.reason,
           retry: { action: retry.reconcile.action, reason: retry.reconcile.reason, continuation: retry.continuation },
@@ -173,6 +174,7 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
           events: persisted.events.map(event => event.type),
           continuation: result.continuation && { accepted: result.continuation.accepted, jobRef: result.continuation.jobRef },
           progressJson: job?.progressJson ?? null,
+          initialOutput: job?.outputJson ?? null,
         }) + "\\n");
         await sql.end();
         await closeDb();
@@ -181,7 +183,9 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         process.execPath,
         ["--import", "tsx", "--input-type=module", "--eval", childScript],
         {
-          cwd: process.cwd(),
+          cwd: process.cwd().endsWith(`${path.sep}apps${path.sep}web`)
+            ? process.cwd()
+            : path.join(process.cwd(), "apps", "web"),
           env: {
             ...process.env,
             DATABASE_URL: fixture.databaseUrl,
@@ -189,6 +193,7 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
             TEST_TENANT_ID: tenantId,
             TEST_ACTOR_ID: String(actorId),
             TEST_FENCING_VERSION: String(first.run.fencingVersion),
+            TEST_INITIAL_JOB_ID: first.jobRef.jobId,
           },
           timeout: 20_000,
           maxBuffer: 24 * 1024,
@@ -219,14 +224,13 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         spec224: { runId, workerJobId: planningJobId, state: "PLANNING" },
         developmentLifecycle: { workUnit: { workId: `work-${runId}` } },
       });
-
       const [settledJob] = await client.unsafe(
         `SELECT status, "resultRef", "outputJson" FROM worker_jobs WHERE id = $1`,
         [first.jobRef.jobId]
       );
       expect(settledJob).toMatchObject({
         status: "succeeded",
-        resultRef: `evidence:spec224-workunit-${runId}`,
+        resultRef: `evidence:phase-${runId}`,
         outputJson: { evidenceRefs: [`evidence:phase-${runId}`] },
       });
       const [terminalCounts] = await client.unsafe(
@@ -278,6 +282,223 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         runId,
         state: "PLANNING",
         workerJobId: planningJobId,
+      });
+      if (!persisted) throw new Error("SPEC224_RUN_NOT_PERSISTED_AFTER_RESTART");
+
+      const { createAndBindNextPhase } = await import("../spec224PhaseController");
+      const { runSpec224DisposableGitAcceptance } = await import("./support/spec224DisposableGitAcceptance");
+      let current = persisted;
+      let currentPhase = current.run.state;
+      let nextPlanRevision = 3;
+      let acceptance: Awaited<ReturnType<typeof runSpec224DisposableGitAcceptance>> | null = null;
+      let firstTestFailure = true;
+      const exercisedPhases = ["DISCOVERY"];
+
+      while (currentPhase && currentPhase !== "FINAL_VERIFY") {
+        const jobId = current.run.workerJobId;
+        if (!jobId) throw new Error("SPEC224_PHASE_JOB_UNBOUND");
+        const currentLease = await controlPlane.claim({
+          jobId,
+          runnerId: `r10-synthetic-${currentPhase}-${runId}`,
+          adapter: "test",
+        });
+        if (!currentLease) throw new Error(`SPEC224_PHASE_NOT_CLAIMED:${currentPhase}`);
+        await controlPlane.start(currentLease);
+        exercisedPhases.push(currentPhase);
+        const expectedTestFailure = currentPhase === "TEST" && firstTestFailure;
+
+        if (currentPhase === "IMPLEMENT") {
+          acceptance = await runSpec224DisposableGitAcceptance({ runId, tenantId, actorId, workUnitId: `work-${runId}` });
+          expect(acceptance).toMatchObject({
+            mode: "SYNTHETIC",
+            scope: { runId, tenantId, actorId, workUnitId: `work-${runId}` },
+            repairAttempts: 2,
+            repairedTestExitCode: 0,
+            candidateSha: acceptance.retryCandidateSha,
+            verifierSourceSha: acceptance.candidateSha,
+          });
+          expect(acceptance.initialTestExitCode).not.toBe(0);
+          expect(acceptance.failedCandidateSha).not.toBe(acceptance.candidateSha);
+          expect(acceptance.verifierPid).not.toBe(process.pid);
+          expect(acceptance.artifactRefs).toHaveLength(4);
+          await controlPlane.complete(currentLease, {
+            resultRef: `evidence:spec224-disposable:${runId}:candidate`,
+            output: { evidenceRefs: acceptance.artifactRefs, syntheticAcceptance: acceptance },
+          });
+        } else if (expectedTestFailure) {
+          if (!acceptance) throw new Error("SPEC224_SYNTHETIC_IMPLEMENTATION_MISSING");
+          firstTestFailure = false;
+          await controlPlane.fail(currentLease, {
+            code: "FUNCTIONAL_TEST_FAILURE",
+            message: "Initial disposable candidate failed the acceptance tests",
+            class: "permanent",
+            metadata: { candidateSha: acceptance.failedCandidateSha, evidenceRefs: acceptance.artifactRefs },
+          });
+        } else {
+          await controlPlane.complete(currentLease, {
+            resultRef: `evidence:phase-${currentPhase}-${runId}`,
+            output: {
+              evidenceRefs: currentPhase === "DEBUG_REPAIR" || currentPhase === "TEST"
+                ? acceptance?.artifactRefs ?? []
+                : [`evidence:phase-${currentPhase}-${runId}`],
+              ...(currentPhase === "DEBUG_REPAIR" && acceptance ? { repairedCandidateSha: acceptance.candidateSha } : {}),
+              ...(currentPhase === "TEST" && acceptance ? { independentVerifierPid: acceptance.verifierPid, sourceSha: acceptance.verifierSourceSha } : {}),
+            },
+          });
+        }
+
+        let reconciled;
+        try {
+          reconciled = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).reconcile({
+            runId, tenantId, actorId,
+          });
+        } catch (error) {
+          throw new Error(`SPEC224_RECONCILE_FAILED:${currentPhase}:${jobId}:${error instanceof Error ? error.message : String(error)}`);
+        }
+        if (expectedTestFailure && reconciled.action !== "RECOVER") {
+          throw new Error(`SPEC224_TEST_FAILURE_NOT_ROUTED_TO_REPAIR:${reconciled.reason}:${reconciled.run.state}`);
+        }
+        if (!expectedTestFailure && reconciled.action !== "CONTINUE") {
+          throw new Error(`SPEC224_PHASE_DID_NOT_CONTINUE:${currentPhase}:${reconciled.reason}`);
+        }
+        const admitted = await createAndBindNextPhase({
+          runId,
+          tenantId,
+          actorId,
+          expectedRevision: reconciled.revision,
+          expectedFencingVersion: reconciled.run.fencingVersion,
+          idempotencyKey: `r10-continue:${runId}:${reconciled.run.state}:${nextPlanRevision}`,
+          provider: "codex",
+          runtime: "local_runner",
+          planId: `plan-${runId}`,
+          planRevision: nextPlanRevision++,
+          skillIds: [],
+          requestedCapabilities: ["workspace.edit"],
+          authorizationScope: "spec224.development.run",
+          persistence: defaultDevelopmentRunPersistenceAdapter,
+          controlPlane,
+          executorRegistry: defaultJobExecutorRegistry,
+        });
+        current = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get({ runId, tenantId, actorId });
+        if (!current || current.run.workerJobId !== admitted.jobRef.jobId) throw new Error("SPEC224_NEXT_PHASE_BIND_MISMATCH");
+        currentPhase = current.run.state;
+      }
+
+      if (!acceptance || !current || currentPhase !== "FINAL_VERIFY") throw new Error("SPEC224_FINAL_VERIFY_NOT_REACHED");
+      expect(exercisedPhases).toEqual([
+        "DISCOVERY", "PLANNING", "PLAN_VERIFY", "IMPLEMENT", "BUILD", "TEST",
+        "DEBUG_REPAIR", "TEST", "REVIEW", "VERIFY", "REGRESSION",
+      ]);
+      const finalLease = await controlPlane.claim({
+        jobId: current.run.workerJobId!, runnerId: `r10-final-verify-${runId}`, adapter: "test",
+      });
+      if (!finalLease) throw new Error("SPEC224_FINAL_VERIFY_NOT_CLAIMED");
+      await controlPlane.start(finalLease);
+      await controlPlane.complete(finalLease, {
+        resultRef: `evidence:final-${runId}`,
+        output: {
+          evidenceRefs: [`evidence:final-${runId}`, ...acceptance.artifactRefs],
+          syntheticAcceptance: acceptance,
+        },
+      });
+      const finalGate = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).reconcile({
+        runId, tenantId, actorId,
+      });
+      expect(finalGate).toMatchObject({
+        action: "WAIT",
+        reason: "workspace_convergence_or_retirement_evidence_missing",
+        run: { state: "WAITING_HUMAN_DECISION" },
+      });
+      if (process.env.SPEC224_EMIT_EVIDENCE === "1") {
+        process.stdout.write("SPEC224_R10_ACCEPTANCE:" + JSON.stringify({
+          mode: acceptance.mode,
+          scope: acceptance.scope,
+          baseSha: acceptance.baseSha,
+          failedCandidateSha: acceptance.failedCandidateSha,
+          candidateSha: acceptance.candidateSha,
+          repairAttempts: acceptance.repairAttempts,
+          initialTestExitCode: acceptance.initialTestExitCode,
+          repairedTestExitCode: acceptance.repairedTestExitCode,
+          diffDigest: acceptance.diffDigest,
+          evidenceDigest: acceptance.evidenceDigest,
+          artifactRefs: acceptance.artifactRefs,
+          verifierPid: acceptance.verifierPid,
+          verifierProfile: acceptance.verifierProfile,
+          verifierSourceSha: acceptance.verifierSourceSha,
+          finalGate: { action: finalGate.action, reason: finalGate.reason, state: finalGate.run.state },
+          stateAfterFreshProcess: "WAITING_HUMAN_DECISION",
+        }) + "\n");
+      }
+      expect(acceptance.verifierSourceSha).toBe(acceptance.candidateSha);
+      const [implementationEvidence] = await client.unsafe(
+        `SELECT "outputJson" FROM worker_jobs WHERE "resultRef" = $1`,
+        [`evidence:spec224-disposable:${runId}:candidate`]
+      );
+      expect(implementationEvidence?.outputJson).toMatchObject({
+        syntheticAcceptance: {
+          mode: "SYNTHETIC",
+          candidateSha: acceptance.candidateSha,
+          evidenceDigest: acceptance.evidenceDigest,
+        },
+      });
+      const afterFinalVerify = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get({ runId, tenantId, actorId });
+      expect(afterFinalVerify?.events.filter(event => event.type === "RUN_COMPLETED")).toHaveLength(0);
+      const restartScript = `
+        import { createHash } from "node:crypto";
+        import postgres from "postgres";
+        const [{ createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter }, { closeDb }] = await Promise.all([
+          import("./server/services/spec224DevelopmentRunPersistence.ts"),
+          import("./server/db.ts"),
+        ]);
+        const runId = process.env.TEST_RUN_ID;
+        const scope = { runId, tenantId: process.env.TEST_TENANT_ID, actorId: Number(process.env.TEST_ACTOR_ID) };
+        const run = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get(scope);
+        const sql = postgres(process.env.DATABASE_URL, { max: 1 });
+        const [job] = await sql.unsafe('SELECT "outputJson" FROM worker_jobs WHERE "resultRef" = $1', [process.env.TEST_IMPLEMENTATION_RESULT_REF]);
+        const acceptance = job?.outputJson?.syntheticAcceptance;
+        const artifacts = acceptance?.evidenceArtifacts ?? [];
+        const actualDigest = createHash("sha256").update(JSON.stringify(artifacts.map(({ ref, sha256 }) => ({ ref, sha256 })))).digest("hex");
+        const artifactBytesValid = artifacts.every(({ contentBase64, sha256 }) => createHash("sha256").update(Buffer.from(contentBase64, "base64")).digest("hex") === sha256);
+        process.stdout.write("R10_RESTART:" + JSON.stringify({
+          state: run?.run.state,
+          workerJobId: run?.run.workerJobId,
+          completedEvents: run?.events.filter(event => event.type === "RUN_COMPLETED").length,
+          evidenceDigest: acceptance?.evidenceDigest,
+          actualDigest,
+          artifactCount: artifacts.length,
+          artifactBytesValid,
+          verifierSourceSha: acceptance?.verifierSourceSha,
+          candidateSha: acceptance?.candidateSha,
+        }) + "\\n");
+        await sql.end();
+        await closeDb();
+      `;
+      const restartedChild = await execFileAsync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", restartScript], {
+        cwd: process.cwd().endsWith(`${path.sep}apps${path.sep}web`)
+          ? process.cwd()
+          : path.join(process.cwd(), "apps", "web"),
+        env: {
+          ...process.env,
+          DATABASE_URL: fixture.databaseUrl,
+          TEST_RUN_ID: runId,
+          TEST_TENANT_ID: tenantId,
+          TEST_ACTOR_ID: String(actorId),
+          TEST_IMPLEMENTATION_RESULT_REF: `evidence:spec224-disposable:${runId}:candidate`,
+        },
+        timeout: 20_000,
+        maxBuffer: 24 * 1024,
+      });
+      const restartedLine = restartedChild.stdout.split(/\r?\n/).find(line => line.startsWith("R10_RESTART:"));
+      if (!restartedLine) throw new Error(`SPEC224_FINAL_RESTART_RESULT_MISSING:${restartedChild.stdout.slice(-500)}`);
+      expect(JSON.parse(restartedLine.slice("R10_RESTART:".length))).toMatchObject({
+        state: "WAITING_HUMAN_DECISION",
+        completedEvents: 0,
+        evidenceDigest: acceptance.evidenceDigest,
+        actualDigest: acceptance.evidenceDigest,
+        artifactCount: 4,
+        artifactBytesValid: true,
+        verifierSourceSha: acceptance.candidateSha,
+        candidateSha: acceptance.candidateSha,
       });
     } finally {
       await closeDb();

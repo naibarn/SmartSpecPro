@@ -146,6 +146,7 @@ const PHASE_SUCCESSORS: Partial<
   REVIEW: "VERIFY",
   VERIFY: "REGRESSION",
   REGRESSION: "FINAL_VERIFY",
+  DEBUG_REPAIR: "TEST",
 };
 
 const TERMINAL_JOB_STATES = new Set([
@@ -1622,9 +1623,11 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
                 phaseInputRecord.runId !== next.run.runId ||
                 phaseInputRecord.tenantId !== scope.tenantId ||
                 Number(phaseInputRecord.actorId) !== scope.actorId ||
-                phaseInputRecord.state !== next.run.state ||
+                typeof phaseInputRecord.state !== "string" ||
                 phaseInputRecord.workerJobId !== phaseJob.id ||
-                Number(phaseInputRecord.projectionVersion) !== expectedRevision ||
+                !Number.isSafeInteger(Number(phaseInputRecord.projectionVersion)) ||
+                Number(phaseInputRecord.projectionVersion) < 0 ||
+                Number(phaseInputRecord.projectionVersion) > expectedRevision ||
                 !Number.isSafeInteger(Number(phaseInputRecord.fencingVersion)) ||
                 Number(phaseInputRecord.fencingVersion) < 0 ||
                 Number(phaseInputRecord.fencingVersion) > next.run.fencingVersion ||
@@ -1635,8 +1638,7 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
                     Number(phaseProjection.actorId) !== scope.actorId ||
                     phaseProjection.workerJobId !== phaseJob.id ||
                     !Number.isSafeInteger(Number(phaseProjection.projectionVersion)) ||
-                    Number(phaseProjection.projectionVersion) < 0 ||
-                    Number(phaseProjection.projectionVersion) > next.revision))
+                    Number(phaseProjection.projectionVersion) !== expectedRevision))
               ) {
                 throw new Error("RUN_PHASE_JOB_PROJECTION_BINDING_INVALID");
               }

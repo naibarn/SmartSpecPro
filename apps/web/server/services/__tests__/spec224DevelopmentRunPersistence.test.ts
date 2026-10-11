@@ -106,6 +106,31 @@ function memoryAdapter(
 }
 
 describe("Spec 224 durable DevelopmentRun persistence", () => {
+  it("continues a successfully repaired run into TEST", async () => {
+    const run = {
+      ...baseRun,
+      state: "DEBUG_REPAIR" as const,
+      workerJobId: "worker-job-repaired",
+    };
+    const adapter = memoryAdapter(
+      { run, revision: 0, events: [] },
+      { status: "succeeded", resultRef: "result:bounded-repair", output: { evidenceRefs: ["evidence:repair-diff"] } }
+    );
+
+    const result = await createDevelopmentRunService(adapter).reconcile({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+
+    expect(result).toMatchObject({ action: "CONTINUE", reason: "phase_succeeded" });
+    expect(result.run.state).toBe("TEST");
+    expect(result.run.events.at(-1)).toMatchObject({
+      type: "PHASE_COMPLETED",
+      payload: { workerJobId: "worker-job-repaired", resultRef: "result:bounded-repair" },
+    });
+  });
+
   it("persists partial canonical work and implementation completion on the existing run owner", async () => {
     const adapter = memoryAdapter();
     const service = createDevelopmentRunService(adapter);
