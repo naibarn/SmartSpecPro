@@ -185,3 +185,42 @@ checks separate from visual review.
 The deterministic decision kernel and its required regression scenarios are
 in `../tools/lifecycle_policy.py` and
 `autonomous-completion-scenarios.json`.
+
+## Outcome-first recovery execution (applicable to every task)
+
+A user's requested deliverable is the goal, not a pass through every available
+skill, runner, browser, or infrastructure gate. Before applying any E2E gate,
+map it to the authoritative requested outcome and its risk: functional
+preview, product validation, factory runtime acceptance, and production release
+are distinct claims. An optional or non-applicable gate cannot block earlier
+safe deliverables or be reported as an acceptance pass.
+
+On a recoverable failure, call the shared deterministic policy event
+`recovery_challenge` with observed failure class, requirement applicability,
+tested fallback paths, independent ready work, retry count and actual progress
+delta. The resulting action is a **dispatch obligation**: the conductor must
+invoke an authorized executor or tool, record the attempted strategy and proof,
+then re-evaluate the outcome. A text-only handoff does not satisfy an executable
+recovery action. If the assigned action cannot execute, investigate the adapter
+and invoke an independent ready WorkUnit while retaining the failed path.
+
+On `REPLAN_WITH_NEW_STRATEGY`, use LLM analysis to propose a materially
+different, authorized strategy; record and prohibit the ineffective prior
+strategy. Do not reissue the same check or demand that the user troubleshoot
+ordinary tools. For optional verification, `SKIP_OPTIONAL_AND_CONTINUE` closes
+only the optional evidence obligation; it never asserts the skipped check
+passed or that required acceptance is complete.
+
+Never create false provider credentials, replace a security gate with a mock,
+use production data or endpoint to compensate for missing non-production
+authority, or deploy/alter production implicitly. Genuine security, legal,
+irreversible-data, and unavailable-credential boundaries still apply. Continue
+only independent safe deliverables across those boundaries.
+
+For browser-visible work, provide the first functional build/preview when its
+own checks pass; do not require Remote Runner enrollment or complete Factory E2E
+unless the user's actual acceptance requirement needs it. Track full-Factory
+verification separately and do not call it passed from a static preview.
+For a user's Build action, require an exact canonical source SHA, bounded
+rebuild on canonical advance, artifact identity, and independent publication
+evidence before claiming a visible latest version.

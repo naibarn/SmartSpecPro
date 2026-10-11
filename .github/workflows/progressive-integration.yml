@@ -36,3 +36,10 @@ jobs:
           python -m unittest discover \
             -s skills/integration-controller/tests \
             -p 'test_*.py'
+          # Block a future regression of optional-gate recovery and fresh builds.
+          python -m unittest discover \
+            -s skills/orchestra/tests \
+            -p 'test_lifecycle_policy.py'
+          python -m unittest discover \
+            -s scripts/development-lifecycle \
+            -p 'test_canonical_build_retry.py'

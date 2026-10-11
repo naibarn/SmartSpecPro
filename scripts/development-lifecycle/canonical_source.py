@@ -520,6 +520,44 @@ def build_canonical(
         return result
 
 
+def build_latest_canonical(
+    repo: Path,
+    *,
+    command: Sequence[str],
+    required_revisions: Sequence[str] = (),
+    build_target: str | None = None,
+    policy_path: Path | None = None,
+    lease_seconds: int = 900,
+    max_stale_rebuilds: int = 2,
+) -> dict[str, Any]:
+    """Coalesce main advances into bounded retries; never deliver a stale success.
+
+    Each retry takes the latest canonical SHA under the existing repository
+    build lock. Resource or code failures are returned immediately, not retried.
+    """
+    if not 0 <= max_stale_rebuilds <= 3:
+        raise LifecycleError("MAX_STALE_REBUILDS_OUT_OF_RANGE")
+    for attempt in range(1, max_stale_rebuilds + 2):
+        result = build_canonical(
+            repo,
+            command=command,
+            required_revisions=required_revisions,
+            build_target=build_target,
+            policy_path=policy_path,
+            lease_seconds=lease_seconds,
+        )
+        if result["status"] != "STALE_CANONICAL_ADVANCED":
+            return {**result, "build_attempts": attempt}
+        if attempt <= max_stale_rebuilds:
+            print(
+                "[canonical-build] main advanced; retrying on fresh canonical tip "
+                f"({attempt}/{max_stale_rebuilds} stale rebuilds)",
+                file=sys.stderr,
+                flush=True,
+            )
+    return {**result, "build_attempts": max_stale_rebuilds + 1}
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
@@ -548,6 +586,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     build.add_argument("--required-integrated-revision", action="append", default=[])
     build.add_argument("--build-target")
     build.add_argument("--lease-seconds", type=int, default=900)
+    build.add_argument("--max-stale-rebuilds", type=int, default=2)
     build.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     try:
@@ -574,13 +613,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.action == "build":
             command = args.command[1:] if args.command and args.command[0] == "--" else args.command
-            result = build_canonical(
+            result = build_latest_canonical(
                 args.repository,
                 command=command,
                 required_revisions=args.required_integrated_revision,
                 build_target=args.build_target,
                 policy_path=args.policy,
                 lease_seconds=args.lease_seconds,
+                max_stale_rebuilds=args.max_stale_rebuilds,
             )
             if result["status"] == "STALE_CANONICAL_ADVANCED":
                 return 75
