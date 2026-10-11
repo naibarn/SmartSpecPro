@@ -181,7 +181,7 @@ export function reconcileMigrationExecutionReceipts(input: {
     failedMigration: receiptState === "FAILED" || receiptState === "INTERRUPTED" ? {
       state: "FAILED", source: "api_audit_events.migration_execution_receipt",
       migration: { tag: value.expectedMigrationHead?.tag ?? "unknown", hash: value.expectedMigrationHead?.hash ?? "unknown" },
-      observedAt: completedAt ?? startedAt, reason: failureCategory ?? receiptState,
+      observedAt: completedAt ?? startedAt ?? new Date(nowMs).toISOString(), reason: failureCategory ?? receiptState,
     } : value.failedMigration,
     latestExecution: { tag: receiptString(settled ?? latest, "appliedHead") ?? receiptString(settled ?? latest, "expectedMigrationHead"), hash: receiptString(settled ?? latest, "appliedHash") ?? receiptString(settled ?? latest, "expectedMigrationHash") ?? "",
       result: receiptState === "SUCCEEDED" || receiptState === "RECOVERED" ? "APPLIED" : receiptState === "FAILED" || receiptState === "INTERRUPTED" ? "FAILED" : "UNKNOWN",
