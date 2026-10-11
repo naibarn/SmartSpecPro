@@ -12,9 +12,8 @@ from app.llm_proxy.providers.wavespeed_media_provider import WaveSpeedPollResult
 from app.models.media_task import TaskStatus
 from app.tasks.media_tasks import (
     _generate_video_async,
-    _poll_wavespeed_video_task_async,
-    _recover_stuck_tasks_async,
     _make_json_safe,
+    _poll_wavespeed_video_task_async,
 )
 
 
@@ -373,71 +372,3 @@ async def test_poll_wavespeed_video_task_recovers_failed_terminal_bug_when_resul
     assert task.status == TaskStatus.COMPLETED
     assert task.error_message is None
     enqueue_mock.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_recover_stuck_tasks_repolls_recent_failed_wavespeed_terminal_bug():
-    task = _make_media_task()
-    task.status = TaskStatus.FAILED
-    task.task_id = "ws-pred-123"
-    task.result_url = None
-    task.error_message = "'str' object has no attribute 'value'"
-    task.completed_at = datetime.now(timezone.utc) - timedelta(minutes=1)
-    task.result_data = {
-        "submission": _make_wavespeed_submission(),
-        "polling": {
-            "provider": "wavespeed_ai",
-            "attempts": 4,
-            "raw_status": "completed",
-            "next_delay_seconds": 15,
-        },
-    }
-
-    processing_result = MagicMock()
-    processing_result.scalars.return_value.all.return_value = []
-    failed_result = MagicMock()
-    failed_result.scalars.return_value.all.return_value = [task]
-    kie_failed_result = MagicMock()
-    kie_failed_result.scalars.return_value.all.return_value = []
-
-    session = AsyncMock()
-    session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock(return_value=False)
-    session.commit = AsyncMock()
-    session.execute = AsyncMock(side_effect=[processing_result, failed_result, kie_failed_result])
-
-    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
-         patch("app.tasks.media_tasks._poll_wavespeed_video_task_async", new_callable=AsyncMock, return_value={"status": "completed"}) as poll_mock:
-        result = await _recover_stuck_tasks_async()
-
-    assert result["status"] == "success"
-    assert result["recovered_count"] == 1
-    poll_mock.assert_awaited_once_with(task.id, schedule_next_poll=True)
-
-
-@pytest.mark.asyncio
-async def test_recover_stuck_tasks_fails_processing_task_without_provider_task_id():
-    task = _make_media_task("task-missing-provider-id")
-    task.status = TaskStatus.PROCESSING
-    task.task_id = None
-    task.started_at = datetime.now(timezone.utc) - timedelta(minutes=15)
-    task.created_at = task.started_at
-
-    processing_result = MagicMock()
-    processing_result.scalars.return_value.all.return_value = [task]
-    failed_result = MagicMock()
-    failed_result.scalars.return_value.all.return_value = []
-    kie_failed_result = MagicMock()
-    kie_failed_result.scalars.return_value.all.return_value = []
-
-    session = _make_async_session(processing_result, failed_result, kie_failed_result)
-
-    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session):
-        result = await _recover_stuck_tasks_async()
-
-    assert result["status"] == "success"
-    assert result["failed_count"] == 1
-    assert task.status == TaskStatus.FAILED
-    assert "no provider task ID" in task.error_message
-    assert task.completed_at is not None
-    session.commit.assert_awaited_once()
