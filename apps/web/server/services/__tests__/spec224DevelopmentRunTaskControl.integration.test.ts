@@ -14,7 +14,7 @@ const execFileAsync = promisify(execFile);
 describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () => {
   afterEach(async () => closeDb());
 
-  it("keeps one canonical run/job and reconstructs its durable stage after process restart", async () => {
+  it("settles one canonical phase and resumes the same DevelopmentRun with Task Control visibility", async () => {
     if (process.env.DATABASE_URL)
       throw new Error("SPEC224_REFUSES_INHERITED_DATABASE_URL");
 
@@ -110,47 +110,115 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         created: false,
       });
 
-      const service = createDevelopmentRunService(
-        defaultDevelopmentRunPersistenceAdapter
-      );
-      const moved = await service.command({
-        runId,
-        tenantId,
-        actorId,
-        expectedRevision: 0,
-        expectedFencingVersion: first.run.fencingVersion,
-        idempotencyKey: `r9-task-control-stage:${runId}`,
-        command: {
-          kind: "transition",
-          nextState: "PLANNING",
-          eventType: "PHASE_COMPLETED",
-          payload: { workerJobId: first.jobRef.jobId, source: "synthetic-test" },
-        },
+      const lease = await controlPlane.claim({
+        jobId: first.jobRef.jobId,
+        runnerId: `r9-synthetic-runner-${runId}`,
+        adapter: "test",
       });
-      expect(moved.run.workerJobId).toBe(first.jobRef.jobId);
+      if (!lease) throw new Error("SPEC224_SYNTHETIC_JOB_NOT_CLAIMED");
+      await controlPlane.start(lease);
+      await controlPlane.complete(lease, {
+        resultRef: `evidence:spec224-workunit-${runId}`,
+        output: { evidenceRefs: [`evidence:phase-${runId}`] },
+      });
+      await expect(
+        controlPlane.complete(lease, {
+          resultRef: `evidence:spec224-conflicting-result-${runId}`,
+          output: { evidenceRefs: [`evidence:conflicting-${runId}`] },
+        })
+      ).rejects.toThrow();
 
       const childScript = `
         import postgres from "postgres";
+        const [{ createJobControlPlane }, { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter },
+          { reconcileAndContinueNextPhase }, { defaultJobExecutorRegistry }, { closeDb }] = await Promise.all([
+          import("./server/services/jobControlPlane.ts"),
+          import("./server/services/spec224DevelopmentRunPersistence.ts"),
+          import("./server/services/spec224PhaseController.ts"),
+          import("./server/services/jobExecutorRegistry.ts"),
+          import("./server/db.ts"),
+        ]);
+        const runId = process.env.TEST_RUN_ID;
+        const tenantId = process.env.TEST_TENANT_ID;
+        const actorId = Number(process.env.TEST_ACTOR_ID);
+        const result = await reconcileAndContinueNextPhase({
+          runId, tenantId, actorId,
+          expectedRevision: 0,
+          expectedFencingVersion: Number(process.env.TEST_FENCING_VERSION),
+          idempotencyKey: \`r9-task-control-continue:\${runId}\`,
+          provider: "codex", runtime: "local_runner", planId: \`plan-\${runId}\`,
+          planRevision: 2, skillIds: [], requestedCapabilities: ["workspace.edit"],
+          authorizationScope: "spec224.development.run",
+          persistence: defaultDevelopmentRunPersistenceAdapter,
+          controlPlane: createJobControlPlane(), executorRegistry: defaultJobExecutorRegistry,
+        });
+        const persisted = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get({runId, tenantId, actorId});
         const sql = postgres(process.env.DATABASE_URL, { max: 1 });
-        const [row] = await sql.unsafe('SELECT "progressJson" FROM worker_jobs WHERE id = $1', [process.env.TEST_JOB_ID]);
-        process.stdout.write(JSON.stringify(row?.progressJson?.spec224 ?? null));
+        const [job] = await sql.unsafe('SELECT "progressJson" FROM worker_jobs WHERE id = $1', [result.continuation?.jobRef.jobId]);
+        process.stdout.write("R9_RESULT:" + JSON.stringify({
+          action: result.reconcile.action, reason: result.reconcile.reason,
+          state: persisted.run.state, workerJobId: persisted.run.workerJobId,
+          events: persisted.events.map(event => event.type),
+          continuation: result.continuation && { accepted: result.continuation.accepted, jobRef: result.continuation.jobRef },
+          progressJson: job?.progressJson ?? null,
+        }) + "\\n");
         await sql.end();
+        await closeDb();
       `;
       const child = await execFileAsync(
         process.execPath,
         ["--import", "tsx", "--input-type=module", "--eval", childScript],
         {
           cwd: process.cwd(),
-          env: { ...process.env, DATABASE_URL: fixture.databaseUrl, TEST_JOB_ID: first.jobRef.jobId },
-          timeout: 15_000,
-          maxBuffer: 16 * 1024,
+          env: {
+            ...process.env,
+            DATABASE_URL: fixture.databaseUrl,
+            TEST_RUN_ID: runId,
+            TEST_TENANT_ID: tenantId,
+            TEST_ACTOR_ID: String(actorId),
+            TEST_FENCING_VERSION: String(first.run.fencingVersion),
+          },
+          timeout: 20_000,
+          maxBuffer: 24 * 1024,
         }
       );
-      expect(JSON.parse(child.stdout)).toMatchObject({
-        runId,
-        workerJobId: first.jobRef.jobId,
+      const resultLine = child.stdout.split(/\r?\n/).find(line => line.startsWith("R9_RESULT:"));
+      if (!resultLine) throw new Error(`SPEC224_RESTART_RESULT_MISSING:${child.stdout.slice(-500)}`);
+      const phase = JSON.parse(resultLine.slice("R9_RESULT:".length));
+      expect(phase).toMatchObject({
+        action: "CONTINUE",
+        reason: "phase_succeeded",
         state: "PLANNING",
+        events: expect.arrayContaining(["RUN_CREATED", "PHASE_COMPLETED", "PHASE_STARTED"]),
       });
+      expect(phase.continuation).toMatchObject({
+        accepted: true,
+        jobRef: { created: true },
+      });
+      const planningJobId = phase.continuation.jobRef.jobId as string;
+      expect(phase.workerJobId).toBe(planningJobId);
+      expect(planningJobId).not.toBe(first.jobRef.jobId);
+      expect(phase.progressJson).toMatchObject({
+        spec224: { runId, workerJobId: planningJobId, state: "PLANNING" },
+        developmentLifecycle: { workUnit: { workId: `work-${runId}` } },
+      });
+
+      const [settledJob] = await client.unsafe(
+        `SELECT status, "resultRef", "outputJson" FROM worker_jobs WHERE id = $1`,
+        [first.jobRef.jobId]
+      );
+      expect(settledJob).toMatchObject({
+        status: "succeeded",
+        resultRef: `evidence:spec224-workunit-${runId}`,
+        outputJson: { evidenceRefs: [`evidence:phase-${runId}`] },
+      });
+      const [terminalCounts] = await client.unsafe(
+        `SELECT COUNT(*) FILTER (WHERE "eventType" = 'SETTLEMENT_RECORDED')::int AS settlements,
+          COUNT(*) FILTER (WHERE "eventType" = 'COMPLETED')::int AS completions
+         FROM worker_job_events WHERE "workerJobId" = $1`,
+        [first.jobRef.jobId]
+      );
+      expect(terminalCounts).toEqual({ settlements: 1, completions: 1 });
 
       const [job] = await client.unsafe(
         `SELECT id, "tenantId", "requestedByUserId", "runtimeType", "workflowRunId",
@@ -158,10 +226,10 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
           "failureReason", "errorCode", "errorMessage", "operatorReviewRequired",
           "operatorReviewReason", "progressJson", "createdAt", "startedAt", "finishedAt"
          FROM worker_jobs WHERE id = $1`,
-        [first.jobRef.jobId]
+        [planningJobId]
       );
       const taskControl = await getUserWorkerJobDetail(
-        { auth: { tenantId, userId: actorId }, jobId: first.jobRef.jobId },
+        { auth: { tenantId, userId: actorId }, jobId: planningJobId },
         {
           repo: {
             getUserJob: async () => ({ ...job, workerId: null, worker: null }),
@@ -176,16 +244,16 @@ describe("Spec 224 DevelopmentRun Task Control projection — PostgreSQL", () =>
         }
       );
       expect(taskControl).toMatchObject({
-        id: first.jobRef.jobId,
+        id: planningJobId,
         status: "queued",
         progressPhase: "PLANNING",
         progressPercent: null,
       });
-      const persisted = await service.get({ runId, tenantId, actorId });
+      const persisted = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter).get({ runId, tenantId, actorId });
       expect(persisted?.run).toMatchObject({
         runId,
         state: "PLANNING",
-        workerJobId: first.jobRef.jobId,
+        workerJobId: planningJobId,
       });
     } finally {
       await closeDb();
