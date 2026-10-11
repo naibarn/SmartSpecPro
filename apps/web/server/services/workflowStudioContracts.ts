@@ -23,7 +23,7 @@ export class WorkflowStudioError extends Error {
     | "SECRET_IN_DEFINITION"
     | "DRAFT_REVISION_CONFLICT";
 
-  constructor(code: WorkflowStudioError["code"], message = code) {
+  constructor(code: WorkflowStudioError["code"], message: string = code) {
     super(message);
     this.name = "WorkflowStudioError";
     this.code = code;

@@ -84,25 +84,10 @@ describe("workflowStudioContracts", () => {
   });
 
   it("accepts canonical WorkflowDefinition v2 and rejects the legacy graph shape", () => {
-    const canonical = {
-      schemaVersion: "2",
-      workflowId: "workflow-1",
-      version: "1.0.0",
-      interface: {
-        inputs: { request: { schema: { type: "string" }, required: true } },
-        outputs: {
-          result: {
-            schema: { type: "string" },
-            source: { kind: "literal", value: "ok" },
-          },
-        },
-      },
-      nodes: [],
-      edges: [],
-    };
+    const canonical = definition;
     expect(validateWorkflowDefinition(canonical)).toMatchObject({
       valid: true,
-      nodeCount: 0,
+      nodeCount: 1,
     });
     expect(validateWorkflowDefinition(legacyDefinition)).toMatchObject({
       valid: false,

@@ -18,7 +18,7 @@ export class WorkflowCompilerError extends Error {
     | "CAPABILITY_GAP"
     | "CANDIDATE_INVALID";
 
-  constructor(code: WorkflowCompilerError["code"], message = code) {
+  constructor(code: WorkflowCompilerError["code"], message: string = code) {
     super(message);
     this.name = "WorkflowCompilerError";
     this.code = code;
