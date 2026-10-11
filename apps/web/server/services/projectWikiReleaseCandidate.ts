@@ -114,7 +114,7 @@ export type ProjectWikiCandidateRecord = Readonly<{
   id: string;
   tenantId: string;
   projectId: string;
-  appId: string;
+  appId: typeof PROJECT_WIKI_CANDIDATE.appId;
   sourceRevision: string;
   packageDigest: string;
   archiveSha256: string;
