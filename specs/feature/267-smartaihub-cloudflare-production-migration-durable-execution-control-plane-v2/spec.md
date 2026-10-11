@@ -3432,7 +3432,7 @@ The count is an architecture/billing convenience, not a claim that each componen
 | **Durable Objects** | live WebSocket/presence or serialized hot-key coordination materially benefits | do not move canonical job/accounting truth out of PostgreSQL |
 | **Workers VPC + Cloudflare Tunnel** | Cloudflare must reach the transitional Linux PostgreSQL or another private origin | remove/retire the dependency when final managed DB path no longer requires it |
 | **Cloudflare for SaaS / Workers for Platforms** | later white-label/custom-hostname or creator-runtime requirements explicitly need them | not part of Spec 267 core migration |
-| **Workers AI** | an approved model/use-case specifically chooses Cloudflare inference | SmartAIHub provider routing remains provider-neutral |
+| **Workers AI** | an approved model/use-case selects Cloudflare inference; Clef is preferred for Decision Model routing per Spec 231 | SmartAIHub remains provider-neutral for reasoning/coding and tenant BYO models |
 | **Browser Rendering / Sandbox / Agents** | a product capability explicitly requires them under its owning spec | not generic queue/control-plane dependencies |
 
 ## 33.3 Explicit non-core exclusions
@@ -3442,7 +3442,7 @@ Spec 267 SHALL NOT introduce any of the following as a second canonical store or
 - D1 as replacement/duplicate of PostgreSQL;
 - Cloudflare Stream as replacement for R2 merely because media exists;
 - Cloudflare Images as a mandatory media store;
-- Workers AI as the default LLM merely because the application runs on Workers;
+- Workers AI as the default provider for all LLM roles merely because the application runs on Workers; this does not preclude the Clef-first Decision Model policy in Spec 231;
 - a Durable Object database as a duplicate business ledger;
 - a Workflow as the only record that a customer job exists.
 
@@ -4049,3 +4049,13 @@ It may not be:
 ```text
 "we sent it somewhere and do not know what happened."
 ```
+
+# Clef inference and existing control-plane boundary (2026-10-11)
+
+**Current-state assessment:** Spec 267 defines the durable Cloudflare runtime/control-plane migration and currently says Workers AI may be selected for an approved use case while SmartAIHub provider routing remains provider-neutral. Its handoff is validation-pending; this amendment does not claim production Clef integration or control-plane completion. Canonical Decision Model provider policy belongs to [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11).
+
+Cloudflare Workers AI is now the preferred inference substrate for the **Decision Model** role when tenant policy, capability, quality, and availability permit. This does not make Workers AI the default for all LLM work: reasoning and coding models remain independently selectable, including current non-Cloudflare providers. Cloudflare AI Gateway is preferred for supported observability/routing/usage controls only when its route preserves Clef's structured System One API and tenant attribution; retain a native Workers AI path if the gateway adapter does not preserve that contract. Existing `worker_jobs` plus outbox, PostgreSQL source of truth, authorization, lease/fencing, retries, cancellation, settlement and audit remain canonical. Do not add a second control plane, scheduler, queue, execution authority, approval workflow, or Clef-specific durable state machine.
+
+Attribute Cloudflare platform/Workers AI charges, tenant-owned Cloudflare account charges, tenant billing responsibility, and SmartAIHub customer credit settlement as distinct concepts through existing cost and ledger owners. Preserve tenant BYO-provider options and support tenant-owned Cloudflare accounts where existing policy permits. Credentials remain in Spec 272's existing secret/binding boundary. Existing running jobs and in-flight work retain their provider and policy snapshot; new decisions may adopt the preferred route after rollout evidence.
+
+Acceptance: demonstrate the structured API through the existing inference gateway or a certified native adapter; prove provider failures do not affect durable job state or settlement correctness; account for usage/cost without creating a second ledger; and preserve the control-plane authority exactly. No production deployment or migration is implied.

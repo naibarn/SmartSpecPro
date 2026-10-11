@@ -35,7 +35,7 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "8c6c68332be7d90d18b334aa9881c39dfe85937e",
-    "expected_spec_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
+    "expected_spec_digest": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c"
   },
   "continuation": {
     "next_action": "Establish a server-authenticated App route assertion and worker-side fresh App/Project binding revalidation before propagating App-bound memory context through the active worker queue. Until that authority exists, keep App-bound Project reads fail-closed and execute T-01–T-23 only against an authorized non-production persisted runtime. Durable Project writes remain DENY pending Phase 2; SPEC-224 protected dispatch remains DENY.",
@@ -126,13 +126,13 @@
     "rationale": "R3.18 is the integrated assistant/team contract; its SPEC-268 dependency source is now recovered with byte-verified provenance and R2.6 additive context clauses. Runtime acceptance remains pending.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 33,
+  "generation": 34,
   "identity": {
     "canonical_path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-    "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+    "digest": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-07T04:14:02.325224Z",
+      "last_evidence_at": "2026-10-11T01:58:45.920788Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-07T11:19:51+07:00",
       "spec_last_changed_at": "2026-10-07T11:19:51+07:00"
@@ -402,17 +402,17 @@
     }
   },
   "reconciliation": {
-    "confidence": "HIGH",
+    "confidence": "LOW",
     "inferred_fields": [
       "authority.status",
       "disposition.value",
       "continuation_assessment.decision"
     ],
-    "mode": "EVIDENCE_RECONCILED",
-    "reconciled_at": "2026-10-07T04:14:02.325224Z",
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-10-11T01:58:45.920788Z",
     "sources": [
       {
-        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "digest": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       },
@@ -424,7 +424,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 8,
         "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-        "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "source_digest": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
         "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
       }
     ],
@@ -455,14 +455,14 @@
         "excerpt": "status: PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER",
         "line": 8,
         "source": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-        "source_digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "source_digest": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
         "value": "PROPOSED_IMPLEMENTATION_READY_CANONICAL_ASSISTANT_AND_USER_WORK_LIFECYCLE_LAYER"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be",
+        "digest": "ec413dd717ceff67f134a6a6fa242c7f80337a096db473efcf2775a11b41ed0c",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md"
       }
@@ -473,7 +473,7 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 3,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
@@ -482,7 +482,7 @@
     "unresolved": 1677
   },
   "schema_version": 1,
-  "updated_at": "2026-10-10T09:19:18.003636Z",
+  "updated_at": "2026-10-11T01:58:45.920788Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

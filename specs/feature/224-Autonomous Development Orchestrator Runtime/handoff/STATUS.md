@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 1246 unresolved of 1246
+- Requirements: 0 pass / 1247 unresolved of 1247
 - Next action: Complete Windows Runner fresh capability acceptance using review artifact 11612928361; keep protected dispatch denied until remote trust, owner P-RECOVERY, economic, and persisted-proof gates pass.
-- Manifest generation: 41
+- Manifest generation: 42
 
 ## Source-declared status and relationship claims
 

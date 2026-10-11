@@ -3565,3 +3565,10 @@ Normative revision-resolution rules:
 9. Canonical publication MUST update the registry atomically with the new file/hash.
 10. Superseded files remain historical evidence and SHOULD NOT be silently deleted until repository retention policy allows it.
 
+# Task Control Decision Model boundary (2026-10-11)
+
+**Current-state assessment:** Spec 277 owns the task-facing control and status experience while preserving the canonical task, approval, billing, and execution authorities. Its handoff remains continuation-required; this amendment does not alter that status. Clef policy is owned by [Spec 231](../231-Unified%20LLM%20Routing%20%26%20Inference%20Orchestration/spec.md#cloudflare-clef-decision-model-policy-2026-10-11).
+
+Task-control surfaces may consume a validated advisory decision or routing result through existing inference and task contracts. They must not interpret Clef confidence as completion probability, permission, execution evidence, or billing authority. Display provider/model and estimated/settled cost only through existing SmartAIHub billing semantics; separate provider infrastructure usage from tenant responsibility and SmartAIHub credits. A fallback or provider failure must preserve existing task states, cancellation, retry, settlement, and evidence semantics. Do not introduce a task-control queue, approval workflow, or second state machine for Clef.
+
+Acceptance: existing task authorization and durable state remain canonical; any routing/fallback/cost surface reflects actual recorded provider and ledger data; and no Clef output can mark a task complete or verified.

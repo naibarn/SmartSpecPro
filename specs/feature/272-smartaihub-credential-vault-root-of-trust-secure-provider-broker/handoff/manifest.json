@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
-    "expected_spec_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3"
+    "expected_spec_digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3"
   },
   "continuation": {
     "next_action": null,
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -71,16 +71,16 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-    "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+    "digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T04:27:57.447219Z",
+      "last_evidence_at": "2026-10-11T02:00:58.801428Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-06T11:34:46+07:00",
+      "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
     },
     "revision": "1.1",
     "slug": "272-smartaihub-credential-vault-root-of-trust-secure-provider-broker",
@@ -101,10 +101,10 @@
     "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T04:27:57.447219Z"
+    "updated_at": "2026-10-11T02:00:58.801428Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +114,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T04:27:57.447219Z",
+    "reconciled_at": "2026-10-11T02:00:58.801428Z",
     "sources": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       },
@@ -129,11 +129,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-        "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "source_digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "value": "Implementation-ready — hardened after 12-pass security/operability review"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +160,14 @@
         "excerpt": "**Status:** Implementation-ready — hardened after 12-pass security/operability review",
         "line": 3,
         "source": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-        "source_digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "source_digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "value": "Implementation-ready — hardened after 12-pass security/operability review"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3",
+        "digest": "2028147373502badbb6c0641ce98c72d60446cf704cf87c7005e32e272aebee3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md"
       }
@@ -178,11 +183,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 245,
-    "unresolved": 245
+    "total": 246,
+    "unresolved": 246
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:37:58.389272Z",
+  "updated_at": "2026-10-11T02:00:58.801428Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
