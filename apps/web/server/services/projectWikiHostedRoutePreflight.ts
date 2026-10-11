@@ -196,6 +196,11 @@ export type ProjectWikiHostedRoutePreflight = {
   outcomes: ProjectWikiHostedRouteOutcome[];
 };
 
+export type ProjectWikiHostedRoutePreflightBuild = Omit<
+  ProjectWikiHostedRoutePreflight,
+  "currentProcessDiagnostic"
+>;
+
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SOURCE_SHA = /^[a-f0-9]{40}$/i;
@@ -498,7 +503,7 @@ export function buildProjectWikiHostedRoutePreflight(input: {
   identity: HostedRouteIdentity;
   authorities: ProjectWikiHostedRouteAuthorities;
   now?: Date;
-}): ProjectWikiHostedRoutePreflight {
+}): ProjectWikiHostedRoutePreflightBuild {
   const { identity, authorities } = input;
   if (
     !UUID.test(identity.tenantId) ||
@@ -656,7 +661,7 @@ export function buildProjectWikiHostedRoutePreflight(input: {
     factScopeMatches(smokeFact, identity, targetId!, database?.databaseId) &&
     smokeFact.value.targetId === targetId &&
     smokeFact.value.deploymentId === deployment.deploymentId &&
-    smokeFact.value.packageDigest === packageFact.value.packageDigest &&
+    smokeFact.value.packageDigest === packageFact.value?.packageDigest &&
     smokeFact.value.passed;
   const uatFact = authorities.uat;
   const uatComplete =
@@ -666,7 +671,7 @@ export function buildProjectWikiHostedRoutePreflight(input: {
     factScopeMatches(uatFact, identity, targetId!) &&
     uatFact.value.targetId === targetId &&
     uatFact.value.deploymentId === deployment.deploymentId &&
-    uatFact.value.packageDigest === packageFact.value.packageDigest &&
+    uatFact.value.packageDigest === packageFact.value?.packageDigest &&
     uatFact.value.passed;
   const stages = {
     PACKAGE_CONTENT_VERIFIED: packageValid
@@ -804,9 +809,7 @@ export type ProjectWikiHostedRoutePreflightProviders = {
   observeTarget(
     db: DrizzleDB,
     identity: HostedRouteIdentity
-  ): Promise<
-    AuthorityFact<ProjectWikiHostedRouteAuthorities["target"]["value"]>
-  >;
+  ): Promise<ProjectWikiHostedRouteAuthorities["target"]>;
   observeHost(
     identity: HostedRouteIdentity,
     target: ProjectWikiHostedRouteAuthorities["target"]
@@ -867,7 +870,7 @@ function unknownProviders(): Omit<
         "dedicated_staging_database_authority_not_registered",
         identity
       ),
-    observeMigration: async identity =>
+    observeMigration: async (_db, identity) =>
       unknownFact(
         "drizzleMigrationEvidence",
         "dedicated_staging_database_connection_not_registered",

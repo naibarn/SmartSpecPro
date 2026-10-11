@@ -112,6 +112,27 @@ describe("Drizzle migration evidence", () => {
       .toMatchObject({ currentState: "PARTIALLY_APPLIED", executionReconciliation: { state: "PARTIAL_APPLICATION" } });
   });
 
+  it("timestamps failed migration evidence from observation time when a receipt omits timestamps", () => {
+    const current = projectDrizzleMigrationEvidence({
+      environment: "test",
+      databaseIdentity: "db/public",
+      expected: [{ tag: "0001_first", hash: "a" }],
+      applied: [],
+    });
+    const observedAt = new Date("2026-10-07T12:00:00.000Z");
+    const receipt = {
+      schemaVersion: "migration-execution-receipt.v1",
+      idempotencyKey: "key-missing-timestamps",
+      phase: "SETTLED",
+      result: "FAILED",
+    };
+
+    expect(
+      reconcileMigrationExecutionReceipts({ current, receipts: [receipt], now: observedAt }).value
+        ?.failedMigration
+    ).toMatchObject({ state: "FAILED", observedAt: observedAt.toISOString() });
+  });
+
   it("makes retries idempotent and rejects a conflicting payload", () => {
     const payload = { environment: "production", databaseTargetId: "db:1", sourceSha: "sha", expectedMigrationHead: "0001", requestedMigrationSet: ["0001"] };
     const start = { ...payload, idempotencyKey: "request-1", phase: "STARTED", startedAt: "2026-10-07T12:00:00.000Z" };
